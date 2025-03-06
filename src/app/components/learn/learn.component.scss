@@ -1,0 +1,74 @@
+.prose {
+    h1, h2, h3, h4 {
+      color: #B7A57A;
+      margin-bottom: 1rem;
+    }
+  
+    p {
+      margin-bottom: 1rem;
+      line-height: 1.8;
+    }
+  
+    ul, ol {
+      margin-left: 1.5rem;
+      margin-bottom: 1rem;
+    }
+  }
+  
+  select, 
+  input, 
+  button,
+  label,
+  option,
+  .page-number,
+  .text-gray-700,
+  .text-gray-600 {
+    color: #000000 !important;
+  }
+  
+  // Keep white text for buttons with colored backgrounds
+  
+  
+  select {
+    background-color: white;
+    border-color: #e5e7eb;
+    
+    &:focus {
+      outline: none;
+      border-color: #B7A57A;
+      box-shadow: 0 0 0 2px rgba(183, 165, 122, 0.2);
+    }
+  }
+  
+  button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  .arabic-text {
+    font-family: 'KFGQPC HAFS Uthmanic Script', 'Amiri', serif;
+    font-size: 2.8rem;
+    line-height: 2.5;
+    direction: rtl;
+    text-align: right;
+    color: #1F2937;
+    letter-spacing: 0;
+    word-spacing: 0;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    word-break: keep-all;
+    margin-bottom: 1rem;
+  }
+  
+  .verse-meaning {
+    background: linear-gradient(to right, #FAF3E0, #FFF);
+    border-radius: 1rem;
+    border-left: 4px solid #B7A57A;
+    padding: 1.5rem;
+  }
+  
+  .translation {
+    font-family: 'Merriweather', serif;
+    font-size: 1.125rem;
+    color: #2D3748;
+  } 

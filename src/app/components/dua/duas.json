@@ -1,0 +1,615 @@
+{
+  "morning": [
+    {
+      "id": 1,
+      "title": "Ayatul Kursi",
+      "arabic": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ",
+      "translation": "Allah - there is no deity except Him, the Ever-Living, the Self-Sustaining. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth. Who is it that can intercede with Him except by His permission? He knows what is [presently] before them and what will be after them, and they encompass not a thing of His knowledge except for what He wills. His Kursi extends over the heavens and the earth, and their preservation tires Him not. And He is the Most High, the Most Great.",
+      "transliteration": "Allahu la ilaha illa huwa al-hayyu al-qayyum. La ta'khudhuhu sinatun wa la nawm. Lahu ma fi al-samawati wa ma fi al-ard. Man dha alladhi yashfa'u 'indahu illa bi idhnih. Ya'lamu ma bayna aydihim wa ma khalfahum wa la yuhituna bi shay'in min 'ilmihi illa bi ma sha'. Wasi'a kursiyyuhu al-samawati wa al-ard wa la ya'uduhu hifdhuhuma wa huwa al-'aliyyu al-'adhim.",
+      "reference": "Quran 2:255",
+      "category": "morning",
+      "recitationCount": 1,
+      "virtue": "Whoever recites this in the morning will be protected until evening, and whoever recites this in the evening will be protected until morning.",
+      "time": "After Fajr prayer",
+      "emotion": [
+        "anxious", "worried", "hopeful", "grateful", "seeking protection",
+        "fearful", "insecure", "overwhelmed", "tired", "weak", "seeking strength",
+        "threatened", "uncertain", "seeking peace", "sleepy", "vulnerable"
+      ]
+    },
+    {
+      "id": 3,
+      "title": "The Three Quls",
+      "arabic": "قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾ قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ﴿٤﴾ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ ﴿٥﴾ قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ﴿٥﴾ مِنَ الْجِنَّةِ وَالنَّاسِ ﴿٦﴾",
+      "translation": "Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, Nor is there to Him any equivalent.' Say, 'I seek refuge in the Lord of daybreak From the evil of that which He created And from the evil of darkness when it settles And from the evil of the blowers in knots And from the evil of an envier when he envies.' Say, 'I seek refuge in the Lord of mankind, The Sovereign of mankind, The God of mankind, From the evil of the retreating whisperer - Who whispers [evil] into the breasts of mankind - From among the jinn and mankind.'",
+      "transliteration": "Qul huwa Allahu ahad. Allahu samad. Lam yalid wa lam yulad. Wa lam yakun lahu kufuwan ahad. Qul a'udhu bi-rabbil-falaq. Min sharri ma khalaq. Wa min sharri ghasiqin idha waqab. Wa min sharrin-naffathati fil 'uqad. Wa min sharri hasidin idha hasad. Qul a'udhu bi-rabbin-nas. Malikin-nas. Ilahin-nas. Min sharril-waswasil-khannas. Alladhi yuwaswisu fi sudurin-nas. Minal-jinnati wan-nas.",
+      "reference": "Quran 112, 113, 114",
+      "category": "morning",
+      "recitationCount": 3,
+      "virtue": "Whoever recites these three surahs three times in the morning and evening, they will suffice him against everything.",
+      "time": "After Fajr prayer",
+      "emotion": [
+        "fearful", "anxious", "seeking protection", "threatened", "unsafe",
+        "worried", "scared", "vulnerable", "paranoid", "uneasy", "disturbed",
+        "seeking safety", "intimidated", "insecure"
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Sayyidul Istighfar",
+      "arabic": "اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ بِذَنْبِي فَاغْفِرْ لِي فَإِنَّهُ لاَ يَغْفِرُ الذُّنُوبَ إِلاَّ أَنْتَ",
+      "translation": "O Allah, You are my Lord, there is no deity except You. You created me and I am Your servant, and I am faithful to my covenant and promise to You as much as I can. I seek refuge in You from the evil of what I have done. I acknowledge Your favor upon me, and I acknowledge my sin, so forgive me, for verily none forgives sins except You.",
+      "transliteration": "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana abduka, wa ana 'ala 'ahdika wa wa'dika mas-tata'tu, a'udhu bika min sharri ma sana'tu, abu'u laka bini'matika 'alayya, wa abu'u bidhanbi faghfir li fa innahu la yaghfiru adhdhunuba illa anta",
+      "reference": "Bukhari",
+      "category": "morning",
+      "recitationCount": 1,
+      "virtue": "Whoever says it with conviction in the morning and dies before evening will enter Paradise",
+      "time": "After Fajr prayer",
+      "emotion": [
+        "guilty", "regretful", "remorseful", "ashamed", "sorry",
+        "repentant", "seeking forgiveness", "conscience-stricken",
+        "apologetic", "seeking redemption", "seeking mercy"
+      ]
+    },
+    {
+      "id": 14,
+      "title": "Dua for Well-being",
+      "arabic": "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ",
+      "translation": "O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no deity except You.",
+      "transliteration": "Allahumma 'afini fi badani, Allahumma 'afini fi sam'i, Allahumma 'afini fi basari, la ilaha illa anta",
+      "reference": "Abu Dawud",
+      "category": "morning",
+      "recitationCount": 3,
+      "virtue": "Seeking well-being in body, hearing, and sight",
+      "time": "Morning",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection", "sad", "in pain", "weak"]
+    },
+    {
+      "id": 21,
+      "title": "Strong Protection (Morning)",
+      "arabic": "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+      "translation": "In the name of Allah, with Whose name nothing can cause harm on earth or in heaven, and He is the All-Hearing, All-Knowing.",
+      "transliteration": "Bismillahil-ladhi la yadurru ma'as-mihi shay'un fil-ardi wa la fis-sama'i, wa Huwas-Sami'ul-'Alim",
+      "reference": "Abu Dawud",
+      "category": "morning",
+      "recitationCount": 3,
+      "virtue": "Whoever recites this three times in the morning and evening, nothing will harm them.",
+      "time": "Morning and Evening",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 32,
+      "title": "Morning Supplication",
+      "arabic": "اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ الْمَصِيرُ",
+      "translation": "O Allah, by You we enter the morning and by You we enter the evening, by You we live and by You we die, and to You is the final return.",
+      "transliteration": "Allahumma bika asbahna, wa bika amsayna, wa bika nahya, wa bika namutu, wa ilaykal-masir",
+      "reference": "Abu Dawud",
+      "category": "morning",
+      "recitationCount": 1,
+      "virtue": "A comprehensive morning supplication",
+      "time": "Morning",
+      "emotion": ["grateful", "thankful", "hopeful", "seeking guidance"]
+    },
+    {
+      "id": 33,
+      "title": "Morning Protection",
+      "arabic": "اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ",
+      "translation": "O Allah, grant me well-being in my body. O Allah, grant me well-being in my hearing. O Allah, grant me well-being in my sight. There is no deity except You.",
+      "transliteration": "Allahumma 'afini fi badani, Allahumma 'afini fi sam'i, Allahumma 'afini fi basari, la ilaha illa anta",
+      "reference": "Abu Dawud",
+      "category": "morning",
+      "recitationCount": 3,
+      "virtue": "Seeking well-being in body, hearing, and sight",
+      "time": "Morning",
+      "emotion": ["anxious", "worried", "hopeful", "seeking protection"]
+    }
+  ],
+  "evening": [
+    {
+      "id": 4,
+      "title": "Evening Remembrance",
+      "arabic": "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَٰهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ",
+      "translation": "We have reached the evening and at this very time all sovereignty belongs to Allah. All praise is for Allah. None has the right to be worshipped except Allah alone, who has no partner. To Him belongs all sovereignty and praise and He is capable of all things.",
+      "transliteration": "Amsayna wa amsal mulku lillah, walhamdu lillah, la ilaha illallahu wahdahu la sharika lah, lahul mulku wa lahul hamdu wa huwa 'ala kulli shay'in qadir",
+      "reference": "Muslim",
+      "category": "evening",
+      "recitationCount": 1,
+      "time": "After Maghrib prayer",
+      "emotion": [
+        "grateful", "tired", "seeking peace", "reflective", "thankful",
+        "seeking protection", "content", "blessed", "appreciative", "peaceful",
+        "sleepy", "exhausted", "winding down"
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Ayatul Kursi (Evening)",
+      "arabic": "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ ۗ مَن ذَا الَّذِي يَشْفَعُ عِندَهُ إِلَّا بِإِذْنِهِ ۚ يَعْلَمُ مَا بَيْنَ أَيْدِيهِمْ وَمَا خَلْفَهُمْ ۖ وَلَا يُحِيطُونَ بِشَيْءٍ مِّنْ عِلْمِهِ إِلَّا بِمَا شَاءَ ۚ وَسِعَ كُرْسِيُّهُ السَّمَاوَاتِ وَالْأَرْضَ ۖ وَلَا يَئُودُهُ حِفْظُهُمَا ۚ وَهُوَ الْعَلِيُّ الْعَظِيمُ",
+      "translation": "Allah - there is no deity except Him, the Ever-Living, the Self-Sustaining. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth. Who is it that can intercede with Him except by His permission? He knows what is [presently] before them and what will be after them, and they encompass not a thing of His knowledge except for what He wills. His Kursi extends over the heavens and the earth, and their preservation tires Him not. And He is the Most High, the Most Great.",
+      "transliteration": "Allahu la ilaha illa huwa al-hayyu al-qayyum. La ta'khudhuhu sinatun wa la nawm. Lahu ma fi al-samawati wa ma fi al-ard. Man dha alladhi yashfa'u 'indahu illa bi idhnih. Ya'lamu ma bayna aydihim wa ma khalfahum wa la yuhituna bi shay'in min 'ilmihi illa bi ma sha'. Wasi'a kursiyyuhu al-samawati wa al-ard wa la ya'uduhu hifdhuhuma wa huwa al-'aliyyu al-'adhim.",
+      "reference": "Quran 2:255",
+      "category": "evening",
+      "recitationCount": 1,
+      "virtue": "Whoever recites this in the evening will be protected until morning.",
+      "time": "After Maghrib prayer",
+      "emotion": [
+        "anxious", "worried", "fearful", "seeking protection", "vulnerable",
+        "tired", "weak", "seeking strength", "uncertain", "seeking peace",
+        "sleepy", "exhausted", "insecure", "threatened"
+      ]
+    },
+    {
+      "id": 47,
+      "title": "The Three Quls (Evening)",
+      "arabic": "قُلْ هُوَ اللَّهُ أَحَدٌ ﴿١﴾ اللَّهُ الصَّمَدُ ﴿٢﴾ لَمْ يَلِدْ وَلَمْ يُولَدْ ﴿٣﴾ وَلَمْ يَكُن لَّهُ كُفُوًا أَحَدٌ ﴿٤﴾ قُلْ أَعُوذُ بِرَبِّ الْفَلَقِ ﴿١﴾ مِن شَرِّ مَا خَلَقَ ﴿٢﴾ وَمِن شَرِّ غَاسِقٍ إِذَا وَقَبَ ﴿٣﴾ وَمِن شَرِّ النَّفَّاثَاتِ فِي الْعُقَدِ ﴿٤﴾ وَمِن شَرِّ حَاسِدٍ إِذَا حَسَدَ ﴿٥﴾ قُلْ أَعُوذُ بِرَبِّ النَّاسِ ﴿١﴾ مَلِكِ النَّاسِ ﴿٢﴾ إِلَٰهِ النَّاسِ ﴿٣﴾ مِن شَرِّ الْوَسْوَاسِ الْخَنَّاسِ ﴿٤﴾ الَّذِي يُوَسْوِسُ فِي صُدُورِ النَّاسِ ﴿٥﴾ مِنَ الْجِنَّةِ وَالنَّاسِ ﴿٦﴾",
+      "translation": "Say, 'He is Allah, [who is] One, Allah, the Eternal Refuge. He neither begets nor is born, Nor is there to Him any equivalent.' Say, 'I seek refuge in the Lord of daybreak From the evil of that which He created And from the evil of darkness when it settles And from the evil of the blowers in knots And from the evil of an envier when he envies.' Say, 'I seek refuge in the Lord of mankind, The Sovereign of mankind, The God of mankind, From the evil of the retreating whisperer - Who whispers [evil] into the breasts of mankind - From among the jinn and mankind.'",
+      "transliteration": "Qul huwa Allahu ahad. Allahu samad. Lam yalid wa lam yulad. Wa lam yakun lahu kufuwan ahad. Qul a'udhu bi-rabbil-falaq. Min sharri ma khalaq. Wa min sharri ghasiqin idha waqab. Wa min sharrin-naffathati fil 'uqad. Wa min sharri hasidin idha hasad. Qul a'udhu bi-rabbin-nas. Malikin-nas. Ilahin-nas. Min sharril-waswasil-khannas. Alladhi yuwaswisu fi sudurin-nas. Minal-jinnati wan-nas.",
+      "reference": "Quran 112, 113, 114",
+      "category": "evening",
+      "recitationCount": 3,
+      "virtue": "Whoever recites these three surahs three times in the evening, they will suffice him against everything.",
+      "time": "After Maghrib prayer",
+      "emotion": [
+        "fearful", "anxious", "seeking protection", "threatened", "unsafe",
+        "worried", "scared", "vulnerable", "paranoid", "uneasy", "disturbed",
+        "seeking safety", "intimidated", "insecure"
+      ]
+    },
+    {
+      "id": 23,
+      "title": "Strong Protection (Evening)",
+      "arabic": "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+      "translation": "In the name of Allah, with Whose name nothing can cause harm on earth or in heaven, and He is the All-Hearing, All-Knowing.",
+      "transliteration": "Bismillahil-ladhi la yadurru ma'as-mihi shay'un fil-ardi wa la fis-sama'i, wa Huwas-Sami'ul-'Alim",
+      "reference": "Abu Dawud",
+      "category": "evening",
+      "recitationCount": 3,
+      "virtue": "Whoever recites this three times in the morning and evening, nothing will harm them.",
+      "time": "Morning and Evening",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 35,
+      "title": "Evening Protection",
+      "arabic": "أَمْسَيْنَا وَأَمْسَى الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ",
+      "translation": "We have reached the evening and at this very time all sovereignty belongs to Allah. All praise is for Allah. None has the right to be worshipped except Allah alone, who has no partner.",
+      "transliteration": "Amsayna wa amsal mulku lillah, walhamdu lillah, la ilaha illallahu wahdahu la sharika lah",
+      "reference": "Abu Dawud",
+      "category": "evening",
+      "recitationCount": 1,
+      "virtue": "Protection for the evening",
+      "time": "Evening",
+      "emotion": ["grateful", "thankful", "seeking protection"]
+    }
+  ],
+  "sleep": [
+    {
+      "id": 16,
+      "title": "Before Sleep",
+      "arabic": "بِاسْمِكَ اللَّهُمَّ أَمُوتُ وَأَحْيَا",
+      "translation": "In Your name, O Allah, I die and I live.",
+      "transliteration": "Bismika Allahumma amutu wa ahya",
+      "reference": "Bukhari",
+      "category": "sleep",
+      "recitationCount": 1,
+      "virtue": "The Prophet ﷺ would say this before sleeping",
+      "time": "Before sleeping",
+      "emotion": [
+        "tired", "sleepy", "exhausted", "restless", "anxious",
+        "seeking peace", "seeking protection", "worried", "fearful",
+        "seeking comfort", "drained", "fatigued", "weary", "drowsy"
+      ]
+    },
+    {
+      "id": 17,
+      "title": "Protection While Sleeping",
+      "arabic": "اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ",
+      "translation": "O Allah, protect me from Your punishment on the Day You resurrect Your servants.",
+      "transliteration": "Allahumma qini 'adhabaka yawma tab'athu 'ibadak",
+      "reference": "Abu Dawud",
+      "category": "sleep",
+      "recitationCount": 3,
+      "time": "Before sleeping",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 27,
+      "title": "Protection from Nightmares",
+      "arabic": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ غَضَبِهِ وَعِقَابِهِ، وَشَرِّ عِبَادِهِ، وَمِنْ هَمَزَاتِ الشَّيَاطِينِ وَأَنْ يَحْضُرُونِ",
+      "translation": "I seek refuge in the perfect words of Allah from His anger and punishment, from the evil of His servants, and from the evil suggestions of the devils and from their presence.",
+      "transliteration": "A'udhu bikalimatillahit-tammat min ghadabihi wa 'iqabih, wa sharri 'ibadih, wa min hamazatish-shayatin wa an yahdhurun",
+      "reference": "Hisnul Muslim #87",
+      "category": "sleep",
+      "recitationCount": 3,
+      "virtue": "Protection from nightmares and evil dreams",
+      "time": "Before sleeping",
+      "emotion": ["fearful", "anxious", "seeking protection", "restless"]
+    },
+    {
+      "id": 36,
+      "title": "Sleep Protection",
+      "arabic": "بِاسْمِكَ رَبِّي وَضَعْتُ جَنْبِي، وَبِكَ أَرْفَعُهُ، إِنْ أَمْسَكْتَ نَفْسِي فَارْحَمْهَا، وَإِنْ أَرْسَلْتَهَا فَاحْفَظْهَا بِمَا تَحْفَظُ بِهِ عِبَادَكَ الصَّالِحِينَ",
+      "translation": "In Your name, my Lord, I lay my side down, and by You I raise it. If You should take my soul, then have mercy upon it, and if You should return my soul, then protect it as You protect Your righteous servants.",
+      "transliteration": "Bismika rabbi wada'tu janbi, wa bika arfa'uh, in amsakta nafsi farhamha, wa in arsaltaha fahfazha bima tahfazu bihi 'ibadakas-salihin",
+      "reference": "Bukhari",
+      "category": "sleep",
+      "recitationCount": 1,
+      "virtue": "Protection while sleeping",
+      "time": "Before sleeping",
+      "emotion": ["anxious", "worried", "seeking protection", "tired"]
+    }
+  ],
+  "eating": [
+    {
+      "id": 19,
+      "title": "Before Eating",
+      "arabic": "بِسْمِ اللَّهِ وَعَلَى بَرَكَةِ اللَّهِ",
+      "translation": "In the name of Allah and with the blessings of Allah",
+      "transliteration": "Bismillahi wa 'ala barakatillah",
+      "reference": "Abu Dawud",
+      "category": "eating",
+      "recitationCount": 1,
+      "time": "Before eating",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 20,
+      "title": "After Eating",
+      "arabic": "الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ",
+      "translation": "All praise is for Allah who fed me this and provided it for me without any might or power on my part.",
+      "transliteration": "Alhamdu lillahil-ladhi at'amani hadha wa razaqanihi min ghayri hawlin minni wa la quwwah",
+      "reference": "Abu Dawud, Tirmidhi",
+      "category": "eating",
+      "recitationCount": 1,
+      "virtue": "Whoever says this will be forgiven for their past sins",
+      "time": "After eating",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 37,
+      "title": "Before Eating",
+      "arabic": "بِسْمِ اللَّهِ وَعَلَى بَرَكَةِ اللَّهِ",
+      "translation": "In the name of Allah and with the blessings of Allah",
+      "transliteration": "Bismillahi wa 'ala barakatillah",
+      "reference": "Abu Dawud",
+      "category": "eating",
+      "recitationCount": 1,
+      "virtue": "Blessings in food",
+      "time": "Before eating",
+      "emotion": ["grateful", "thankful", "blessed"]
+    }
+  ],
+  "hardship": [
+    {
+      "id": 5,
+      "title": "Relief from Hardship",
+      "arabic": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْبُخْلِ وَالْجُبْنِ، وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ",
+      "translation": "O Allah, I seek refuge in You from anxiety and sorrow, weakness and laziness, miserliness and cowardice, the burden of debts and from being overpowered by men.",
+      "transliteration": "Allahumma inni a'udhu bika minal-hammi wal-hazan, wal-'ajzi wal-kasal, wal-bukhli wal-jubn, wa dhala'id-dayni wa ghalabatir-rijal",
+      "reference": "Bukhari",
+      "category": "hardship",
+      "recitationCount": 1,
+      "virtue": "The Prophet ﷺ would seek refuge with these words",
+      "time": "When feeling worried or anxious",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 34,
+      "title": "Relief from Difficulty",
+      "arabic": "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ",
+      "translation": "There is no deity worthy of worship except You; exalted are You! Indeed, I have been of the wrongdoers.",
+      "transliteration": "La ilaha illa anta subhanaka inni kuntu minaz-zalimin",
+      "reference": "Hisnul Muslim #41",
+      "category": "hardship",
+      "recitationCount": 1,
+      "virtue": "The Prophet ﷺ said: 'No Muslim makes this dua in any situation except that Allah responds to him'",
+      "time": "During hardship",
+      "emotion": ["distressed", "regretful", "hopeful", "seeking relief"]
+    },
+    {
+      "id": 38,
+      "title": "Relief from Difficulty",
+      "arabic": "لَا إِلَهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ",
+      "translation": "There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.",
+      "transliteration": "La ilaha illa anta subhanaka inni kuntu minaz-zalimin",
+      "reference": "Quran 21:87",
+      "category": "hardship",
+      "recitationCount": 1,
+      "virtue": "The Prophet ﷺ said: 'No Muslim makes this dua in any situation except that Allah responds to him'",
+      "time": "During hardship",
+      "emotion": ["distressed", "regretful", "hopeful", "seeking relief"]
+    }
+  ],
+  "gratitude": [
+    {
+      "id": 6,
+      "title": "Expressing Gratitude",
+      "arabic": "الْحَمْدُ لِلَّهِ الَّذِي أَطْعَمَنِي هَذَا وَرَزَقَنِيهِ مِنْ غَيْرِ حَوْلٍ مِنِّي وَلَا قُوَّةٍ",
+      "translation": "All praise is for Allah who fed me this and provided it for me without any might or power on my part.",
+      "transliteration": "Alhamdu lillahil-ladhi at'amani hadha wa razaqanihi min ghayri hawlin minni wa la quwwah",
+      "reference": "Abu Dawud, Tirmidhi",
+      "category": "gratitude",
+      "recitationCount": 1,
+      "virtue": "Whoever says this will be forgiven for their past sins",
+      "time": "After eating",
+      "emotion": ["thankful", "blessed", "happy", "content", "joyful"]
+    },
+    {
+      "id": 39,
+      "title": "Gratitude for Health",
+      "arabic": "الْحَمْدُ لِلَّهِ الَّذِي عَافَانِي مِمَّا ابْتَلَاكَ بِهِ وَفَضَّلَنِي عَلَى كَثِيرٍ مِمَّنْ خَلَقَ تَفْضِيلًا",
+      "translation": "All praise is for Allah who saved me from that which He tested you with and who most certainly favored me over much of His creation.",
+      "transliteration": "Alhamdu lillahil-ladhi 'afani mimmab-talaka bihi wa faddalani 'ala kathirin mimman khalaqa tafdila",
+      "reference": "Tirmidhi",
+      "category": "gratitude",
+      "recitationCount": 1,
+      "virtue": "Expressing gratitude for health",
+      "time": "When seeing someone afflicted",
+      "emotion": ["grateful", "thankful", "blessed", "appreciative"]
+    }
+  ],
+  "guidance": [
+    {
+      "id": 25,
+      "title": "Seeking Guidance",
+      "arabic": "اللَّهُمَّ اهْدِنِي وَسَدِّدْنِي",
+      "translation": "O Allah, guide me and grant me success.",
+      "transliteration": "Allahumma-hdini wa saddidni",
+      "reference": "Hisnul Muslim #79",
+      "category": "guidance",
+      "recitationCount": 1,
+      "virtue": "Seeking guidance in all affairs",
+      "time": "Any time",
+      "emotion": [
+        "confused", "lost", "seeking guidance", "uncertain", "doubtful",
+        "directionless", "searching", "questioning", "unsure", "perplexed",
+        "seeking clarity", "seeking wisdom", "seeking direction"
+      ]
+    },
+    {
+      "id": 40,
+      "title": "Seeking Righteousness",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى",
+      "translation": "O Allah, I ask You for guidance, piety, chastity, and self-sufficiency.",
+      "transliteration": "Allahumma inni as'alukal-huda wat-tuqa wal-'afafa wal-ghina",
+      "reference": "Muslim",
+      "category": "guidance",
+      "recitationCount": 1,
+      "virtue": "Comprehensive supplication for guidance and righteousness",
+      "time": "Any time",
+      "emotion": ["seeking guidance", "humble", "sincere"]
+    }
+  ],
+  "sadness": [
+    {
+      "id": 27,
+      "title": "Removal of Sadness",
+      "arabic": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ غَضَبِهِ وَعِقَابِهِ، وَشَرِّ عِبَادِهِ، وَمِنْ هَمَزَاتِ الشَّيَاطِينِ وَأَنْ يَحْضُرُونِ",
+      "translation": "I seek refuge in the perfect words of Allah from His anger and punishment, from the evil of His servants, and from the evil suggestions of the devils and from their presence.",
+      "transliteration": "A'udhu bikalimatillahit-tammat min ghadabihi wa 'iqabih, wa sharri 'ibadih, wa min hamazatish-shayatin wa an yahdhurun",
+      "reference": "Hisnul Muslim #87",
+      "category": "sadness",
+      "recitationCount": 3,
+      "virtue": "Protection from nightmares and evil dreams",
+      "time": "Before sleeping",
+      "emotion": ["fearful", "anxious", "seeking protection", "restless"]
+    },
+    {
+      "id": 41,
+      "title": "Removal of Sadness",
+      "arabic": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْبُخْلِ وَالْجُبْنِ، وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ",
+      "translation": "O Allah, I seek refuge in You from anxiety and sorrow, weakness and laziness, miserliness and cowardice, the burden of debts and from being overpowered by men.",
+      "transliteration": "Allahumma inni a'udhu bika minal-hammi wal-hazan, wal-'ajzi wal-kasal, wal-bukhli wal-jubn, wa dhala'id-dayni wa ghalabatir-rijal",
+      "reference": "Bukhari",
+      "category": "sadness",
+      "recitationCount": 1,
+      "virtue": "Protection from various forms of distress",
+      "time": "When feeling sad or distressed",
+      "emotion": ["sad", "anxious", "worried", "seeking relief"]
+    }
+  ],
+  "protection": [
+    {
+      "id": 6,
+      "title": "Protection from Evil",
+      "arabic": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ",
+      "translation": "I seek refuge in Allah's perfect words from the evil of what He has created.",
+      "transliteration": "A'udhu bi kalimati-llahit-tammati min sharri ma khalaq",
+      "reference": "Muslim",
+      "category": "protection",
+      "recitationCount": 3,
+      "virtue": "Protection from all evil",
+      "time": "Any time",
+      "emotion": [
+        "scared", "fearful", "anxious", "threatened", "unsafe",
+        "paranoid", "uneasy", "disturbed", "worried", "seeking safety",
+        "vulnerable", "intimidated", "insecure", "haunted", "distressed"
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Strong Protection",
+      "arabic": "بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ",
+      "translation": "In the name of Allah, with Whose name nothing can cause harm on earth or in heaven, and He is the All-Hearing, All-Knowing.",
+      "transliteration": "Bismillahil-ladhi la yadurru ma'as-mihi shay'un fil-ardi wa la fis-sama'i, wa Huwas-Sami'ul-'Alim",
+      "reference": "Abu Dawud",
+      "category": "protection",
+      "recitationCount": 3,
+      "virtue": "Whoever recites this three times in the morning and evening, nothing will harm them.",
+      "time": "Any time",
+      "emotion": [
+        "fearful", "threatened", "seeking protection", "vulnerable", "unsafe",
+        "worried", "anxious", "scared", "intimidated", "insecure",
+        "seeking safety", "paranoid", "uneasy"
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Protection from Evil Eye",
+      "arabic": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّةِ مِنْ كُلِّ شَيْطَانٍ وَهَامَّةٍ وَمِنْ كُلِّ عَيْنٍ لَامَّةٍ",
+      "translation": "I seek refuge in Allah's perfect words from every devil, poisonous pest, and from every evil, harmful, envious eye.",
+      "transliteration": "A'udhu bikalimatillahit-tammati min kulli shaytanin wa hammah, wa min kulli 'aynin lammah",
+      "reference": "Hisnul Muslim #23",
+      "category": "protection",
+      "recitationCount": 3,
+      "virtue": "The Prophet ﷺ used to seek refuge with these words for Al-Hasan and Al-Husain",
+      "time": "Any time",
+      "emotion": ["fearful", "anxious", "threatened", "worried", "seeking protection"]
+    },
+    {
+      "id": 42,
+      "title": "Protection from Evil",
+      "arabic": "أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ",
+      "translation": "I seek refuge in Allah's perfect words from the evil of what He has created.",
+      "transliteration": "A'udhu bi kalimati-llahit-tammati min sharri ma khalaq",
+      "reference": "Muslim",
+      "category": "protection",
+      "recitationCount": 3,
+      "virtue": "Protection from all evil",
+      "time": "Any time",
+      "emotion": ["fearful", "anxious", "seeking protection"]
+    }
+  ],
+  "anxiety": [
+    {
+      "id": 9,
+      "title": "Removal of Anxiety",
+      "arabic": "لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ",
+      "translation": "There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.",
+      "transliteration": "La ilaha illa anta subhanaka inni kuntu minaz-zalimin",
+      "reference": "Quran 21:87",
+      "category": "anxiety",
+      "recitationCount": 7,
+      "virtue": "No Muslim makes this dua except that Allah responds to him",
+      "time": "When feeling anxious",
+      "emotion": [
+        "anxious", "worried", "stressed", "overwhelmed", "panicked",
+        "nervous", "uneasy", "restless", "tense", "fearful",
+        "troubled", "distressed", "concerned", "agitated"
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Dua for Worry and Sorrow",
+      "arabic": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَالْعَجْزِ وَالْكَسَلِ، وَالْبُخْلِ وَالْجُبْنِ، وَضَلَعِ الدَّيْنِ وَغَلَبَةِ الرِّجَالِ",
+      "translation": "O Allah, I seek refuge in You from anxiety and sorrow, weakness and laziness, miserliness and cowardice, the burden of debts and from being overpowered by men.",
+      "transliteration": "Allahumma inni a'udhu bika minal-hammi wal-hazan, wal-'ajzi wal-kasal, wal-bukhli wal-jubn, wa dhala'id-dayni wa ghalabatir-rijal",
+      "reference": "Bukhari",
+      "category": "anxiety",
+      "recitationCount": 1,
+      "virtue": "The Prophet ﷺ would seek refuge with these words",
+      "time": "When feeling worried or anxious",
+      "emotion": ["anxious", "worried", "hopeful", "grateful", "seeking protection"]
+    },
+    {
+      "id": 43,
+      "title": "Relief from Anxiety",
+      "arabic": "اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ، وَأَعُوذُ بِكَ مِنَ الْعَجْزِ وَالْكَسَلِ، وَأَعُوذُ بِكَ مِنَ الْجُبْنِ وَالْبُخْلِ، وَأَعُوذُ بِكَ مِنْ غَلَبَةِ الدَّيْنِ وَقَهْرِ الرِّجَالِ",
+      "translation": "O Allah, I seek refuge in You from anxiety and sorrow, I seek refuge in You from inability and laziness, I seek refuge in You from cowardice and miserliness, and I seek refuge in You from being overcome by debt and from being dominated by men.",
+      "transliteration": "Allahumma inni a'udhu bika minal-hammi wal-hazan, wa a'udhu bika minal-'ajzi wal-kasal, wa a'udhu bika minal-jubni wal-bukhl, wa a'udhu bika min ghalabatid-dayni wa qahrir-rijal",
+      "reference": "Abu Dawud",
+      "category": "anxiety",
+      "recitationCount": 1,
+      "virtue": "Protection from various forms of distress",
+      "time": "When feeling anxious",
+      "emotion": ["anxious", "worried", "seeking relief"]
+    }
+  ],
+  "forgiveness": [
+    {
+      "id": 11,
+      "title": "Master of Seeking Forgiveness",
+      "arabic": "اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ",
+      "translation": "O Allah, You are my Lord, there is no deity except You. You created me and I am Your servant, and I am faithful to my covenant and promise to You as much as I can.",
+      "transliteration": "Allahumma anta Rabbi la ilaha illa anta, khalaqtani wa ana 'abduka, wa ana 'ala 'ahdika wa wa'dika mas-tata't",
+      "reference": "Bukhari",
+      "category": "forgiveness",
+      "recitationCount": 1,
+      "virtue": "Whoever recites this during the day with firm faith in it, and dies on the same day before the evening, will be from the people of Paradise.",
+      "time": "Morning and Evening",
+      "emotion": ["regretful", "guilty", "remorseful", "ashamed", "repentant"]
+    },
+    {
+      "id": 44,
+      "title": "Seeking Forgiveness",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ",
+      "translation": "O Allah, I ask You for pardon and well-being in this life and the next.",
+      "transliteration": "Allahumma inni as'alukal-'afwa wal-'afiyah fid-dunya wal-akhirah",
+      "reference": "Ibn Majah",
+      "category": "forgiveness",
+      "recitationCount": 1,
+      "virtue": "Comprehensive supplication for forgiveness and well-being",
+      "time": "Any time",
+      "emotion": ["regretful", "seeking forgiveness", "humble"]
+    }
+  ],
+  "general": [
+    {
+      "id": 12,
+      "title": "Dua for Parents",
+      "arabic": "رَبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا",
+      "translation": "My Lord, have mercy upon them as they brought me up when I was small.",
+      "transliteration": "Rabbi irhamhuma kama rabbayani saghira",
+      "reference": "Quran 17:24",
+      "category": "general",
+      "recitationCount": 1,
+      "virtue": "A way to show gratitude to parents and seek mercy for them",
+      "time": "Any time",
+      "emotion": ["grateful", "thankful", "blessed", "appreciative", "content"]
+    },
+    {
+      "id": 13,
+      "title": "Dua for Knowledge",
+      "arabic": "رَبِّ زِدْنِي عِلْمًا",
+      "translation": "My Lord, increase me in knowledge.",
+      "transliteration": "Rabbi zidni 'ilma",
+      "reference": "Quran 20:114",
+      "category": "general",
+      "recitationCount": 1,
+      "virtue": "Increases one in beneficial knowledge",
+      "time": "Any time, especially when studying",
+      "emotion": ["seeking guidance", "curious", "eager to learn", "motivated"]
+    },
+    {
+      "id": 45,
+      "title": "Dua for Good Character",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالسَّدَادَ",
+      "translation": "O Allah, I ask You for guidance and righteousness.",
+      "transliteration": "Allahumma inni as'alukal-huda was-sadad",
+      "reference": "Muslim",
+      "category": "general",
+      "recitationCount": 1,
+      "virtue": "Seeking good character and guidance",
+      "time": "Any time",
+      "emotion": ["seeking guidance", "humble", "sincere"]
+    }
+  ],
+  "travel": [
+    {
+      "id": 14,
+      "title": "Travel Protection",
+      "arabic": "اللَّهُمَّ إِنَّا نَسْأَلُكَ فِي سَفَرِنَا هَذَا الْبِرَّ وَالتَّقْوَى، وَمِنَ الْعَمَلِ مَا تَرْضَى، اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا وَاطْوِ عَنَّا بُعْدَهُ",
+      "translation": "O Allah, we ask You on this journey of ours for righteousness and piety, and for deeds that are pleasing to You. O Allah, make this journey easy for us and fold up for us its distance.",
+      "transliteration": "Allahumma inna nas'aluka fi safarina hadha al-birra wat-taqwa, wa minal-'amali ma tardha, Allahumma hawwin 'alayna safarana hadha watwi 'anna bu'dah",
+      "reference": "Muslim",
+      "category": "travel",
+      "recitationCount": 1,
+      "virtue": "Protection and ease during travel",
+      "time": "When starting a journey",
+      "emotion": ["anxious", "hopeful", "seeking protection", "excited"]
+    },
+    {
+      "id": 46,
+      "title": "Travel Supplication",
+      "arabic": "اللَّهُمَّ هَوِّنْ عَلَيْنَا سَفَرَنَا هَذَا وَاطْوِ عَنَّا بُعْدَهُ",
+      "translation": "O Allah, make this journey easy for us and fold up for us its distance.",
+      "transliteration": "Allahumma hawwin 'alayna safarana hadha watwi 'anna bu'dah",
+      "reference": "Muslim",
+      "category": "travel",
+      "recitationCount": 1,
+      "virtue": "Ease during travel",
+      "time": "When starting a journey",
+      "emotion": ["anxious", "hopeful", "seeking protection"]
+    }
+  ]
+} 

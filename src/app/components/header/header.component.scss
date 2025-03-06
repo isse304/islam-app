@@ -1,0 +1,111 @@
+.header-nav {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 50;
+    background-image: 
+      linear-gradient(to right, rgba(183, 165, 122, 0.95), rgba(155, 138, 101, 0.95)),
+      url('/islamic-pattern-2.png');
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .nav-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0.75rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .logo-container {
+    padding: 0.5rem;
+    
+    .logo-link {
+      display: block;
+    }
+  
+    .nura-logo {
+      height: 3.5rem;
+      width: auto;
+      transition: transform 0.3s ease;
+  
+      &:hover {
+        transform: scale(1.05);
+      }
+    }
+  }
+  
+  .nav-links {
+    display: none;
+    gap: 1rem;
+  
+    @media (min-width: 768px) {
+      display: flex;
+    }
+  }
+  
+  .nav-link {
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
+  
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  .nav-link-active {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  
+  .mobile-menu-btn {
+    display: block;
+    padding: 0.5rem;
+    color: white;
+    border-radius: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+  
+    @media (min-width: 768px) {
+      display: none;
+    }
+  
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  .mobile-menu {
+    display: none;
+    flex-direction: column;
+    background-color: rgba(183, 165, 122, 0.98);
+    padding: 1rem;
+  
+    &.mobile-menu-active {
+      display: flex;
+    }
+  }
+  
+  .mobile-link {
+    color: white;
+    text-decoration: none;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    transition: background-color 0.3s ease;
+  
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+  
+  .nav-spacer {
+    height: 5rem;
+  } 

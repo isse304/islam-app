@@ -1,0 +1,134 @@
+<div class="min-h-screen bg-[#FAF3E0] py-8">
+    <div class="container mx-auto px-4">
+      <div class="grid lg:grid-cols-3 gap-8">
+        <!-- Verse Selection Panel -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h2 class="text-2xl font-semibold text-[#B7A57A] mb-6">Select Verse</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-gray-700 mb-2">Surah</label>
+              <select [(ngModel)]="selectedSurah" 
+                      (change)="updateVerseCount()"
+                      class="w-full p-2 border rounded-lg">
+                <option *ngFor="let surah of surahs" [value]="surah.number">
+                  {{surah.number}}. {{surah.englishName}}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-700 mb-2">Verse</label>
+              <select [(ngModel)]="selectedVerse" 
+                      (change)="loadVerse()"
+                      class="w-full p-2 border rounded-lg">
+                <option *ngFor="let i of [].constructor(verseCounts); let idx = index" 
+                        [value]="idx + 1">
+                  Verse {{idx + 1}}
+                </option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-gray-700 mb-2">Tafsir Source</label>
+              <select [(ngModel)]="selectedTafsir" 
+                      (change)="onTafsirChange()"
+                      class="w-full p-2 border rounded-lg">
+                <option value="ibn-kathir">Tafsir Ibn Kathir</option>
+                <option value="tabari">Tafsir Al-Tabari</option>
+                <option value="maududi">Tafsir Maududi</option>
+              </select>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Current Verse Display -->
+        <div class="bg-white rounded-xl shadow-lg p-6">
+          <h2 class="text-2xl font-semibold text-[#B7A57A] mb-6">Current Verse</h2>
+          <div class="space-y-2">
+            <div class="verse-meaning space-y-3 mb-6">
+              <p class="arabic-text text-right" dir="rtl">
+                {{ currentVerse }}
+              </p>
+              <p class="translation text-gray-800 text-lg leading-relaxed">
+                {{ translation }}
+              </p>
+            </div>
+            <div class="mt-6 border-t pt-4">
+              <div class="flex justify-between items-center mb-3">
+                <h3 class="text-lg font-medium text-[#B7A57A]">AI Summary</h3>
+                <!-- <button (click)="playAIResponse(aiSummary)"
+                        class="flex items-center gap-2 text-[#B7A57A] hover:text-[#9b8a65] px-3 py-1 rounded-lg border border-[#B7A57A]">
+                  <i class="fas" 
+                     [class.fa-play]="!(isPlayingAudio$ | async)" 
+                     [class.fa-stop]="(isPlayingAudio$ | async)"></i>
+                  {{ (isPlayingAudio$ | async) ? 'Stop' : 'Listen' }}
+                </button> -->
+              </div>
+              <p class="text-gray-600">{{ aiSummary }}</p>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Chat Interface -->
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]">
+          <!-- Chat Interface Header -->
+          <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-semibold text-[#B7A57A]">AI Tafsir Chat</h2>
+            <div class="flex items-center gap-3">
+              <!-- <label class="text-sm text-gray-600">Sheikh Voice</label>
+              <button (click)="toggleSheikhMode()"
+                      class="px-3 py-1 rounded-lg border"
+                      [class.bg-[#B7A57A]]="isSheikhMode$ | async"
+                      [class.text-white]="isSheikhMode$ | async"
+                      [class.border-[#B7A57A]]="isSheikhMode$ | async"
+                      [class.border-gray-300]="!(isSheikhMode$ | async)">
+                <i class="fas fa-microphone"></i>
+              </button> -->
+            </div>
+          </div>
+          
+          <!-- Messages Container -->
+          <div class="flex-1 overflow-y-auto mb-4 space-y-4">
+            <div *ngFor="let message of messages" 
+                 [class.text-right]="message.role === 'user'"
+                 class="mb-4">
+              <div [class.bg-[#B7A57A15]]="message.role === 'user'"
+                   [class.bg-gray-100]="message.role === 'assistant'"
+                   class="inline-block rounded-lg px-4 py-2 max-w-[80%] relative">
+                <p class="text-gray-800">{{ message.content }}</p>
+                <div class="flex justify-end mt-2 gap-2">
+                  <!-- <button *ngIf="message.role === 'assistant'"
+                          (click)="playAIResponse(message.content)"
+                          class="text-xs text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-1">
+                    <i class="fas" 
+                       [class.fa-play]="!(isPlayingAudio$ | async)" 
+                       [class.fa-stop]="(isPlayingAudio$ | async)"></i>
+                    {{ (isPlayingAudio$ | async) ? 'Stop' : 'Listen' }}
+                  </button> -->
+                  <span class="text-xs text-gray-500">
+                    {{ message.timestamp | date:'shortTime' }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div *ngIf="isLoading" class="flex justify-center">
+              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B7A57A]"></div>
+            </div>
+          </div>
+  
+          <!-- Input Area -->
+          <div class="flex gap-2">
+            <input type="text" 
+                   [(ngModel)]="userQuestion"
+                   (keyup.enter)="sendQuestion()"
+                   placeholder="Ask about this verse..."
+                   class="flex-1 p-2 border rounded-lg focus:outline-none focus:border-[#B7A57A]">
+            <button (click)="sendQuestion()"
+                    [disabled]="isLoading || !userQuestion.trim()"
+                    class="bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65] transition-colors disabled:opacity-50">
+              Send
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div> 

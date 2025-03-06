@@ -1,0 +1,103 @@
+<nav class="header-nav">
+  <div class="nav-container">
+    <!-- Logo Section -->
+    <div class="logo-container">
+      <a routerLink="/" class="logo-link">
+        <img src="nura-logo.png" alt="Nura" class="nura-logo">
+      </a>
+    </div>
+
+    <!-- Nav  gation Links -->
+    <div class="nav-links">
+      <a routerLink="/"
+         routerLinkActive="nav-link-active"
+         [routerLinkActiveOptions]="{exact: true}"
+         class="nav-link">
+        Home
+      </a>
+      <a routerLink="/quran"
+         routerLinkActive="nav-link-active"
+         class="nav-link">
+        Quran Reader
+      </a>
+      <a routerLink="/learn"
+         routerLinkActive="nav-link-active"
+         class="nav-link">
+        Learn Quran
+      </a>
+      <a routerLink="/dua"
+         routerLinkActive="nav-link-active"
+         class="nav-link">
+        Dua
+      </a>
+    </div>
+
+    <!-- Auth Buttons -->
+    <div class="auth-container">
+      <app-auth-buttons></app-auth-buttons>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" (click)="toggleMobileMenu()">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+      </svg>
+</button>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" [class.mobile-menu-active]="isMobileMenuOpen">
+    <a routerLink="/" class="mobile-link" (click)="closeMobileMenu()">Home</a>
+    <a routerLink="/quran" class="mobile-link" (click)="closeMobileMenu()">Quran Reader</a>
+    <a routerLink="/learn" class="mobile-link" (click)="closeMobileMenu()">Learn Quran</a>
+    <a routerLink="/dua" class="mobile-link" (click)="closeMobileMenu()">Dua</a>
+    
+    <!-- Auth Buttons in Mobile Menu -->
+    <div class="mobile-auth-container">
+      <app-auth-buttons></app-auth-buttons>
+    </div>
+  </div>
+</nav>
+
+<!-- Spacer to prevent content from hiding under fixed navbar -->
+<div class="nav-spacer"></div>
+
+<!-- <header> -->
+  <!-- Navbar -->
+  <!-- <nav class="navbar navbar-expand-lg navbar-light bg-white">
+    <div class="container-fluid">
+      <button
+        class="navbar-toggler"
+        type="button"
+        (click)="backgroundImageExample.toggle()"
+        aria-controls="backgroundImageExample"
+        aria-expanded="false"
+        aria-label="Toggle navigation"
+      >
+        <i class="fas fa-bars"></i>
+      </button>
+      <div
+        mdbCollapse
+        #backgroundImageExample="mdbCollapse"
+        class="collapse navbar-collapse"
+        id="backgroundImageExample"
+      >
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item active">
+            <a class="nav-link" aria-current="page" routerLink="/home">Home</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/quran">Quran</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/prayer-times">Prayer </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" routerLink="/about">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav> -->
+  <!-- Navbar -->
+<!-- </header> -->
