@@ -317,83 +317,165 @@ export class DuaService {
 
   async getEmotionalDuasWithAI(feeling: string): Promise<{ duas: Dua[], insights: string }> {
     try {
-      // Get all duas that match the emotion
       const matchedDuas = await firstValueFrom(this.getDuasByEmotion(feeling));
       
-      // Generate AI insights for personalized recommendation
+      if (matchedDuas.length === 0) {
+        return this.getRecommendedDuasFromSources(feeling);
+      }
+
       const prompt = {
-        systemMessage: "You are a knowledgeable Islamic scholar specializing in emotional well-being and spiritual guidance through duas. Provide personalized advice based on Quran and Sunnah.",
-        userMessage: `A person is feeling ${feeling}. Based on Islamic teachings, which of these duas would be most beneficial and why? 
-        Please provide specific advice from Quran and Sunnah about dealing with this emotion.
+        systemMessage: `You are a knowledgeable Islamic scholar specializing in emotional well-being and spiritual guidance through duas. 
+        Provide personalized advice in the following format:
+        
+        1. Understanding Your Emotion:
+        [First paragraph: Brief explanation validating the emotion from an Islamic perspective]
+        
+        [Second paragraph: A specific example from Quran or Seerah where a prophet, companion, or person mentioned in Quran experienced this emotion. Include the specific reference.]
+        
+        [Third paragraph: How this example teaches us to handle this emotion constructively]
+
+        2. Recommended Duas:
+        [For each dua, provide in a clear, formatted way:
+        • Title of Dua
+        • Arabic text (properly formatted)
+        • Transliteration (clear and accurate)
+        • Translation
+        • Reference (specific source)
+        • Virtue of the dua]
+        
+        3. Spiritual Advice:
+        [Break down into 2-3 short, focused paragraphs with specific Quranic verses or hadith supporting each point]
+        
+        4. Practical Steps:
+        • [Step 1: Immediate action with spiritual basis]
+        • [Step 2: Daily practice with prophetic example]
+        • [Step 3: Social/community aspect]
+        • [Step 4: Long-term spiritual growth]
+        • [Step 5: Specific dua or dhikr practice]
+
+        Each step should include a brief explanation and religious basis.
+        Keep the tone warm and supportive, ensure all Arabic text is properly formatted, and make all text easily readable with proper spacing and structure.`,
+        userMessage: `A person is feeling ${feeling}. Based on Islamic teachings, provide comprehensive guidance and recommend appropriate duas.
         
         Available duas:
         ${matchedDuas.map(dua => `
         - ${dua.title}
-        Arabic: <div class="arabic-text">${dua.arabic}</div>
-        Transliteration: ${dua.transliteration}
+        Arabic: ${dua.arabic}
         Translation: ${dua.translation}
         Reference: ${dua.reference}
         Virtue: ${dua.virtue || 'Not specified'}
         `).join('\n')}`,
-        temperature: 0.6,
-        maxTokens: 1000
+        temperature: 0.3,
+        maxTokens: 2000
       };
 
-      const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-      const insights = response?.content || 'No personalized insights available';
+      try {
+        const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
+        const insights = response?.content || this.getFallbackInsights(feeling);
 
-      // Sort duas by relevance to the emotion
-      const sortedDuas = matchedDuas.sort((a, b) => {
-        const aEmotions = a.emotion?.filter(e => e.toLowerCase().includes(feeling.toLowerCase())).length || 0;
-        const bEmotions = b.emotion?.filter(e => e.toLowerCase().includes(feeling.toLowerCase())).length || 0;
-        return bEmotions - aEmotions;
-      });
+        const sortedDuas = matchedDuas.sort((a, b) => {
+          const aEmotions = a.emotion?.filter(e => e.toLowerCase().includes(feeling.toLowerCase())).length || 0;
+          const bEmotions = b.emotion?.filter(e => e.toLowerCase().includes(feeling.toLowerCase())).length || 0;
+          return bEmotions - aEmotions;
+        });
 
-      return {
-        duas: sortedDuas,
-        insights
-      };
+        return {
+          duas: sortedDuas,
+          insights
+        };
+      } catch (error) {
+        console.error('Error generating AI insights:', error);
+        return {
+          duas: matchedDuas,
+          insights: this.getFallbackInsights(feeling)
+        };
+      }
     } catch (error) {
       console.error('Error getting emotional duas with AI:', error);
       return {
         duas: [],
-        insights: 'Unable to generate personalized recommendations at this time.'
+        insights: this.getFallbackInsights(feeling)
       };
     }
+  }
+
+  private getFallbackInsights(feeling: string): string {
+    return `1. Understanding Your Emotion:
+${feeling} is a natural human emotion that Allah (SWT) has created within us. The Prophet Muhammad ﷺ experienced and acknowledged such feelings, teaching us how to channel them positively through faith and patience.
+
+2. Recommended Duas:
+• Dua for Inner Peace:
+اللَّهُمَّ إِنِّي أَعُوذُ بِكَ مِنَ الْهَمِّ وَالْحَزَنِ
+Transliteration: Allahumma inni a'udhu bika minal-hammi wal-hazan
+Translation: "O Allah, I seek refuge in You from anxiety and sorrow"
+Reference: Sahih Al-Bukhari 6369
+Virtue: The Prophet ﷺ would frequently recite this dua, and it has been reported to bring immediate relief.
+
+3. Spiritual Advice:
+Remember that Allah (SWT) is Al-Latif (The Most Gentle) and Al-Wali (The Protective Friend). The Quran reminds us: "Verily, in the remembrance of Allah do hearts find rest" (13:28). This time of ${feeling} is an opportunity to strengthen your connection with Allah through sincere dua and dhikr.
+
+4. Practical Steps:
+• Perform wudu and pray two rak'ah of salah, as the Prophet ﷺ would turn to prayer when faced with concerns
+• Engage in regular dhikr, especially "HasbunAllahu wa ni'mal wakeel" (Allah is sufficient for us, and He is the best Disposer of affairs)
+• Share your feelings with a trusted family member or friend, as the Prophet ﷺ taught us to maintain strong community bonds
+• Spend time in nature reflecting on Allah's creation, as mentioned in numerous verses of the Quran
+• Practice gratitude by listing your blessings, following the hadith "The one who does not thank people does not thank Allah"`;
   }
 
   async getRecommendedDuasFromSources(emotion: string): Promise<{ duas: Dua[], insights: string }> {
     try {
       const prompt = {
-        systemMessage: "You are a knowledgeable Islamic scholar specializing in duas and their meanings.",
-        userMessage: `Recommend authentic duas from reliable sources (Quran and Hadith) that can help with the emotion: ${emotion}. 
-        Include the Arabic text, translation, and reference. Format the response as JSON with the following structure:
+        systemMessage: `You are a knowledgeable Islamic scholar specializing in duas and emotional well-being. 
+        Provide comprehensive guidance in the following format:
+
         {
           "duas": [
             {
-              "title": "Dua title",
-              "arabic": "Arabic text",
+              "title": "Title of the Dua",
+              "arabic": "Arabic text in proper formatting",
+              "transliteration": "Clear and accurate transliteration",
               "translation": "English translation",
-              "reference": "Source reference",
-              "virtue": "Virtue or benefits of this dua"
+              "reference": "Specific source reference",
+              "virtue": "Benefits and virtues of this dua"
             }
           ],
-          "insights": "Personalized guidance based on Islamic teachings"
+          "insights": "Structured insights following the same format as getFallbackInsights with all sections properly filled"
         }`,
-        temperature: 0.6,
-        maxTokens: 1000
+        userMessage: `Recommend authentic duas from Quran and Hadith that can help with the emotion: ${emotion}. Include complete details and ensure proper formatting.`,
+        temperature: 0.4,
+        maxTokens: 2000
       };
 
-      const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-      const result = JSON.parse(response?.content || '{"duas":[],"insights":""}');
-      
-      return {
-        duas: result.duas,
-        insights: result.insights
-      };
+      try {
+        const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
+        const result = JSON.parse(response?.content || '{"duas":[],"insights":""}');
+        
+        if (!result.duas || !result.insights) {
+          throw new Error('Invalid response format');
+        }
+
+        return {
+          duas: result.duas,
+          insights: result.insights || this.getFallbackInsights(emotion)
+        };
+      } catch (error) {
+        console.error('Error parsing AI response:', error);
+        return {
+          duas: this.getDefaultDuas(),
+          insights: this.getFallbackInsights(emotion)
+        };
+      }
     } catch (error) {
       console.error('Error getting recommended duas:', error);
-      throw new Error('Failed to get recommended duas from reliable sources');
+      return {
+        duas: this.getDefaultDuas(),
+        insights: this.getFallbackInsights(emotion)
+      };
     }
+  }
+
+  private getDefaultDuas(): Dua[] {
+    // Return some general purpose duas as fallback
+    return this.localDuas['general'] || [];
   }
 } 

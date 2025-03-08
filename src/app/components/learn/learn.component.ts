@@ -1,5 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
+import { SubscriptionService } from '../../services/subscription.service';
+import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -33,10 +35,18 @@ export class LearnComponent implements OnInit {
   aiSummary: string = '';
 
   constructor(
-    private quranService: QuranService
+    private quranService: QuranService,
+    private subscriptionService: SubscriptionService,
+    private router: Router
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
+    const hasAccess = await this.subscriptionService.checkPremiumAccess('AI-Powered Learning');
+    if (!hasAccess) {
+      this.router.navigate(['/']);
+      return;
+    }
+    
     this.loadSurahs();
   }
 

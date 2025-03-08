@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { DuaService, Dua, DuaCategory } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
+import { SubscriptionService } from '../../services/subscription.service';
 
 @Component({
     selector: 'app-dua',
@@ -36,9 +37,11 @@ export class DuaComponent implements OnInit, OnDestroy {
   selectedEmotion: string | null = null;
   emotionSuggestions: string[] = [];
   aiInsights: string = '';
+  fontSize: number = 32; // Default font size for Arabic text
 
   constructor(
     private duaService: DuaService,
+    private subscriptionService: SubscriptionService,
     //private prayerTimesService: PrayerTimesService,
     private route: ActivatedRoute,
     private router: Router
@@ -58,6 +61,8 @@ export class DuaComponent implements OnInit, OnDestroy {
       }
     });
     //this.setupPrayerTimeReminders();
+    // Load basic dua data
+    this.loadDuas();
   }
 
   ngOnDestroy() {
@@ -129,10 +134,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async searchByFeeling() {
-    if (!this.feeling.trim()) {
-      this.clearEmotionSearch();
-      return;
-    }
+    if (!this.feeling) return;
 
     this.isLoading = true;
     this.error = '';
@@ -183,7 +185,120 @@ export class DuaComponent implements OnInit, OnDestroy {
     this.searchByFeeling();
   }
 
-  onDuaSelect(dua: Dua) {
+  async onDuaSelect(dua: Dua) {
+    // Temporarily bypass premium check for debugging
+    // const hasPremiumAccess = await this.subscriptionService.checkPremiumAccess('AI Dua Insights');
+    // if (hasPremiumAccess) {
     this.selectedDua = dua;
+    // }
+  }
+
+  private loadDuas() {
+    this.isLoading = true;
+    this.duaService.getDuasByCategory('morning')  // Default to morning category
+      .subscribe({
+        next: (duas: Dua[]) => {
+          this.filteredDuas = duas;
+          this.isLoading = false;
+        },
+        error: (error: Error) => {
+          this.error = 'Failed to load duas. Please try again.';
+          this.isLoading = false;
+        }
+      });
+  }
+
+  getSpiritualAdviceParagraphs(): string[] {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const advice = sections.find(section => 
+        section.toLowerCase().includes('spiritual advice')
+      );
+      return advice ? advice.split('\n').filter(p => p.trim()) : [];
+    } catch (error) {
+      console.error('Error parsing spiritual advice:', error);
+      return [];
+    }
+  }
+
+  getPracticalSteps(): string[] {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const practicalSection = sections.find(section => 
+        section.toLowerCase().includes('practical steps')
+      );
+      return practicalSection ? 
+        practicalSection.split('\n')
+          .filter(step => step.startsWith('•'))
+          .map(step => step.replace('•', '').trim()) : 
+        [];
+    } catch (error) {
+      console.error('Error parsing practical steps:', error);
+      return [];
+    }
+  }
+
+  getStepIcon(step: string): { [key: string]: boolean } {
+    const step_lower = step.toLowerCase();
+    return {
+      'fa-pray': step_lower.includes('pray') || step_lower.includes('salah'),
+      'fa-heart': step_lower.includes('dhikr') || step_lower.includes('remembrance'),
+      'fa-users': step_lower.includes('family') || step_lower.includes('friend') || step_lower.includes('community'),
+      'fa-tree': step_lower.includes('nature') || step_lower.includes('walk'),
+      'fa-star': step_lower.includes('gratitude') || step_lower.includes('thank'),
+      'fa-moon': step_lower.includes('night') || step_lower.includes('sleep'),
+      'fa-sun': step_lower.includes('morning') || step_lower.includes('day'),
+      'fa-book': step_lower.includes('quran') || step_lower.includes('read'),
+      'fa-hands': step_lower.includes('dua') || step_lower.includes('supplication'),
+      'fa-clock': step_lower.includes('time') || step_lower.includes('regular'),
+      'fa-tasks': true // fallback icon
+    };
+  }
+
+  getUnderstandingSection(): string {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const understandingSection = sections.find(section => 
+        section.toLowerCase().includes('understanding your emotion')
+      );
+      if (!understandingSection) return '';
+      return understandingSection.split('\n').slice(1).join('\n').trim();
+    } catch (error) {
+      console.error('Error parsing understanding section:', error);
+      return '';
+    }
+  }
+
+  getHistoricalExample(): string {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const historicalExample = sections.find(section => 
+        section.toLowerCase().includes('example from quran') || 
+        section.toLowerCase().includes('historical example')
+      );
+      return historicalExample || '';
+    } catch (error) {
+      console.error('Error parsing historical example:', error);
+      return '';
+    }
+  }
+
+  getLearningPoints(): string {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const learningSection = sections.find(section => 
+        section.toLowerCase().includes('this example teaches') ||
+        section.toLowerCase().includes('learning from')
+      );
+      return learningSection || '';
+    } catch (error) {
+      console.error('Error parsing learning points:', error);
+      return '';
+    }
   }
 } 

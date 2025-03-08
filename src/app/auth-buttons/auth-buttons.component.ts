@@ -9,14 +9,20 @@ import { Router } from '@angular/router';
       <ng-container *ngIf="(authService.isLoggedIn$ | async) === false; else loggedIn">
         <button (click)="authService.openSignIn()" 
                 class="btn-signin"
-                #signInButton>
-          <i class="fas fa-sign-in-alt mr-2" aria-hidden="true"></i>
+                #signInButton
+                aria-label="Sign In">
+          <i class="fas fa-sign-in-alt mr-2" 
+             aria-hidden="true" 
+             tabindex="-1"></i>
           <span>Sign In</span>
         </button>
         <button (click)="authService.openSignUp()"
                 class="btn-signup"
-                #signUpButton>
-          <i class="fas fa-user-plus mr-2" aria-hidden="true"></i>
+                #signUpButton
+                aria-label="Sign Up">
+          <i class="fas fa-user-plus mr-2" 
+             aria-hidden="true" 
+             tabindex="-1"></i>
           <span>Sign Up</span>
         </button>
       </ng-container>
@@ -36,8 +42,11 @@ import { Router } from '@angular/router';
           </button>
           <button (click)="authService.signOut()"
                   class="btn-signout"
-                  #signOutButton>
-            <i class="fas fa-sign-out-alt mr-2" aria-hidden="true"></i>
+                  #signOutButton
+                  aria-label="Sign Out">
+            <i class="fas fa-sign-out-alt mr-2" 
+               aria-hidden="true" 
+               tabindex="-1"></i>
             <span>Sign Out</span>
           </button>
         </div>

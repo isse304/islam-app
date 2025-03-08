@@ -8,6 +8,9 @@ import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { OpenAI } from 'openai';
 import { environment } from '../environments/environment';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatButtonModule } from '@angular/material/button';
 
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './components/header/header.component';
@@ -20,6 +23,8 @@ import { AuthButtonsComponent } from './auth-buttons/auth-buttons.component';
 import { DuaTafsirComponent } from './components/dua/dua-tafsir.component';
 import { DuaInsightsComponent } from './components/dua-insights/dua-insights.component';
 import { routes } from './app.routes';
+import { ErrorDialogComponent } from './components/shared/error-dialog/error-dialog.component';
+import { SubscriptionDialogComponent } from './components/subscription-dialog/subscription-dialog.component';
 
 @NgModule({
   declarations: [
@@ -32,7 +37,8 @@ import { routes } from './app.routes';
     DuaTafsirComponent,
     QuranReaderComponent,
     LearnComponent,
-    DuaInsightsComponent
+    DuaInsightsComponent,
+    ErrorDialogComponent
   ],
   imports: [
     BrowserModule,
@@ -41,7 +47,11 @@ import { routes } from './app.routes';
     HttpClientModule,
     CommonModule,
     BrowserAnimationsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatSnackBarModule,
+    MatDialogModule,
+    MatButtonModule,
+    SubscriptionDialogComponent
   ],
   providers: [
     {

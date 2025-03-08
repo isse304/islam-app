@@ -29,6 +29,14 @@ export interface User {
   };
 }
 
+interface PricingTier {
+  name: string;
+  price: number;
+  interval: 'month' | 'year';
+  features: string[];
+  recommended?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -45,12 +53,18 @@ export class AuthService {
   // Property to store the URL that the user tried to access before authentication
   redirectUrl: string | null = null;
 
+  private readonly LAST_ROUTE_KEY = 'lastRoute';
+  private readonly ROUTE_STATE_KEY = 'routeState';
+  private authStateSubject = new BehaviorSubject<boolean>(false);
+
   constructor(
     private router: Router,
     private http: HttpClient
   ) {
     // Initialize Clerk
     this.initializationPromise = this.initializeClerk();
+    // Check initial auth state
+    this.checkAuthState();
   }
 
   private async ensureInitialized(): Promise<void> {
@@ -137,12 +151,26 @@ export class AuthService {
 
   // Get the current authentication token
   async getToken(): Promise<string | null> {
-    if (!this.clerk || !this.clerk.session) {
-      return null;
-    }
-    
     try {
-      return await this.clerk.session.getToken();
+      await this.ensureInitialized();
+      
+      if (!this.clerk) {
+        console.error('Clerk not initialized in getToken');
+        return null;
+      }
+      
+      if (!this.clerk.session) {
+        console.error('No active Clerk session');
+        return null;
+      }
+      
+      const token = await this.clerk.session.getToken();
+      if (!token) {
+        console.error('No token returned from Clerk session');
+        return null;
+      }
+      
+      return token;
     } catch (error) {
       console.error('Error getting token:', error);
       return null;
@@ -608,5 +636,85 @@ export class AuthService {
     }
     
     return [];
+  }
+
+  async subscribe(tier: PricingTier): Promise<void> {
+    // TODO: Implement actual payment processing
+    // This is a temporary mock implementation
+    localStorage.setItem('isPremiumUser', 'true');
+  }
+
+  async isPremiumUser(): Promise<boolean> {
+    return localStorage.getItem('isPremiumUser') === 'true';
+  }
+
+  // Save current route before navigation
+  saveCurrentRoute(url: string, state?: any) {
+    localStorage.setItem(this.LAST_ROUTE_KEY, url);
+    if (state) {
+      localStorage.setItem(this.ROUTE_STATE_KEY, JSON.stringify(state));
+    }
+  }
+
+  // Get saved route
+  getSavedRoute(): { url: string, state?: any } {
+    const url = localStorage.getItem(this.LAST_ROUTE_KEY) || '/';
+    let state: any;
+    try {
+      const savedState = localStorage.getItem(this.ROUTE_STATE_KEY);
+      state = savedState ? JSON.parse(savedState) : undefined;
+    } catch (e) {
+      console.error('Error parsing saved route state:', e);
+    }
+    return { url, state };
+  }
+
+  // Clear saved route
+  clearSavedRoute() {
+    localStorage.removeItem(this.LAST_ROUTE_KEY);
+    localStorage.removeItem(this.ROUTE_STATE_KEY);
+  }
+
+  // After successful authentication, restore the previous route
+  async restoreRoute() {
+    const { url, state } = this.getSavedRoute();
+    this.clearSavedRoute();
+    await this.router.navigateByUrl(url, { state });
+  }
+
+  // Get auth state as observable
+  getAuthState(): Observable<boolean> {
+    return this.authStateSubject.asObservable();
+  }
+
+  // Check if user is authenticated
+  async checkAuthState(): Promise<boolean> {
+    try {
+      const token = await this.getToken();
+      const isAuth = !!token;
+      this.authStateSubject.next(isAuth);
+      return isAuth;
+    } catch (error) {
+      this.authStateSubject.next(false);
+      return false;
+    }
+  }
+
+  // Handle login
+  async login() {
+    // Save current route before redirecting to login
+    this.saveCurrentRoute(
+      this.router.url,
+      this.router.getCurrentNavigation()?.extras?.state
+    );
+    
+    // Redirect to login page
+    window.location.href = '/auth/login';
+  }
+
+  // Handle logout
+  async logout() {
+    this.authStateSubject.next(false);
+    // Implement your logout logic here
   }
 }

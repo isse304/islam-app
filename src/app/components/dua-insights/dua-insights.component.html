@@ -1,78 +1,114 @@
-<div class="insights-container">
+<!-- Dua Insights Container -->
+<div class="space-y-6">
   <!-- Loading State -->
-  <div *ngIf="isLoading" class="loading-state">
+  <div *ngIf="isLoading" class="flex flex-col items-center justify-center py-8">
     <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
     <p class="text-[#B7A57A] mt-4">Generating insights...</p>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="error" class="error-state">
-    <p class="text-red-600">{{ error }}</p>
+  <div *ngIf="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
+    <div class="flex items-center text-red-700">
+      <i class="fas fa-exclamation-circle mr-2"></i>
+      <p>{{ error }}</p>
+    </div>
   </div>
 
   <!-- Content -->
-  <div *ngIf="!isLoading && !error" class="content">
+  <div *ngIf="!isLoading && !error" class="space-y-6">
     <!-- Tabs -->
-    <div class="tabs">
+    <div class="flex space-x-4 border-b border-gray-200">
       <button 
-        [class.active]="activeTab === 'insights'"
         (click)="setActiveTab('insights')"
-        class="tab-button">
-        Insights
+        class="px-4 py-2 text-sm font-medium transition-colors"
+        [class.text-[#B7A57A]]="activeTab === 'insights'"
+        [class.text-gray-500]="activeTab !== 'insights'"
+        [class.border-b-2]="activeTab === 'insights'"
+        [class.border-[#B7A57A]]="activeTab === 'insights'">
+        <i class="fas fa-lightbulb mr-2"></i>Insights
       </button>
       <button 
-        [class.active]="activeTab === 'reflections'"
         (click)="setActiveTab('reflections')"
-        class="tab-button">
-        Reflections
+        class="px-4 py-2 text-sm font-medium transition-colors"
+        [class.text-[#B7A57A]]="activeTab === 'reflections'"
+        [class.text-gray-500]="activeTab !== 'reflections'"
+        [class.border-b-2]="activeTab === 'reflections'"
+        [class.border-[#B7A57A]]="activeTab === 'reflections'">
+        <i class="fas fa-brain mr-2"></i>Reflections
       </button>
       <button 
-        [class.active]="activeTab === 'context'"
         (click)="setActiveTab('context')"
-        class="tab-button">
-        Historical Context
+        class="px-4 py-2 text-sm font-medium transition-colors"
+        [class.text-[#B7A57A]]="activeTab === 'context'"
+        [class.text-gray-500]="activeTab !== 'context'"
+        [class.border-b-2]="activeTab === 'context'"
+        [class.border-[#B7A57A]]="activeTab === 'context'">
+        <i class="fas fa-book mr-2"></i>Context
       </button>
     </div>
 
     <!-- Insights Tab -->
-    <div *ngIf="activeTab === 'insights'" class="tab-content">
-      <div class="section">
-        <h3 class="section-title">Explanation</h3>
-        <p class="section-content">{{ insights?.explanation }}</p>
+    <div *ngIf="activeTab === 'insights'" class="space-y-6">
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-lightbulb text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Key Insights</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="insights?.content || 'No insights available'"></div>
       </div>
 
-      <div class="section" *ngIf="insights?.relatedVerses?.length">
-        <h3 class="section-title">Related Verses & Hadith</h3>
-        <ul class="list-disc pl-6">
-          <li *ngFor="let verse of insights?.relatedVerses" class="mb-2">
-            {{ verse }}
-          </li>
-        </ul>
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-star text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Virtues & Benefits</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="insights?.virtues || 'No virtues information available'"></div>
       </div>
 
-      <div class="section">
-        <h3 class="section-title">Modern Application</h3>
-        <p class="section-content">{{ insights?.modernApplication }}</p>
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-pray text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Practical Application</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="insights?.application || 'No practical application available'"></div>
       </div>
     </div>
 
     <!-- Reflections Tab -->
-    <div *ngIf="activeTab === 'reflections'" class="tab-content">
-      <div class="section">
-        <h3 class="section-title">Reflection Points</h3>
-        <ul class="list-disc pl-6">
-          <li *ngFor="let point of reflections?.reflectionPoints" class="mb-3">
-            {{ point }}
-          </li>
-        </ul>
+    <div *ngIf="activeTab === 'reflections'" class="space-y-6">
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-brain text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Personal Reflection Points</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="reflections?.content || 'No reflection points available'"></div>
+      </div>
+
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-heart text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Spiritual Impact</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="reflections?.impact || 'No spiritual impact information available'"></div>
       </div>
     </div>
 
-    <!-- Historical Context Tab -->
-    <div *ngIf="activeTab === 'context'" class="tab-content">
-      <div class="section">
-        <h3 class="section-title">Historical Context</h3>
-        <p class="section-content">{{ insights?.historicalContext }}</p>
+    <!-- Context Tab -->
+    <div *ngIf="activeTab === 'context'" class="space-y-6">
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-book text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Historical Context</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="insights?.context || 'No historical context available'"></div>
+      </div>
+
+      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+        <div class="flex items-center mb-4">
+          <i class="fas fa-link text-[#B7A57A] text-xl mr-3"></i>
+          <h3 class="text-lg font-semibold text-gray-800">Related Verses & Hadith</h3>
+        </div>
+        <div class="prose max-w-none" [innerHTML]="insights?.related || 'No related verses or hadith available'"></div>
       </div>
     </div>
   </div>

@@ -51,16 +51,9 @@
                 {{ translation }}
               </p>
             </div>
-            <div class="mt-6 border-t pt-4">
+            <div class="mt-6 border-t pt-4" authRequired>
               <div class="flex justify-between items-center mb-3">
                 <h3 class="text-lg font-medium text-[#B7A57A]">AI Summary</h3>
-                <!-- <button (click)="playAIResponse(aiSummary)"
-                        class="flex items-center gap-2 text-[#B7A57A] hover:text-[#9b8a65] px-3 py-1 rounded-lg border border-[#B7A57A]">
-                  <i class="fas" 
-                     [class.fa-play]="!(isPlayingAudio$ | async)" 
-                     [class.fa-stop]="(isPlayingAudio$ | async)"></i>
-                  {{ (isPlayingAudio$ | async) ? 'Stop' : 'Listen' }}
-                </button> -->
               </div>
               <p class="text-gray-600">{{ aiSummary }}</p>
             </div>
@@ -68,21 +61,10 @@
         </div>
   
         <!-- Chat Interface -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]">
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" authRequired>
           <!-- Chat Interface Header -->
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold text-[#B7A57A]">AI Tafsir Chat</h2>
-            <div class="flex items-center gap-3">
-              <!-- <label class="text-sm text-gray-600">Sheikh Voice</label>
-              <button (click)="toggleSheikhMode()"
-                      class="px-3 py-1 rounded-lg border"
-                      [class.bg-[#B7A57A]]="isSheikhMode$ | async"
-                      [class.text-white]="isSheikhMode$ | async"
-                      [class.border-[#B7A57A]]="isSheikhMode$ | async"
-                      [class.border-gray-300]="!(isSheikhMode$ | async)">
-                <i class="fas fa-microphone"></i>
-              </button> -->
-            </div>
           </div>
           
           <!-- Messages Container -->
@@ -95,14 +77,6 @@
                    class="inline-block rounded-lg px-4 py-2 max-w-[80%] relative">
                 <p class="text-gray-800">{{ message.content }}</p>
                 <div class="flex justify-end mt-2 gap-2">
-                  <!-- <button *ngIf="message.role === 'assistant'"
-                          (click)="playAIResponse(message.content)"
-                          class="text-xs text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-1">
-                    <i class="fas" 
-                       [class.fa-play]="!(isPlayingAudio$ | async)" 
-                       [class.fa-stop]="(isPlayingAudio$ | async)"></i>
-                    {{ (isPlayingAudio$ | async) ? 'Stop' : 'Listen' }}
-                  </button> -->
                   <span class="text-xs text-gray-500">
                     {{ message.timestamp | date:'shortTime' }}
                   </span>
