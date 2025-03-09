@@ -16,99 +16,198 @@
 
   <!-- Content -->
   <div *ngIf="!isLoading && !error" class="space-y-6">
-    <!-- Tabs -->
-    <div class="flex space-x-4 border-b border-gray-200">
-      <button 
-        (click)="setActiveTab('insights')"
-        class="px-4 py-2 text-sm font-medium transition-colors"
-        [class.text-[#B7A57A]]="activeTab === 'insights'"
-        [class.text-gray-500]="activeTab !== 'insights'"
-        [class.border-b-2]="activeTab === 'insights'"
-        [class.border-[#B7A57A]]="activeTab === 'insights'">
-        <i class="fas fa-lightbulb mr-2"></i>Insights
-      </button>
-      <button 
-        (click)="setActiveTab('reflections')"
-        class="px-4 py-2 text-sm font-medium transition-colors"
-        [class.text-[#B7A57A]]="activeTab === 'reflections'"
-        [class.text-gray-500]="activeTab !== 'reflections'"
-        [class.border-b-2]="activeTab === 'reflections'"
-        [class.border-[#B7A57A]]="activeTab === 'reflections'">
-        <i class="fas fa-brain mr-2"></i>Reflections
-      </button>
-      <button 
-        (click)="setActiveTab('context')"
-        class="px-4 py-2 text-sm font-medium transition-colors"
-        [class.text-[#B7A57A]]="activeTab === 'context'"
-        [class.text-gray-500]="activeTab !== 'context'"
-        [class.border-b-2]="activeTab === 'context'"
-        [class.border-[#B7A57A]]="activeTab === 'context'">
-        <i class="fas fa-book mr-2"></i>Context
-      </button>
-    </div>
-
-    <!-- Insights Tab -->
-    <div *ngIf="activeTab === 'insights'" class="space-y-6">
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-lightbulb text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Key Insights</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="insights?.content || 'No insights available'"></div>
-      </div>
-
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-star text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Virtues & Benefits</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="insights?.virtues || 'No virtues information available'"></div>
-      </div>
-
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-pray text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Practical Application</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="insights?.application || 'No practical application available'"></div>
+    <!-- Premium Required Message -->
+    <div *ngIf="!insights" class="text-center py-6">
+      <div class="bg-[#B7A57A]/10 rounded-lg p-6">
+        <i class="fas fa-crown text-[#B7A57A] text-3xl mb-4"></i>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Unlock AI-Powered Insights</h3>
+        <p class="text-gray-600 mb-4">Get deep insights, reflections, and contextual understanding with our AI analysis.</p>
+        <button 
+          (click)="router.navigate(['/premium'], { 
+            queryParams: { 
+              feature: 'AI Insights',
+              returnUrl: router.url
+            }
+          })" 
+          class="bg-[#B7A57A] text-white px-6 py-2 rounded-full hover:bg-[#A69469] transition-colors">
+          Upgrade to Premium
+        </button>
       </div>
     </div>
 
-    <!-- Reflections Tab -->
-    <div *ngIf="activeTab === 'reflections'" class="space-y-6">
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-brain text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Personal Reflection Points</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="reflections?.content || 'No reflection points available'"></div>
-      </div>
-
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-heart text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Spiritual Impact</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="reflections?.impact || 'No spiritual impact information available'"></div>
+    <!-- Premium Upgrade Message -->
+    <div *ngIf="error.includes('premium')" class="mt-4">
+      <div class="bg-[#B7A57A]/10 rounded-lg p-6 text-center">
+        <i class="fas fa-crown text-[#B7A57A] text-3xl mb-4"></i>
+        <h3 class="text-lg font-semibold text-gray-800 mb-2">Unlock AI-Powered Dua Insights</h3>
+        <p class="text-gray-600 mb-4">Get deep insights, reflections, and contextual understanding of duas with our AI-powered analysis.</p>
+        <button 
+          (click)="router.navigate(['/premium'], { 
+            queryParams: { 
+              feature: 'AI Insights',
+              returnUrl: router.url
+            }
+          })" 
+          class="bg-[#B7A57A] text-white px-6 py-2 rounded-full hover:bg-[#A69469] transition-colors">
+          Upgrade to Premium
+        </button>
       </div>
     </div>
 
-    <!-- Context Tab -->
-    <div *ngIf="activeTab === 'context'" class="space-y-6">
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-book text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Historical Context</h3>
-        </div>
-        <div class="prose max-w-none" [innerHTML]="insights?.context || 'No historical context available'"></div>
+    <!-- Main Content Area -->
+    <div premiumRequired>
+      <!-- Tabs -->
+      <div class="flex space-x-4 border-b border-gray-200">
+        <button 
+          (click)="setActiveTab('insights')"
+          class="px-4 py-2 text-sm font-medium transition-colors"
+          [class.text-[#B7A57A]]="activeTab === 'insights'"
+          [class.text-gray-500]="activeTab !== 'insights'"
+          [class.border-b-2]="activeTab === 'insights'"
+          [class.border-[#B7A57A]]="activeTab === 'insights'">
+          <i class="fas fa-lightbulb mr-2"></i>Insights
+        </button>
+        <button 
+          (click)="setActiveTab('reflections')"
+          class="px-4 py-2 text-sm font-medium transition-colors"
+          [class.text-[#B7A57A]]="activeTab === 'reflections'"
+          [class.text-gray-500]="activeTab !== 'reflections'"
+          [class.border-b-2]="activeTab === 'reflections'"
+          [class.border-[#B7A57A]]="activeTab === 'reflections'">
+          <i class="fas fa-brain mr-2"></i>Reflections
+        </button>
+        <button 
+          (click)="setActiveTab('context')"
+          class="px-4 py-2 text-sm font-medium transition-colors"
+          [class.text-[#B7A57A]]="activeTab === 'context'"
+          [class.text-gray-500]="activeTab !== 'context'"
+          [class.border-b-2]="activeTab === 'context'"
+          [class.border-[#B7A57A]]="activeTab === 'context'">
+          <i class="fas fa-book mr-2"></i>Context
+        </button>
       </div>
 
-      <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-        <div class="flex items-center mb-4">
-          <i class="fas fa-link text-[#B7A57A] text-xl mr-3"></i>
-          <h3 class="text-lg font-semibold text-gray-800">Related Verses & Hadith</h3>
+      <!-- Insights Tab -->
+      <div *ngIf="activeTab === 'insights'" class="space-y-6">
+        <!-- Key Insights -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-lightbulb text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Key Insights</h3>
+          </div>
+          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="insights?.content || 'No insights available'"></div>
         </div>
-        <div class="prose max-w-none" [innerHTML]="insights?.related || 'No related verses or hadith available'"></div>
+
+        <!-- Virtues & Benefits -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-star text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Virtues & Benefits</h3>
+          </div>
+          <div class="space-y-3">
+            <div *ngFor="let virtue of getVirtuesList()" class="flex items-start">
+              <i class="fas fa-check text-[#B7A57A] mt-1 mr-3"></i>
+              <p class="text-gray-700">{{ virtue }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Practical Application -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-hands-helping text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Practical Application</h3>
+          </div>
+          <div class="space-y-3">
+            <div *ngFor="let step of getApplicationSteps()" class="flex items-start">
+              <i class="fas fa-arrow-right text-[#B7A57A] mt-1 mr-3"></i>
+              <p class="text-gray-700">{{ step }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reflections Tab -->
+      <div *ngIf="activeTab === 'reflections'" class="space-y-6">
+        <!-- Personal Reflection Points -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-brain text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Personal Reflection Points</h3>
+          </div>
+          <div class="space-y-4">
+            <div *ngFor="let point of insights?.reflectionPoints" class="flex items-start bg-[#B7A57A]/5 p-4 rounded-lg">
+              <i class="fas fa-chevron-right text-[#B7A57A] mt-1 mr-3"></i>
+              <p class="text-gray-700">{{ point }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Spiritual Impact -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-heart text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Spiritual Impact</h3>
+          </div>
+          <div class="space-y-3">
+            <div *ngFor="let impact of getSpiritualImpacts()" class="flex items-start">
+              <i class="fas fa-seedling text-[#B7A57A] mt-1 mr-3"></i>
+              <p class="text-gray-700">{{ impact }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context Tab -->
+      <div *ngIf="activeTab === 'context'" class="space-y-6">
+        <!-- Historical Context -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-history text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Historical Context</h3>
+          </div>
+          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="insights?.context || 'No historical context available'"></div>
+        </div>
+
+        <!-- Related Verses & Hadith -->
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100" *ngIf="getRelatedReferences().length > 0">
+          <div class="flex items-center mb-4">
+            <i class="fas fa-book text-[#B7A57A] text-xl mr-3"></i>
+            <h3 class="text-lg font-semibold text-gray-800">Related Verses & Hadith</h3>
+          </div>
+          <div class="space-y-4">
+            <div *ngFor="let reference of getRelatedReferences()" class="bg-[#B7A57A]/5 p-4 rounded-lg">
+              <div class="verse-content">
+                <ng-container *ngFor="let line of reference.split('\n')">
+                  <!-- Reference line -->
+                  <p *ngIf="line.startsWith('Reference:')" class="reference">
+                    {{line}}
+                  </p>
+                  <!-- Arabic text -->
+                  <p *ngIf="line.startsWith('Arabic:')" class="arabic-text">
+                    {{line.replace('Arabic:', '').trim()}}
+                  </p>
+                  <!-- Translation -->
+                  <p *ngIf="line.startsWith('Translation:')" class="translation">
+                    {{line.replace('Translation:', '').trim()}}
+                  </p>
+                  <!-- Hadith text -->
+                  <p *ngIf="line.startsWith('Text:')" class="hadith-text">
+                    {{line.replace('Text:', '').trim()}}
+                  </p>
+                  <!-- Relevance -->
+                  <p *ngIf="line.startsWith('Relevance:')" class="relevance">
+                    {{line.replace('Relevance:', '').trim()}}
+                  </p>
+                  <!-- Any other lines -->
+                  <p *ngIf="!line.startsWith('Reference:') && !line.startsWith('Arabic:') && !line.startsWith('Translation:') && !line.startsWith('Text:') && !line.startsWith('Relevance:')" class="text-gray-700">
+                    {{line}}
+                  </p>
+                </ng-container>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>

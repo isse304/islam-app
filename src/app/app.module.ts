@@ -25,6 +25,7 @@ import { DuaInsightsComponent } from './components/dua-insights/dua-insights.com
 import { routes } from './app.routes';
 import { ErrorDialogComponent } from './components/shared/error-dialog/error-dialog.component';
 import { SubscriptionDialogComponent } from './components/subscription-dialog/subscription-dialog.component';
+import { PremiumRequiredDirective } from './directives/premium-required.directive';
 
 @NgModule({
   declarations: [
@@ -38,7 +39,8 @@ import { SubscriptionDialogComponent } from './components/subscription-dialog/su
     QuranReaderComponent,
     LearnComponent,
     DuaInsightsComponent,
-    ErrorDialogComponent
+    ErrorDialogComponent,
+    PremiumRequiredDirective
   ],
   imports: [
     BrowserModule,

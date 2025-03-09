@@ -7,9 +7,8 @@ import { CommonModule } from '@angular/common';
 interface PricingTier {
   name: string;
   price: number;
-  interval: 'month' | 'year';
+  interval: 'month';
   features: string[];
-  recommended?: boolean;
 }
 
 @Component({
@@ -29,36 +28,27 @@ export class SubscriptionDialogComponent {
       price: 9.99,
       interval: 'month',
       features: [
-        'AI-Powered Tafsir Insights',
-        'Personalized Dua Recommendations',
-        'Smart Learning Assistant',
-        'Priority Support'
-      ]
-    },
-    {
-      name: 'Yearly Premium',
-      price: 99.99,
-      interval: 'year',
-      recommended: true,
-      features: [
-        'All Monthly Premium Features',
-        '2 Months Free',
-        'Advanced Analytics',
-        'Offline Access',
-        'Family Sharing (Up to 3 members)'
+        'AI-Powered Dua Insights & Analysis',
+        'Dua Recommendations based on emotional state',
+        'Smart Quran Learning Assistant',
+        'AI Tafsir Generation',
+        'Personalized Learning Path',
+        'Unlimited AI-Generated Reflections'
       ]
     }
   ];
 
   constructor(
-    private dialogRef: MatDialogRef<SubscriptionDialogComponent>,
+    public dialogRef: MatDialogRef<SubscriptionDialogComponent>,
     private authService: AuthService,
     private notificationService: NotificationService,
     @Inject(MAT_DIALOG_DATA) public data: { feature: string }
-  ) {}
+  ) {
+    this.selectedTier = this.pricingTiers[0];
+  }
 
-  selectTier(tier: PricingTier) {
-    this.selectedTier = tier;
+  close() {
+    this.dialogRef.close(false);
   }
 
   async subscribe() {
@@ -66,8 +56,6 @@ export class SubscriptionDialogComponent {
     
     this.loading = true;
     try {
-      // Implement your subscription logic here
-      // This is a placeholder - replace with actual payment processing
       await this.authService.subscribe(this.selectedTier);
       this.notificationService.success('Successfully subscribed to premium!');
       this.dialogRef.close(true);
@@ -76,9 +64,5 @@ export class SubscriptionDialogComponent {
     } finally {
       this.loading = false;
     }
-  }
-
-  close() {
-    this.dialogRef.close();
   }
 } 

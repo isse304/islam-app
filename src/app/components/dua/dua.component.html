@@ -13,7 +13,6 @@
               id="emotionSearch"
               type="text" 
               [(ngModel)]="feeling" 
-              (keyup.enter)="searchByFeeling()"
               placeholder="Enter your emotion (e.g., anxious, grateful, hopeful)..."
               class="w-full px-4 py-3 rounded-lg border-2 border-[#B7A57A]/30 focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 outline-none transition-all duration-200 text-gray-700 placeholder-gray-400"
             >
@@ -28,7 +27,8 @@
               <button 
                 (click)="searchByFeeling()"
                 class="text-[#B7A57A] hover:text-[#9b8a65] transition-colors"
-                aria-label="Search">
+                aria-label="Search"
+                premiumRequired>
                 <span class="material-icons">search</span>
               </button>
             </div>
@@ -56,7 +56,7 @@
         </div>
 
         <!-- AI Insights -->
-        <div class="ai-insights mt-6" *ngIf="aiInsights">
+        <div class="ai-insights mt-6" *ngIf="aiInsights" premiumRequired>
           <div class="bg-white rounded-lg p-6 shadow-md">
             <div class="flex justify-between items-center mb-6">
               <h3 class="text-xl font-semibold text-[#B7A57A] flex items-center">
@@ -134,19 +134,36 @@
               </div>
 
               <!-- Practical Steps -->
-              <div class="practical-steps">
-                <h4 class="text-xl font-semibold text-gray-800 mb-4">
-                  <i class="fas fa-tasks text-[#B7A57A] mr-2"></i>
-                  Practical Steps
-                </h4>
-                <div class="space-y-4">
-                  <div class="practical-step-item" *ngFor="let step of getPracticalSteps(); let i = index">
-                    <span class="step-icon">
-                      <i class="fas" [ngClass]="getStepIcon(step)"></i>
-                    </span>
-                    <div class="step-content">
-                      <span class="font-medium text-[#8B7355] mr-2">Step {{i + 1}}:</span>
-                      {{ step }}
+              <div class="bg-[#B7A57A]/5 rounded-lg p-6">
+                <div class="flex items-start mb-4">
+                  <i class="fas fa-tasks text-[#B7A57A] mt-1 mr-3"></i>
+                  <div class="space-y-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">Practical Steps</h4>
+                    <div class="space-y-4">
+                      <div class="practical-step-item" *ngFor="let step of getPracticalSteps(); let i = index">
+                        <span class="step-icon">
+                          <i class="fas" [ngClass]="getStepIcon(step)"></i>
+                        </span>
+                        <div class="step-content">
+                          <span class="font-medium text-[#8B7355] mr-2">Step {{i + 1}}:</span>
+                          {{ step }}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Related Quranic Verses and Hadith -->
+              <div class="bg-[#B7A57A]/5 rounded-lg p-6">
+                <div class="flex items-start mb-4">
+                  <i class="fas fa-book text-[#B7A57A] mt-1 mr-3"></i>
+                  <div class="space-y-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">Related Verses & Hadith</h4>
+                    <div class="space-y-4">
+                      <div *ngFor="let verse of getRelatedVerses()" class="bg-[#B7A57A]/10 rounded-lg p-4">
+                        <p class="text-gray-700 leading-relaxed">{{ verse }}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -216,8 +233,9 @@
             <!-- AI Insights Button -->
             <button 
               (click)="onDuaSelect(dua)"
-              class="mt-4 w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center justify-center gap-2">
-              <i class="fas fa-robot mr-2"></i>
+              class="mt-4 w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center justify-center gap-2"
+              premiumRequired>
+              <i class="fas fa-lock"></i>
               View AI-Powered Insights
             </button>
           </div>

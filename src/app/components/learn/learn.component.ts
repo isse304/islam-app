@@ -41,12 +41,16 @@ export class LearnComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    const hasAccess = await this.subscriptionService.checkPremiumAccess('AI-Powered Learning');
-    if (!hasAccess) {
-      this.router.navigate(['/']);
+    const hasPremiumAccess = await this.subscriptionService.checkPremiumAccess('Learn Feature');
+    if (!hasPremiumAccess) {
+      this.router.navigate(['/premium'], { 
+        queryParams: { 
+          feature: 'Learn Feature',
+          returnUrl: this.router.url
+        } 
+      });
       return;
     }
-    
     this.loadSurahs();
   }
 
@@ -83,6 +87,7 @@ export class LearnComponent implements OnInit {
       this.aiSummary = summary;
     } catch (error) {
       console.error('Error getting AI summary:', error);
+      this.aiSummary = 'Failed to generate summary. Please try again.';
     }
   }
 

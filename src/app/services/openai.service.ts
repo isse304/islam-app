@@ -53,65 +53,291 @@ export class OpenAIService {
   generateDuaInsights(dua: Dua): Observable<AIResponse> {
     const prompt = {
       systemMessage: `You are a knowledgeable Islamic scholar specializing in duas and their deeper meanings. 
-      Analyze the following dua and provide comprehensive insights in this format:
-
-      Content:
-      [Detailed explanation of the dua's meaning, significance, and spiritual dimensions]
-
-      Virtues & Benefits:
-      • [List specific virtues and benefits, with references]
-      • [Include both worldly and spiritual benefits]
-      • [Mention specific situations when this dua is especially beneficial]
-
-      Practical Application:
-      • [How to implement this dua in daily life]
-      • [Best times and situations to recite it]
-      • [Proper method of recitation and any specific conditions]
-      • [How to maximize its benefits]
-
-      Historical Context:
-      [Detailed background about when and why this dua was revealed/taught, including specific historical events and circumstances]
-
-      Related Verses & Hadith:
-      • [Relevant Quranic verses with full references]
-      • [Related authentic hadith with complete chain and source]
-      • [Similar duas or complementary supplications]
-
-      Ensure all Arabic text is properly formatted, all references are specific and complete, and the content is both scholarly and accessible.`,
+      Analyze the following dua and provide comprehensive insights in this EXACT JSON format:
+      {
+        "key_insights": "[Detailed explanation of the dua's core meaning and significance]",
+        "virtues_and_benefits": [
+          "[List specific virtues with references]",
+          "[Include both worldly and spiritual benefits]",
+          "[Mention specific situations when this dua is especially beneficial]"
+        ],
+        "practical_application": [
+          "[How to implement this dua in daily life]",
+          "[Best times and situations to recite it]",
+          "[Proper method of recitation]",
+          "[How to maximize its benefits]"
+        ],
+        "historical_context": "[Detailed background about when and why this dua was revealed/taught]",
+        "related_references": {
+          "verses": [{
+            "reference": "Surah name, number:verse",
+            "arabic": "Arabic text of the verse",
+            "translation": "Full English translation",
+            "relevance": "How this verse relates to the dua"
+          }],
+          "hadith": [{
+            "text": "Full hadith text in English",
+            "arabic": "Arabic text if available",
+            "source": "Complete source reference",
+            "grade": "Authenticity grade",
+            "relevance": "How this hadith relates to the dua"
+          }]
+        },
+        "reflection_points": [
+          "[Deep, thought-provoking questions about the dua's meaning]",
+          "[Points for personal introspection]",
+          "[Ways to connect this dua to one's life]"
+        ],
+        "spiritual_impact": [
+          "[How this dua transforms one's relationship with Allah]",
+          "[Emotional and spiritual growth it facilitates]",
+          "[Long-term benefits of regular recitation]"
+        ]
+      }
+      
+      For all Quranic verses and Hadith:
+      1. Always provide complete references
+      2. Include both Arabic and English translations where possible
+      3. Explain the relevance to the dua
+      4. For hadith, include authenticity grades
+      
+      Ensure all sections are properly filled and formatted as JSON.`,
       userMessage: `Please analyze this dua:
       
       Arabic: ${dua.arabic}
       Translation: ${dua.translation}
       Reference: ${dua.reference}
       
-      Provide comprehensive insights following the specified format.`,
+      Provide comprehensive insights following the specified JSON format.`,
       temperature: 0.4,
       maxTokens: 2000
     };
 
-    return this.apiService.generateAIResponse(prompt);
+    return this.apiService.generateAIResponse(prompt).pipe(
+      map(response => {
+        if (!response?.content) {
+          throw new Error('Invalid response format from server');
+        }
+
+        try {
+          const jsonResponse = JSON.parse(response.content);
+          
+          // Process verses and hadith
+          const processReferences = (refs: any) => {
+            const results = [];
+            
+            // Process Quranic verses
+            if (refs?.verses?.length) {
+              for (const verse of refs.verses) {
+                const parts = [];
+                parts.push(`Reference: ${verse.reference}`);
+                if (verse.arabic) parts.push(`Arabic: ${verse.arabic}`);
+                if (verse.translation) parts.push(`Translation: ${verse.translation}`);
+                if (verse.relevance) parts.push(`Relevance: ${verse.relevance}`);
+                results.push(parts.join('\n'));
+              }
+            }
+            
+            // Process hadith
+            if (refs?.hadith?.length) {
+              for (const h of refs.hadith) {
+                const parts = [];
+                parts.push(`Reference: ${h.source} (${h.grade || 'Grade not specified'})`);
+                if (h.arabic) parts.push(`Arabic: ${h.arabic}`);
+                if (h.text) parts.push(`Text: ${h.text}`);
+                if (h.relevance) parts.push(`Relevance: ${h.relevance}`);
+                results.push(parts.join('\n'));
+              }
+            }
+            
+            return results;
+          };
+
+          return {
+            content: jsonResponse.key_insights || '',
+            virtues: Array.isArray(jsonResponse.virtues_and_benefits) 
+              ? jsonResponse.virtues_and_benefits.join('\n') 
+              : jsonResponse.virtues_and_benefits || '',
+            application: Array.isArray(jsonResponse.practical_application)
+              ? jsonResponse.practical_application.join('\n')
+              : jsonResponse.practical_application || '',
+            context: jsonResponse.historical_context || '',
+            impact: Array.isArray(jsonResponse.spiritual_impact)
+              ? jsonResponse.spiritual_impact.join('\n')
+              : jsonResponse.spiritual_impact || '',
+            explanation: jsonResponse.key_insights || '',
+            historicalContext: jsonResponse.historical_context || '',
+            reflectionPoints: Array.isArray(jsonResponse.reflection_points)
+              ? jsonResponse.reflection_points
+              : [],
+            modernApplication: Array.isArray(jsonResponse.practical_application)
+              ? jsonResponse.practical_application.join('\n')
+              : jsonResponse.practical_application || '',
+            relatedVerses: processReferences(jsonResponse.related_references)
+          };
+        } catch (error) {
+          console.error('Error parsing JSON response:', error);
+          // Fallback to original text parsing if JSON parsing fails
+          const sections = response.content.split('\n\n');
+          const parseSection = (title: string) => {
+            const section = sections.find((s: string) => s.toLowerCase().includes(title.toLowerCase()));
+            if (!section) return '';
+            const lines = section.split('\n');
+            return lines.slice(1).join('\n').trim();
+          };
+
+          const parseBulletPoints = (title: string) => {
+            const section = sections.find((s: string) => s.toLowerCase().includes(title.toLowerCase()));
+            if (!section) return [];
+            const lines = section.split('\n');
+            return lines
+              .slice(1)
+              .filter((line: string) => line.trim().startsWith('•'))
+              .map((line: string) => line.replace('•', '').trim());
+          };
+
+          return {
+            content: parseSection('Key Insights'),
+            virtues: parseBulletPoints('Virtues & Benefits').join('\n'),
+            application: parseBulletPoints('Practical Application').join('\n'),
+            context: parseSection('Historical Context'),
+            related: parseBulletPoints('Related Verses & Hadith').join('\n'),
+            impact: parseBulletPoints('Spiritual Impact').join('\n'),
+            reflectionPoints: parseBulletPoints('Personal Reflection Points'),
+            explanation: parseSection('Key Insights'),
+            historicalContext: parseSection('Historical Context'),
+            relatedVerses: parseBulletPoints('Related Verses & Hadith'),
+            modernApplication: parseSection('Practical Application')
+          };
+        }
+      })
+    );
   }
 
   suggestDuasByContext(situation: string, emotions: string[]): Observable<AIResponse> {
+    // Extract emotions from sentence if provided
+    const extractedEmotions = this.extractEmotionsFromText(situation);
+    const allEmotions = [...new Set([...emotions, ...extractedEmotions])];
+    
     const prompt: AIRequestPrompt = {
-      systemMessage: 'You are a knowledgeable Islamic scholar with expertise in Quran, Hadith, and Islamic spirituality.',
-      userMessage: `Recommend suitable duas for this situation:
-      
+      systemMessage: `You are a knowledgeable Islamic scholar specializing in Islamic psychology, spiritual therapy, and emotional well-being, with deep expertise in Quran, Hadith, and Islamic spirituality.
+
+      Your approach combines:
+      1. Traditional Islamic wisdom from the Quran and Sunnah
+      2. Understanding of Islamic psychology (Ilm an-Nafs)
+      3. Therapeutic techniques from Islamic counseling
+      4. Practical emotional healing methods from the prophetic tradition
+
+      IMPORTANT: When analyzing multiple emotions, ensure each emotion is addressed separately before providing combined guidance.
+
+      For each emotion:
+      1. Validate and acknowledge it from an Islamic perspective
+      2. Provide specific Quranic verses and hadith related to that emotion
+      3. Share examples of prophets or companions who experienced it
+      4. Give specific duas and dhikr for that emotion
+
+      Then provide combined guidance that:
+      1. Addresses how the emotions interact with each other
+      2. Suggests prioritized coping strategies
+      3. Offers a comprehensive spiritual development plan
+
+      Format your response in JSON as follows:
+      {
+        "individual_emotions": [{
+          "emotion": "string",
+          "islamic_perspective": "string",
+          "quranic_example": {
+            "story": "string",
+            "verse": "string",
+            "reference": "string"
+          },
+          "prophetic_guidance": "string",
+          "specific_duas": [{
+            "arabic": "string",
+            "transliteration": "string",
+            "translation": "string",
+            "virtue": "string"
+          }]
+        }],
+        "combined_guidance": {
+          "emotional_interaction": "string",
+          "primary_recommendations": ["string"],
+          "spiritual_prescription": {
+            "immediate_steps": ["string"],
+            "short_term_practices": ["string"],
+            "long_term_development": ["string"]
+          }
+        },
+        "recommended_duas": [{
+          "arabic": "string",
+          "transliteration": "string",
+          "translation": "string",
+          "virtue": "string",
+          "emotional_benefits": "string",
+          "source": "string"
+        }],
+        "quranic_verses": [{
+          "arabic": "string",
+          "translation": "string",
+          "reference": "string",
+          "tafsir_excerpt": "string"
+        }],
+        "hadith": [{
+          "text": "string",
+          "source": "string",
+          "grade": "string",
+          "psychological_lesson": "string"
+        }],
+        "therapeutic_steps": [{
+          "type": "string",
+          "action": "string",
+          "islamic_basis": "string",
+          "expected_benefit": "string"
+        }],
+        "spiritual_advice": "string",
+        "long_term_growth": {
+          "spiritual_aspects": ["string"],
+          "emotional_aspects": ["string"],
+          "behavioral_changes": ["string"]
+        }
+      }`,
+      userMessage: `Analyze and provide comprehensive guidance for these emotions: ${allEmotions.join(', ')}
       Context: ${situation}
-      Emotions: ${emotions.join(', ')}
       
-      Please provide:
-      1. Recommended duas with their significance
-      2. Why these duas are particularly suitable
-      3. How to best utilize these duas in this situation
-      4. Additional spiritual advice for this context
-      
-      Format the response in clear sections.`,
+      Please address each emotion individually first, then provide combined guidance that takes into account how these emotions interact and influence each other.`,
       temperature: this.TEMPERATURES.DYNAMIC,
-      maxTokens: 1000
+      maxTokens: 2000
     };
 
     return from(this.getCompletion(prompt));
+  }
+
+  private extractEmotionsFromText(text: string): string[] {
+    const emotionKeywords = {
+      angry: ['angry', 'furious', 'rage', 'irritated', 'frustrated'],
+      sad: ['sad', 'depressed', 'down', 'heartbroken', 'grief', 'sorrow'],
+      anxious: ['anxious', 'worried', 'nervous', 'stressed', 'uneasy', 'fear'],
+      happy: ['happy', 'joyful', 'excited', 'delighted', 'pleased'],
+      grateful: ['grateful', 'thankful', 'blessed', 'appreciative'],
+      hopeful: ['hopeful', 'optimistic', 'positive', 'encouraged'],
+      confused: ['confused', 'uncertain', 'unsure', 'lost', 'perplexed'],
+      lonely: ['lonely', 'alone', 'isolated', 'abandoned'],
+      guilty: ['guilty', 'regretful', 'remorseful', 'ashamed'],
+      peaceful: ['peaceful', 'calm', 'serene', 'tranquil']
+    };
+
+    const words = text.toLowerCase().split(/\W+/);
+    const foundEmotions = new Set<string>();
+
+    words.forEach(word => {
+      for (const [emotion, synonyms] of Object.entries(emotionKeywords)) {
+        if (synonyms.includes(word)) {
+          foundEmotions.add(emotion);
+        }
+      }
+    });
+
+    return Array.from(foundEmotions);
   }
 
   generateReflectionPrompts(dua: Dua): Observable<AIResponse> {
@@ -210,30 +436,163 @@ export class OpenAIService {
       const jsonResponse = JSON.parse(content);
       
       // Format related verses and hadith into readable text
-      const formatRelatedContent = (related: any) => {
+      const formatRelatedContent = (related: { quranic_verses?: any[], hadith?: any[] }) => {
         if (!related) return '';
-        const verses = related.related_verses?.join('\n• ') || '';
-        const hadith = related.related_hadith?.join('\n• ') || '';
-        return `${verses ? 'Related Verses:\n• ' + verses : ''}\n${hadith ? '\nRelated Hadith:\n• ' + hadith : ''}`;
+        let result = '';
+        
+        // Handle verses
+        if (Array.isArray(related.quranic_verses) && related.quranic_verses.length > 0) {
+          result += 'Quranic Verses:\n';
+          related.quranic_verses.forEach((verse: any) => {
+            result += `\n• ${verse.reference}\n`;
+            result += `  Arabic: ${verse.arabic}\n`;
+            result += `  Translation: ${verse.translation}\n`;
+          });
+        }
+        
+        // Handle hadith
+        if (Array.isArray(related.hadith) && related.hadith.length > 0) {
+          result += '\nHadith:\n';
+          related.hadith.forEach((h: any) => {
+            result += `\n• ${h.text}\n`;
+            result += `  Source: ${h.source}\n`;
+            result += `  Grade: ${h.grade}\n`;
+          });
+        }
+        
+        return result.trim();
       };
 
-      return {
-        content: jsonResponse.key_insights_and_main_message || '',
-        virtues: jsonResponse.virtues_and_benefits || '',
-        application: jsonResponse.practical_application_in_modern_life || '',
-        context: jsonResponse.historical_context || '',
-        related: formatRelatedContent(jsonResponse.related_verses_and_hadith),
-        impact: typeof jsonResponse.spiritual_impact === 'object' 
-          ? JSON.stringify(jsonResponse.spiritual_impact) 
-          : jsonResponse.spiritual_impact || '',
-        explanation: jsonResponse.explanation || '',
-        relatedVerses: jsonResponse.related_verses || [],
-        historicalContext: jsonResponse.historical_context || '',
-        reflectionPoints: jsonResponse.reflection_points || [],
-        modernApplication: jsonResponse.modern_application || ''
+      // Format individual emotions analysis
+      const formatIndividualEmotions = (emotions: any[]) => {
+        if (!Array.isArray(emotions)) return '';
+        return emotions.map(emotion => 
+          `${emotion.emotion.toUpperCase()}\n\n` +
+          `Islamic Perspective:\n${emotion.islamic_perspective}\n\n` +
+          `Quranic Example:\n${emotion.quranic_example.story}\n` +
+          `(${emotion.quranic_example.reference})\n\n` +
+          `Prophetic Guidance:\n${emotion.prophetic_guidance}\n\n` +
+          `Recommended Duas:\n` +
+          emotion.specific_duas.map((dua: any) => 
+            `• ${dua.transliteration}\n  ${dua.translation}\n  Virtue: ${dua.virtue}`
+          ).join('\n\n')
+        ).join('\n\n---\n\n');
       };
-    } catch {
-      // Fallback to text parsing if not JSON
+
+      // Format combined guidance
+      const formatCombinedGuidance = (guidance: any) => {
+        if (!guidance) return '';
+        return `COMBINED GUIDANCE\n\n` +
+               `Understanding Your Emotions:\n${guidance.emotional_interaction}\n\n` +
+               `Primary Recommendations:\n` +
+               guidance.primary_recommendations.map((rec: string) => `• ${rec}`).join('\n') + '\n\n' +
+               `Spiritual Prescription:\n` +
+               `Immediate Steps:\n` +
+               guidance.spiritual_prescription.immediate_steps.map((step: string) => `• ${step}`).join('\n') + '\n\n' +
+               `Short-term Practices:\n` +
+               guidance.spiritual_prescription.short_term_practices.map((practice: string) => `• ${practice}`).join('\n') + '\n\n' +
+               `Long-term Development:\n` +
+               guidance.spiritual_prescription.long_term_development.map((dev: string) => `• ${dev}`).join('\n');
+      };
+
+      // Format long-term growth
+      const formatLongTermGrowth = (growth: { 
+        spiritual_aspects?: string[], 
+        emotional_aspects?: string[], 
+        behavioral_changes?: string[] 
+      }) => {
+        if (!growth) return '';
+        let result = 'Long-term Growth Plan:\n\n';
+        if (Array.isArray(growth.spiritual_aspects)) {
+          result += 'Spiritual Growth:\n• ' + growth.spiritual_aspects.join('\n• ') + '\n\n';
+        }
+        if (Array.isArray(growth.emotional_aspects)) {
+          result += 'Emotional Growth:\n• ' + growth.emotional_aspects.join('\n• ') + '\n\n';
+        }
+        if (Array.isArray(growth.behavioral_changes)) {
+          result += 'Behavioral Changes:\n• ' + growth.behavioral_changes.join('\n• ');
+        }
+        return result;
+      };
+
+      interface TherapeuticStep {
+        type: string;
+        action: string;
+        islamic_basis: string;
+        expected_benefit: string;
+      }
+
+      // Handle emotional response format
+      if (jsonResponse.individual_emotions) {
+        const individualEmotionsAnalysis = formatIndividualEmotions(jsonResponse.individual_emotions);
+        const combinedGuidance = formatCombinedGuidance(jsonResponse.combined_guidance);
+
+        return {
+          content: `${individualEmotionsAnalysis}\n\n${combinedGuidance}`,
+          virtues: Array.isArray(jsonResponse.recommended_duas) 
+            ? jsonResponse.recommended_duas.map((d: any) => 
+                `${d.virtue || ''}\nEmotional Benefits: ${d.emotional_benefits || ''}`
+              ).join('\n\n') 
+            : '',
+          application: Array.isArray(jsonResponse.therapeutic_steps)
+            ? jsonResponse.therapeutic_steps.map((step: TherapeuticStep) => 
+                `${step.type.toUpperCase()}\n` +
+                `Action: ${step.action}\n` +
+                `Islamic Basis: ${step.islamic_basis}\n` +
+                `Expected Benefit: ${step.expected_benefit}`
+              ).join('\n\n')
+            : '',
+          context: jsonResponse.combined_guidance?.emotional_interaction || '',
+          related: formatRelatedContent({
+            quranic_verses: jsonResponse.quranic_verses,
+            hadith: jsonResponse.hadith
+          }),
+          impact: jsonResponse.spiritual_advice + '\n\n' + formatLongTermGrowth(jsonResponse.long_term_growth),
+          explanation: individualEmotionsAnalysis,
+          relatedVerses: Array.isArray(jsonResponse.quranic_verses)
+            ? jsonResponse.quranic_verses.map((v: any) => 
+                `${v.reference}: ${v.translation}\nTafsir: ${v.tafsir_excerpt || ''}`
+              )
+            : [],
+          historicalContext: combinedGuidance,
+          reflectionPoints: Array.isArray(jsonResponse.therapeutic_steps)
+            ? jsonResponse.therapeutic_steps.map((s: TherapeuticStep) => s.action)
+            : [],
+          modernApplication: formatLongTermGrowth(jsonResponse.long_term_growth)
+        };
+      }
+
+      // Handle dua insights format
+      return {
+        content: jsonResponse.key_insights || '',
+        virtues: Array.isArray(jsonResponse.virtues_and_benefits) 
+          ? jsonResponse.virtues_and_benefits.join('\n') 
+          : jsonResponse.virtues_and_benefits || '',
+        application: Array.isArray(jsonResponse.practical_application)
+          ? jsonResponse.practical_application.join('\n')
+          : jsonResponse.practical_application || '',
+        context: jsonResponse.historical_context || '',
+        related: formatRelatedContent(jsonResponse.related_references),
+        impact: Array.isArray(jsonResponse.spiritual_impact)
+          ? jsonResponse.spiritual_impact.join('\n')
+          : jsonResponse.spiritual_impact || '',
+        explanation: jsonResponse.key_insights || '',
+        historicalContext: jsonResponse.historical_context || '',
+        relatedVerses: Array.isArray(jsonResponse.related_references.verses)
+          ? jsonResponse.related_references.verses.map((v: any) => 
+              `${v.reference}: ${v.translation}\nRelevance: ${v.relevance}`
+            )
+          : [],
+        reflectionPoints: Array.isArray(jsonResponse.reflection_points)
+          ? jsonResponse.reflection_points
+          : [],
+        modernApplication: Array.isArray(jsonResponse.practical_application)
+          ? jsonResponse.practical_application.join('\n')
+          : jsonResponse.practical_application || ''
+      };
+    } catch (error) {
+      // Fallback to text parsing if JSON parsing fails
+      console.error('Error parsing JSON response:', error);
       const sections = content.split('\n\n');
       return {
         content: sections[0] || '',

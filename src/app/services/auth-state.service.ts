@@ -7,31 +7,46 @@ import { AuthService } from './auth.service';
 })
 export class AuthStateService {
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  private isPremiumUserSubject = new BehaviorSubject<boolean>(false);
+  private isPremiumSubject = new BehaviorSubject<boolean>(false);
 
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
-  isPremiumUser$ = this.isPremiumUserSubject.asObservable();
+  isPremiumUser$ = this.isPremiumSubject.asObservable();
 
   constructor(private authService: AuthService) {
     this.checkAuthStatus();
     this.checkPremiumStatus();
     
     // Update auth state periodically
-    setInterval(() => this.updateAuthState(), 60000); // Check every minute
+    setInterval(() => {
+      this.updateAuthState();
+      this.checkPremiumStatus();
+    }, 60000); // Check every minute
+
+    // Subscribe to auth changes to recheck premium status
+    this.authService.user$.subscribe(() => {
+      this.checkPremiumStatus();
+    });
   }
 
   setAuthenticated(value: boolean) {
     this.isAuthenticatedSubject.next(value);
     localStorage.setItem('isAuthenticated', value.toString());
+    if (!value) {
+      // If user is not authenticated, they can't be premium
+      this.setPremiumStatus(false);
+    }
   }
 
   setPremiumStatus(value: boolean) {
-    this.isPremiumUserSubject.next(value);
+    console.log('Setting premium status:', value);
+    this.isPremiumSubject.next(value);
     localStorage.setItem('isPremiumUser', value.toString());
   }
 
   async isPremiumUser(): Promise<boolean> {
-    return localStorage.getItem('isPremiumUser') === 'true';
+    const isPremium = localStorage.getItem('isPremiumUser') === 'true';
+    console.log('Checking premium status from storage:', isPremium);
+    return isPremium;
   }
 
   private checkAuthStatus() {
@@ -39,22 +54,55 @@ export class AuthStateService {
     this.setAuthenticated(isAuthenticated);
   }
 
-  private checkPremiumStatus() {
-    const isPremium = localStorage.getItem('isPremiumUser') === 'true';
-    this.setPremiumStatus(isPremium);
+  private async checkPremiumStatus() {
+    try {
+      // First check if user is authenticated
+      const isAuthenticated = await this.authService.isAuthenticated();
+      if (!isAuthenticated) {
+        console.log('User not authenticated, setting premium to false');
+        this.setPremiumStatus(false);
+        return;
+      }
+
+      // Then check premium status
+      const hasPremium = await this.authService.isPremiumUser();
+      console.log('Premium status checked:', hasPremium);
+      this.setPremiumStatus(hasPremium);
+    } catch (error) {
+      console.error('Error checking premium status:', error);
+      this.setPremiumStatus(false);
+    }
   }
 
   private async updateAuthState() {
     try {
       const token = await this.authService.getToken();
-      this.isAuthenticatedSubject.next(!!token);
+      const isAuthenticated = !!token;
+      this.setAuthenticated(isAuthenticated);
+      
+      if (!isAuthenticated) {
+        this.setPremiumStatus(false);
+      }
     } catch (error) {
-      this.isAuthenticatedSubject.next(false);
+      console.error('Error updating auth state:', error);
+      this.setAuthenticated(false);
+      this.setPremiumStatus(false);
     }
+  }
+
+  async refreshPremiumStatus() {
+    await this.checkPremiumStatus();
   }
 
   // Helper method to check if authenticated
   isAuthenticated(): Observable<boolean> {
     return this.isAuthenticated$;
+  }
+
+  // Force reset premium status (for testing/debugging)
+  resetPremiumStatus() {
+    console.log('Resetting premium status');
+    this.setPremiumStatus(false);
+    localStorage.removeItem('isPremiumUser');
   }
 } 

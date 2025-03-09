@@ -6,13 +6,19 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Router } from '@angular/router';
 import { QuranReaderComponent } from '../components/quran/quran-reader/quran-reader.component';
+import { ToastService } from '../services/toast.service';
 
 interface UserPreferences {
   selectedReciter: number;
   selectedTranslation: string;
   fontSize: number;
-  darkMode: boolean;
   bookmarks: string[];
+  lastState?: {
+    isMushafView: boolean;
+    lastSurah?: number;
+    lastVerse?: number;
+    lastPage?: number;
+  };
 }
 
 interface ReadingHistoryEntry {
@@ -73,18 +79,6 @@ interface ReadingHistoryEntry {
             </div>
 
             <div class="form-group">
-              <label for="darkMode">Dark Mode</label>
-              <div class="toggle-switch">
-                <input type="checkbox" 
-                       id="darkMode" 
-                       [(ngModel)]="preferences.darkMode" 
-                       (change)="toggleDarkMode()"
-                       class="toggle-input">
-                <span class="toggle-slider"></span>
-              </div>
-            </div>
-
-            <div class="form-group">
               <label for="selectedReciter">Reciter</label>
               <select id="selectedReciter" 
                       [(ngModel)]="preferences.selectedReciter" 
@@ -103,7 +97,7 @@ interface ReadingHistoryEntry {
               <select id="selectedTranslation" 
                       [(ngModel)]="preferences.selectedTranslation" 
                       class="styled-select">
-                <option *ngFor="let translation of quranService.translations" [ngValue]="translation.id">
+                <option *ngFor="let translation of quranService.translations" [value]="translation.id">
                   {{ translation.name }} ({{ translation.language }})
                 </option>
               </select>
@@ -124,11 +118,20 @@ interface ReadingHistoryEntry {
             <div *ngFor="let bookmark of preferences.bookmarks" class="bookmark-item">
               <div class="bookmark-content">
                 <i class="fas fa-bookmark"></i>
-                <span>{{ bookmark }}</span>
+                <span>{{ formatVerseKey(bookmark) }}</span>
               </div>
-              <button (click)="removeBookmark(bookmark)" class="btn-remove" title="Remove bookmark">
-                <i class="fas fa-times"></i>
-              </button>
+              <div class="bookmark-actions">
+                <button (click)="navigateToVerse(+bookmark.split(':')[0], +bookmark.split(':')[1])" 
+                        class="btn-view" 
+                        title="View verse">
+                  <i class="fas fa-eye"></i>
+                </button>
+                <button (click)="removeBookmark(bookmark)" 
+                        class="btn-remove" 
+                        title="Remove bookmark">
+                  <i class="fas fa-times"></i>
+                </button>
+              </div>
             </div>
             <div *ngIf="preferences.bookmarks.length === 0" class="empty-state">
               <i class="fas fa-bookmark"></i>
@@ -144,14 +147,21 @@ interface ReadingHistoryEntry {
         <section class="history-section">
           <div class="section-header">
             <h3><i class="fas fa-history"></i> Reading History</h3>
-            <span class="history-count">{{ readingHistory.length }} entries</span>
+            <div class="flex items-center gap-4">
+              <span class="history-count">{{ readingHistory.length }} entries</span>
+              <button *ngIf="readingHistory.length > 0" 
+                      (click)="clearHistory()" 
+                      class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2">
+                <i class="fas fa-trash"></i> Clear History
+              </button>
+            </div>
           </div>
           <div class="history-list">
             <div *ngFor="let entry of readingHistory" class="history-item">
               <div class="history-content">
                 <div class="surah-ayah">
                   <i class="fas fa-book-open"></i>
-                  <span>Surah {{ entry.surah }}: Ayah {{ entry.ayah }}</span>
+                  <span>Surah {{ entry.surah }}, Verse {{ entry.ayah }}</span>
                 </div>
                 <span class="timestamp">{{ entry.timestamp | date:'medium' }}</span>
               </div>
@@ -332,51 +342,6 @@ interface ReadingHistoryEntry {
       color: #4a5568;
     }
 
-    .toggle-switch {
-      position: relative;
-      display: inline-block;
-      width: 60px;
-      height: 34px;
-    }
-
-    .toggle-input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .toggle-slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #e2e8f0;
-      transition: .4s;
-      border-radius: 34px;
-    }
-
-    .toggle-slider:before {
-      position: absolute;
-      content: "";
-      height: 26px;
-      width: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      transition: .4s;
-      border-radius: 50%;
-    }
-
-    .toggle-input:checked + .toggle-slider {
-      background-color: #B7A57A;
-    }
-
-    .toggle-input:checked + .toggle-slider:before {
-      transform: translateX(26px);
-    }
-
     .styled-select {
       padding: 0.75rem;
       border: 2px solid #e2e8f0;
@@ -462,12 +427,20 @@ interface ReadingHistoryEntry {
       color: #666;
     }
 
+    .bookmark-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
     .btn-remove, .btn-view {
       padding: 0.5rem;
       border: none;
       border-radius: 0.375rem;
       cursor: pointer;
       transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
     }
 
     .btn-remove {
@@ -482,9 +455,6 @@ interface ReadingHistoryEntry {
     .btn-view {
       background: #B7A57A;
       color: white;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
     }
 
     .btn-view:hover {
@@ -563,10 +533,6 @@ interface ReadingHistoryEntry {
       color: #666;
       margin-top: 0.25rem;
     }
-
-    .dark-mode .current-setting {
-      color: #c0c0c0;
-    }
   `]
 })
 export class ProfileComponent implements OnInit {
@@ -575,7 +541,6 @@ export class ProfileComponent implements OnInit {
     selectedReciter: 7,
     selectedTranslation: '131',
     fontSize: 24,
-    darkMode: false,
     bookmarks: []
   };
   readingHistory: ReadingHistoryEntry[] = [];
@@ -584,7 +549,8 @@ export class ProfileComponent implements OnInit {
   constructor(
     private authService: AuthService,
     public quranService: QuranService,
-    public router: Router
+    public router: Router,
+    private toastService: ToastService
   ) {}
 
   async ngOnInit() {
@@ -599,61 +565,59 @@ export class ProfileComponent implements OnInit {
   private async loadUserData() {
     if (!this.user) return;
 
-    // Load preferences
-    this.preferences = await this.authService.getUserSettings();
-    
-    // Apply dark mode immediately
-    this.applyDarkMode(this.preferences.darkMode);
+    try {
+      // Load preferences
+      const savedPreferences = await this.authService.getUserSettings();
+      
+      // Initialize preferences with defaults if not set
+      this.preferences = {
+        selectedReciter: savedPreferences?.selectedReciter ?? 7,
+        selectedTranslation: savedPreferences?.selectedTranslation ?? '131',
+        fontSize: savedPreferences?.fontSize ?? 24,
+        bookmarks: savedPreferences?.bookmarks ?? [],
+        lastState: savedPreferences?.lastState
+      };
 
-    // Load reading history
-    this.readingHistory = await this.authService.getReadingHistory();
-  }
-
-  toggleDarkMode() {
-    this.applyDarkMode(this.preferences.darkMode);
-  }
-
-  private applyDarkMode(isDark: boolean) {
-    // Remove any existing dark mode class
-    document.body.classList.remove('dark-mode');
-    // Add dark mode class if enabled
-    if (isDark) {
-      document.body.classList.add('dark-mode');
+      // Load reading history
+      this.readingHistory = await this.authService.getReadingHistory() || [];
+      
+      // Sort reading history by timestamp in descending order (most recent first)
+      this.readingHistory.sort((a, b) => 
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
-    // Store the preference
-    localStorage.setItem('darkMode', isDark.toString());
   }
 
   getCurrentReciterName(): string {
     const reciter = this.quranService.reciters.find(r => r.id === this.preferences.selectedReciter);
-    return reciter ? reciter.name : 'Not set';
+    return reciter ? `${reciter.name} (${reciter.style})` : 'Not set';
   }
 
   getCurrentTranslationName(): string {
-    const translation = this.quranService.translations.find(t => t.id.toString() === this.preferences.selectedTranslation);
-    return translation ? translation.name : 'Not set';
+    const translation = this.quranService.translations.find(t => t.id === Number(this.preferences.selectedTranslation));
+    return translation ? `${translation.name} (${translation.language})` : 'Not set';
   }
 
   async savePreferences() {
     if (!this.user) return;
     
     try {
-      // Save preferences to backend
+      // First save to backend to ensure it succeeds
       await this.authService.saveUserPreferences(this.preferences);
       
-      // Show success message
-      this.showSuccessMessage = true;
-      setTimeout(() => {
-        this.showSuccessMessage = false;
-      }, 3000);
-
-      // Apply preferences to Quran reader
+      // Then update QuranReader if it exists
       const quranReader = document.querySelector('app-quran-reader');
       if (quranReader) {
-        // Get the component instance
         const quranReaderComponent = (quranReader as any).__ngContext__?.component;
         if (quranReaderComponent) {
-          // Update the component's properties
+          // Stop any current playback
+          if (quranReaderComponent.isPlaying || quranReaderComponent.isPlayingFullSurah) {
+            quranReaderComponent.stopAndCloseAudioPlayer();
+          }
+
+          // Update reciter
           const selectedReciter = this.quranService.reciters.find(
             r => r.id === this.preferences.selectedReciter
           );
@@ -661,43 +625,79 @@ export class ProfileComponent implements OnInit {
             quranReaderComponent.selectedReciter = selectedReciter;
           }
 
-          const selectedTranslation = this.quranService.translations.find(
-            t => t.id.toString() === this.preferences.selectedTranslation
-          );
-          if (selectedTranslation) {
-            quranReaderComponent.selectedTranslation = selectedTranslation.id.toString();
-          }
+          // Update translation
+          quranReaderComponent.selectedTranslation = this.preferences.selectedTranslation;
 
+          // Update font size
           quranReaderComponent.fontSize = this.preferences.fontSize;
-          quranReaderComponent.isDarkMode = this.preferences.darkMode;
-          
-          // Trigger any necessary updates
-          if (quranReaderComponent.onPreferencesChange) {
-            quranReaderComponent.onPreferencesChange();
+
+          // Save current state
+          this.preferences.lastState = {
+            isMushafView: quranReaderComponent.isMushafView,
+            lastSurah: quranReaderComponent.currentSurah,
+            lastVerse: quranReaderComponent.currentRecitingVerse,
+            lastPage: quranReaderComponent.displayPageNumber
+          };
+
+          // Force reload current content with new settings
+          if (quranReaderComponent.isMushafView) {
+            quranReaderComponent.loadMushafPage(quranReaderComponent.currentPage);
+          } else if (quranReaderComponent.currentSurah) {
+            quranReaderComponent.loadSurah(quranReaderComponent.currentSurah);
           }
         }
       }
-
-      // Apply dark mode
-      this.applyDarkMode(this.preferences.darkMode);
+      
+      // Show success message
+      this.showSuccessMessage = true;
+      setTimeout(() => {
+        this.showSuccessMessage = false;
+      }, 3000);
     } catch (error) {
       console.error('Error saving preferences:', error);
-      // TODO: Show error message to user
     }
   }
 
   async removeBookmark(verseKey: string) {
     if (!this.user) return;
-    await this.authService.removeBookmark(verseKey);
-    this.preferences.bookmarks = this.preferences.bookmarks.filter(b => b !== verseKey);
+    
+    try {
+      await this.authService.removeBookmark(verseKey);
+      this.preferences.bookmarks = this.preferences.bookmarks.filter(b => b !== verseKey);
+      this.toastService.show('Bookmark removed successfully');
+    } catch (error) {
+      console.error('Error removing bookmark:', error);
+      this.toastService.show('Error removing bookmark');
+    }
   }
 
   navigateToVerse(surah: number, ayah: number) {
+    // Navigate to the Quran page with query params and preserve state
     this.router.navigate(['/quran'], { 
       queryParams: { 
         surah: surah,
         ayah: ayah
-      }
+      },
+      queryParamsHandling: 'merge' // This preserves existing query params
     });
+  }
+
+  formatVerseKey(verseKey: string): string {
+    const [surah, ayah] = verseKey.split(':');
+    const surahDetails = this.quranService.surahs.find(s => s.number === parseInt(surah));
+    return `${surahDetails ? surahDetails.name : `Surah ${surah}`}, Verse ${ayah}`;
+  }
+
+  async clearHistory() {
+    if (!this.user) return;
+    
+    try {
+      await this.authService.clearReadingHistory();
+      this.readingHistory = [];
+      this.toastService.show('Reading history cleared successfully');
+    } catch (error) {
+      console.error('Error clearing reading history:', error);
+      this.toastService.show('Error clearing reading history');
+    }
   }
 } 

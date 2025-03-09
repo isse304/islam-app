@@ -1,8 +1,6 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -10,20 +8,18 @@ import { map } from 'rxjs/operators';
 export class AuthGuard implements CanActivate {
   constructor(private authService: AuthService) {}
 
-  canActivate(
+  async canActivate(
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
-  ): Observable<boolean> | Promise<boolean> | boolean {
-    return this.authService.getAuthState().pipe(
-      map(isAuthenticated => {
-        if (!isAuthenticated) {
-          // Save current route and redirect to login
-          this.authService.saveCurrentRoute(state.url, route.params);
-          this.authService.login();
-          return false;
-        }
-        return true;
-      })
-    );
+  ): Promise<boolean> {
+    const isAuthenticated = await this.authService.checkAuthState();
+    
+    if (!isAuthenticated) {
+      // Save the current route and open Clerk modal
+      await this.authService.login();
+      return false;
+    }
+
+    return true;
   }
 } 

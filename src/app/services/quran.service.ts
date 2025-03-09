@@ -282,20 +282,30 @@ export class QuranService {
     
     return this.http.get(quranComUrl).pipe(
       map((response: any) => {
+        if (!response?.verses) {
+          throw new Error('Invalid response format');
+        }
         return response.verses.map((verse: any) => {
+          if (!verse.translations?.[0]?.text) {
+            console.error('Missing translation for verse:', verse.verse_number);
+          }
           return {
             number: verse.verse_number,
             text: verse.text_uthmani,
-            translation: verse.translations[0].text.replace(/<[^>]*>.*?<\/[^>]*>/g, ''),
-            transliteration: verse.words.map((word: any) => word.transliteration.text).join(' '),
+            translation: verse.translations?.[0]?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || 'Translation not available',
+            transliteration: verse.words?.map((word: any) => word.transliteration?.text || '').join(' ') || '',
             audio: this.getVerseAudioUrl(7, `${surahNumber}:${verse.verse_number}`),
-            words: verse.words.map((word: any) => ({
-              text: word.text_uthmani,
+            words: verse.words?.map((word: any) => ({
+              text: word.text_uthmani || '',
               translation: word.translation?.text || '',
               transliteration: word.transliteration?.text || ''
-            }))
+            })) || []
           };
         });
+      }),
+      catchError(error => {
+        console.error('Error fetching surah:', error);
+        throw error;
       })
     );
   }

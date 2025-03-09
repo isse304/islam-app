@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, HostListener, Input, Output, EventEmitter, ViewChild, ElementRef } from '@angular/core';
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
-import { Observable, forkJoin, firstValueFrom, Subscription, map, from } from 'rxjs';
+import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError } from 'rxjs';
 import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SttService } from '../../../services/stt.service';
@@ -59,8 +59,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   verses: QuranVerse[] = [];
   selectedVerse?: QuranVerse;
   tafsir: string = '';
-  bookmarks: number[] = [];
-  selectedReciter: Reciter;
+  bookmarks: string[] = [];
+  selectedReciter!: Reciter;
+  reciters: Reciter[] = [];
   audioPlayer: HTMLAudioElement = new Audio();
   isLoading: boolean = false;
   isPlaying: boolean = false;
@@ -73,7 +74,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   selectedTafsir: string = 'en.tafsir-ibn-kathir';
   selectedTranslation: string = '131';
   translations: any[] = [];
-  reciters: Reciter[];
   isPlayingFullSurah: boolean = false;
   currentVerseIndex: number = 0;
   selectedWord: { text: string, translation: string } | null = null;
@@ -143,9 +143,99 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private authService: AuthService,
     private toastService: ToastService
   ) {
-    this.selectedReciter = this.quranService.reciters[0];
-    this.reciters = this.quranService.reciters;
-    this.totalPages = this.DISPLAY_TOTAL; // Update to show correct total pages to user
+    // Don't set reciters here, wait for ngOnInit
+  }
+
+  async ngOnInit() {
+    try {
+      // First, wait for both surahs and preferences
+      const [surahs, prefs] = await Promise.all([
+        firstValueFrom(this.quranService.getSurahList()),
+        this.authService.getUserSettings()
+      ]);
+
+      // Set surahs
+      this.surahs = surahs;
+
+      // Get URL parameters first as they take precedence
+      const queryParams = new URLSearchParams(window.location.search);
+      const modeParam = queryParams.get('mode');
+      const surahParam = queryParams.get('surah');
+      const pageParam = queryParams.get('page');
+
+      // Set view mode first
+      this.isMushafView = modeParam === 'mushaf';
+
+      // Initialize state based on view mode
+      if (this.isMushafView) {
+        // In mushaf mode, only use page and surah parameters
+        const parsedSurah = surahParam ? parseInt(surahParam) : (prefs?.lastState?.lastSurah || 1);
+        this.currentSurah = parsedSurah;
+        this.selectedSurah = parsedSurah;
+
+        let pageNumber: number;
+        if (pageParam) {
+          // Convert display page number from URL to actual page number
+          const displayPage = parseInt(pageParam);
+          pageNumber = this.quranFlash.displayToActualPage(displayPage);
+        } else if (prefs?.lastState?.lastPage) {
+          // Convert display page from preferences to actual page number
+          pageNumber = this.quranFlash.displayToActualPage(prefs.lastState.lastPage);
+        } else {
+          // Get page by surah if no page specified
+          pageNumber = await firstValueFrom(this.quranFlash.getPageBySurah(parsedSurah));
+        }
+        
+        this.currentPage = pageNumber;
+        this.displayPageNumber = this.quranFlash.actualToDisplayPage(pageNumber);
+        await this.loadMushafPage(pageNumber);
+      } else {
+        // In translation mode, handle all parameters
+        const ayahParam = queryParams.get('ayah');
+        const translationParam = queryParams.get('translation');
+        const reciterParam = queryParams.get('reciter');
+        const tafsirParam = queryParams.get('tafsir');
+
+        // Initialize translation view settings
+        this.selectedReciter = await this.initializeReciter(reciterParam, prefs);
+        this.selectedTranslation = translationParam || prefs?.selectedTranslation || '131';
+        this.selectedTafsir = tafsirParam || prefs?.selectedTafsir || 'en.tafsir-ibn-kathir';
+        this.fontSize = prefs?.fontSize || 24;
+        this.bookmarks = prefs?.bookmarks || [];
+        this.showWordByWord = prefs?.showWordByWord || false;
+        this.showingTranslation = prefs?.showingTranslation !== undefined ? prefs.showingTranslation : true;
+        this.arabicFont = prefs?.arabicFont || 'uthmani';
+        this.arabicFontSize = prefs?.arabicFontSize || 32;
+        this.isDarkMode = prefs?.isDarkMode || false;
+
+        // Set current surah and load it
+        const initialSurah = surahParam ? parseInt(surahParam) : (prefs?.lastState?.lastSurah || 1);
+        this.currentSurah = initialSurah;
+        this.selectedSurah = initialSurah;
+        await firstValueFrom(this.loadSurah(initialSurah));
+
+        // Handle verse navigation if specified
+        if (ayahParam) {
+          const ayah = parseInt(ayahParam);
+          setTimeout(() => {
+            this.goToVerse(initialSurah, ayah);
+          }, 100);
+        } else if (prefs?.lastState?.lastVerse) {
+          setTimeout(() => {
+            this.goToVerse(initialSurah, prefs.lastState.lastVerse);
+          }, 100);
+        }
+      }
+
+      // Setup audio events after preferences are loaded
+      this.setupAudioEvents();
+
+      // Update URL to reflect current state
+      this.updateUrlParams();
+      
+    } catch (error) {
+      console.error('Error initializing QuranReader:', error);
+    }
   }
 
   private setupAudioEvents() {
@@ -174,75 +264,38 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  ngOnInit() {
-    // Initialize surahs and other data
-    this.quranService.getSurahs().subscribe(surahs => {
-      this.surahs = surahs;
-      
-      // Initialize with selected surah
-      const initialSurah = this.selectedSurah || 1;
-      this.currentSurah = initialSurah;
-      this.selectedSurah = initialSurah;
-      
-      if (this.isMushafView) {
-        this.quranFlash.getPageBySurah(initialSurah).subscribe(page => {
-          if (page) {
-            this.currentPage = page;
-            this.loadMushafPage(page);
-          }
-        });
-      } else {
-        this.quranService.getSurah(initialSurah, this.selectedTranslation)
-          .subscribe(verses => {
-            this.verses = verses;
-            const surahDetails = this.surahs.find(s => s.number === initialSurah);
-            if (surahDetails) {
-              this.currentSurahDetails = surahDetails;
-              this.surahName = surahDetails.name;
-            }
-          });
-      }
-    });
-
-    this.loadPreferences();
-    this.checkDarkMode();
-
-    this.quranService.getJuzList().subscribe({
-      next: (juzs) => {
-        this.juzList = juzs;
-      },
-      error: (error) => console.error('Error loading juz list:', error)
-    });
-  }
-
-  // Add Input change detection
-  ngOnChanges() {
-    if (this.selectedSurah) {
-      this.selectSurah(this.selectedSurah);
-    }
-  }
-
-  loadSurah(surahNumber: number) {
-    if (!surahNumber) return;
+  loadSurah(surahNumber: number): Observable<void> {
+    if (!surahNumber) return of(void 0);
+    
     this.isLoading = true;
     
-    return this.quranService.getSurah(surahNumber, this.selectedTranslation)
-      .subscribe({
-        next: (verses) => {
-          this.verses = verses;
-          this.currentSurah = surahNumber;
-          this.selectedSurah = surahNumber;
-          this.surahSelectionChange.emit(surahNumber);
-          
-          const surahDetails = this.surahs.find(s => s.number === surahNumber);
-          if (surahDetails) {
-            this.currentSurahDetails = surahDetails;
-            this.surahName = surahDetails.name;
-          }
-        },
-        error: (error) => console.error('Error loading surah:', error),
-        complete: () => this.isLoading = false
-      });
+    return this.quranService.getSurah(surahNumber, this.selectedTranslation).pipe(
+      map(verses => {
+        // Update verses with correct audio URLs for current reciter
+        this.verses = verses.map(verse => ({
+          ...verse,
+          audio: this.quranService.getVerseAudioUrl(this.selectedReciter.id, `${surahNumber}:${verse.number}`)
+        }));
+        
+        this.currentSurah = surahNumber;
+        this.selectedSurah = surahNumber;
+        this.surahSelectionChange.emit(surahNumber);
+        
+        const surahDetails = this.surahs.find(s => s.number === surahNumber);
+        if (surahDetails) {
+          this.currentSurahDetails = surahDetails;
+          this.surahName = surahDetails.name;
+        }
+        
+        this.isLoading = false;
+      }),
+      catchError(error => {
+        console.error('Error loading surah:', error);
+        this.isLoading = false;
+        this.toastService.show('Error loading surah');
+        return of(void 0);
+      })
+    );
   }
 
   showTafsir(verse: QuranVerse) {
@@ -317,44 +370,67 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurah(this.currentSurah || 1);
   }
 
-  toggleBookmark(verseNumber: number) {
+  isBookmarked(verseNumber: number): boolean {
+    if (!this.currentSurah) return false;
+    const verseKey = `${this.currentSurah}:${verseNumber}`;
+    return this.bookmarks.includes(verseKey);
+  }
+
+  async toggleBookmark(verseNumber: number) {
+    if (!this.currentSurah) return;
+    
     try {
-      const bookmark = { surah: this.currentSurah, verse: verseNumber };
-      const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+      const verseKey = `${this.currentSurah}:${verseNumber}`;
       
-      if (bookmarks.some((b: any) => b.surah === bookmark.surah && b.verse === bookmark.verse)) {
-        const index = bookmarks.findIndex((b: any) => 
-          b.surah === bookmark.surah && b.verse === bookmark.verse
-        );
-        bookmarks.splice(index, 1);
+      if (this.isBookmarked(verseNumber)) {
+        // Remove bookmark
+        await this.authService.removeBookmark(verseKey);
+        this.bookmarks = this.bookmarks.filter(b => b !== verseKey);
+        this.toastService.show('Bookmark removed');
       } else {
-        bookmarks.push(bookmark);
+        // Add bookmark
+        const updatedBookmarks = [...this.bookmarks, verseKey];
+        const currentPrefs = await this.authService.getUserSettings() || {
+          selectedReciter: this.selectedReciter?.id,
+          selectedTranslation: this.selectedTranslation,
+          fontSize: this.fontSize,
+          bookmarks: []
+        };
+        
+        await this.authService.saveUserPreferences({
+          ...currentPrefs,
+          bookmarks: updatedBookmarks
+        });
+        
+        this.bookmarks = updatedBookmarks;
+        this.toastService.show('Bookmark added');
       }
       
-      localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-    } catch (err) {
-      console.error('Error toggling bookmark:', err);
+      // Save state after bookmark update
+      await this.saveState();
+    } catch (error) {
+      console.error('Error toggling bookmark:', error);
+      this.toastService.show('Error updating bookmark');
     }
-  }
-
-  private loadBookmarks() {
-    const saved = localStorage.getItem('quran-bookmarks');
-    if (saved) {
-      this.bookmarks = JSON.parse(saved);
-    }
-  }
-
-  private saveBookmarks() {
-    localStorage.setItem('quran-bookmarks', JSON.stringify(this.bookmarks));
   }
 
   ngOnDestroy() {
+    // Save state and reading history when leaving the component
+    this.saveState();
+    if (this.currentSurah && this.currentRecitingVerse) {
+      this.authService.saveQuranReaderState({
+        surah: this.currentSurah,
+        verse: this.currentRecitingVerse,
+        position: window.scrollY,
+        lastRead: new Date()
+      });
+    }
     if (this.audioPlayer) {
       this.audioPlayer.pause();
-      this.audioPlayer.src = '';
+      this.audioPlayer = new Audio();
     }
-    if (this.pageSubscription) {
-      this.pageSubscription.unsubscribe();
+    if (this.verseCheckInterval) {
+      clearInterval(this.verseCheckInterval);
     }
   }
 
@@ -456,7 +532,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
   }
 
-  selectSurah(surahNumber: number) {
+  async selectSurah(surahNumber: number) {
     console.log('Selecting surah:', surahNumber);
     if (!surahNumber) return;
     
@@ -498,18 +574,67 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           complete: () => this.isLoading = false
         });
     }
+    await this.saveState();
   }
 
   goToVerse(surahNumber: number, verseNumber: number) {
+    this.selectedSurah = surahNumber;
     this.currentSurah = surahNumber;
-    this.loadSurah(this.currentSurah);
-    // Wait for verses to load
-    setTimeout(() => {
-      const verseElement = document.querySelector(`#verse-${verseNumber}`);
-      if (verseElement) {
-        verseElement.scrollIntoView({ behavior: 'smooth' });
+    
+    // If we're in mushaf view, switch to translation view for better verse navigation
+    if (this.isMushafView) {
+      this.isMushafView = false;
+    }
+    
+    // Load the surah first
+    this.loadSurah(surahNumber).subscribe({
+      next: () => {
+        // After surah is loaded, scroll to verse with a delay to ensure content is rendered
+        const attemptScroll = (attempts = 0) => {
+          const verseElement = document.getElementById(`verse-${verseNumber}`);
+          if (verseElement) {
+            // Remove any existing highlights first
+            document.querySelectorAll('.highlight-verse').forEach(el => {
+              el.classList.remove('highlight-verse');
+            });
+            
+            // Calculate scroll position with header offset
+            const headerOffset = 80;
+            const elementPosition = verseElement.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.scrollY - headerOffset;
+            
+            // Scroll to verse
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+            
+            // Add highlight class
+            verseElement.classList.add('highlight-verse');
+            
+            // Remove highlight after animation
+            setTimeout(() => {
+              verseElement.classList.remove('highlight-verse');
+            }, 2000);
+            
+            // Update current verse and save state
+            this.currentRecitingVerse = verseNumber;
+            this.updateUrlParams();
+            this.saveState();
+          } else if (attempts < 5) {
+            // Retry up to 5 times with increasing delays
+            setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
+          }
+        };
+
+        // Initial attempt after a short delay
+        setTimeout(() => attemptScroll(), 100);
+      },
+      error: (error) => {
+        console.error('Error loading surah:', error);
+        this.toastService.show('Error loading verse');
       }
-    }, 1000);
+    });
   }
 
   showWordDetails(wordId: number) {
@@ -595,26 +720,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
   }
 
-  isBookmarked(verse: QuranVerse): boolean {
-    try {
-      const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-      return bookmarks.some((b: any) => 
-        b.surah === this.currentSurah && b.verse === verse.number
-      );
-    } catch (err) {
-      console.error('Error checking bookmark:', err);
-      return false;
-    }
-  }
-
-  // Load user preferences
-  private loadPreferences() {
-    this.showingTranslation = localStorage.getItem('showTranslation') !== 'false';
-    this.showWordByWord = localStorage.getItem('showWordByWord') === 'true';
-    this.arabicFont = (localStorage.getItem('arabicFont') as 'uthmani' | 'naskh') || 'uthmani';
-    this.fontSize = parseInt(localStorage.getItem('fontSize') || '24');
-  }
-
   selectWord(word: { text: string, translation: string }) {
     this.selectedWord = word;
     if (window.innerWidth <= 768) { // Show popup on mobile
@@ -688,13 +793,27 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private scrollToVerse(verseNumber: number) {
-    const verseElement = document.getElementById(`verse-${verseNumber}`);
-    if (verseElement) {
-      verseElement.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'center'
-      });
-    }
+    // Wait for a short delay to ensure content is loaded
+    setTimeout(() => {
+      const verseElement = document.getElementById(`verse-${verseNumber}`);
+      if (verseElement) {
+        // Scroll with offset for header
+        const headerOffset = 80;
+        const elementPosition = verseElement.getBoundingClientRect().top;
+        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        });
+        
+        // Highlight the verse briefly
+        verseElement.classList.add('highlight-verse');
+        setTimeout(() => {
+          verseElement.classList.remove('highlight-verse');
+        }, 2000);
+      }
+    }, 500);
   }
 
   private checkCurrentVerse() {
@@ -763,25 +882,33 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   toggleView() {
     this.isMushafView = !this.isMushafView;
     
+    // Prepare query parameters based on view mode
+    let queryParams: any = {};
+    
     if (this.isMushafView) {
-      this.quranFlash.getPageBySurah(this.currentSurah || 1).subscribe(page => {
-        if (page) {
-          this.currentPage = page;
-          this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
-          this.loadMushafPage(page);
-        }
-      });
+      // When switching to mushaf mode, only keep surah and mode
+      queryParams = {
+        mode: 'mushaf',
+        surah: this.currentSurah,
+        page: this.displayPageNumber
+      };
     } else {
-      this.quranService.getSurah(this.currentSurah || 1, this.selectedTranslation)
-        .subscribe(verses => {
-          this.verses = verses;
-          const surahDetails = this.surahs.find(s => s.number === this.currentSurah);
-          if (surahDetails) {
-            this.currentSurahDetails = surahDetails;
-            this.surahName = surahDetails.name;
-          }
-        });
+      // When switching to translation mode, only keep surah and mode
+      queryParams = {
+        mode: 'translation',
+        surah: this.currentSurah
+      };
     }
+
+    // Update URL with appropriate parameters
+    this.router.navigate([], {
+      relativeTo: this.router.routerState.root,
+      queryParams,
+      // Don't merge with existing parameters to ensure clean state
+      queryParamsHandling: undefined
+    });
+    
+    this.saveState();
   }
 
   @HostListener('window:keyup', ['$event'])
@@ -845,7 +972,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadMushafPage(pageNumber: number) {
+  async loadMushafPage(pageNumber: number) {
     console.log('Loading mushaf page:', pageNumber);
     this.isLoading = true;
     
@@ -874,6 +1001,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     
     this.updateCurrentSurah(pageNumber);
     this.isLoading = false;
+    this.updateUrlParams();
+    this.saveState();
   }
   
   private updateCurrentSurah(pageNumber: number) {
@@ -1079,15 +1208,46 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   selectTranslation(translationId: string) {
+    if (!this.currentSurah) return;
+    
     this.selectedTranslation = translationId;
-    this.loadSurah(this.selectedSurah);
+    this.isLoading = true;
+
+    // Load surah with new translation
+    this.loadSurah(this.currentSurah).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.updateUrlParams();
+        this.saveState();
+      },
+      error: (error) => {
+        console.error('Error loading translation:', error);
+        this.isLoading = false;
+        this.toastService.show('Error loading translation');
+      }
+    });
   }
 
   selectReciter(reciter: Reciter) {
     this.selectedReciter = reciter;
+    // Stop any current playback
+    this.stopAndCloseAudioPlayer();
+    
+    // Update audio URLs for all verses if they exist
+    if (this.verses && this.verses.length > 0) {
+      this.verses = this.verses.map(verse => ({
+        ...verse,
+        audio: this.quranService.getVerseAudioUrl(reciter.id, `${this.currentSurah || 1}:${verse.number}`)
+      }));
+    }
+    
     if (this.isPlayingFullSurah) {
       this.playFullSurah(); // Restart playback with new reciter
     }
+
+    // Update URL and save state
+    this.updateUrlParams();
+    this.saveState();
   }
 
   selectTafsir(tafsirId: string) {
@@ -1095,6 +1255,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.selectedVerse) {
       this.showTafsir(this.selectedVerse);
     }
+    this.updateUrlParams();
   }
 
   // Remove the local page conversion methods since we're using the service's methods
@@ -1130,5 +1291,112 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.surahName = surahDetails.name;
       }
     }
+  }
+
+  // Update save state method
+  private async saveState() {
+    try {
+      const user = await firstValueFrom(this.authService.user$);
+      if (!user) return;
+
+      // Save reading history first if we have a current verse
+      if (this.currentSurah && this.currentRecitingVerse) {
+        await this.authService.saveQuranReaderState({
+          surah: this.currentSurah,
+          verse: this.currentRecitingVerse,
+          position: window.scrollY,
+          lastRead: new Date()
+        });
+      }
+
+      // Get current state
+      const currentState = {
+        isMushafView: this.isMushafView,
+        lastSurah: this.currentSurah,
+        lastVerse: this.currentRecitingVerse,
+        lastPage: this.displayPageNumber,
+        isDoublePageView: this.isDoublePageView,
+        showWordByWord: this.showWordByWord,
+        showingTranslation: this.showingTranslation,
+        arabicFont: this.arabicFont,
+        arabicFontSize: this.arabicFontSize,
+        mushafZoom: this.mushafZoom
+      };
+
+      // Create updated preferences object with all current values
+      const updatedPrefs = {
+        selectedReciter: this.selectedReciter?.id,
+        selectedTranslation: this.selectedTranslation,
+        selectedTafsir: this.selectedTafsir,
+        fontSize: this.fontSize,
+        bookmarks: this.bookmarks || [],
+        lastState: currentState,
+        isDarkMode: this.isDarkMode
+      };
+
+      // Save to backend
+      await this.authService.saveUserPreferences(updatedPrefs);
+    } catch (error) {
+      console.error('Error saving state:', error);
+    }
+  }
+
+  // Update save state method
+  private updateUrlParams() {
+    let queryParams: any = {};
+
+    if (this.isMushafView) {
+      // In mushaf mode, only include mode, page and surah
+      queryParams = {
+        mode: 'mushaf',
+        page: this.displayPageNumber,
+        surah: this.currentSurah
+      };
+    } else {
+      // In translation mode, include all translation-specific parameters
+      queryParams = {
+        mode: 'translation',
+        surah: this.currentSurah
+      };
+
+      // Only add these parameters if we're in translation mode
+      if (this.currentRecitingVerse) {
+        queryParams.ayah = this.currentRecitingVerse;
+      }
+
+      if (this.selectedTranslation !== '131') {
+        queryParams.translation = this.selectedTranslation;
+      }
+
+      if (this.selectedReciter?.id !== 7) {
+        queryParams.reciter = this.selectedReciter?.id;
+      }
+
+      if (this.selectedTafsir !== 'en.tafsir-ibn-kathir') {
+        queryParams.tafsir = this.selectedTafsir;
+      }
+    }
+
+    this.router.navigate([], {
+      relativeTo: this.router.routerState.root,
+      queryParams,
+      // Don't merge to ensure clean state for each mode
+      queryParamsHandling: undefined
+    });
+  }
+
+  private async initializeReciter(reciterParam: string | null, prefs: any): Promise<Reciter> {
+    if (reciterParam) {
+      const reciterId = parseInt(reciterParam);
+      const reciter = this.quranService.reciters.find(r => r.id === reciterId);
+      if (reciter) return reciter;
+    }
+    
+    if (prefs?.selectedReciter) {
+      const reciter = this.quranService.reciters.find(r => r.id === prefs.selectedReciter);
+      if (reciter) return reciter;
+    }
+    
+    return this.quranService.reciters[0];
   }
 } 

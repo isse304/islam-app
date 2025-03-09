@@ -4,11 +4,14 @@ import { DuaService, Dua, DuaCategory } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SubscriptionService } from '../../services/subscription.service';
+import { DuaInsightsComponent } from '../dua-insights/dua-insights.component';
+import { AuthStateService } from '../../services/auth-state.service';
+import { firstValueFrom } from 'rxjs';
 
 @Component({
     selector: 'app-dua',
     templateUrl: './dua.component.html',
-    styleUrls: ['./dua.component.css'],
+    styleUrls: ['./dua.component.css']
 })
 export class DuaComponent implements OnInit, OnDestroy {
   selectedCategory: DuaCategory | null = null;
@@ -42,6 +45,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   constructor(
     private duaService: DuaService,
     private subscriptionService: SubscriptionService,
+    private authStateService: AuthStateService,
     //private prayerTimesService: PrayerTimesService,
     private route: ActivatedRoute,
     private router: Router
@@ -136,29 +140,37 @@ export class DuaComponent implements OnInit, OnDestroy {
   async searchByFeeling() {
     if (!this.feeling) return;
 
+    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    if (!isPremium) {
+      await this.subscriptionService.showSubscriptionDialog('Emotional Dua Search');
+      return;
+    }
+
     this.isLoading = true;
     this.error = '';
     this.selectedEmotion = this.feeling.trim();
     
     try {
-      // First, try to find duas in our database
+      // Get duas and insights for the emotional input
       const { duas, insights } = await this.duaService.getEmotionalDuasWithAI(this.selectedEmotion);
       
-      if (duas.length === 0) {
-        // If no duas found in our database, get recommendations from reliable sources
-        const { duas: recommendedDuas, insights: recommendedInsights } = 
-          await this.duaService.getRecommendedDuasFromSources(this.selectedEmotion);
-        
-        this.filteredDuas = recommendedDuas;
-        this.aiInsights = recommendedInsights;
-      } else {
-        this.filteredDuas = duas;
-        this.aiInsights = insights;
+      this.filteredDuas = duas;
+      this.aiInsights = insights;
+
+      // Get related emotions based on the detected emotions
+      const detectedEmotions = await this.duaService.extractEmotionsFromText(this.selectedEmotion);
+      this.emotionSuggestions = [];
+      
+      // Get related emotions for each detected emotion
+      for (const emotion of detectedEmotions) {
+        const related = this.duaService.getRelatedEmotions(emotion);
+        this.emotionSuggestions.push(...related);
       }
 
-      // Get related emotions
-      this.emotionSuggestions = await this.duaService.getRelatedEmotions(this.selectedEmotion);
-      this.emotionSuggestions = this.emotionSuggestions.slice(0, 5);
+      // Remove duplicates and limit to 5 suggestions
+      this.emotionSuggestions = [...new Set(this.emotionSuggestions)]
+        .filter(emotion => !detectedEmotions.includes(emotion))
+        .slice(0, 5);
     } catch (error) {
       console.error('Error searching duas:', error);
       this.error = 'An error occurred while searching for duas. Please try again.';
@@ -186,11 +198,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async onDuaSelect(dua: Dua) {
-    // Temporarily bypass premium check for debugging
-    // const hasPremiumAccess = await this.subscriptionService.checkPremiumAccess('AI Dua Insights');
-    // if (hasPremiumAccess) {
     this.selectedDua = dua;
-    // }
   }
 
   private loadDuas() {
@@ -215,7 +223,10 @@ export class DuaComponent implements OnInit, OnDestroy {
       const advice = sections.find(section => 
         section.toLowerCase().includes('spiritual advice')
       );
-      return advice ? advice.split('\n').filter(p => p.trim()) : [];
+      if (!advice) return [];
+      const lines = advice.split('\n');
+      // Skip the header line and filter out empty lines
+      return lines.slice(1).filter(line => line.trim()).map(line => line.trim());
     } catch (error) {
       console.error('Error parsing spiritual advice:', error);
       return [];
@@ -229,11 +240,13 @@ export class DuaComponent implements OnInit, OnDestroy {
       const practicalSection = sections.find(section => 
         section.toLowerCase().includes('practical steps')
       );
-      return practicalSection ? 
-        practicalSection.split('\n')
-          .filter(step => step.startsWith('•'))
-          .map(step => step.replace('•', '').trim()) : 
-        [];
+      if (!practicalSection) return [];
+      const lines = practicalSection.split('\n');
+      // Skip the header line and filter bullet points
+      return lines
+        .slice(1)
+        .filter(line => line.trim().startsWith('•'))
+        .map(line => line.replace('•', '').trim());
     } catch (error) {
       console.error('Error parsing practical steps:', error);
       return [];
@@ -265,7 +278,9 @@ export class DuaComponent implements OnInit, OnDestroy {
         section.toLowerCase().includes('understanding your emotion')
       );
       if (!understandingSection) return '';
-      return understandingSection.split('\n').slice(1).join('\n').trim();
+      const lines = understandingSection.split('\n');
+      // Skip the header line and return the rest
+      return lines.slice(1).join('\n').trim();
     } catch (error) {
       console.error('Error parsing understanding section:', error);
       return '';
@@ -280,7 +295,10 @@ export class DuaComponent implements OnInit, OnDestroy {
         section.toLowerCase().includes('example from quran') || 
         section.toLowerCase().includes('historical example')
       );
-      return historicalExample || '';
+      if (!historicalExample) return '';
+      const lines = historicalExample.split('\n');
+      // Skip the header line if it exists
+      return lines[0].toLowerCase().includes('example') ? lines.slice(1).join('\n').trim() : historicalExample;
     } catch (error) {
       console.error('Error parsing historical example:', error);
       return '';
@@ -295,10 +313,34 @@ export class DuaComponent implements OnInit, OnDestroy {
         section.toLowerCase().includes('this example teaches') ||
         section.toLowerCase().includes('learning from')
       );
-      return learningSection || '';
+      if (!learningSection) return '';
+      const lines = learningSection.split('\n');
+      // Skip the header line if it exists
+      return lines[0].toLowerCase().includes('learning') ? lines.slice(1).join('\n').trim() : learningSection;
     } catch (error) {
       console.error('Error parsing learning points:', error);
       return '';
+    }
+  }
+
+  getRelatedVerses(): string[] {
+    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
+    try {
+      const sections = this.aiInsights.split('\n\n');
+      const versesSection = sections.find(section => 
+        section.toLowerCase().includes('related verses') ||
+        section.toLowerCase().includes('quranic references')
+      );
+      if (!versesSection) return [];
+      const lines = versesSection.split('\n');
+      // Skip the header line and filter bullet points
+      return lines
+        .slice(1)
+        .filter(line => line.trim().startsWith('•'))
+        .map(line => line.replace('•', '').trim());
+    } catch (error) {
+      console.error('Error parsing related verses:', error);
+      return [];
     }
   }
 } 

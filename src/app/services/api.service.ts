@@ -82,7 +82,7 @@ export class ApiService {
       const token = await this.authService.getToken();
       if (!token) {
         this.notificationService.warning('Please sign in to access AI features');
-        // Save current route and redirect to login
+        // Save current route and open Clerk modal
         await this.authService.login();
         throw new Error('Authentication required');
       }
@@ -106,7 +106,7 @@ export class ApiService {
       console.error('API Request Error:', error);
       if (error.status === 401) {
         this.notificationService.warning('Please sign in to access AI features');
-        // Save current route and redirect to login
+        // Save current route and open Clerk modal
         await this.authService.login();
         return null;
       }
@@ -119,7 +119,7 @@ export class ApiService {
     let notificationType: 'error' | 'warning' = 'error';
 
     if (error instanceof HttpErrorResponse) {
-      console.error('HTTP Error Response:', error); // Add detailed error logging
+      console.error('HTTP Error Response:', error);
       switch (error.status) {
         case 0:
           errorMessage = 'Unable to connect to the server. Please check your internet connection.';
@@ -127,6 +127,8 @@ export class ApiService {
         case 401:
           errorMessage = 'Please sign in to access this feature';
           notificationType = 'warning';
+          // Open Clerk modal
+          this.authService.login().catch(err => console.error('Error opening Clerk modal:', err));
           break;
         case 403:
           errorMessage = 'You do not have permission to access this feature';
@@ -147,8 +149,7 @@ export class ApiService {
           errorMessage = error.error?.message || 'An unexpected error occurred';
       }
     } else {
-      // Client-side or network error
-      console.error('Client Error:', error); // Add detailed error logging
+      console.error('Client Error:', error);
       errorMessage = error.message || 'An unexpected error occurred';
     }
 

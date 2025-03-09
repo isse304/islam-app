@@ -1,5 +1,7 @@
 import { Component, Input } from '@angular/core';
 import { TafsirService } from '../../services/tafsir.service';
+import { SubscriptionService } from '../../services/subscription.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-dua-tafsir',
@@ -8,7 +10,8 @@ import { TafsirService } from '../../services/tafsir.service';
       <div *ngIf="!tafsir && !loading" class="text-center">
         <button 
           (click)="generateTafsir()"
-          class="px-6 py-3 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors">
+          class="px-6 py-3 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center justify-center gap-2">
+          <i class="fas fa-lock"></i>
           Generate AI Tafsir
         </button>
       </div>
@@ -17,7 +20,26 @@ import { TafsirService } from '../../services/tafsir.service';
         <div class="animate-spin rounded-full h-8 w-8 border-4 border-[#B7A57A] border-t-transparent"></div>
       </div>
 
-      <div *ngIf="tafsir" class="space-y-8">
+      <!-- Premium Required Message -->
+      <div *ngIf="error?.includes('premium')" class="text-center py-6">
+        <div class="bg-[#B7A57A]/10 rounded-lg p-6">
+          <i class="fas fa-crown text-[#B7A57A] text-3xl mb-4"></i>
+          <h3 class="text-lg font-semibold text-gray-800 mb-2">Unlock AI Tafsir</h3>
+          <p class="text-gray-600 mb-4">Get detailed explanations and insights with our AI-powered Tafsir analysis.</p>
+          <button 
+            (click)="router.navigate(['/premium'], { 
+              queryParams: { 
+                feature: 'AI Tafsir',
+                returnUrl: router.url
+              }
+            })" 
+            class="bg-[#B7A57A] text-white px-6 py-2 rounded-full hover:bg-[#A69469] transition-colors">
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="tafsir" class="space-y-8" premiumRequired>
         <!-- Detailed Explanation -->
         <div>
           <h3 class="text-xl font-semibold text-[#B7A57A] mb-3">Detailed Explanation</h3>
@@ -72,21 +94,26 @@ export class DuaTafsirComponent {
   
   tafsir: any = null;
   loading: boolean = false;
+  error: string = '';
 
-  constructor(private tafsirService: TafsirService) {}
+  constructor(
+    private tafsirService: TafsirService,
+    private subscriptionService: SubscriptionService,
+    public router: Router
+  ) {}
 
-  generateTafsir() {
+  async generateTafsir() {
     this.loading = true;
-    this.tafsirService.generateTafsir(this.arabic, this.translation)
-      .subscribe({
-        next: (response) => {
-          this.tafsir = response;
-          this.loading = false;
-        },
-        error: (error) => {
-          console.error('Error generating tafsir:', error);
-          this.loading = false;
-        }
-      });
+    this.error = '';
+    
+    try {
+      const response = await this.tafsirService.generateTafsir(this.arabic, this.translation).toPromise();
+      this.tafsir = response;
+    } catch (error) {
+      console.error('Error generating tafsir:', error);
+      this.error = 'Failed to generate tafsir. Please try again.';
+    } finally {
+      this.loading = false;
+    }
   }
 } 

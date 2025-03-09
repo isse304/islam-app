@@ -678,3 +678,20 @@ select option {
   font-family: 'KFGQPC HAFS Uthmanic Script', serif;
 }
 
+.verse-container {
+  scroll-margin-top: 100px; // Ensures proper scroll positioning with header
+}
+
+.highlight-verse {
+  animation: highlightFade 2s ease-out;
+}
+
+@keyframes highlightFade {
+  0% {
+    background-color: rgba(183, 165, 122, 0.3);
+  }
+  100% {
+    background-color: rgba(183, 165, 122, 0.1);
+  }
+}
+

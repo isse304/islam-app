@@ -1,94 +1,69 @@
-<div class="max-w-4xl mx-auto bg-white rounded-xl overflow-hidden">
+<div class="bg-white rounded-xl overflow-hidden max-h-[90vh]">
   <!-- Header -->
-  <div class="bg-[#B7A57A] text-white p-8 text-center relative overflow-hidden">
+  <div class="bg-[#B7A57A] text-white p-6 text-center relative overflow-hidden">
+    <!-- Close button -->
+    <button (click)="close()" class="absolute top-4 right-4 text-white hover:text-gray-200 z-10">
+      <i class="fas fa-times"></i>
+    </button>
+    
+    <!-- Content with pattern background -->
     <div class="relative z-10">
-      <h2 class="text-3xl font-bold mb-4">Unlock Premium Features</h2>
-      <p class="text-lg opacity-90">
+      <h2 class="text-2xl font-bold mb-2">Unlock Premium Features</h2>
+      <p class="text-base opacity-90">
         {{ data.feature ? 'Access ' + data.feature + ' and more premium features' : 'Enhance your spiritual journey with AI-powered insights' }}
       </p>
     </div>
-    <!-- Decorative pattern -->
+
+    <!-- Pattern Background -->
     <div class="absolute inset-0 opacity-10">
-      <img src="/islamic-pattern-1.png" alt="" class="w-full h-full object-cover">
+      <img src="islamic-pattern-2.png" alt="" class="w-full h-full object-cover">
     </div>
   </div>
 
   <!-- Content -->
   <div class="p-6">
     <!-- Value Proposition -->
-    <div class="text-center mb-8">
-      <h3 class="text-xl font-semibold text-gray-800 mb-4">Why Choose Premium?</h3>
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="p-4">
-          <i class="fas fa-brain text-[#B7A57A] text-3xl mb-3"></i>
-          <h4 class="font-semibold mb-2">AI-Powered Insights</h4>
-          <p class="text-gray-600">Get personalized understanding of Quran verses and duas</p>
-        </div>
-        <div class="p-4">
-          <i class="fas fa-chart-line text-[#B7A57A] text-3xl mb-3"></i>
-          <h4 class="font-semibold mb-2">Track Progress</h4>
-          <p class="text-gray-600">Advanced analytics to monitor your learning journey</p>
-        </div>
-        <div class="p-4">
-          <i class="fas fa-users text-[#B7A57A] text-3xl mb-3"></i>
-          <h4 class="font-semibold mb-2">Family Sharing</h4>
-          <p class="text-gray-600">Share premium benefits with your loved ones</p>
-        </div>
+    <div class="grid grid-cols-3 gap-4 mb-6">
+      <div class="text-center">
+        <i class="fas fa-brain text-[#B7A57A] text-2xl mb-2"></i>
+        <h4 class="font-semibold text-sm">AI Insights</h4>
+      </div>
+      <div class="text-center">
+        <i class="fas fa-lightbulb text-[#B7A57A] text-2xl mb-2"></i>
+        <h4 class="font-semibold text-sm">Smart Learning</h4>
+      </div>
+      <div class="text-center">
+        <i class="fas fa-heart text-[#B7A57A] text-2xl mb-2"></i>
+        <h4 class="font-semibold text-sm">Personalized</h4>
       </div>
     </div>
 
-    <!-- Pricing Tiers -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-      <div *ngFor="let tier of pricingTiers"
-           [class.border-[#B7A57A]]="tier.recommended"
-           [class.border-2]="tier.recommended"
-           class="relative bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow cursor-pointer"
-           (click)="selectTier(tier)">
-        <!-- Recommended badge -->
-        <div *ngIf="tier.recommended"
-             class="absolute -top-3 -right-3 bg-[#B7A57A] text-white px-3 py-1 rounded-full text-sm">
-          Best Value
-        </div>
-
-        <!-- Selection indicator -->
-        <div class="absolute top-4 right-4">
-          <div class="w-6 h-6 rounded-full border-2"
-               [class.border-[#B7A57A]]="selectedTier === tier"
-               [class.bg-[#B7A57A]]="selectedTier === tier">
-            <i *ngIf="selectedTier === tier" 
-               class="fas fa-check text-white text-sm flex items-center justify-center h-full">
-            </i>
-          </div>
-        </div>
-
-        <h3 class="text-xl font-bold mb-2">{{tier.name}}</h3>
-        <div class="flex items-baseline mb-4">
-          <span class="text-3xl font-bold">${{tier.price}}</span>
-          <span class="text-gray-600 ml-2">/{{tier.interval}}</span>
-        </div>
-
-        <ul class="space-y-3 mb-6">
-          <li *ngFor="let feature of tier.features" 
-              class="flex items-center text-gray-700">
-            <i class="fas fa-check text-[#B7A57A] mr-2"></i>
-            {{feature}}
-          </li>
-        </ul>
+    <!-- Pricing -->
+    <div class="bg-gradient-to-br from-[#B7A57A]/5 to-[#B7A57A]/10 rounded-lg p-6 mb-6 border border-[#B7A57A]/20">
+      <div class="text-center mb-6">
+        <h3 class="text-2xl font-bold text-[#B7A57A]">${{pricingTiers[0].price}}/month</h3>
       </div>
+      <ul class="grid grid-cols-1 gap-3">
+        <li *ngFor="let feature of pricingTiers[0].features" 
+            class="flex items-center text-gray-700">
+          <i class="fas fa-check-circle text-[#B7A57A] mr-3"></i>
+          {{feature}}
+        </li>
+      </ul>
     </div>
 
     <!-- Action Buttons -->
     <div class="flex justify-end space-x-4">
       <button (click)="close()"
-              class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
-        Maybe Later
+              class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+        Cancel
       </button>
       <button (click)="subscribe()"
-              [disabled]="!selectedTier || loading"
-              class="px-6 py-2 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+              [disabled]="loading"
+              class="px-6 py-2 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2">
         <span *ngIf="!loading">Subscribe Now</span>
-        <div *ngIf="loading" class="flex items-center">
-          <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></div>
+        <div *ngIf="loading" class="flex items-center gap-2">
+          <div class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
           Processing...
         </div>
       </button>

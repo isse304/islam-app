@@ -257,3 +257,31 @@ th, td {
 .mat-snack-bar-container {
   z-index: 9999 !important;
 }
+
+/* Premium Feature Styles */
+.premium-locked {
+  position: relative;
+  overflow: hidden;
+}
+
+.premium-locked::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 1;
+}
+
+.premium-lock-icon {
+  position: relative;
+  z-index: 2;
+  color: #B7A57A;
+}
+
+/* Hover effect for premium-locked items */
+.premium-locked:hover {
+  background-color: rgba(183, 165, 122, 0.1);
+}

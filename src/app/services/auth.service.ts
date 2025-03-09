@@ -1,8 +1,9 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of } from 'rxjs';
+import { BehaviorSubject, Observable, of, firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+
 // Add this to make TypeScript recognize the global Clerk object
 declare global {
   interface Window {
@@ -26,7 +27,9 @@ export interface User {
     fontSize?: number;
     darkMode?: boolean;
     bookmarks?: string[];
+    subscriptionStatus?: string;
   };
+  isAdmin: boolean;
 }
 
 interface PricingTier {
@@ -43,7 +46,7 @@ interface PricingTier {
 export class AuthService {
   private clerk: any;
   private userSubject = new BehaviorSubject<User | null>(null);
-  user$: Observable<User | null> = this.userSubject.asObservable();
+  user$ = this.userSubject.asObservable();
   isLoggedIn$: Observable<boolean> = of(false);
   private apiUrl = environment.production 
     ? '/api'  // In production, use relative path
@@ -233,7 +236,8 @@ export class AuthService {
       emailVerified: clerkUser.primaryEmailAddress?.verification?.status === 'verified',
       createdAt: new Date(clerkUser.createdAt),
       lastSignInAt: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt) : undefined,
-      preferences: await this.getUserPreferences(clerkUser.id)
+      preferences: await this.getUserPreferences(clerkUser.id),
+      isAdmin: clerkUser.isAdmin || false
     };
     
     this.userSubject.next(user);
@@ -578,11 +582,32 @@ export class AuthService {
   }): Promise<void> {
     await this.setPreference('quranReaderState', state);
     
-    // Also save reading history to backend
+    // Save reading history
     const user = this.userSubject.value;
-    if (!user) return;
+    if (!user || !state.surah || !state.verse) return;
     
     try {
+      // First update local storage
+      const localHistory = localStorage.getItem(`reading_history_${user.id}`);
+      const history = localHistory ? JSON.parse(localHistory) : [];
+      
+      // Add new entry
+      const newEntry = {
+        surah: Number(state.surah),
+        verse: Number(state.verse),
+        timestamp: new Date()
+      };
+      
+      // Remove any duplicate entries for the same surah/verse
+      const filteredHistory = history.filter((entry: any) => 
+        entry.surah !== newEntry.surah || entry.verse !== newEntry.verse
+      );
+      
+      // Add new entry and save
+      filteredHistory.push(newEntry);
+      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(filteredHistory));
+      
+      // Try to save to backend
       const token = await this.getToken();
       if (!token) return;
       
@@ -592,11 +617,7 @@ export class AuthService {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({
-          surah: state.surah,
-          verse: state.verse,
-          timestamp: state.lastRead || new Date()
-        })
+        body: JSON.stringify(newEntry)
       });
     } catch (error) {
       console.error('Error saving reading history:', error);
@@ -619,6 +640,18 @@ export class AuthService {
     if (!user) return [];
     
     try {
+      // First try to get from local storage
+      const localHistory = localStorage.getItem(`reading_history_${user.id}`);
+      if (localHistory) {
+        return JSON.parse(localHistory).map((entry: any) => ({
+          ...entry,
+          surah: Number(entry.surah),
+          verse: Number(entry.verse),
+          timestamp: new Date(entry.timestamp)
+        }));
+      }
+
+      // If no local history, try backend
       const token = await this.getToken();
       if (!token) return [];
       
@@ -629,7 +662,15 @@ export class AuthService {
       });
       
       if (response.ok) {
-        return await response.json();
+        const history = await response.json();
+        // Cache in local storage
+        localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(history));
+        return history.map((entry: any) => ({
+          ...entry,
+          surah: Number(entry.surah),
+          verse: Number(entry.verse),
+          timestamp: new Date(entry.timestamp)
+        }));
       }
     } catch (error) {
       console.error('Error fetching reading history:', error);
@@ -702,19 +743,135 @@ export class AuthService {
 
   // Handle login
   async login() {
-    // Save current route before redirecting to login
+    // Save current route before opening Clerk modal
     this.saveCurrentRoute(
       this.router.url,
       this.router.getCurrentNavigation()?.extras?.state
     );
     
-    // Redirect to login page
-    window.location.href = '/auth/login';
+    try {
+      await this.ensureInitialized();
+      if (!this.clerk) {
+        throw new Error('Clerk not initialized');
+      }
+      
+      // Open Clerk's sign in modal
+      await this.clerk.openSignIn({
+        redirectUrl: window.location.origin,
+        appearance: {
+          elements: {
+            rootBox: {
+              boxShadow: 'none',
+            },
+          },
+        },
+      });
+    } catch (error) {
+      console.error('Error opening Clerk sign in:', error);
+    }
+  }
+
+  // Reset subscription status
+  async resetSubscriptionStatus() {
+    localStorage.removeItem('isPremiumUser');
+    // You might want to also clear any other subscription-related data
+    try {
+      const user = this.userSubject.value;
+      if (user && user.preferences) {
+        delete user.preferences.subscriptionStatus;
+        await this.saveUserPreferences(user.preferences);
+      }
+    } catch (error) {
+      console.error('Error resetting subscription status:', error);
+    }
   }
 
   // Handle logout
   async logout() {
     this.authStateSubject.next(false);
     // Implement your logout logic here
+  }
+
+  async clearReadingHistory(): Promise<void> {
+    try {
+      const user = this.userSubject.value;
+      if (!user) return;
+
+      // Clear all local storage related to reading history
+      localStorage.removeItem(`reading_history_${user.id}`);
+      localStorage.removeItem(`last_read_${user.id}`);
+      
+      // Reset the reading history in memory
+      const emptyHistory: any[] = [];
+      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(emptyHistory));
+
+      // Attempt to clear from backend
+      try {
+        const token = await this.getToken();
+        if (!token) return;
+
+        await firstValueFrom(
+          this.http.delete(`${this.apiUrl}/users/${user.id}/reading-history`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        );
+      } catch (error) {
+        // Log backend error but don't throw since we've already cleared local storage
+        console.warn('Backend clear history failed:', error);
+      }
+    } catch (error) {
+      console.error('Error clearing reading history:', error);
+      throw error;
+    }
+  }
+
+  // Update the resetAllUsersPremiumAccess method to use HTTP API
+  async resetAllUsersPremiumAccess(): Promise<void> {
+    try {
+      const user = await firstValueFrom(this.user$);
+      if (!user?.isAdmin) {
+        throw new Error('Unauthorized: Only admins can reset user access');
+      }
+
+      const token = await this.getToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      // Call the backend API to reset all users' premium access
+      await this.http.post(`${this.apiUrl}/admin/reset-premium-access`, {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      }).toPromise();
+
+      // Clear all premium-related data from local storage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key) {
+          // Clear isPremiumUser flag
+          if (key === 'isPremiumUser') {
+            localStorage.removeItem(key);
+          }
+          // Clear premium status from user preferences
+          if (key.startsWith('user_prefs_')) {
+            try {
+              const prefs = JSON.parse(localStorage.getItem(key) || '{}');
+              if (prefs.subscriptionStatus) {
+                delete prefs.subscriptionStatus;
+                localStorage.setItem(key, JSON.stringify(prefs));
+              }
+            } catch (error) {
+              console.warn(`Error processing preferences for key ${key}:`, error);
+            }
+          }
+        }
+      }
+      
+      console.log('Successfully reset premium access for all users and cleared local storage');
+    } catch (error) {
+      console.error('Error resetting user premium access:', error);
+      throw error;
+    }
   }
 }
