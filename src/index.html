@@ -10,13 +10,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+  <!-- Error Logging -->
+  <script>
+    window.onerror = function(msg, url, line, col, error) {
+      console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + line + '\nColumn: ' + col + '\nError object: ' + JSON.stringify(error));
+      return false;
+    };
+  </script>
   <!-- Clerk Authentication -->
+  <script>
+    window.clerkAsyncInit = function() {
+      console.log('Clerk initialized');
+    };
+  </script>
   <script
     async
     crossorigin="anonymous"
     data-clerk-publishable-key="%CLERK_PUBLISHABLE_KEY%"
     src="https://clerk.nura-ai.app/npm/@clerk/clerk-js@4/dist/clerk.browser.js"
     type="text/javascript"
+    onload="console.log('Clerk script loaded')"
+    onerror="console.error('Failed to load Clerk script')"
   ></script>
 </head>
 <body>
