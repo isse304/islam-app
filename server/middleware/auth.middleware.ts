@@ -13,16 +13,12 @@ declare module 'express-session' {
 }
 
 export interface AuthenticatedRequest extends Request {
-    session: Session & {
-        auth?: {
-            userId: string;
-            sessionId: string;
-            token: string;
-        };
-    };
     auth: {
         userId: string;
         sessionId: string;
+    };
+    session: Session & {
+        userId?: string;
     };
 }
 

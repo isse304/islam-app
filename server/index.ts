@@ -122,7 +122,7 @@ connectDatabase(logger).catch(err => {
 });
 
 // Test authentication endpoint
-app.get('/api/auth-test', (req: AuthenticatedRequest, res) => {
+app.get('/api/auth-test', (req: AuthenticatedRequest, res: express.Response) => {
     res.json({
         message: 'Authentication successful!',
         user: {
