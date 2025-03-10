@@ -4,6 +4,7 @@ import https from 'https';
 import fs from 'fs';
 import express, { Request, Response, NextFunction } from 'express';
 import session from 'express-session';
+import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
@@ -69,11 +70,16 @@ app.use(securityConfig.compression);
 app.use(securityConfig.rateLimiter);
 app.use(securityConfig.securityHeaders);
 
-// Configure session middleware with secure settings
+// Configure session middleware with secure settings and MongoDB store
 app.use(session({
     secret: process.env.SESSION_SECRET!,
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        ttl: 24 * 60 * 60, // 1 day
+        autoRemove: 'native'
+    }),
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -97,11 +103,14 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Serve static files with cache headers
-app.use('/assets', express.static(path.join(__dirname, '../src/assets'), {
-    maxAge: '1d',
-    etag: true
-}));
+// Serve static files with cache headers (only if assets directory exists)
+const assetsPath = path.join(__dirname, '../dist/assets');
+if (fs.existsSync(assetsPath)) {
+    app.use('/assets', express.static(assetsPath, {
+        maxAge: '1d',
+        etag: true
+    }));
+}
 
 // Initialize Clerk middleware
 app.use(ClerkExpressWithAuth({

@@ -23,6 +23,7 @@
     "@clerk/backend": "^1.25.1",
     "@types/express-session": "^1.18.1",
     "@types/localforage": "^0.0.34",
+    "connect-mongo": "^5.1.0",
     "express-session": "^1.18.1",
     "fuse.js": "^7.1.0",
     "localforage": "^1.10.0",
