@@ -1,27 +1,33 @@
-.arabic-text {
-  font-family: 'KFGQPC HAFS Uthmanic Script', 'UthmanicHafs', serif;
-  font-size: 42px;
-  line-height: 3.2;
+// Variables
+$arabic-font-family: 'KFGQPC HAFS Uthmanic Script', 'UthmanicHafs', serif;
+$primary-color: #B7A57A;
+$text-dark: #2D3748;
+$text-medium: #4A5568;
+
+// Mixins
+@mixin arabic-text-base {
+  font-family: $arabic-font-family;
   direction: rtl;
   text-align: justify;
   color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+// Base styles
+.arabic-text {
+  @include arabic-text-base;
+  font-size: 42px;
+  line-height: 3.2;
   letter-spacing: -0.01em;
   word-spacing: 0.15em;
   overflow-wrap: break-word;
   max-width: 100%;
   word-break: keep-all;
   margin-bottom: 1.5rem;
-  
-  // Traditional Madani Mushaf padding
   padding: 3rem 4rem;
-  
-  // Classic paper background
   background-color: #FFFEF7;
-  
-  // Improve text rendering for Arabic
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
 }
 
 .prose {
@@ -30,7 +36,7 @@
   font-size: 1.1rem;
 }
 
-// Responsive adjustments to maintain Madani proportions
+// Responsive styles
 @media (max-width: 640px) {
   .arabic-text {
     font-size: 32px;
@@ -39,8 +45,17 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .arabic-text {
+    font-size: 48px;
+    line-height: 3.5;
+    padding: 4rem 5rem;
+  }
+}
+
+// Playing state
 .playing {
-  color: #B7A57A;
+  color: $primary-color;
   position: relative;
   
   &::after {
@@ -50,22 +65,20 @@
     left: 0;
     width: 100%;
     height: 2px;
-    background-color: #B7A57A;
+    background-color: $primary-color;
     animation: pulse 1s infinite;
   }
 }
 
 @keyframes pulse {
-  0% { opacity: 1; }
+  0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
-  100% { opacity: 1; }
 }
 
 .verse-text {
-  direction: rtl;
+  @include arabic-text-base;
   text-align: right;
   padding: 20px 0;
-  font-family: 'KFGQPC HAFS Uthmanic Script', 'UthmanicHafs', serif;
   font-size: 42px;
   line-height: 2.8;
   
@@ -75,84 +88,86 @@
   }
 }
 
+// Tooltip styles
 .word-tooltip-trigger {
   cursor: pointer;
 }
 
-::ng-deep .mat-mdc-tooltip {
-  font-size: 16px !important;
-  background: rgba(0, 0, 0, 0.9) !important;
-  color: white !important;
-  padding: 12px 20px !important;
-  max-width: none !important;
-  border-radius: 8px !important;
-  line-height: 1.5 !important;
-  margin: 8px !important;
-  white-space: nowrap !important;
-  z-index: 9999 !important;
+::ng-deep {
+  .mat-mdc-tooltip {
+    font-size: 16px !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    color: white !important;
+    padding: 12px 20px !important;
+    max-width: none !important;
+    border-radius: 8px !important;
+    line-height: 1.5 !important;
+    margin: 8px !important;
+    white-space: nowrap !important;
+    z-index: 9999 !important;
+  }
+
+  .mat-mdc-tooltip-panel {
+    transition: opacity 0.2s !important;
+  }
 }
 
 .verse-meaning {
   padding: 1.5rem;
   background: linear-gradient(to right, #FAF3E0, #FFF);
   border-radius: 1rem;
-  border-left: 4px solid #B7A57A;
+  border-left: 4px solid $primary-color;
 }
 
 .translation {
   font-family: 'Merriweather', serif;
   font-size: 1.125rem;
-  color: #2D3748;
+  color: $text-dark;
 }
 
 .transliteration {
   font-family: 'Source Sans Pro', sans-serif;
   font-size: 1rem;
-  color: #4A5568;
+  color: $text-medium;
 }
 
-// Add transition for smooth tooltip appearance
-::ng-deep .mat-mdc-tooltip-panel {
-  transition: opacity 0.2s !important;
-}
-
-// Add Surah header styling
+// Surah header
 .surah-header {
   text-align: center;
   margin-bottom: 2rem;
   padding: 1.5rem;
-  background: linear-gradient(to right, transparent, #B7A57A20, transparent);
+  background: linear-gradient(to right, transparent, #{$primary-color}20, transparent);
   border-radius: 1rem;
-  
-  .surah-name {
-    font-family: 'Scheherazade New', serif;
-    font-size: 3rem;
-    font-weight: 700;
-    color: #B7A57A;
-    margin-bottom: 0.5rem;
-  }
-  
-  .bismillah {
-    font-family: 'Scheherazade New', serif;
-    font-size: 2rem;
-    color: #2D3748;
-    margin-top: 1rem;
-  }
 }
 
-// Add verse number styling
+.surah-name {
+  font-family: 'Scheherazade New', serif;
+  font-size: 3rem;
+  font-weight: 700;
+  color: $primary-color;
+  margin-bottom: 0.5rem;
+}
+
+.bismillah {
+  font-family: 'Scheherazade New', serif;
+  font-size: 2rem;
+  color: $text-dark;
+  margin-top: 1rem;
+}
+
+// Verse number
 .verse-number {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 2.5rem;
   height: 2.5rem;
-  background-color: #B7A57A15;
-  border: 1px solid #B7A57A40;
+  background-color: #{$primary-color}15;
+  border: 1px solid #{$primary-color}40;
   border-radius: 50%;
   font-family: 'Traditional Arabic', serif;
   font-size: 1.2rem;
-  color: #B7A57A;
+  color: $primary-color;
   margin: 0 0.5rem;
 }
 
@@ -161,28 +176,29 @@
     width: 100%;
     max-width: 1200px;
     margin-bottom: 20px;
+  }
 
-    .navigation-controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      flex-wrap: wrap;
-      justify-content: center;
-      
-      .page-input {
-        width: 100px;
-        padding: 8px;
-        border: 1px solid #B7A57A;
-        border-radius: 4px;
-      }
-      
-      .surah-select {
-        min-width: 200px;
-        padding: 8px;
-        border: 1px solid #B7A57A;
-        border-radius: 4px;
-      }
-    }
+  .navigation-controls {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .page-input,
+  .surah-select {
+    padding: 8px;
+    border: 1px solid $primary-color;
+    border-radius: 4px;
+  }
+
+  .page-input {
+    width: 100px;
+  }
+
+  .surah-select {
+    min-width: 200px;
   }
 
   .mushaf-display {
@@ -194,6 +210,7 @@
 
     &.double-page {
       flex-direction: row-reverse;
+      
       .mushaf-page {
         flex: 1;
         max-width: 50%;
@@ -228,14 +245,6 @@
       color: #000;
       margin: 0 6px;
     }
-  }
-}
-
-@media (min-width: 1024px) {
-  .arabic-text {
-    font-size: 48px;
-    line-height: 3.5;
-    padding: 4rem 5rem;
   }
 }
 
