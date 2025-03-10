@@ -29,7 +29,15 @@ services:
   - type: web
     name: islam-app-frontend
     env: static
-    buildCommand: npm install && NODE_ENV=production npm run build
+    buildCommand: |
+      npm install
+      export OPENAI_API_KEY=$OPENAI_API_KEY
+      export ELEVEN_LABS_KEY=$ELEVEN_LABS_KEY
+      export STT_API_KEY=$STT_API_KEY
+      export CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY
+      export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+      export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+      npm run build
     staticPublishPath: ./dist/islam-app/browser
     routes:
       - type: rewrite
@@ -42,7 +50,13 @@ services:
         value: 20.11.1
       - key: CLERK_PUBLISHABLE_KEY
         sync: false
-      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      - key: OPENAI_API_KEY
         sync: false
-      - key: APP_DOMAIN
-        value: https://www.nura-ai.app 
+      - key: ELEVEN_LABS_KEY
+        sync: false
+      - key: STT_API_KEY
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false 
