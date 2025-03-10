@@ -29,13 +29,15 @@ services:
   - type: web
     name: islam-app-frontend
     env: static
-    buildCommand: npm install && npm run build
+    buildCommand: npm install && NODE_ENV=production npm run build
     staticPublishPath: ./dist/islam-app
     routes:
       - type: rewrite
         source: /*
         destination: /index.html
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
         value: 20.11.1
       - key: CLERK_PUBLISHABLE_KEY
