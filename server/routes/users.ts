@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { ReadingHistory } from '../models/ReadingHistory';
 import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
+import { AuthenticatedRequest } from '../middleware/auth.middleware';
 import axios from 'axios';
 
 // Extend express Request type to include auth property
@@ -63,12 +64,12 @@ interface UserPreferences {
 }
 
 // Get user reading history with pagination
-router.get('/:userId/reading-history', requireAuth, async (req: AuthRequest, res: Response) => {
+router.get('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.params;
     
     // Verify user is accessing their own data
-    if (req.auth.userId !== userId) {
+    if (!req.auth?.userId || req.auth.userId !== userId) {
       return res.status(403).json({ error: 'Unauthorized access' });
     }
 
@@ -101,16 +102,12 @@ router.get('/:userId/reading-history', requireAuth, async (req: AuthRequest, res
 });
 
 // Add to reading history
-router.post('/:userId/reading-history', requireAuth, async (req: AuthRequest, res: Response) => {
+router.post('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.params;
     
     // Verify user is accessing their own data
-    if (req.auth.userId !== userId) {
-      console.error('Unauthorized access attempt:', {
-        requestUserId: userId,
-        authUserId: req.auth.userId
-      });
+    if (!req.auth?.userId || req.auth.userId !== userId) {
       return res.status(403).json({ error: 'Unauthorized access' });
     }
 
@@ -173,12 +170,12 @@ router.post('/:userId/reading-history', requireAuth, async (req: AuthRequest, re
 });
 
 // Delete reading history
-router.delete('/:userId/reading-history', requireAuth, async (req: AuthRequest, res: Response) => {
+router.delete('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.params;
     
     // Verify user is accessing their own data
-    if (req.auth.userId !== userId) {
+    if (!req.auth?.userId || req.auth.userId !== userId) {
       return res.status(403).json({ error: 'Unauthorized access' });
     }
     
@@ -193,12 +190,12 @@ router.delete('/:userId/reading-history', requireAuth, async (req: AuthRequest, 
 });
 
 // Get user preferences
-router.get('/:userId/preferences', requireAuth, async (req: AuthRequest, res: Response) => {
+router.get('/:userId/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.params;
     
     // Verify user is accessing their own data
-    if (req.auth.userId !== userId) {
+    if (!req.auth?.userId || req.auth.userId !== userId) {
       return res.status(403).json({ error: 'Unauthorized access' });
     }
 
@@ -220,12 +217,12 @@ router.get('/:userId/preferences', requireAuth, async (req: AuthRequest, res: Re
 });
 
 // Update user preferences
-router.put('/:userId/preferences', requireAuth, async (req: AuthRequest, res: Response) => {
+router.put('/:userId/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId } = req.params;
     
     // Verify user is accessing their own data
-    if (req.auth.userId !== userId) {
+    if (!req.auth?.userId || req.auth.userId !== userId) {
       return res.status(403).json({ error: 'Unauthorized access' });
     }
 

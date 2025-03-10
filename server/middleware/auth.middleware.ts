@@ -13,22 +13,22 @@ declare module 'express-session' {
 }
 
 export interface AuthenticatedRequest extends Request {
-    auth: {
+    auth?: {
         userId: string;
         sessionId: string;
+        token?: string;
     };
-    session: Session & {
-        userId?: string;
-    };
+    session: Session;
 }
 
 // Type definition for the user property we're adding to the Request
 declare global {
     namespace Express {
         interface Request {
-            auth: {
+            auth?: {
                 userId: string;
                 sessionId: string;
+                token?: string;
             };
         }
     }

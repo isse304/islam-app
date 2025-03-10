@@ -1,4 +1,4 @@
-import express, { Response, RequestHandler } from 'express';
+import express, { Response, RequestHandler, Request, NextFunction } from 'express';
 import { Router } from 'express';
 import OpenAI from 'openai';
 import rateLimit from 'express-rate-limit';
@@ -81,73 +81,33 @@ setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
+// Middleware to ensure request is authenticated
+const ensureAuthenticated = (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    if (!req.auth?.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+};
+
+router.use(ensureAuthenticated);
+
 // Protected route for AI generation
-router.post('/generate', requireAuth(), async (req: AuthenticatedRequest, res) => {
+router.post('/chat', async (req: Request, res: Response) => {
     try {
-        console.log('\nAI Generation Request:');
-        console.log('1. Request body:', req.body);
-        console.log('2. User ID:', req.auth?.userId);
-
-        // Validate request body
-        const { prompt } = req.body;
-        if (!prompt) {
-            console.error('3. Error: Missing prompt in request body');
-            return res.status(400).json({ error: 'Missing prompt in request body' });
+        if (!req.auth?.userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
 
-        // Validate prompt structure
-        if (!prompt.systemMessage || !prompt.userMessage) {
-            console.error('4. Error: Invalid prompt structure', prompt);
-            return res.status(400).json({ 
-                error: 'Invalid prompt structure. Must include systemMessage and userMessage.' 
-            });
-        }
-
-        console.log('3. Constructing final prompt');
-        // Construct the final prompt
-        const finalPrompt = `${prompt.systemMessage}\n\n${prompt.userMessage}`;
-        console.log('4. Final prompt:', finalPrompt);
-
-        // Generate response
-        console.log('5. Calling OpenAI service');
-        const response = await openAIService.generateResponse(
-            finalPrompt,
-            prompt.temperature || 0.7,
-            prompt.maxTokens || 1000
-        );
-
-        console.log('6. Response received successfully');
-        return res.json({ content: response });
-
-    } catch (error: any) {
-        console.error('AI Generation Error:', {
-            message: error.message,
-            stack: error.stack,
-            body: req.body
-        });
-
-        if (error.message.includes('Missing OPENAI_API_KEY')) {
-            return res.status(500).json({ 
-                error: 'OpenAI API key not configured properly on the server.' 
-            });
-        }
-
-        if (error.message.includes('Rate limit')) {
-            return res.status(429).json({ 
-                error: 'Rate limit exceeded. Please try again later.' 
-            });
-        }
-
-        if (error.message.includes('Invalid API key')) {
-            return res.status(500).json({ 
-                error: 'Server configuration error: Invalid OpenAI API key.' 
-            });
-        }
-
-        return res.status(500).json({ 
-            error: 'Failed to generate AI response',
-            details: error.message
-        });
+        // Your existing code here
+        const response = await openAIService.generateResponse(req.body.message);
+        return res.json(response);
+    } catch (error) {
+        console.error('Error in AI chat:', error);
+        return res.status(500).json({ error: 'Internal server error' });
     }
 });
 

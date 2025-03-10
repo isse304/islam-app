@@ -2,17 +2,7 @@ import dotenv from 'dotenv';
 import path from 'path';
 import https from 'https';
 import fs from 'fs';
-
-// Load environment variables first, before any other imports
-const envPath = path.resolve(process.cwd(), '.env');
-const result = dotenv.config({ path: envPath });
-
-if (result.error) {
-    console.error('Error loading .env file:', result.error);
-    process.exit(1);
-}
-
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import cors from 'cors';
 import mongoose from 'mongoose';
@@ -24,6 +14,15 @@ import monitoringRouter from './routes/monitoring';
 import usersRouter from './routes/users';
 import winston from 'winston';
 import { connectDatabase } from './config/database';
+
+// Load environment variables first, before any other imports
+const envPath = path.resolve(process.cwd(), '.env');
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+    console.error('Error loading .env file:', result.error);
+    process.exit(1);
+}
 
 // Configure logging
 const logger = winston.createLogger({
@@ -122,7 +121,11 @@ connectDatabase(logger).catch(err => {
 });
 
 // Test authentication endpoint
-app.get('/api/auth-test', (req: AuthenticatedRequest, res: express.Response) => {
+app.get('/api/auth-test', ClerkExpressWithAuth(), (req: Request, res: Response) => {
+    if (!req.auth?.userId) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    
     res.json({
         message: 'Authentication successful!',
         user: {
