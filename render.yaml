@@ -24,4 +24,17 @@ services:
         generateValue: true  # Render will generate a random value
       - key: CORS_ORIGIN
         value: https://nura-ai.app
-    autoDeploy: true 
+    autoDeploy: true
+
+  - type: web
+    name: islam-app-frontend
+    env: static
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist/islam-app
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: NODE_VERSION
+        value: 20.11.1 

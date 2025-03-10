@@ -1,11 +1,12 @@
 @import url('https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Traditional+Arabic&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Naskh+Arabic:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600&display=swap');
 
+/* Arabic fonts */
 @font-face {
   font-family: 'KFGQPC Uthman Taha Naskh';
-  src: url('/assets/fonts/KFGQPC Uthman Taha Naskh Regular.ttf') format('truetype');
+  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;

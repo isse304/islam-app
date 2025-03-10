@@ -1,6 +1,6 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://nura-ai-backend.onrender.com', // This will be your Render backend URL
+  apiUrl: 'https://islam-app-server.onrender.com', // Updated to your Render backend URL
   openaiApiKey: process.env['OPENAI_API_KEY'],
   elevenLabsApiKey: process.env['ELEVEN_LABS_KEY'],
   sttApiKey: process.env['STT_API_KEY'],
