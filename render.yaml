@@ -11,7 +11,7 @@ services:
       - key: PORT
         value: 3000
       - key: DOMAIN
-        value: nura-ai.app
+        value: www.nura-ai.app
       - key: MONGODB_URI
         sync: false  # Will be set manually in Render dashboard
       - key: CLERK_SECRET_KEY
@@ -23,8 +23,8 @@ services:
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
       - key: CORS_ORIGIN
-        value: https://nura-ai.app
-    autoDeploy: true
+        value: https://www.nura-ai.app
+    autoDeploy: true 
 
   - type: web
     name: islam-app-frontend
@@ -37,4 +37,10 @@ services:
         destination: /index.html
     envVars:
       - key: NODE_VERSION
-        value: 20.11.1 
+        value: 20.11.1
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: APP_DOMAIN
+        value: https://www.nura-ai.app 
