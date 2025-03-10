@@ -30,7 +30,7 @@ services:
     name: islam-app-frontend
     env: static
     buildCommand: npm install && NODE_ENV=production npm run build
-    staticPublishPath: ./dist/islam-app
+    staticPublishPath: ./dist/islam-app/browser
     routes:
       - type: rewrite
         source: /*
