@@ -118,7 +118,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   mushafContent: MushafContent | null = null;
   previousMushafContent: MushafContent | null = null;
   mushafPage: MushafPage | null = null;
-  mushafZoom: number = 1;
+  mushafZoom: number = 0.9;
   mushafMode: 'single' | 'double' = 'single';
   surahName: string = '';
   pageImageUrl: string = '';
@@ -161,34 +161,24 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       const queryParams = new URLSearchParams(window.location.search);
       const modeParam = queryParams.get('mode');
       const surahParam = queryParams.get('surah');
-      const pageParam = queryParams.get('page');
 
       // Set view mode first
       this.isMushafView = modeParam === 'mushaf';
 
       // Initialize state based on view mode
       if (this.isMushafView) {
-        // In mushaf mode, only use page and surah parameters
+        // In mushaf mode, only use surah parameter
         const parsedSurah = surahParam ? parseInt(surahParam) : (prefs?.lastState?.lastSurah || 1);
         this.currentSurah = parsedSurah;
         this.selectedSurah = parsedSurah;
 
-        let pageNumber: number;
-        if (pageParam) {
-          // Convert display page number from URL to actual page number
-          const displayPage = parseInt(pageParam);
-          pageNumber = this.quranFlash.displayToActualPage(displayPage);
-        } else if (prefs?.lastState?.lastPage) {
-          // Convert display page from preferences to actual page number
-          pageNumber = this.quranFlash.displayToActualPage(prefs.lastState.lastPage);
-        } else {
-          // Get page by surah if no page specified
-          pageNumber = await firstValueFrom(this.quranFlash.getPageBySurah(parsedSurah));
+        // Get page by surah
+        const page = this.quranFlash.surahPageMap[parsedSurah];
+        if (page) {
+          this.currentPage = page;
+          this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
+          await this.loadMushafPage(page);
         }
-        
-        this.currentPage = pageNumber;
-        this.displayPageNumber = this.quranFlash.actualToDisplayPage(pageNumber);
-        await this.loadMushafPage(pageNumber);
       } else {
         // In translation mode, handle all parameters
         const ayahParam = queryParams.get('ayah');
@@ -232,7 +222,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
       // Update URL to reflect current state
       this.updateUrlParams();
-      
     } catch (error) {
       console.error('Error initializing QuranReader:', error);
     }
@@ -536,28 +525,38 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     console.log('Selecting surah:', surahNumber);
     if (!surahNumber) return;
     
+    // Reset verse tracking when switching surahs
+    if (this.currentSurah !== surahNumber) {
+      this.currentRecitingVerse = null;
+      this.currentVerseIndex = 0;
+      this.currentPlayingVerse = null;
+    }
+    
     this.selectedSurah = surahNumber;
     this.currentSurah = surahNumber;
     
     if (this.isMushafView) {
-      this.quranFlash.getPageBySurah(surahNumber).subscribe(page => {
-        if (page) {
-          console.log('Received page from service:', page);
-          // page is the actual file number (10-627)
-          this.currentPage = page;
-          // Convert to display number (1-604) for the controls
-          this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
-          console.log('Display page number:', this.displayPageNumber);
-          this.loadMushafPage(page);
-          
-          // Update surah details
-          const surahDetails = this.surahs.find(s => s.number === surahNumber);
-          if (surahDetails) {
-            this.currentSurahDetails = surahDetails;
-            this.surahName = surahDetails.name;
-          }
+      // Get the correct page for this surah
+      const page = this.quranFlash.surahPageMap[surahNumber];
+      if (page) {
+        console.log('Loading page for surah:', page);
+        // page is already the actual file number (10-627)
+        this.currentPage = page;
+        // Convert to display number (1-604) for the controls
+        this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
+        console.log('Display page number:', this.displayPageNumber);
+        await this.loadMushafPage(page);
+        
+        // Update surah details
+        const surahDetails = this.surahs.find(s => s.number === surahNumber);
+        if (surahDetails) {
+          this.currentSurahDetails = surahDetails;
+          this.surahName = surahDetails.name;
         }
-      });
+        
+        // Update URL parameters
+        this.updateUrlParams();
+      }
     } else {
       this.quranService.getSurah(surahNumber, this.selectedTranslation)
         .subscribe({
@@ -569,6 +568,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
               this.surahName = surahDetails.name;
             }
             this.surahSelectionChange.emit(surahNumber);
+            // Update URL parameters
+            this.updateUrlParams();
           },
           error: (error) => console.error('Error loading surah:', error),
           complete: () => this.isLoading = false
@@ -578,63 +579,34 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   goToVerse(surahNumber: number, verseNumber: number) {
-    this.selectedSurah = surahNumber;
-    this.currentSurah = surahNumber;
-    
-    // If we're in mushaf view, switch to translation view for better verse navigation
+    if (!surahNumber || !verseNumber) return;
+
+    // If we're in mushaf view, switch to translation view
     if (this.isMushafView) {
       this.isMushafView = false;
     }
-    
-    // Load the surah first
-    this.loadSurah(surahNumber).subscribe({
-      next: () => {
-        // After surah is loaded, scroll to verse with a delay to ensure content is rendered
-        const attemptScroll = (attempts = 0) => {
-          const verseElement = document.getElementById(`verse-${verseNumber}`);
-          if (verseElement) {
-            // Remove any existing highlights first
-            document.querySelectorAll('.highlight-verse').forEach(el => {
-              el.classList.remove('highlight-verse');
-            });
-            
-            // Calculate scroll position with header offset
-            const headerOffset = 80;
-            const elementPosition = verseElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.scrollY - headerOffset;
-            
-            // Scroll to verse
-            window.scrollTo({
-              top: offsetPosition,
-              behavior: 'smooth'
-            });
-            
-            // Add highlight class
-            verseElement.classList.add('highlight-verse');
-            
-            // Remove highlight after animation
-            setTimeout(() => {
-              verseElement.classList.remove('highlight-verse');
-            }, 2000);
-            
-            // Update current verse and save state
-            this.currentRecitingVerse = verseNumber;
-            this.updateUrlParams();
-            this.saveState();
-          } else if (attempts < 5) {
-            // Retry up to 5 times with increasing delays
-            setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
-          }
-        };
 
-        // Initial attempt after a short delay
-        setTimeout(() => attemptScroll(), 100);
-      },
-      error: (error) => {
-        console.error('Error loading surah:', error);
-        this.toastService.show('Error loading verse');
-      }
-    });
+    // Update current surah and verse
+    this.currentSurah = surahNumber;
+    this.currentRecitingVerse = verseNumber;
+
+    // Load the surah if it's not already loaded
+    if (this.selectedSurah !== surahNumber) {
+      this.selectSurah(surahNumber).then(() => {
+        setTimeout(() => {
+          this.scrollToVerse(verseNumber);
+          // Save reading history after scrolling
+          this.saveState();
+        }, 100);
+      });
+    } else {
+      this.scrollToVerse(verseNumber);
+      // Save reading history after scrolling
+      this.saveState();
+    }
+
+    // Update URL parameters
+    this.updateUrlParams();
   }
 
   showWordDetails(wordId: number) {
@@ -793,27 +765,40 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private scrollToVerse(verseNumber: number) {
-    // Wait for a short delay to ensure content is loaded
-    setTimeout(() => {
+    const attemptScroll = (attempts = 0) => {
       const verseElement = document.getElementById(`verse-${verseNumber}`);
       if (verseElement) {
-        // Scroll with offset for header
+        // Remove any existing highlights first
+        document.querySelectorAll('.highlight-verse').forEach(el => {
+          el.classList.remove('highlight-verse');
+        });
+
+        // Calculate scroll position with header offset
         const headerOffset = 80;
         const elementPosition = verseElement.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+        const offsetPosition = elementPosition + window.scrollY - headerOffset;
         
+        // Scroll to verse
         window.scrollTo({
           top: offsetPosition,
           behavior: 'smooth'
         });
         
-        // Highlight the verse briefly
+        // Add highlight class
         verseElement.classList.add('highlight-verse');
+        
+        // Remove highlight after animation
         setTimeout(() => {
           verseElement.classList.remove('highlight-verse');
         }, 2000);
+      } else if (attempts < 5) {
+        // Retry up to 5 times with increasing delays
+        setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
       }
-    }, 500);
+    };
+
+    // Initial attempt after a short delay
+    setTimeout(() => attemptScroll(), 100);
   }
 
   private checkCurrentVerse() {
@@ -886,26 +871,35 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     let queryParams: any = {};
     
     if (this.isMushafView) {
-      // When switching to mushaf mode, only keep surah and mode
-      queryParams = {
-        mode: 'mushaf',
-        surah: this.currentSurah,
-        page: this.displayPageNumber
-      };
+        // When switching to mushaf mode, get the page for current surah
+        const page = this.quranFlash.surahPageMap[this.currentSurah || 1];
+        if (page) {
+            this.currentPage = page;
+            this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
+            this.loadMushafPage(page);
+        }
+        queryParams = {
+            mode: 'mushaf',
+            surah: this.currentSurah
+        };
     } else {
-      // When switching to translation mode, only keep surah and mode
-      queryParams = {
-        mode: 'translation',
-        surah: this.currentSurah
-      };
+        // When switching to translation mode, load the current surah
+        queryParams = {
+            mode: 'translation',
+            surah: this.currentSurah
+        };
+        // Force reload the surah content
+        if (this.currentSurah) {
+            this.loadSurah(this.currentSurah).subscribe();
+        }
     }
 
     // Update URL with appropriate parameters
     this.router.navigate([], {
-      relativeTo: this.router.routerState.root,
-      queryParams,
-      // Don't merge with existing parameters to ensure clean state
-      queryParamsHandling: undefined
+        relativeTo: this.router.routerState.root,
+        queryParams,
+        // Don't merge with existing parameters to ensure clean state
+        queryParamsHandling: undefined
     });
     
     this.saveState();
@@ -1057,22 +1051,22 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.isMushafView = !this.isMushafView;
     
     if (this.isMushafView) {
-      this.quranFlash.getPageBySurah(this.selectedSurah || 1).subscribe(page => {
-        if (page) {
-          this.currentPage = page;
-          this.loadMushafPage(page);
-        }
-      });
-    } else {
-      this.quranService.getSurah(this.selectedSurah || 1, this.selectedTranslation)
-        .subscribe(verses => {
-          this.verses = verses;
-          const surahDetails = this.surahs.find(s => s.number === this.selectedSurah);
-          if (surahDetails) {
-            this.currentSurahDetails = surahDetails;
-            this.surahName = surahDetails.name;
-          }
+        this.quranFlash.getPageBySurah(this.selectedSurah || 1).subscribe(page => {
+            if (page) {
+                this.currentPage = page;
+                this.loadMushafPage(page);
+            }
         });
+    } else {
+        this.quranService.getSurah(this.selectedSurah || 1, this.selectedTranslation)
+            .subscribe(verses => {
+                this.verses = verses;
+                const surahDetails = this.surahs.find(s => s.number === this.selectedSurah);
+                if (surahDetails) {
+                    this.currentSurahDetails = surahDetails;
+                    this.surahName = surahDetails.name;
+                }
+            });
     }
   }
 
@@ -1343,46 +1337,50 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // Update save state method
   private updateUrlParams() {
-    let queryParams: any = {};
-
+    // Get current state
+    const params: any = {};
+    
+    // Always include mode parameter
+    params.mode = this.isMushafView ? 'mushaf' : 'translation';
+    
     if (this.isMushafView) {
-      // In mushaf mode, only include mode, page and surah
-      queryParams = {
-        mode: 'mushaf',
-        page: this.displayPageNumber,
-        surah: this.currentSurah
-      };
+        // In mushaf mode, only use surah
+        if (this.currentSurah) {
+            params.surah = this.currentSurah;
+        }
     } else {
-      // In translation mode, include all translation-specific parameters
-      queryParams = {
-        mode: 'translation',
-        surah: this.currentSurah
-      };
+        // In translation mode, use surah and verse
+        if (this.currentSurah) {
+            params.surah = this.currentSurah;
+        }
+        if (this.currentRecitingVerse) {
+            params.ayah = this.currentRecitingVerse;
+        }
+    }
+    
+    // Update URL without reloading the page
+    this.router.navigate([], {
+        relativeTo: this.router.routerState.root,
+        queryParams: params,
+        replaceUrl: true
+    });
+  }
 
-      // Only add these parameters if we're in translation mode
-      if (this.currentRecitingVerse) {
-        queryParams.ayah = this.currentRecitingVerse;
-      }
-
-      if (this.selectedTranslation !== '131') {
-        queryParams.translation = this.selectedTranslation;
-      }
-
-      if (this.selectedReciter?.id !== 7) {
-        queryParams.reciter = this.selectedReciter?.id;
-      }
-
-      if (this.selectedTafsir !== 'en.tafsir-ibn-kathir') {
-        queryParams.tafsir = this.selectedTafsir;
+  // Helper method to get surah number from page number
+  private getSurahFromPage(page: number): number | null {
+    // Convert actual page number to display page number
+    const displayPage = this.quranFlash.actualToDisplayPage(page);
+    
+    // Find the surah that starts on or before this page
+    const surahs = Object.entries(this.quranFlash.surahPageMap);
+    for (let i = surahs.length - 1; i >= 0; i--) {
+      const [surahNum, startPage] = surahs[i];
+      if (startPage <= page) {
+        return Number(surahNum);
       }
     }
-
-    this.router.navigate([], {
-      relativeTo: this.router.routerState.root,
-      queryParams,
-      // Don't merge to ensure clean state for each mode
-      queryParamsHandling: undefined
-    });
+    
+    return null;
   }
 
   private async initializeReciter(reciterParam: string | null, prefs: any): Promise<Reciter> {

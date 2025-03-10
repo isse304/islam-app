@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: nura-ai-backend
+    env: node
+    region: frankfurt  # You can change this to a region closer to your users
+    buildCommand: cd server && npm install && npm run build
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DOMAIN
+        value: nura-ai.app
+      - key: MONGODB_URI
+        sync: false  # Will be set manually in Render dashboard
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVEN_LABS_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true  # Render will generate a random value
+      - key: CORS_ORIGIN
+        value: https://nura-ai.app
+    autoDeploy: true 

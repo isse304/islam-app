@@ -595,7 +595,7 @@ export class AuthService {
       const newEntry = {
         surah: Number(state.surah),
         verse: Number(state.verse),
-        timestamp: new Date()
+        timestamp: new Date().toISOString()  // Store as ISO string for consistency
       };
       
       // Remove any duplicate entries for the same surah/verse
@@ -603,8 +603,13 @@ export class AuthService {
         entry.surah !== newEntry.surah || entry.verse !== newEntry.verse
       );
       
-      // Add new entry and save
-      filteredHistory.push(newEntry);
+      // Add new entry at the beginning and limit to 100 entries
+      filteredHistory.unshift(newEntry);
+      if (filteredHistory.length > 100) {
+        filteredHistory.length = 100;
+      }
+      
+      // Save to local storage
       localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(filteredHistory));
       
       // Try to save to backend
@@ -643,7 +648,12 @@ export class AuthService {
       // First try to get from local storage
       const localHistory = localStorage.getItem(`reading_history_${user.id}`);
       if (localHistory) {
-        return JSON.parse(localHistory).map((entry: any) => ({
+        const parsedHistory = JSON.parse(localHistory);
+        // If we find an empty array in localStorage, respect that the history was cleared
+        if (Array.isArray(parsedHistory) && parsedHistory.length === 0) {
+          return [];
+        }
+        return parsedHistory.map((entry: any) => ({
           ...entry,
           surah: Number(entry.surah),
           verse: Number(entry.verse),
@@ -655,22 +665,34 @@ export class AuthService {
       const token = await this.getToken();
       if (!token) return [];
       
-      const response = await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      try {
+        const response = await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const history = await response.json();
+          // Cache in local storage
+          localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(history));
+          return history.map((entry: any) => ({
+            ...entry,
+            surah: Number(entry.surah),
+            verse: Number(entry.verse),
+            timestamp: new Date(entry.timestamp)
+          }));
         }
-      });
-      
-      if (response.ok) {
-        const history = await response.json();
-        // Cache in local storage
-        localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(history));
-        return history.map((entry: any) => ({
-          ...entry,
-          surah: Number(entry.surah),
-          verse: Number(entry.verse),
-          timestamp: new Date(entry.timestamp)
-        }));
+        // If we get a 404, it means the endpoint doesn't exist yet
+        if (response.status === 404) {
+          // Store empty array in localStorage to prevent future backend calls
+          localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
+          return [];
+        }
+      } catch (error) {
+        console.warn('Error fetching reading history from backend (this is expected if the endpoint is not implemented yet):', error);
+        // Store empty array in localStorage to prevent future backend calls
+        localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
       }
     } catch (error) {
       console.error('Error fetching reading history:', error);
@@ -792,33 +814,33 @@ export class AuthService {
     // Implement your logout logic here
   }
 
+  // Clear reading history
   async clearReadingHistory(): Promise<void> {
+    const user = this.userSubject.value;
+    if (!user) return;
+    
     try {
-      const user = this.userSubject.value;
-      if (!user) return;
-
-      // Clear all local storage related to reading history
+      // Clear from local storage first
       localStorage.removeItem(`reading_history_${user.id}`);
-      localStorage.removeItem(`last_read_${user.id}`);
       
-      // Reset the reading history in memory
-      const emptyHistory: any[] = [];
-      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(emptyHistory));
-
-      // Attempt to clear from backend
+      // Try to clear from backend, but don't throw if endpoint doesn't exist
       try {
         const token = await this.getToken();
-        if (!token) return;
-
-        await firstValueFrom(
-          this.http.delete(`${this.apiUrl}/users/${user.id}/reading-history`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-        );
+        if (token) {
+          await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+        }
       } catch (error) {
         // Log backend error but don't throw since we've already cleared local storage
-        console.warn('Backend clear history failed:', error);
+        console.warn('Error clearing reading history from backend (this is expected if the endpoint is not implemented yet):', error);
       }
+
+      // Set an empty array in local storage to prevent reloading from backend
+      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
     } catch (error) {
       console.error('Error clearing reading history:', error);
       throw error;

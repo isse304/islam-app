@@ -365,27 +365,29 @@
 
         <!-- Mushaf Display -->
         <div *ngIf="!isLoading" class="container mx-auto max-w-7xl px-4 pb-8">
-          <div class="bg-white rounded-xl shadow-lg p-4">
-            <div class="flex justify-center gap-8" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="flex justify-center" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
               <!-- Next Page (in double view) -->
-              <div *ngIf="isDoublePageView" class="flex-1">
+              <div *ngIf="isDoublePageView" class="flex-shrink-0">
                 <img *ngIf="currentPage && currentPage < LAST_PAGE" 
                      [src]="'/quran-pages/quran_Page_' + (currentPage + 1).toString().padStart(3, '0') + '.png'"
                      [alt]="'Quran Page ' + (currentPage + 1)"
-                     class="w-full h-auto shadow-md rounded-lg">
+                     class="w-full h-auto max-h-[700px] object-contain"
+                     loading="lazy">
               </div>
 
               <!-- Current Page -->
-              <div class="flex-1">
+              <div class="flex-shrink-0">
                 <img *ngIf="currentPage" 
                      [src]="'/quran-pages/quran_Page_' + currentPage.toString().padStart(3, '0') + '.png'" 
                      [alt]="'Quran Page ' + currentPage"
-                     class="w-full h-auto shadow-md rounded-lg">
+                     class="w-full h-auto max-h-[700px] object-contain"
+                     loading="lazy">
               </div>
             </div>
 
             <!-- Page Info -->
-            <div class="mt-4 text-center text-[#B7A57A] font-medium">
+            <div class="mt-4 text-center text-[#B7A57A] font-medium pb-4">
               Page {{displayPageNumber}} of {{DISPLAY_TOTAL}}
             </div>
           </div>
@@ -484,14 +486,14 @@
 
 @font-face {
   font-family: 'KFGQPC Uthman Taha Naskh';
-  src: url('/assets/fonts/KFGQPC Uthman Taha Naskh Regular.ttf') format('truetype');
+  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2') format('woff2');
   font-weight: normal;
   font-style: normal;
   font-display: swap;
 }
 
 .mushaf-container {
-  font-family: 'KFGQPC Uthman Taha Naskh', Arial, sans-serif;
+  font-family: 'KFGQPC Uthman Taha Naskh', 'Traditional Arabic', Arial, sans-serif;
 }
 
 /* Optimize page display for better readability */

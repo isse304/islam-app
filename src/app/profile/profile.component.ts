@@ -22,9 +22,9 @@ interface UserPreferences {
 }
 
 interface ReadingHistoryEntry {
-  timestamp: string;
+  timestamp: string | Date;
   surah: number;
-  ayah: number;
+  verse: number;
 }
 
 @Component({
@@ -161,11 +161,11 @@ interface ReadingHistoryEntry {
               <div class="history-content">
                 <div class="surah-ayah">
                   <i class="fas fa-book-open"></i>
-                  <span>Surah {{ entry.surah }}, Verse {{ entry.ayah }}</span>
+                  <span>Surah {{ entry.surah }}, Verse {{ entry.verse }}</span>
                 </div>
                 <span class="timestamp">{{ entry.timestamp | date:'medium' }}</span>
               </div>
-              <button (click)="navigateToVerse(entry.surah, entry.ayah)" class="btn-view">
+              <button (click)="navigateToVerse(entry.surah, entry.verse)" class="btn-view">
                 <i class="fas fa-eye"></i> View
               </button>
             </div>
