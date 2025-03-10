@@ -180,12 +180,13 @@ process.on('SIGTERM', () => {
         });
 });
 
-if (process.env.NODE_ENV === 'production') {
-    // In production, use HTTPS
+// Start the server
+if (process.env.NODE_ENV === 'production' && process.env.DOMAIN) {
+    // In production with custom domain, use HTTPS
     const httpsOptions = {
-        key: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN!, 'privkey.pem')),
-        cert: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN!, 'cert.pem')),
-        ca: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN!, 'chain.pem'))
+        key: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'privkey.pem')),
+        cert: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'cert.pem')),
+        ca: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'chain.pem'))
     };
 
     https.createServer(httpsOptions, app).listen(443, () => {
@@ -201,7 +202,7 @@ if (process.env.NODE_ENV === 'production') {
         logger.info('HTTP Server running on port 80 (redirecting to HTTPS)');
     });
 } else {
-    // In development, use HTTP
+    // In development or production without custom domain (e.g., Render)
     app.listen(port, () => {
         logger.info(`Server is running on port ${port} in ${process.env.NODE_ENV} mode`);
     });
