@@ -4,7 +4,7 @@ services:
     env: node
     region: frankfurt  # You can change this to a region closer to your users
     buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm start
+    startCommand: cd server && npm run start:prod
     envVars:
       - key: NODE_ENV
         value: production
@@ -23,7 +23,7 @@ services:
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
       - key: CORS_ORIGIN
-        value: https://www.nura-ai.app
+        value: https://islam-ai.app,http://localhost:4200
     autoDeploy: true 
 
   - type: web
