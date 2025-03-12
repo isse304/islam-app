@@ -30,7 +30,10 @@ services:
     name: nura-ai-frontend
     env: node
     region: ohio
-    buildCommand: npm run render-build
+    buildCommand: |
+      npm ci
+      export PATH="$PATH:./node_modules/.bin"
+      npm run build
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
