@@ -10,8 +10,8 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class ClerkProvider {
   private clerk: any | null = null;
-  // Remove the hardcoded URL as we're using the script tag in index.html
-  // private readonly CLERK_SCRIPT_URL = 'https://clerk.nura-ai.app/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+  // Using the custom Clerk domain from environment
+  private readonly CLERK_SCRIPT_URL = `${environment.clerkFrontendApi}/v1/script.js`;
 
   async getClerk(): Promise<any> {
     if (this.clerk) {
@@ -23,7 +23,7 @@ export class ClerkProvider {
       
       // Check if the script is actually loaded
       const scriptLoaded = Array.from(document.scripts).some(script => 
-        script.src.includes('clerk.js') || script.src.includes('clerk') || script.dataset['clerkPublishableKey']
+        script.src.includes('script.js') || script.src.includes('clerk') || script.dataset['clerkPublishableKey']
       );
       
       if (!scriptLoaded) {
@@ -70,7 +70,7 @@ export class ClerkProvider {
     script.async = true;
     script.crossOrigin = 'anonymous';
     script.dataset['clerkPublishableKey'] = environment.clerkPublishableKey;
-    script.src = 'https://cdn.clerk.dev/v1/clerk.js';
+    script.src = this.CLERK_SCRIPT_URL;
     script.type = 'text/javascript';
     
     script.onload = () => console.log('Clerk script dynamically loaded');
