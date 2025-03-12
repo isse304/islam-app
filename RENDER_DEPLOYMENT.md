@@ -4,7 +4,7 @@
 
 ### Content Security Policy (CSP)
 
-For Clerk authentication to work properly, the following CSP directives need to be enabled:
+For authentication, Quran API, and payment functionality to work properly, the following CSP directives need to be enabled:
 
 ```js
 res.setHeader('Content-Security-Policy', 
@@ -15,15 +15,31 @@ res.setHeader('Content-Security-Policy',
   "img-src 'self' data: https: blob:; " +
   "worker-src 'self' blob:; " +
   "child-src 'self' blob:; " +
-  "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://*.cloudflare.com; " +
-  "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://*.cloudflare.com https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com;"
+  "media-src 'self' https://*.everyayah.com https://everyayah.com https://*.quranicaudio.com https://download.quranicaudio.com; " +
+  "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://*.cloudflare.com https://checkout.stripe.com https://billing.stripe.com https://*.stripe.com; " +
+  "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://*.cloudflare.com https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com https://*.alquran.cloud https://api.alquran.cloud https://api.alquran.cloud/v1/ https://*.quran.com https://api.quran.com https://api.quran.com/api/v4 https://*.qurancdn.com https://api.qurancdn.com https://everyayah.com https://*.everyayah.com https://download.quranicaudio.com https://*.quranicaudio.com https://api.stripe.com https://*.stripe.com;"
 );
 ```
 
 The key additions are:
+
+#### Authentication (Clerk)
 - `worker-src 'self' blob:` - Required for Clerk's web workers
 - `child-src 'self' blob:` - Required for Clerk's blob URLs
 - Adding Cloudflare domains for CAPTCHA functionality
+
+#### Quran Functionality
+- Added specific URLs for Quran APIs:
+  - `https://*.alquran.cloud` and `https://api.alquran.cloud/v1/` for AlQuran.cloud API
+  - `https://*.quran.com` and `https://api.quran.com/api/v4` for Quran.com API
+  - `https://*.qurancdn.com` and `https://api.qurancdn.com` for QuranCDN API
+  - `https://*.everyayah.com` and `https://everyayah.com` for verse audio
+  - `https://*.quranicaudio.com` and `https://download.quranicaudio.com` for recitation audio
+
+#### Payment Processing (Stripe)
+- Added specific domains for Stripe:
+  - `https://*.stripe.com` for API access
+  - Added `https://checkout.stripe.com` and `https://billing.stripe.com` to frame-src for checkout forms and billing portal
 
 ### CORS Configuration
 
@@ -32,6 +48,29 @@ In your backend server, ensure CORS is configured to allow your frontend domain:
 ```
 CORS_ORIGIN=https://www.nura-ai.app,https://nura-ai-frontend.onrender.com,http://localhost:4200
 ```
+
+### Stripe Configuration
+
+For Stripe to work properly, ensure the following:
+
+1. Your Stripe publishable key is correctly set in the frontend environment:
+   ```typescript
+   // environment.prod.ts
+   stripeConfig: {
+     publishableKey: 'pk_live_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
+     priceId: 'price_1R1SKuGYeNehzlUZPlVwt392'
+   }
+   ```
+
+2. Your Stripe secret key is set in your backend `.env` file:
+   ```
+   STRIPE_SECRET_KEY=sk_test_51R1RShGYeNehzlUZCB9rXDHw4lkmc1DIFzQU7lXfrzFUMAFuCEOU1MuVEaxZd0taQEsfPwqJLsG5MZibxy2qTXnb00pcMjpa6q
+   STRIPE_PUBLISHABLE_KEY=pk_test_51R1RShGYeNehzlUZBgXi4s6sf5u4BvRkXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj
+   STRIPE_WEBHOOK_SECRET=whsec_LF67b5WFdxHOlAnmaIPpiuuigFbGeBlu
+   STRIPE_PRICE_ID=price_1R1TPjGYeNehzlUZi71dNilr
+   ```
+
+3. Make sure your backend API is properly configured to handle Stripe requests.
 
 ### Clerk Configuration
 
@@ -63,10 +102,24 @@ apiUrl: 'https://nura-y6uq.onrender.com', // NO trailing slash
 
 If you encounter any issues:
 
-1. Check browser console for specific errors
-2. Verify CSP headers using browser developer tools
-3. Check CORS headers in Network requests
-4. Ensure Clerk domains are properly configured
+1. **Quran Reader Not Loading**:
+   - Check browser console for specific API errors
+   - Verify that API domains are properly included in the CSP
+   - Test direct API calls to ensure the endpoints are accessible
+
+2. **Audio Not Playing**:
+   - Verify `media-src` directive includes all necessary audio domains
+   - Check network tab for any blocked media requests
+
+3. **Stripe Payment Issues**:
+   - Ensure frame-src includes all Stripe domains
+   - Check that backend API routes are properly handling Stripe requests
+   - Verify Stripe keys are correctly set in both frontend and backend
+
+4. **General Issues**:
+   - Use browser developer tools to identify specific CSP violations
+   - Check network tab for blocked requests
+   - Verify that all needed domains are included in CSP
 
 ## Deployment Steps
 

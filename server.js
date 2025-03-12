@@ -66,8 +66,9 @@ app.use((req, res, next) => {
     "img-src 'self' data: https: blob:; " +
     "worker-src 'self' blob:; " +
     "child-src 'self' blob:; " +
-    "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://*.cloudflare.com; " +
-    "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://*.cloudflare.com https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com;"
+    "media-src 'self' https://*.everyayah.com https://everyayah.com https://*.quranicaudio.com https://download.quranicaudio.com; " +
+    "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://*.cloudflare.com https://checkout.stripe.com https://billing.stripe.com https://*.stripe.com; " +
+    "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://*.cloudflare.com https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com https://*.alquran.cloud https://api.alquran.cloud https://api.alquran.cloud/v1/ https://*.quran.com https://api.quran.com https://api.quran.com/api/v4 https://*.qurancdn.com https://api.qurancdn.com https://everyayah.com https://*.everyayah.com https://download.quranicaudio.com https://*.quranicaudio.com https://api.stripe.com https://*.stripe.com;"
   );
   
   next();
