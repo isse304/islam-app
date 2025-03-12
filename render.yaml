@@ -2,7 +2,7 @@ services:
   - type: web
     name: nura-ai-backend
     env: node
-    region: frankfurt  # You can change this to a region closer to your users
+    region: ohio  # Changed from frankfurt to ohio (closest to Chicago)
     buildCommand: cd server && npm install && npm run build
     startCommand: cd server && npm run start:prod
     envVars:
@@ -23,12 +23,13 @@ services:
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
       - key: CORS_ORIGIN
-        value: https://islam-ai.app,http://localhost:4200
+        value: https://nura-ai.app,http://localhost:4200
     autoDeploy: true 
 
   - type: web
     name: islam-app-frontend
     env: static
+    region: ohio  # Added region for frontend
     buildCommand: |
       npm install
       export OPENAI_API_KEY=$OPENAI_API_KEY
@@ -60,3 +61,13 @@ services:
         sync: false
       - key: AWS_SECRET_ACCESS_KEY
         sync: false 
+
+  - type: web
+    name: nura-ai-frontend
+    env: static
+    buildCommand: npm install && ng build --configuration=production
+    staticPublishPath: ./dist/islam-app/browser
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html 

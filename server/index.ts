@@ -79,8 +79,10 @@ const startServer = async () => {
 
         // Apply middleware
         app.use(cors({
-            origin: process.env.NODE_ENV === 'development' ? true : process.env.CORS_ORIGIN,
-            credentials: true
+            origin: process.env.NODE_ENV === 'development' ? true : process.env.CORS_ORIGIN?.split(','),
+            credentials: true,
+            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
         }));
         
         // Initialize Clerk

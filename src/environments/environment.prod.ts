@@ -2,7 +2,7 @@ import { Environment } from './environment.interface';
 
 export const environment: Environment = {
   production: true,
-  apiUrl: 'https://islam-app-backend.onrender.com',
+  apiUrl: 'https://nura-ai-backend.onrender.com',
   openaiApiKey: undefined,
   elevenLabsApiKey: undefined,
   sttApiKey: undefined,
