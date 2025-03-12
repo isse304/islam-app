@@ -32,7 +32,7 @@ services:
     region: ohio
     buildCommand: |
       npm ci
-      NODE_ENV=production npx ng build --configuration=production
+      NODE_ENV=production npx ng build --configuration=production --base-href=/
     staticPublishPath: ./dist/islam-app/browser
     headers:
       - path: /*
