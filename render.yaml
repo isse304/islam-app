@@ -26,46 +26,13 @@ services:
         value: https://nura-ai.app,http://localhost:4200
     autoDeploy: true 
 
-  - type: web
-    name: islam-app-frontend
-    env: static
-    region: ohio  # Added region for frontend
-    buildCommand: |
-      npm install
-      export OPENAI_API_KEY=$OPENAI_API_KEY
-      export ELEVEN_LABS_KEY=$ELEVEN_LABS_KEY
-      export STT_API_KEY=$STT_API_KEY
-      export CLERK_PUBLISHABLE_KEY=$CLERK_PUBLISHABLE_KEY
-      export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-      export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-      npm run build
-    staticPublishPath: ./dist/islam-app/browser
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
-    envVars:
-      - key: NODE_ENV
-        value: production
-      - key: NODE_VERSION
-        value: 20.11.1
-      - key: CLERK_PUBLISHABLE_KEY
-        sync: false
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: ELEVEN_LABS_KEY
-        sync: false
-      - key: STT_API_KEY
-        sync: false
-      - key: AWS_ACCESS_KEY_ID
-        sync: false
-      - key: AWS_SECRET_ACCESS_KEY
-        sync: false 
-
   - type: static
     name: nura-ai-frontend
     env: static
-    buildCommand: npm install && npm run build
+    region: ohio
+    buildCommand: |
+      npm install
+      npm run build
     staticPublishPath: ./dist/islam-app/browser
     headers:
       - path: /*
