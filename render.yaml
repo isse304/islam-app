@@ -65,7 +65,7 @@ services:
   - type: static
     name: nura-ai-frontend
     env: static
-    buildCommand: npm install && ng build --configuration=production --base-href="./"
+    buildCommand: npm install && npm run build
     staticPublishPath: ./dist/islam-app/browser
     headers:
       - path: /*
@@ -79,4 +79,16 @@ services:
       - key: NODE_ENV
         value: production
       - key: NODE_VERSION
-        value: 20.11.1 
+        value: 20.11.1
+      - key: CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ELEVEN_LABS_KEY
+        sync: false
+      - key: STT_API_KEY
+        sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false 
