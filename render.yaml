@@ -23,17 +23,14 @@ services:
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
       - key: CORS_ORIGIN
-        value: https://nura-ai.app,http://localhost:4200
+        value: https://nura-ai-frontend.onrender.com,https://nura-ai.app
     autoDeploy: true 
 
   - type: web
     name: nura-ai-frontend
     env: node
     region: ohio
-    buildCommand: |
-      npm ci
-      npm install -g @angular/cli
-      ng build --configuration=production --base-href=/ --deploy-url=/
+    buildCommand: npm run render-build
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
