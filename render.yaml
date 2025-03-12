@@ -32,7 +32,7 @@ services:
     region: ohio
     buildCommand: |
       npm ci
-      npm run build
+      npx ng build --configuration=production --base-href=/ --deploy-url=/
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
