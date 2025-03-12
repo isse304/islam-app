@@ -60,12 +60,14 @@ app.use((req, res, next) => {
   // Fix Content Security Policy to allow fonts, styles, scripts, etc.
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://cdn.clerk.dev https://js.stripe.com https://cdnjs.cloudflare.com; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://cdn.clerk.dev https://js.stripe.com https://cdnjs.cloudflare.com https://*.cloudflare.com; " +
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.accounts.dev https://*.clerk.com https://cdnjs.cloudflare.com; " +
     "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; " +
     "img-src 'self' data: https: blob:; " +
-    "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com; " +
-    "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com;"
+    "worker-src 'self' blob:; " +
+    "child-src 'self' blob:; " +
+    "frame-src https://js.stripe.com https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://*.cloudflare.com; " +
+    "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://cdn.clerk.dev https://*.cloudflare.com https://nura-ai-backend.onrender.com https://nura-y6uq.onrender.com;"
   );
   
   next();
