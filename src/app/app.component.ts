@@ -10,6 +10,8 @@ export class AppComponent implements OnInit {
   title = 'IslamApp';
   initError: string | null = null;
   isLoading = true;
+  initAttempts = 0;
+  maxAttempts = 3;
 
   constructor(private clerkProvider: ClerkProvider) {}
 
@@ -20,33 +22,30 @@ export class AppComponent implements OnInit {
   async initializeClerk() {
     this.isLoading = true;
     this.initError = null;
+    this.initAttempts++;
     
     try {
-      console.log('Starting Clerk initialization...');
+      console.log(`Attempt ${this.initAttempts} to initialize Clerk...`);
       await this.clerkProvider.getClerk();
       console.log('Clerk initialized successfully');
       this.isLoading = false;
+      this.initAttempts = 0; // Reset attempts on success
     } catch (error) {
-      this.initError = error instanceof Error ? error.message : 'Unknown error initializing Clerk';
       console.error('Error initializing Clerk:', error);
-      this.isLoading = false;
       
-      // Add this to help debug in production
-      const errorElement = document.createElement('div');
-      errorElement.style.position = 'fixed';
-      errorElement.style.top = '0';
-      errorElement.style.left = '0';
-      errorElement.style.right = '0';
-      errorElement.style.padding = '20px';
-      errorElement.style.background = 'rgba(255, 0, 0, 0.8)';
-      errorElement.style.color = 'white';
-      errorElement.style.zIndex = '9999';
-      errorElement.textContent = `Initialization Error: ${this.initError}`;
-      document.body.appendChild(errorElement);
+      if (this.initAttempts < this.maxAttempts) {
+        console.log(`Retrying in 2 seconds... (Attempt ${this.initAttempts} of ${this.maxAttempts})`);
+        setTimeout(() => this.initializeClerk(), 2000);
+      } else {
+        this.initError = error instanceof Error ? error.message : 'Unknown error initializing Clerk';
+        this.isLoading = false;
+        console.error('Max retry attempts reached');
+      }
     }
   }
 
   async retryInitialization() {
+    this.initAttempts = 0; // Reset attempts for manual retry
     await this.initializeClerk();
   }
 }
