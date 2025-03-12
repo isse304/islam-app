@@ -60,10 +60,11 @@ app.use((req, res, next) => {
   // Fix Content Security Policy to allow fonts, styles, scripts, etc.
   res.setHeader('Content-Security-Policy', 
     "default-src 'self'; " +
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://js.stripe.com; " +
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.accounts.dev https://*.clerk.com; " +
-    "font-src 'self' https://fonts.gstatic.com data:; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://*.clerk.com https://js.stripe.com https://cdnjs.cloudflare.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://*.clerk.accounts.dev https://*.clerk.com https://cdnjs.cloudflare.com; " +
+    "font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com data:; " +
     "img-src 'self' data: https: blob:; " +
+    "frame-src https://js.stripe.com; " +
     "connect-src 'self' https://clerk.nura-ai.app https://*.clerk.accounts.dev https://api.clerk.com https://*.clerk.com https://nura-ai-backend.onrender.com;"
   );
   

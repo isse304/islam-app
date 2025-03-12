@@ -20,10 +20,21 @@ export class ClerkProvider {
 
     try {
       console.log('Waiting for Clerk to be available...');
+      
+      // Check if the script is actually loaded
+      const scriptLoaded = Array.from(document.scripts).some(script => 
+        script.src.includes('clerk.js') || script.src.includes('clerk') || script.dataset['clerkPublishableKey']
+      );
+      
+      if (!scriptLoaded) {
+        console.warn('Clerk script tag not found in document. Adding it dynamically...');
+        this.loadClerkScriptDynamically();
+      }
+      
       // Wait for Clerk to be available with a timeout
       await new Promise<void>((resolve, reject) => {
         let attempts = 0;
-        const maxAttempts = 100; // 10 seconds total (100ms * 100) - increased timeout
+        const maxAttempts = 150; // 15 seconds total (100ms * 150) - increased timeout
         
         const checkClerk = () => {
           attempts++;
@@ -51,5 +62,20 @@ export class ClerkProvider {
       console.error('Error initializing Clerk:', error);
       throw error;
     }
+  }
+  
+  // Add this method to dynamically load Clerk script if needed
+  private loadClerkScriptDynamically(): void {
+    const script = document.createElement('script');
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.dataset['clerkPublishableKey'] = environment.clerkPublishableKey;
+    script.src = 'https://cdn.clerk.dev/v1/clerk.js';
+    script.type = 'text/javascript';
+    
+    script.onload = () => console.log('Clerk script dynamically loaded');
+    script.onerror = (event) => console.error('Error loading Clerk script dynamically:', event);
+    
+    document.head.appendChild(script);
   }
 } 
