@@ -31,16 +31,16 @@ services:
     env: static
     region: ohio
     buildCommand: |
-      npm install
-      ng build --configuration=production --base-href=/
-    staticPublishPath: ./dist/islam-app/browser/browser
+      npm ci
+      NODE_ENV=production npx ng build --configuration=production
+    staticPublishPath: /dist/islam-app/browser/browser
     headers:
       - path: /*
         name: Cache-Control
-        value: no-cache
+        value: no-store
       - path: /*
-        name: X-Frame-Options
-        value: DENY
+        name: Content-Security-Policy
+        value: "default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; font-src 'self' https: data:;"
     routes:
       - type: rewrite
         source: /*

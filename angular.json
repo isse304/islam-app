@@ -63,6 +63,7 @@
                 }
               ],
               "outputHashing": "all",
+              "baseHref": "/",
               "fileReplacements": [
                 {
                   "replace": "src/environments/environment.ts",
