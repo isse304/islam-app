@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node server.js",
     "build": "ng build --configuration=production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
@@ -29,7 +29,9 @@
     "@stripe/stripe-js": "^6.0.0",
     "@types/express-session": "^1.18.1",
     "@types/localforage": "^0.0.34",
+    "compression": "^1.8.0",
     "connect-mongo": "^5.1.0",
+    "express": "^4.21.2",
     "express-session": "^1.18.1",
     "fuse.js": "^7.1.0",
     "localforage": "^1.10.0",

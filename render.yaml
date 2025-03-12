@@ -26,37 +26,19 @@ services:
         value: https://nura-ai.app,http://localhost:4200
     autoDeploy: true 
 
-  - type: static
+  - type: web
     name: nura-ai-frontend
-    env: static
+    env: node
     region: ohio
     buildCommand: |
       npm ci
-      NODE_ENV=production npx ng build --configuration=production --base-href=/
-    staticPublishPath: ./dist/islam-app/browser
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: "no-store, no-cache, must-revalidate, proxy-revalidate"
-      - path: /*
-        name: Pragma
-        value: no-cache
-      - path: /*
-        name: Expires
-        value: "0"
-      - path: /*
-        name: Surrogate-Control
-        value: no-store
-      - path: /*
-        name: Content-Security-Policy
-        value: "default-src 'self' https: 'unsafe-inline' 'unsafe-eval'; img-src 'self' https: data: blob:; font-src 'self' https: data:;"
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html
+      npm run build
+    startCommand: node server.js
     envVars:
       - key: NODE_ENV
         value: production
+      - key: PORT
+        value: 3001
       - key: NODE_VERSION
         value: 20.11.1
       - key: CLERK_PUBLISHABLE_KEY
