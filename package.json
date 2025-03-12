@@ -4,7 +4,7 @@
   "scripts": {
     "ng": "ng",
     "start": "node server.js",
-    "build": "ng build --configuration=production --base-href=/ --deploy-url=/",
+    "build": "node node_modules/@angular/cli/bin/ng.js build --configuration=production --base-href=/ --deploy-url=/",
     "render-build": "npm ci && npm run build",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
