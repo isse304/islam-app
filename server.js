@@ -9,7 +9,27 @@ const createDebugMiddleware = require('./debug-middleware');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
-const DIST_PATH = path.join(__dirname, 'dist/islam-app/browser');
+
+// Detect actual build directory path
+let DIST_PATH;
+const possiblePaths = [
+  path.join(__dirname, 'dist/islam-app'),
+  path.join(__dirname, 'dist/islam-app/browser'),
+  path.join(__dirname, 'dist/islam-app/browser/browser')
+];
+
+for (const pathToCheck of possiblePaths) {
+  if (fs.existsSync(path.join(pathToCheck, 'index.html'))) {
+    DIST_PATH = pathToCheck;
+    console.log(`Found Angular build at: ${DIST_PATH}`);
+    break;
+  }
+}
+
+if (!DIST_PATH) {
+  DIST_PATH = possiblePaths[0]; // Default to first path if none found
+  console.log(`No index.html found in possible paths, defaulting to: ${DIST_PATH}`);
+}
 
 // Log environment info
 console.log('Environment:', process.env.NODE_ENV);
@@ -31,11 +51,22 @@ app.use(function(req, res, next) {
   next();
 });
 
-// Set permissive CORS headers
+// Set permissive CORS headers and security policy
 app.use((req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS, PUT, PATCH, DELETE');
   res.setHeader('Access-Control-Allow-Headers', 'X-Requested-With,content-type');
+  
+  // Fix Content Security Policy to allow fonts, styles, scripts, etc.
+  res.setHeader('Content-Security-Policy', 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://clerk.nura-ai.app https://js.stripe.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com data:; " +
+    "img-src 'self' data: https: blob:; " +
+    "connect-src 'self' https://clerk.nura-ai.app https://nura-ai-backend.onrender.com;"
+  );
+  
   next();
 });
 
@@ -78,17 +109,16 @@ app.use(express.static(DIST_PATH, {
 // For all GET requests that aren't to static files, serve index.html
 app.get('*', (req, res) => {
   console.log('Serving index.html for path:', req.url);
-  // List the directory contents to debug
-  console.log('Directory contents:');
-  if (fs.existsSync(DIST_PATH)) {
-    fs.readdirSync(DIST_PATH).forEach(file => {
-      console.log(`- ${file}`);
-    });
-  } else {
-    console.log(`Directory not found: ${DIST_PATH}`);
-  }
   
-  res.sendFile(path.join(DIST_PATH, 'index.html'));
+  // Check if index.html exists
+  const indexPath = path.join(DIST_PATH, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    console.log(`Serving index.html from: ${indexPath}`);
+    res.sendFile(indexPath);
+  } else {
+    console.log(`index.html not found at: ${indexPath}`);
+    res.status(404).send('index.html not found. Build output directory structure issue.');
+  }
 });
 
 // Start the server

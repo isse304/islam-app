@@ -32,7 +32,6 @@ services:
     region: ohio
     buildCommand: |
       npm ci
-      export PATH="$PATH:./node_modules/.bin"
       npm run build
     startCommand: node server.js
     envVars:
