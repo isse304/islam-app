@@ -1,4 +1,4 @@
-import express, { Response, RequestHandler, Request, NextFunction } from 'express';
+import express, { Response, RequestHandler } from 'express';
 import { Router } from 'express';
 import OpenAI from 'openai';
 import rateLimit from 'express-rate-limit';
@@ -9,14 +9,16 @@ import { EmailService } from '../services/email.service';
 import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
 import type { RequireAuthProp } from '@clerk/clerk-sdk-node';
 import { OpenAIService } from '../services/openai.service';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
-import { requireAuth } from '@clerk/express';
+import { UsageService } from '../services/usage.service';
+import { StripeService } from '../services/stripe.service';
 
 const router = Router();
 const cacheService = new CacheService();
 const emailService = new EmailService();
 const openAIService = new OpenAIService();
 const costMonitorService = new CostMonitorService(emailService);
+const stripeService = new StripeService(process.env.STRIPE_SECRET_KEY!, process.env.STRIPE_PRICE_ID!);
+const usageService = new UsageService(stripeService);
 
 // Validate required environment variables
 const requiredEnvVars = [
@@ -24,7 +26,9 @@ const requiredEnvVars = [
     'RATE_LIMIT_WINDOW_MS',
     'RATE_LIMIT_MAX_REQUESTS',
     'DAILY_USER_LIMIT',
-    'MONGODB_URI'
+    'MONGODB_URI',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PRICE_ID'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -81,50 +85,72 @@ setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
-// Middleware to ensure request is authenticated
-const ensureAuthenticated = (
-    req: Request,
-    res: Response,
-    next: NextFunction
-) => {
-    if (!req.auth?.userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    next();
-};
+type ClerkRequest = RequireAuthProp<express.Request>;
 
-router.use(ensureAuthenticated);
+// Wrapper for Clerk-authenticated routes
+const withAuth = (handler: (req: ClerkRequest, res: express.Response) => Promise<any>): RequestHandler => 
+    async (req: express.Request, res: express.Response) => {
+        const clerkReq = req as ClerkRequest;
+        return handler(clerkReq, res);
+    };
 
 // Protected route for AI generation
-router.post('/chat', async (req: Request, res: Response) => {
+router.post('/chat', ClerkExpressRequireAuth(), withAuth(async (req, res) => {
     try {
         if (!req.auth?.userId) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-
-        // Your existing code here
-        const response = await openAIService.generateResponse(req.body.message);
-        return res.json(response);
-    } catch (error) {
-        console.error('Error in AI chat:', error);
-        return res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// Get user's AI usage statistics
-router.get('/usage', ClerkExpressRequireAuth(), ((async (req: RequireAuthProp<express.Request>, res: Response) => {
-    try {
         const userId = req.auth.userId;
-        
-        if (!userId) {
-            return res.status(401).json({
-                error: 'Authentication required',
-                message: 'User ID not found in request'
+
+        // Get or create user usage record
+        let userUsage = await UserUsage.findOne({ userId });
+        if (!userUsage) {
+            userUsage = new UserUsage({ userId });
+            await userUsage.save();
+        }
+
+        // Check if user has exceeded their AI request limit
+        if (!await userUsage.canMakeAIRequest()) {
+            return res.status(403).json({ 
+                error: 'AI request limit exceeded',
+                limit: userUsage.aiRequestLimit,
+                used: userUsage.aiRequests.count
             });
         }
 
-        const usage = await costMonitorService.getUsage(userId);
-        res.json({ usage });
+        // Process AI request here
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: req.body.message }]
+        });
+
+        // Increment AI request count
+        await userUsage.incrementAIRequestCount();
+
+        res.json({ response: response.choices[0].message.content });
+    } catch (error) {
+        console.error('Error in AI chat:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
+
+// Get user's AI usage statistics
+router.get('/usage', ClerkExpressRequireAuth(), withAuth(async (req, res) => {
+    try {
+        if (!req.auth?.userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
+        const userId = req.auth.userId;
+        
+        const [costUsage, featureUsage] = await Promise.all([
+            costMonitorService.getUsage(userId),
+            usageService.getUserLimits(userId)
+        ]);
+
+        res.json({ 
+            costUsage,
+            featureUsage
+        });
     } catch (error) {
         console.error('Usage stats error:', error);
         res.status(500).json({
@@ -132,6 +158,6 @@ router.get('/usage', ClerkExpressRequireAuth(), ((async (req: RequireAuthProp<ex
             message: 'An error occurred while fetching usage statistics'
         });
     }
-}) as unknown) as RequestHandler);
+}));
 
 export default router; 

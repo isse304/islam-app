@@ -5,6 +5,8 @@ import { DuaComponent } from './components/dua/dua.component';
 import { LoginComponent } from './components/auth/login/login.component';
 import { LearnComponent } from './components/learn/learn.component';
 import { ProfileComponent } from './profile/profile.component';
+import { UsageComponent } from './components/usage/usage.component';
+import { SubscriptionComponent } from './components/subscription/subscription.component';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
@@ -13,5 +15,7 @@ export const routes: Routes = [
   { path: 'dua', component: DuaComponent },
   { path: 'auth/login', component: LoginComponent },
   { path: 'profile', component: ProfileComponent },
+  { path: 'usage', component: UsageComponent },
+  { path: 'subscription', component: SubscriptionComponent },
   { path: '**', redirectTo: '' } // Redirect any unknown paths to home
 ]; 

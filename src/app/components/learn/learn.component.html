@@ -51,7 +51,7 @@
                 {{ translation }}
               </p>
             </div>
-            <div class="mt-6 border-t pt-4" premiumRequired>
+            <div class="mt-6 border-t pt-4" *ngIf="authStateService.isPremiumUser$ | async">
               <div class="flex justify-between items-center mb-3">
                 <h3 class="text-lg font-medium text-[#B7A57A]">AI Summary</h3>
               </div>
@@ -61,7 +61,7 @@
         </div>
   
         <!-- Chat Interface -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" premiumRequired>
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" *ngIf="authStateService.isPremiumUser$ | async">
           <!-- Chat Interface Header -->
           <div class="flex justify-between items-center mb-6">
             <h2 class="text-2xl font-semibold text-[#B7A57A]">AI Tafsir Chat</h2>
@@ -105,4 +105,15 @@
         </div>
       </div>
     </div>
-  </div> 
+  </div>
+
+<style>
+.filter-blur {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+.premium-overlay {
+  backdrop-filter: blur(4px);
+}
+</style> 

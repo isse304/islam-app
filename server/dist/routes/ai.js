@@ -5,8 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const openai_1 = __importDefault(require("openai"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const path_1 = __importDefault(require("path"));
 const express_rate_limit_1 = __importDefault(require("express-rate-limit"));
 const UserUsage_1 = require("../models/UserUsage");
 const cache_service_1 = require("../services/cache.service");
@@ -14,20 +12,24 @@ const cost_monitor_service_1 = require("../services/cost-monitor.service");
 const email_service_1 = require("../services/email.service");
 const clerk_sdk_node_1 = require("@clerk/clerk-sdk-node");
 const openai_service_1 = require("../services/openai.service");
-// Ensure production environment variables are loaded
-dotenv_1.default.config({ path: path_1.default.join(__dirname, '../.env.production') });
+const usage_service_1 = require("../services/usage.service");
+const stripe_service_1 = require("../services/stripe.service");
 const router = (0, express_1.Router)();
 const cacheService = new cache_service_1.CacheService();
 const emailService = new email_service_1.EmailService();
 const openAIService = new openai_service_1.OpenAIService();
 const costMonitorService = new cost_monitor_service_1.CostMonitorService(emailService);
+const stripeService = new stripe_service_1.StripeService(process.env.STRIPE_SECRET_KEY, process.env.STRIPE_PRICE_ID);
+const usageService = new usage_service_1.UsageService(stripeService);
 // Validate required environment variables
 const requiredEnvVars = [
     'OPENAI_API_KEY',
     'RATE_LIMIT_WINDOW_MS',
     'RATE_LIMIT_MAX_REQUESTS',
     'DAILY_USER_LIMIT',
-    'MONGODB_URI'
+    'MONGODB_URI',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PRICE_ID'
 ];
 for (const envVar of requiredEnvVars) {
     if (!process.env[envVar]) {
@@ -71,65 +73,61 @@ setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
 // Run cost monitoring every hour
 setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
+// Wrapper for Clerk-authenticated routes
+const withAuth = (handler) => async (req, res) => {
+    const clerkReq = req;
+    return handler(clerkReq, res);
+};
 // Protected route for AI generation
-router.post('/generate', (0, clerk_sdk_node_1.ClerkExpressRequireAuth)(), (async (req, res) => {
+router.post('/chat', (0, clerk_sdk_node_1.ClerkExpressRequireAuth)(), withAuth(async (req, res) => {
     try {
-        const { prompt } = req.body;
+        if (!req.auth?.userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
+        }
         const userId = req.auth.userId;
-        if (!prompt) {
-            return res.status(400).json({
-                error: 'Missing prompt',
-                message: 'A prompt is required for AI generation'
+        // Get or create user usage record
+        let userUsage = await UserUsage_1.UserUsage.findOne({ userId });
+        if (!userUsage) {
+            userUsage = new UserUsage_1.UserUsage({ userId });
+            await userUsage.save();
+        }
+        // Check if user has exceeded their AI request limit
+        if (!await userUsage.canMakeAIRequest()) {
+            return res.status(403).json({
+                error: 'AI request limit exceeded',
+                limit: userUsage.aiRequestLimit,
+                used: userUsage.aiRequests.count
             });
         }
-        if (!process.env.OPENAI_API_KEY) {
-            console.error('OpenAI API key is not configured');
-            return res.status(500).json({
-                error: 'Configuration Error',
-                message: 'OpenAI service is not properly configured'
-            });
-        }
-        try {
-            const response = await openAIService.generateResponse(prompt);
-            res.json({ content: response });
-        }
-        catch (openAiError) {
-            console.error('OpenAI service error:', openAiError);
-            if (openAiError.status === 429) {
-                return res.status(429).json({
-                    error: 'Rate Limit Exceeded',
-                    message: 'Too many requests. Please try again later.'
-                });
-            }
-            if (openAiError.status === 401) {
-                return res.status(500).json({
-                    error: 'API Authentication Error',
-                    message: 'Failed to authenticate with OpenAI service'
-                });
-            }
-            throw openAiError; // Re-throw for general error handling
-        }
+        // Process AI request here
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: req.body.message }]
+        });
+        // Increment AI request count
+        await userUsage.incrementAIRequestCount();
+        res.json({ response: response.choices[0].message.content });
     }
     catch (error) {
-        console.error('AI generation error:', error);
-        res.status(500).json({
-            error: 'AI Generation Failed',
-            message: error.message || 'An unexpected error occurred'
-        });
+        console.error('Error in AI chat:', error);
+        res.status(500).json({ error: 'Internal server error' });
     }
 }));
 // Get user's AI usage statistics
-router.get('/usage', (0, clerk_sdk_node_1.ClerkExpressRequireAuth)(), (async (req, res) => {
+router.get('/usage', (0, clerk_sdk_node_1.ClerkExpressRequireAuth)(), withAuth(async (req, res) => {
     try {
-        const userId = req.auth.userId;
-        if (!userId) {
-            return res.status(401).json({
-                error: 'Authentication required',
-                message: 'User ID not found in request'
-            });
+        if (!req.auth?.userId) {
+            return res.status(401).json({ error: 'Unauthorized' });
         }
-        const usage = await costMonitorService.getUsage(userId);
-        res.json({ usage });
+        const userId = req.auth.userId;
+        const [costUsage, featureUsage] = await Promise.all([
+            costMonitorService.getUsage(userId),
+            usageService.getUserLimits(userId)
+        ]);
+        res.json({
+            costUsage,
+            featureUsage
+        });
     }
     catch (error) {
         console.error('Usage stats error:', error);
@@ -140,3 +138,4 @@ router.get('/usage', (0, clerk_sdk_node_1.ClerkExpressRequireAuth)(), (async (re
     }
 }));
 exports.default = router;
+//# sourceMappingURL=ai.js.map

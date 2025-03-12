@@ -230,30 +230,6 @@ th, td {
   font-size: 14px;
 }
 
-/* Subscription Dialog Styles */
-.subscription-dialog {
-  margin: 0 !important;
-}
-
-.centered-dialog {
-  position: fixed !important;
-  top: 50% !important;
-  left: 50% !important;
-  transform: translate(-50%, -50%) !important;
-}
-
-.mat-mdc-dialog-container {
-  padding: 0 !important;
-  border-radius: 1rem !important;
-  overflow: hidden !important;
-  max-height: 90vh !important;
-}
-
-.mat-mdc-dialog-surface {
-  overflow-y: auto !important;
-  max-height: 90vh !important;
-}
-
 /* Make sure notifications are always on top */
 .mat-snack-bar-container {
   z-index: 9999 !important;

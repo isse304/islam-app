@@ -1,14 +1,20 @@
-export const environment = {
+import { Environment } from './environment.interface';
+
+export const environment: Environment = {
   production: true,
-  apiUrl: 'https://nura-ai-backend.onrender.com',
-  openaiApiKey: '%OPENAI_API_KEY%',
-  elevenLabsApiKey: '%ELEVEN_LABS_KEY%',
-  sttApiKey: '%STT_API_KEY%',
-  clerkPublishableKey: '%CLERK_PUBLISHABLE_KEY%',
-  clerkFrontendApi: 'https://clerk.nura-ai.app',
+  apiUrl: 'https://your-production-api.com',
+  openaiApiKey: undefined,
+  elevenLabsApiKey: undefined,
+  sttApiKey: undefined,
+  clerkPublishableKey: 'pk_test_cm9idXN0LWNyYXdkYWQtNDcuY2xlcmsuYWNjb3VudHMuZGV2JA',
+  clerkFrontendApi: 'https://robust-crawdad-47.clerk.accounts.dev',
   aws: {
-    accessKeyId: '%AWS_ACCESS_KEY_ID%',
-    secretAccessKey: '%AWS_SECRET_ACCESS_KEY%',
+    accessKeyId: undefined,
+    secretAccessKey: undefined,
     region: 'us-east-1'
+  },
+  stripeConfig: {
+    publishableKey: process.env['STRIPE_PUBLISHABLE_KEY'] || '',
+    priceId: process.env['STRIPE_PRICE_ID'] || ''
   }
 }; 

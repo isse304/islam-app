@@ -13,27 +13,24 @@
   <!-- Error Logging -->
   <script>
     window.onerror = function(msg, url, line, col, error) {
-      console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + line + '\nColumn: ' + col + '\nError object: ' + JSON.stringify(error));
+      if (msg === 'Script error.' && !url && !line && !col) {
+        // Ignore generic script errors that don't have details
+        return false;
+      }
+      console.error('Error:', { message: msg, url, line, col, error });
       return false;
     };
   </script>
-  <!-- Clerk Authentication -->
-  <script>
-    window.clerkAsyncInit = function() {
-      console.log('Clerk initialized');
-    };
-  </script>
-  <script
-    async
-    crossorigin="anonymous"
-    data-clerk-publishable-key="%CLERK_PUBLISHABLE_KEY%"
-    src="https://clerk.nura-ai.app/npm/@clerk/clerk-js@4/dist/clerk.browser.js"
-    type="text/javascript"
-    onload="console.log('Clerk script loaded')"
-    onerror="console.error('Failed to load Clerk script')"
-  ></script>
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+  <!-- Material Theme -->
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
+  <!-- Add Stripe.js before your closing head tag -->
+  <script src="https://js.stripe.com/v3/"></script>
 </head>
-<body>
+<body class="mat-typography">
   <app-root></app-root>
 </body>
 </html>

@@ -4,74 +4,114 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
+const ReadingHistory_1 = require("../models/ReadingHistory");
+const auth_1 = require("../middleware/auth");
+const axios_1 = __importDefault(require("axios"));
+// Cache verse counts to avoid repeated API calls
+const verseCountCache = new Map();
+// Utility function to get verse count from API or cache
+async function getVerseCount(surah) {
+    // Check cache first
+    if (verseCountCache.has(surah)) {
+        return verseCountCache.get(surah);
+    }
+    try {
+        // Fetch from Quran API
+        const response = await axios_1.default.get(`https://api.quran.com/api/v4/chapters/${surah}`);
+        const verseCount = response.data.chapter.verses_count;
+        // Cache the result
+        verseCountCache.set(surah, verseCount);
+        return verseCount;
+    }
+    catch (error) {
+        console.error('Error fetching verse count:', error);
+        throw new Error('Failed to validate verse number');
+    }
+}
+// Utility function to validate verse number
+async function isValidVerse(surah, verse) {
+    if (surah < 1 || surah > 114)
+        return false;
+    if (verse < 1)
+        return false;
+    try {
+        const verseCount = await getVerseCount(surah);
+        return verse <= verseCount;
+    }
+    catch (error) {
+        console.error('Error validating verse:', error);
+        throw error;
+    }
+}
 const router = express_1.default.Router();
-// Initialize in-memory storage (replace with your database)
-const userPreferences = new Map();
-const readingHistory = new Map();
-// Get user preferences
-router.get('/:userId/preferences', async (req, res) => {
+// Get user reading history with pagination
+router.get('/:userId/reading-history', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
     try {
-        const { userId } = req.params;
-        // TODO: Add your database logic here
-        // For now, we'll just return what's stored in memory
-        const preferences = userPreferences.get(userId) || {
-            selectedReciter: 7,
-            selectedTranslation: '131',
-            fontSize: 24,
-            darkMode: false,
-            bookmarks: []
-        };
-        res.json(preferences);
-    }
-    catch (error) {
-        console.error('Error fetching user preferences:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-// Update user preferences
-router.put('/:userId/preferences', async (req, res) => {
-    try {
-        const { userId } = req.params;
-        const preferences = req.body;
-        // TODO: Add your database logic here
-        // For now, we'll just store in memory
-        userPreferences.set(userId, preferences);
-        res.json(preferences);
-    }
-    catch (error) {
-        console.error('Error updating user preferences:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
-// Get user reading history
-router.get('/:userId/reading-history', async (req, res) => {
-    try {
-        const { userId } = req.params;
-        // TODO: Add your database logic here
-        // For now, we'll just return what's stored in memory
-        const history = readingHistory.get(userId) || [];
+        const history = await ReadingHistory_1.ReadingHistory.find({ userId })
+            .sort({ timestamp: -1 });
         res.json(history);
     }
     catch (error) {
-        console.error('Error fetching reading history:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to fetch reading history' });
     }
-});
+}));
 // Add to reading history
-router.post('/:userId/reading-history', async (req, res) => {
+router.post('/:userId/reading-history', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
+    const { surah, verse, timestamp } = req.body;
     try {
-        const { userId } = req.params;
-        const entry = req.body;
-        // TODO: Add your database logic here
-        // For now, we'll just store in memory
-        const history = readingHistory.get(userId) || [];
-        history.push(entry);
-        readingHistory.set(userId, history);
-        res.json(entry);
+        // Create new reading history entry
+        const newHistory = new ReadingHistory_1.ReadingHistory({
+            userId,
+            surah,
+            verse,
+            timestamp: timestamp || new Date()
+        });
+        const savedHistory = await newHistory.save();
+        res.json(savedHistory);
     }
     catch (error) {
-        console.error('Error adding to reading history:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Failed to save reading history' });
     }
-});
+}));
+// Delete reading history
+router.delete('/:userId/reading-history/:historyId', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
+    const { historyId } = req.params;
+    try {
+        const deletedHistory = await ReadingHistory_1.ReadingHistory.findOneAndDelete({ _id: historyId, userId });
+        if (!deletedHistory) {
+            res.status(404).json({ error: 'History entry not found' });
+            return;
+        }
+        res.json({ message: 'History entry deleted successfully' });
+    }
+    catch (error) {
+        res.status(500).json({ error: 'Failed to delete history entry' });
+    }
+}));
+// Get user preferences
+router.get('/:userId/preferences', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
+    // Return user preferences from database
+    // This is a placeholder - implement actual database query
+    const preferences = {
+        selectedReciter: 1,
+        selectedTranslation: 'en.sahih',
+        fontSize: 16,
+        darkMode: false,
+        bookmarks: []
+    };
+    res.json(preferences);
+}));
+// Update user preferences
+router.put('/:userId/preferences', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
+    const preferences = req.body;
+    // Update user preferences in database
+    // This is a placeholder - implement actual database update
+    res.json({ message: 'Preferences updated successfully', preferences });
+}));
 exports.default = router;
+//# sourceMappingURL=users.js.map

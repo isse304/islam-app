@@ -23,6 +23,11 @@ const routes: Routes = [
     path: 'premium',
     loadComponent: () => import('./components/subscription/subscription.component').then(m => m.SubscriptionComponent),
     canActivate: [AuthGuard]
+  },
+  {
+    path: 'usage',
+    loadComponent: () => import('./components/usage/usage.component').then(m => m.UsageComponent),
+    canActivate: [AuthGuard]
   }
 ];
 

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import { ReadingHistory } from '../models/ReadingHistory';
 import { ClerkExpressRequireAuth } from '@clerk/clerk-sdk-node';
-import { AuthenticatedRequest } from '../middleware/auth.middleware';
+import { AuthenticatedRequest, authenticateUser, withAuth } from '../middleware/auth';
 import axios from 'axios';
 
 // Extend express Request type to include auth property
@@ -53,7 +53,6 @@ async function isValidVerse(surah: number, verse: number): Promise<boolean> {
 }
 
 const router = express.Router();
-const requireAuth = ClerkExpressRequireAuth();
 
 interface UserPreferences {
   selectedReciter: number;
@@ -64,177 +63,81 @@ interface UserPreferences {
 }
 
 // Get user reading history with pagination
-router.get('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.auth.userId;
+  
   try {
-    const { userId } = req.params;
-    
-    // Verify user is accessing their own data
-    if (!req.auth?.userId || req.auth.userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized access' });
-    }
-
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 100;
-    const skip = (page - 1) * limit;
-
-    const [history, total] = await Promise.all([
-      ReadingHistory.find({ userId })
-        .sort({ timestamp: -1 })
-        .skip(skip)
-        .limit(limit)
-        .lean(),
-      ReadingHistory.countDocuments({ userId })
-    ]);
-
-    res.json({
-      history,
-      pagination: {
-        currentPage: page,
-        totalPages: Math.ceil(total / limit),
-        totalItems: total,
-        itemsPerPage: limit
-      }
-    });
+    const history = await ReadingHistory.find({ userId })
+      .sort({ timestamp: -1 });
+    res.json(history);
   } catch (error) {
-    console.error('Error fetching reading history:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to fetch reading history' });
   }
-});
+}));
 
 // Add to reading history
-router.post('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.auth.userId;
+  const { surah, verse, timestamp } = req.body;
+
   try {
-    const { userId } = req.params;
-    
-    // Verify user is accessing their own data
-    if (!req.auth?.userId || req.auth.userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized access' });
-    }
-
-    const { surah, verse } = req.body;
-    console.log('Received reading history request:', { userId, surah, verse });
-
-    // Validate input
-    if (!surah || !verse) {
-      console.error('Missing required fields:', { surah, verse });
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    // Validate surah and verse numbers
-    try {
-      const isValid = await isValidVerse(surah, verse);
-      if (!isValid) {
-        const verseCount = await getVerseCount(surah);
-        console.error('Invalid verse number:', { surah, verse, verseCount });
-        return res.status(400).json({ 
-          error: 'Invalid verse number',
-          message: `Surah ${surah} has ${verseCount} verses. Received verse ${verse}.`
-        });
-      }
-    } catch (error) {
-      console.error('Error validating verse:', error);
-      return res.status(500).json({ error: 'Error validating verse number' });
-    }
-
-    // Create new entry
-    const entry = new ReadingHistory({
+    // Create new reading history entry
+    const newHistory = new ReadingHistory({
       userId,
       surah,
       verse,
-      timestamp: new Date()
+      timestamp: timestamp || new Date()
     });
 
-    console.log('Attempting to save entry:', entry);
-
-    // Save entry
-    await entry.save();
-    console.log('Entry saved successfully');
-    
-    res.status(201).json(entry);
-  } catch (error: any) {
-    // Handle duplicate entry error
-    if (error.code === 11000 || error.message === 'Duplicate entry handled') {
-      console.log('Duplicate entry handled:', error);
-      return res.status(200).json({ 
-        status: 'success',
-        message: 'Reading history updated successfully' 
-      });
-    }
-    
-    console.error('Error adding to reading history:', error);
-    res.status(500).json({ 
-      error: 'Internal server error',
-      message: error.message
-    });
+    const savedHistory = await newHistory.save();
+    res.json(savedHistory);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save reading history' });
   }
-});
+}));
 
 // Delete reading history
-router.delete('/:userId/reading-history', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:userId/reading-history/:historyId', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.auth.userId;
+  const { historyId } = req.params;
+
   try {
-    const { userId } = req.params;
-    
-    // Verify user is accessing their own data
-    if (!req.auth?.userId || req.auth.userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized access' });
+    const deletedHistory = await ReadingHistory.findOneAndDelete({ _id: historyId, userId });
+    if (!deletedHistory) {
+      res.status(404).json({ error: 'History entry not found' });
+      return;
     }
-    
-    // Delete all history entries for this user
-    await ReadingHistory.deleteMany({ userId });
-    
-    res.status(200).json({ message: 'Reading history cleared successfully' });
+    res.json({ message: 'History entry deleted successfully' });
   } catch (error) {
-    console.error('Error clearing reading history:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Failed to delete history entry' });
   }
-});
+}));
 
 // Get user preferences
-router.get('/:userId/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { userId } = req.params;
-    
-    // Verify user is accessing their own data
-    if (!req.auth?.userId || req.auth.userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized access' });
-    }
-
-    // TODO: Add your database logic here
-    // For now, we'll just return what's stored in memory
-    const preferences = {
-      selectedReciter: 7,
-      selectedTranslation: '131',
-      fontSize: 24,
-      darkMode: false,
-      bookmarks: []
-    };
-    
-    res.json(preferences);
-  } catch (error) {
-    console.error('Error fetching user preferences:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.auth.userId;
+  
+  // Return user preferences from database
+  // This is a placeholder - implement actual database query
+  const preferences: UserPreferences = {
+    selectedReciter: 1,
+    selectedTranslation: 'en.sahih',
+    fontSize: 16,
+    darkMode: false,
+    bookmarks: []
+  };
+  
+  res.json(preferences);
+}));
 
 // Update user preferences
-router.put('/:userId/preferences', requireAuth, async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const { userId } = req.params;
-    
-    // Verify user is accessing their own data
-    if (!req.auth?.userId || req.auth.userId !== userId) {
-      return res.status(403).json({ error: 'Unauthorized access' });
-    }
+router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.auth.userId;
+  const preferences = req.body;
 
-    const preferences = req.body;
-    
-    // TODO: Add your database logic here
-    // For now, we'll just return the preferences
-    res.json(preferences);
-  } catch (error) {
-    console.error('Error updating user preferences:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
+  // Update user preferences in database
+  // This is a placeholder - implement actual database update
+  res.json({ message: 'Preferences updated successfully', preferences });
+}));
 
 export default router; 

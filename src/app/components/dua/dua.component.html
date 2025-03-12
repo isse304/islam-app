@@ -4,7 +4,7 @@
   
       <!-- Search section -->
       <div class="search-section bg-white rounded-xl p-6 shadow-md mb-8">
-        <div class="search-container">
+        <div class="search-container relative">
           <label for="emotionSearch" class="block text-lg font-semibold text-[#B7A57A] mb-3">
             How are you feeling today?
           </label>
@@ -15,22 +15,33 @@
               [(ngModel)]="feeling" 
               placeholder="Enter your emotion (e.g., anxious, grateful, hopeful)..."
               class="w-full px-4 py-3 rounded-lg border-2 border-[#B7A57A]/30 focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 outline-none transition-all duration-200 text-gray-700 placeholder-gray-400"
+              [class.blur-sm]="!(authStateService.isPremiumUser$ | async)"
             >
             <div class="absolute right-3 top-1/2 transform -translate-y-1/2 flex items-center gap-2">
               <button 
                 *ngIf="feeling"
                 (click)="clearEmotionSearch()"
                 class="text-gray-400 hover:text-gray-600 transition-colors"
+                [class.blur-sm]="!(authStateService.isPremiumUser$ | async)"
                 aria-label="Clear search">
                 <span class="material-icons">close</span>
               </button>
               <button 
-                (click)="searchByFeeling()"
+                (click)="searchByFeeling(feeling)"
                 class="text-[#B7A57A] hover:text-[#9b8a65] transition-colors"
-                aria-label="Search"
-                premiumRequired>
+                aria-label="Search">
                 <span class="material-icons">search</span>
               </button>
+            </div>
+          </div>
+          
+          <!-- Premium overlay -->
+          <div *ngIf="!(authStateService.isPremiumUser$ | async)" 
+               class="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center cursor-pointer"
+               (click)="subscriptionService.showSubscriptionPage('Emotional Dua Search')">
+            <div class="text-white flex items-center gap-2 bg-black/40 px-4 py-2 rounded-lg">
+              <i class="fas fa-lock"></i>
+              <span>Premium Feature</span>
             </div>
           </div>
         </div>
@@ -56,7 +67,7 @@
         </div>
 
         <!-- AI Insights -->
-        <div class="ai-insights mt-6" *ngIf="aiInsights" premiumRequired>
+        <div class="ai-insights mt-6" *ngIf="aiInsights && (authStateService.isPremiumUser$ | async)">
           <div class="bg-white rounded-lg p-6 shadow-md">
             <div class="flex justify-between items-center mb-6">
               <h3 class="text-xl font-semibold text-[#B7A57A] flex items-center">
@@ -233,10 +244,18 @@
             <!-- AI Insights Button -->
             <button 
               (click)="onDuaSelect(dua)"
-              class="mt-4 w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center justify-center gap-2"
-              premiumRequired>
-              <i class="fas fa-lock"></i>
+              class="mt-4 w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors relative overflow-hidden"
+              [class.opacity-75]="!(authStateService.isPremiumUser$ | async)">
+              <i class="fas fa-robot mr-2"></i>
               View AI-Powered Insights
+              <div *ngIf="!(authStateService.isPremiumUser$ | async)" 
+                   class="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+                   (click)="$event.stopPropagation(); subscriptionService.showSubscriptionPage('AI Insights')">
+                <div class="text-white flex items-center gap-2 bg-black/40 px-4 py-2 rounded-lg">
+                  <i class="fas fa-lock"></i>
+                  <span>Premium Feature</span>
+                </div>
+              </div>
             </button>
           </div>
         </div>
@@ -262,6 +281,11 @@
             <app-dua-insights [dua]="selectedDua"></app-dua-insights>
           </div>
         </div>
+      </div>
+
+      <!-- Other premium content -->
+      <div class="premium-feature" *ngIf="authStateService.isPremiumUser$ | async">
+        <!-- Existing content -->
       </div>
     </div>
   </div> 

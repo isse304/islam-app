@@ -25,21 +25,21 @@ export class CostMonitorService {
         const usage = await UserUsage.aggregate([
             {
                 $match: {
-                    lastRequest: { $gte: today }
+                    'aiRequests.lastRequest': { $gte: today }
                 }
             },
             {
                 $group: {
                     _id: null,
-                    totalInputTokens: { $sum: { $multiply: ['$requests.tokens', 0.7] } },
-                    totalOutputTokens: { $sum: { $multiply: ['$requests.tokens', 0.3] } }
+                    totalRequests: { $sum: '$aiRequests.count' }
                 }
             }
         ]);
 
         if (usage.length > 0) {
-            const { totalInputTokens, totalOutputTokens } = usage[0];
-            const dailyCost = this.calculateCost(totalInputTokens, totalOutputTokens);
+            const { totalRequests } = usage[0];
+            // Estimate tokens: average 100 input tokens and 300 output tokens per request
+            const dailyCost = this.calculateCost(totalRequests * 100, totalRequests * 300);
 
             if (dailyCost > this.DAILY_COST_THRESHOLD) {
                 await this.emailService.sendCostAlert('daily', dailyCost, this.DAILY_COST_THRESHOLD);
@@ -54,21 +54,21 @@ export class CostMonitorService {
         const usage = await UserUsage.aggregate([
             {
                 $match: {
-                    lastRequest: { $gte: oneHourAgo }
+                    'aiRequests.lastRequest': { $gte: oneHourAgo }
                 }
             },
             {
                 $group: {
                     _id: null,
-                    totalInputTokens: { $sum: { $multiply: ['$requests.tokens', 0.7] } },
-                    totalOutputTokens: { $sum: { $multiply: ['$requests.tokens', 0.3] } }
+                    totalRequests: { $sum: '$aiRequests.count' }
                 }
             }
         ]);
 
         if (usage.length > 0) {
-            const { totalInputTokens, totalOutputTokens } = usage[0];
-            const hourlyCost = this.calculateCost(totalInputTokens, totalOutputTokens);
+            const { totalRequests } = usage[0];
+            // Estimate tokens: average 100 input tokens and 300 output tokens per request
+            const hourlyCost = this.calculateCost(totalRequests * 100, totalRequests * 300);
 
             if (hourlyCost > this.HOURLY_COST_THRESHOLD) {
                 await this.emailService.sendCostAlert('hourly', hourlyCost, this.HOURLY_COST_THRESHOLD);
@@ -89,43 +89,37 @@ export class CostMonitorService {
             UserUsage.aggregate([
                 {
                     $match: {
-                        lastRequest: { $gte: today }
+                        'aiRequests.lastRequest': { $gte: today }
                     }
                 },
                 {
                     $group: {
                         _id: null,
-                        totalInputTokens: { $sum: { $multiply: ['$requests.tokens', 0.7] } },
-                        totalOutputTokens: { $sum: { $multiply: ['$requests.tokens', 0.3] } }
+                        totalRequests: { $sum: '$aiRequests.count' }
                     }
                 }
             ]),
             UserUsage.aggregate([
                 {
                     $match: {
-                        lastRequest: { $gte: oneHourAgo }
+                        'aiRequests.lastRequest': { $gte: oneHourAgo }
                     }
                 },
                 {
                     $group: {
                         _id: null,
-                        totalInputTokens: { $sum: { $multiply: ['$requests.tokens', 0.7] } },
-                        totalOutputTokens: { $sum: { $multiply: ['$requests.tokens', 0.3] } }
+                        totalRequests: { $sum: '$aiRequests.count' }
                     }
                 }
             ])
         ]);
 
-        const dailyCost = dailyUsage.length > 0
-            ? this.calculateCost(dailyUsage[0].totalInputTokens, dailyUsage[0].totalOutputTokens)
-            : 0;
+        const dailyRequests = dailyUsage.length > 0 ? dailyUsage[0].totalRequests : 0;
+        const hourlyRequests = hourlyUsage.length > 0 ? hourlyUsage[0].totalRequests : 0;
 
-        const hourlyCost = hourlyUsage.length > 0
-            ? this.calculateCost(hourlyUsage[0].totalInputTokens, hourlyUsage[0].totalOutputTokens)
-            : 0;
-
-        // Project monthly cost based on daily average
-        const monthlyCost = dailyCost * 30;
+        const dailyCost = this.calculateCost(dailyRequests * 100, dailyRequests * 300);
+        const hourlyCost = this.calculateCost(hourlyRequests * 100, hourlyRequests * 300);
+        const monthlyCost = dailyCost * 30; // Project based on daily average
 
         return {
             daily: dailyCost,
@@ -138,14 +132,14 @@ export class CostMonitorService {
         const usage = await UserUsage.findOneAndUpdate(
             { userId: data.userId },
             { 
-                $inc: { count: data.amount },
-                $set: { lastRequest: new Date() }
+                $inc: { 'aiRequests.count': data.amount },
+                $set: { 'aiRequests.lastRequest': new Date() }
             },
             { upsert: true, new: true }
         );
 
-        if (usage.count >= parseInt(process.env.DAILY_USER_LIMIT || '100')) {
-            await this.emailService.sendUsageAlert(data.userId, usage.count, parseInt(process.env.DAILY_USER_LIMIT || '100'));
+        if (usage.aiRequests.count >= parseInt(process.env.DAILY_USER_LIMIT || '100')) {
+            await this.emailService.sendUsageAlert(data.userId, usage.aiRequests.count, parseInt(process.env.DAILY_USER_LIMIT || '100'));
         }
     }
 

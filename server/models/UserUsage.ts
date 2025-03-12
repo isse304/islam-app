@@ -1,36 +1,49 @@
-import mongoose from 'mongoose';
+import mongoose, { Document, Schema } from 'mongoose';
 
-const userUsageSchema = new mongoose.Schema({
-    userId: {
+interface IUserUsageBase {
+    userId: string;
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
+    status: 'trial' | 'active' | 'canceled' | 'free';
+    currentPeriodEnd?: Date;
+    aiRequests: {
+        count: number;
+        lastRequest: Date;
+    };
+    aiRequestLimit: number;
+}
+
+export interface IUserUsage extends IUserUsageBase, Document {
+    incrementAIRequestCount(): Promise<void>;
+    canMakeAIRequest(): Promise<boolean>;
+}
+
+const userUsageSchema = new Schema<IUserUsage>({
+    userId: { type: String, required: true, unique: true },
+    stripeCustomerId: String,
+    stripeSubscriptionId: String,
+    status: {
         type: String,
         required: true,
-        unique: true
+        enum: ['trial', 'active', 'canceled', 'free'],
+        default: 'trial'
     },
-    count: {
-        type: Number,
-        default: 0
+    currentPeriodEnd: Date,
+    aiRequests: {
+        count: { type: Number, default: 0 },
+        lastRequest: { type: Date }
     },
-    totalTokens: {
-        type: Number,
-        default: 0
-    },
-    lastReset: {
-        type: Date,
-        default: Date.now
-    },
-    lastRequest: {
-        type: Date,
-        default: Date.now
-    },
-    requests: [{
-        timestamp: Date,
-        tokens: Number,
-        systemMessage: String,
-        userMessage: String
-    }]
+    aiRequestLimit: { type: Number, default: 50 }
 });
 
-// Index for faster queries
-userUsageSchema.index({ lastReset: 1 });
+userUsageSchema.methods.incrementAIRequestCount = async function(): Promise<void> {
+    this.aiRequests.count += 1;
+    this.aiRequests.lastRequest = new Date();
+    await this.save();
+};
 
-export const UserUsage = mongoose.model('UserUsage', userUsageSchema); 
+userUsageSchema.methods.canMakeAIRequest = async function(): Promise<boolean> {
+    return this.aiRequests.count < this.aiRequestLimit;
+};
+
+export const UserUsage = mongoose.model<IUserUsage>('UserUsage', userUsageSchema); 

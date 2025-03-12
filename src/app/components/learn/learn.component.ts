@@ -1,6 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
+import { AuthStateService } from '../../services/auth-state.service';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
@@ -19,7 +20,9 @@ interface SurahData {
 @Component({
     selector: 'app-learn',
     templateUrl: './learn.component.html',
-    styleUrls: ['./learn.component.scss']
+    styleUrls: ['./learn.component.scss'],
+    standalone: true,
+    imports: [CommonModule, FormsModule]
 })
 export class LearnComponent implements OnInit {
   selectedSurah: number = 1;
@@ -37,18 +40,14 @@ export class LearnComponent implements OnInit {
   constructor(
     private quranService: QuranService,
     private subscriptionService: SubscriptionService,
-    private router: Router
+    public authStateService: AuthStateService,
+    public router: Router
   ) {}
 
   async ngOnInit() {
-    const hasPremiumAccess = await this.subscriptionService.checkPremiumAccess('Learn Feature');
-    if (!hasPremiumAccess) {
-      this.router.navigate(['/premium'], { 
-        queryParams: { 
-          feature: 'Learn Feature',
-          returnUrl: this.router.url
-        } 
-      });
+    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    if (!isPremium) {
+      this.subscriptionService.showSubscriptionPage('Learn Feature');
       return;
     }
     this.loadSurahs();

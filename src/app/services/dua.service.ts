@@ -5,6 +5,7 @@ import duasData from '../components/dua/duas.json';
 import localforage from 'localforage';
 import Fuse from 'fuse.js';
 import { ApiService } from './api.service';
+import { environment } from '../../environments/environment';
 
 export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness';
 
@@ -20,6 +21,12 @@ export interface Dua {
   virtue?: string;
   time?: string;
   emotion?: string[];
+  tags?: string[];
+}
+
+interface EmotionalDuaResponse {
+  duas: Dua[];
+  insights: string;
 }
 
 @Injectable({
@@ -244,34 +251,30 @@ export class DuaService {
   }
 
   getDuasByCategory(category: DuaCategory): Observable<Dua[]> {
-    return this.getDuas(category);
+    // Use local data instead of API call
+    return of(this.getUniqueDuas(this.localDuas[category] || []));
   }
 
   getRelatedEmotions(emotion: string): string[] {
-    const emotionMap = new Map<string, string[]>([
-      ['anxious', ['worried', 'fearful', 'stressed', 'overwhelmed', 'uncertain']],
-      ['worried', ['anxious', 'fearful', 'stressed', 'concerned', 'troubled']],
-      ['hopeful', ['optimistic', 'grateful', 'positive', 'faithful', 'confident']],
-      ['grateful', ['thankful', 'blessed', 'appreciative', 'content', 'happy']],
-      ['fearful', ['scared', 'anxious', 'worried', 'threatened', 'insecure']],
-      ['tired', ['exhausted', 'weary', 'sleepy', 'drained', 'fatigued']],
-      ['seeking protection', ['vulnerable', 'threatened', 'unsafe', 'insecure', 'fearful']],
-      ['seeking peace', ['restless', 'anxious', 'troubled', 'disturbed', 'seeking comfort']],
-      ['seeking strength', ['weak', 'tired', 'overwhelmed', 'struggling', 'powerless']],
-      ['seeking forgiveness', ['guilty', 'remorseful', 'regretful', 'ashamed', 'repentant']]
-    ]);
-
-    const lowerEmotion = emotion.toLowerCase();
-    const relatedEmotions = emotionMap.get(lowerEmotion) || [];
+    // This is a static mapping of related emotions
+    const emotionMap: { [key: string]: string[] } = {
+      'anxiety': ['worry', 'fear', 'stress', 'nervousness'],
+      'sadness': ['grief', 'sorrow', 'depression', 'loneliness'],
+      'fear': ['anxiety', 'worry', 'dread', 'panic'],
+      'anger': ['frustration', 'rage', 'irritation', 'resentment'],
+      'happiness': ['joy', 'gratitude', 'contentment', 'peace'],
+      'love': ['compassion', 'kindness', 'affection', 'care'],
+      'gratitude': ['thankfulness', 'appreciation', 'contentment'],
+      'peace': ['tranquility', 'serenity', 'calmness', 'contentment'],
+      'confusion': ['uncertainty', 'doubt', 'bewilderment'],
+      'regret': ['remorse', 'guilt', 'repentance'],
+      'loneliness': ['isolation', 'solitude', 'abandonment'],
+      'stress': ['pressure', 'tension', 'overwhelm', 'anxiety'],
+      'doubt': ['uncertainty', 'confusion', 'skepticism'],
+      'guilt': ['shame', 'regret', 'remorse']
+    };
     
-    // Add emotions that have the search term as a related emotion
-    emotionMap.forEach((related, key) => {
-      if (related.includes(lowerEmotion) && !relatedEmotions.includes(key)) {
-        relatedEmotions.push(key);
-      }
-    });
-
-    return relatedEmotions;
+    return emotionMap[emotion.toLowerCase()] || [];
   }
 
   async getDuaById(id: string): Promise<Dua | undefined> {
@@ -283,72 +286,18 @@ export class DuaService {
     return undefined;
   }
 
-  async getDuaInsights(duaId: string): Promise<string> {
-    try {
-      // Check AI insights cache first
-      if (this.aiInsightsCache[duaId]) {
-        return this.aiInsightsCache[duaId];
-      }
-
-      // If not in cache, generate new insights
-      const dua = await this.getDuaById(duaId);
-      if (!dua) return '';
-
-      const prompt = {
-        systemMessage: "You are a knowledgeable Islamic scholar specializing in duas and their meanings.",
-        userMessage: `Provide insights about this dua:\n${dua.arabic}\nTranslation: ${dua.translation}`,
-        temperature: 0.6,
-        maxTokens: 500
-      };
-
-      const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-      const insights = response?.content || 'No insights available';
-      
-      // Cache the result
-      this.aiInsightsCache[duaId] = insights;
-      await this.saveCaches();
-      
-      return insights;
-    } catch (error) {
-      console.error('Error getting dua insights:', error);
-      return '';
-    }
+  getDuaInsights(duaId: string): Observable<string> {
+    return this.http.get<string>(`${environment.apiUrl}/api/duas/${duaId}/insights`);
   }
 
-  extractEmotionsFromText(text: string): string[] {
-    const emotionKeywords = {
-      anxious: ['anxious', 'worried', 'nervous', 'stressed', 'uneasy', 'fear', 'scared', 'frightened'],
-      sad: ['sad', 'depressed', 'down', 'heartbroken', 'grief', 'sorrow', 'upset', 'unhappy'],
-      angry: ['angry', 'furious', 'rage', 'irritated', 'frustrated', 'mad', 'annoyed'],
-      happy: ['happy', 'joyful', 'excited', 'delighted', 'pleased', 'content'],
-      grateful: ['grateful', 'thankful', 'blessed', 'appreciative', 'humbled'],
-      hopeful: ['hopeful', 'optimistic', 'positive', 'encouraged', 'confident'],
-      confused: ['confused', 'uncertain', 'unsure', 'lost', 'perplexed', 'puzzled'],
-      lonely: ['lonely', 'alone', 'isolated', 'abandoned', 'disconnected'],
-      guilty: ['guilty', 'regretful', 'remorseful', 'ashamed', 'sorry'],
-      peaceful: ['peaceful', 'calm', 'serene', 'tranquil', 'relaxed'],
-      overwhelmed: ['overwhelmed', 'burdened', 'stressed', 'pressured', 'swamped'],
-      fearful: ['fearful', 'afraid', 'terrified', 'anxious', 'scared', 'panicked']
-    };
-
-    const words = text.toLowerCase().split(/\W+/);
-    const foundEmotions = new Set<string>();
-
-    words.forEach(word => {
-      for (const [emotion, synonyms] of Object.entries(emotionKeywords)) {
-        if (synonyms.includes(word)) {
-          foundEmotions.add(emotion);
-        }
-      }
-    });
-
-    return Array.from(foundEmotions);
+  extractEmotionsFromText(text: string): Observable<string[]> {
+    return this.http.post<string[]>(`${environment.apiUrl}/api/emotions/extract`, { text });
   }
 
   async getEmotionalDuasWithAI(input: string): Promise<{ duas: Dua[], insights: string }> {
     try {
       // Extract emotions from the input text
-      const emotions = this.extractEmotionsFromText(input);
+      const emotions = await firstValueFrom(this.extractEmotionsFromText(input));
       
       if (emotions.length === 0) {
         // If no emotions detected, treat the entire input as an emotion

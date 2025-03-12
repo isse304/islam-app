@@ -37,7 +37,7 @@ const securityConfig = {
             directives: {
                 defaultSrc: ["'self'"],
                 scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-                styleSrc: ["'self'", "'unsafe-inline'"],
+                styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
                 imgSrc: ["'self'", "data:", "https:"],
                 connectSrc: ["'self'", "https://api.openai.com", "https://api.elevenlabs.io"],
                 fontSrc: ["'self'", "https:", "data:"],

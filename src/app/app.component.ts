@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { environment } from '../environments/environment';
+import { ClerkProvider } from './providers/clerk.provider';
 
 @Component({
   selector: 'app-root',
@@ -9,19 +9,14 @@ import { environment } from '../environments/environment';
 export class AppComponent implements OnInit {
   title = 'IslamApp';
 
-  ngOnInit() {
-    // Log environment configuration
-    console.log('Environment:', {
-      production: environment.production,
-      apiUrl: environment.apiUrl,
-      clerkFrontendApi: environment.clerkFrontendApi
-    });
+  constructor(private clerkProvider: ClerkProvider) {}
 
-    // Check if Clerk is loaded
-    if (window['Clerk']) {
-      console.log('Clerk is available');
-    } else {
-      console.error('Clerk is not loaded');
+  async ngOnInit() {
+    try {
+      await this.clerkProvider.getClerk();
+      console.log('Clerk initialized successfully');
+    } catch (error) {
+      console.error('Error initializing Clerk:', error);
     }
   }
 }

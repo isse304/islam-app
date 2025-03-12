@@ -3,11 +3,9 @@ import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { HttpClientModule } from '@angular/common/http';
+import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { OpenAI } from 'openai';
-import { environment } from '../environments/environment';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -24,8 +22,10 @@ import { DuaTafsirComponent } from './components/dua/dua-tafsir.component';
 import { DuaInsightsComponent } from './components/dua-insights/dua-insights.component';
 import { routes } from './app.routes';
 import { ErrorDialogComponent } from './components/shared/error-dialog/error-dialog.component';
-import { SubscriptionDialogComponent } from './components/subscription-dialog/subscription-dialog.component';
-import { PremiumRequiredDirective } from './directives/premium-required.directive';
+import { UsageComponent } from './components/usage/usage.component';
+import { environment } from '../environments/environment';
+import { ClerkProvider } from './providers/clerk.provider';
+import { AuthInterceptor } from './interceptors/auth.interceptor';
 
 @NgModule({
   declarations: [
@@ -37,31 +37,27 @@ import { PremiumRequiredDirective } from './directives/premium-required.directiv
     AuthButtonsComponent,
     DuaTafsirComponent,
     QuranReaderComponent,
-    LearnComponent,
     DuaInsightsComponent,
-    ErrorDialogComponent,
-    PremiumRequiredDirective
+    ErrorDialogComponent
   ],
   imports: [
     BrowserModule,
+    BrowserAnimationsModule,
     RouterModule.forRoot(routes),
     FormsModule,
     HttpClientModule,
     CommonModule,
-    BrowserAnimationsModule,
     MatTooltipModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatButtonModule,
-    SubscriptionDialogComponent
+    MatButtonModule
   ],
   providers: [
+    ClerkProvider,
     {
-      provide: OpenAI,
-      useValue: new OpenAI({
-        apiKey: environment.openaiApiKey,
-        dangerouslyAllowBrowser: true
-      })
+      provide: HTTP_INTERCEPTORS,
+      useClass: AuthInterceptor,
+      multi: true
     }
   ],
   bootstrap: [AppComponent]

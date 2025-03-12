@@ -7,6 +7,12 @@ import { SubscriptionService } from '../../services/subscription.service';
 import { DuaInsightsComponent } from '../dua-insights/dua-insights.component';
 import { AuthStateService } from '../../services/auth-state.service';
 import { firstValueFrom } from 'rxjs';
+import { first } from 'rxjs/operators';
+
+interface EmotionalDuaResponse {
+  duas: Dua[];
+  insights: string;
+}
 
 @Component({
     selector: 'app-dua',
@@ -44,8 +50,8 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   constructor(
     private duaService: DuaService,
-    private subscriptionService: SubscriptionService,
-    private authStateService: AuthStateService,
+    public subscriptionService: SubscriptionService,
+    public authStateService: AuthStateService,
     //private prayerTimesService: PrayerTimesService,
     private route: ActivatedRoute,
     private router: Router
@@ -137,39 +143,34 @@ export class DuaComponent implements OnInit, OnDestroy {
     }
   }
 
-  async searchByFeeling() {
-    if (!this.feeling) return;
+  async searchByFeeling(feeling: string) {
+    if (!feeling?.trim()) return;
 
     const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
     if (!isPremium) {
-      await this.subscriptionService.showSubscriptionDialog('Emotional Dua Search');
+      this.subscriptionService.showSubscriptionPage('Emotional Dua Search');
       return;
     }
 
     this.isLoading = true;
     this.error = '';
-    this.selectedEmotion = this.feeling.trim();
+    this.selectedEmotion = feeling.trim();
     
     try {
-      // Get duas and insights for the emotional input
-      const { duas, insights } = await this.duaService.getEmotionalDuasWithAI(this.selectedEmotion);
-      
-      this.filteredDuas = duas;
-      this.aiInsights = insights;
+      const response = await this.duaService.getEmotionalDuasWithAI(this.selectedEmotion);
+      this.filteredDuas = response.duas;
+      this.aiInsights = response.insights;
 
-      // Get related emotions based on the detected emotions
-      const detectedEmotions = await this.duaService.extractEmotionsFromText(this.selectedEmotion);
+      const emotions = await firstValueFrom<string[]>(this.duaService.extractEmotionsFromText(this.selectedEmotion));
       this.emotionSuggestions = [];
       
-      // Get related emotions for each detected emotion
-      for (const emotion of detectedEmotions) {
+      for (const emotion of emotions) {
         const related = this.duaService.getRelatedEmotions(emotion);
         this.emotionSuggestions.push(...related);
       }
 
-      // Remove duplicates and limit to 5 suggestions
       this.emotionSuggestions = [...new Set(this.emotionSuggestions)]
-        .filter(emotion => !detectedEmotions.includes(emotion))
+        .filter(emotion => !emotions.includes(emotion))
         .slice(0, 5);
     } catch (error) {
       console.error('Error searching duas:', error);
@@ -194,7 +195,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   selectSuggestedEmotion(emotion: string) {
     this.feeling = emotion;
-    this.searchByFeeling();
+    this.searchByFeeling(emotion);
   }
 
   async onDuaSelect(dua: Dua) {
@@ -341,6 +342,23 @@ export class DuaComponent implements OnInit, OnDestroy {
     } catch (error) {
       console.error('Error parsing related verses:', error);
       return [];
+    }
+  }
+
+  async showInsights(dua: Dua) {
+    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    if (!isPremium) {
+      this.subscriptionService.showSubscriptionPage('Dua Insights');
+      return;
+    }
+
+    this.selectedDua = dua;
+    try {
+      const insights = await firstValueFrom<string>(this.duaService.getDuaInsights(dua.id.toString()));
+      this.aiInsights = insights;
+    } catch (error) {
+      console.error('Error getting dua insights:', error);
+      this.error = 'Failed to load dua insights. Please try again.';
     }
   }
 } 

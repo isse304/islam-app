@@ -8,13 +8,15 @@ import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
-import { AuthenticatedRequest } from './middleware/auth.middleware';
+import { AuthenticatedRequest, authenticateUser } from './middleware/auth';
 import securityConfig from './middleware/security';
 import aiRouter from './routes/ai';
 import monitoringRouter from './routes/monitoring';
 import usersRouter from './routes/users';
 import winston from 'winston';
 import { connectDatabase } from './config/database';
+import subscriptionRouter from './routes/subscription';
+import usageRouter from './routes/usage';
 
 // Load environment variables first, before any other imports
 const envPath = path.resolve(process.cwd(), '.env');
@@ -51,7 +53,11 @@ const requiredEnvVars = [
     'MONGODB_URI',
     'CORS_ORIGIN',
     'OPENAI_API_KEY',
-    'SESSION_SECRET'
+    'SESSION_SECRET',
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PRICE_ID',
+    'STRIPE_WEBHOOK_SECRET',
+    'CLIENT_URL'
 ];
 
 for (const envVar of requiredEnvVars) {
@@ -61,149 +67,85 @@ for (const envVar of requiredEnvVars) {
     }
 }
 
+// Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Apply security middleware
-app.use(securityConfig.helmet);
-app.use(securityConfig.compression);
-app.use(securityConfig.rateLimiter);
-app.use(securityConfig.securityHeaders);
+// Connect to database and start server
+const startServer = async () => {
+    try {
+        await connectDatabase(logger);
+        logger.info('Database connection established');
 
-// Configure session middleware with secure settings and MongoDB store
-app.use(session({
-    secret: process.env.SESSION_SECRET!,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
-        ttl: 24 * 60 * 60, // 1 day
-        autoRemove: 'native'
-    }),
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'strict'
-    }
-}));
+        // Apply middleware
+        app.use(cors({
+            origin: process.env.NODE_ENV === 'development' ? true : process.env.CORS_ORIGIN,
+            credentials: true
+        }));
+        
+        // Initialize Clerk
+        app.use(ClerkExpressWithAuth());
+        
+        // Configure session middleware with secure settings and MongoDB store
+        app.use(session({
+            secret: process.env.SESSION_SECRET!,
+            resave: false,
+            saveUninitialized: false,
+            store: MongoStore.create({
+                mongoUrl: process.env.MONGODB_URI,
+                ttl: 24 * 60 * 60,
+                autoRemove: 'native'
+            }),
+            cookie: {
+                secure: process.env.NODE_ENV === 'production',
+                httpOnly: true,
+                maxAge: 24 * 60 * 60 * 1000,
+                sameSite: 'strict'
+            }
+        }));
 
-// Configure CORS with strict options
-app.use(cors({
-    origin: process.env.CORS_ORIGIN,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    exposedHeaders: ['Authorization'],
-    preflightContinue: false,
-    optionsSuccessStatus: 204
-}));
+        // Apply routes
+        app.use('/api/subscription', subscriptionRouter);
+        app.use('/api/usage', usageRouter);
+        app.use('/api/ai', aiRouter);
+        app.use('/api/monitoring', monitoringRouter);
+        app.use('/api/users', usersRouter);
 
-// Parse JSON bodies with size limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Serve static files with cache headers (only if assets directory exists)
-const assetsPath = path.join(__dirname, '../dist/assets');
-if (fs.existsSync(assetsPath)) {
-    app.use('/assets', express.static(assetsPath, {
-        maxAge: '1d',
-        etag: true
-    }));
-}
-
-// Initialize Clerk middleware
-app.use(ClerkExpressWithAuth({
-    onError: (error: Error) => {
-        logger.error('Clerk auth error:', error);
-        return {
-            status: 401,
-            message: 'Unauthorized'
-        };
-    }
-}));
-
-// Connect to database
-connectDatabase(logger).catch(err => {
-    logger.error('Failed to connect to database:', err);
-    process.exit(1);
-});
-
-// Test authentication endpoint
-app.get('/api/auth-test', ClerkExpressWithAuth(), (req: Request, res: Response) => {
-    if (!req.auth?.userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    res.json({
-        message: 'Authentication successful!',
-        user: {
-            id: req.auth.userId,
-            sessionId: req.auth.sessionId
-        }
-    });
-});
-
-// Routes
-app.use('/api/ai', aiRouter);
-app.use('/api/monitoring', monitoringRouter);
-app.use('/api/users', usersRouter);
-
-// Health check endpoint
-app.get('/health', (req, res) => {
-    res.json({ 
-        status: 'healthy',
-        timestamp: new Date().toISOString()
-    });
-});
-
-// Global error handling middleware
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-    logger.error('Unhandled error:', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'production' ? 'Something went wrong' : err.message
-    });
-});
-
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-    logger.info('SIGTERM received. Shutting down gracefully...');
-    mongoose.connection.close()
-        .then(() => {
-            logger.info('MongoDB connection closed.');
-            process.exit(0);
-        })
-        .catch(err => {
-            logger.error('Error during shutdown:', err);
-            process.exit(1);
+        // Start server
+        app.listen(port, () => {
+            logger.info(`Server is running on port ${port}`);
         });
-});
 
-// Start the server
-if (process.env.NODE_ENV === 'production' && process.env.DOMAIN) {
-    // In production with custom domain, use HTTPS
-    const httpsOptions = {
-        key: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'privkey.pem')),
-        cert: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'cert.pem')),
-        ca: fs.readFileSync(path.join(__dirname, '../greenlock.d/live/', process.env.DOMAIN, 'chain.pem'))
-    };
+        // Graceful shutdown handling
+        process.on('SIGTERM', () => {
+            logger.info('SIGTERM received. Shutting down gracefully...');
+            mongoose.connection.close()
+                .then(() => {
+                    logger.info('MongoDB connection closed.');
+                    process.exit(0);
+                })
+                .catch(err => {
+                    logger.error('Error during shutdown:', err);
+                    process.exit(1);
+                });
+        });
 
-    https.createServer(httpsOptions, app).listen(443, () => {
-        logger.info('HTTPS Server running on port 443');
-    });
+    } catch (error) {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
 
-    // Redirect HTTP to HTTPS
-    const httpApp = express();
-    httpApp.use((req, res) => {
-        res.redirect(`https://${req.headers.host}${req.url}`);
+startServer();
+
+app.get('/api/user-session', authenticateUser, (req: Request, res: Response) => {
+  const authReq = req as AuthenticatedRequest;
+  try {
+    return res.json({
+      userId: authReq.auth.userId
     });
-    httpApp.listen(80, () => {
-        logger.info('HTTP Server running on port 80 (redirecting to HTTPS)');
-    });
-} else {
-    // In development or production without custom domain (e.g., Render)
-    app.listen(port, () => {
-        logger.info(`Server is running on port ${port} in ${process.env.NODE_ENV} mode`);
-    });
-} 
+  } catch (error) {
+    console.error('Error fetching user session:', error);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+}); 
