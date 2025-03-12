@@ -33,7 +33,7 @@ services:
     buildCommand: |
       npm install
       ng build --configuration=production --base-href=/
-    staticPublishPath: ./dist/islam-app/browser
+    staticPublishPath: ./dist/islam-app/browser/browser
     headers:
       - path: /*
         name: Cache-Control
