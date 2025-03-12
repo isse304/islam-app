@@ -93,13 +93,24 @@ export class AuthService {
         });
       }
 
-      // Check if Clerk script is loaded
+      // Check if Clerk script is loaded with improved timeout handling
       if (!window.Clerk) {
-        await new Promise<void>((resolve) => {
+        await new Promise<void>((resolve, reject) => {
+          let attempts = 0;
+          const maxAttempts = 150; // 15 seconds timeout (100ms * 150)
+          
           const checkClerk = () => {
+            attempts++;
             if (window.Clerk) {
+              console.log('Clerk object found in AuthService');
               resolve();
+            } else if (attempts >= maxAttempts) {
+              console.error('Clerk not found after maximum attempts in AuthService');
+              reject(new Error('Timeout waiting for Clerk to load in AuthService'));
             } else {
+              if (attempts % 10 === 0) { // Log only every 10 attempts
+                console.log(`AuthService: Waiting for Clerk (attempt ${attempts}/${maxAttempts})...`);
+              }
               setTimeout(checkClerk, 100);
             }
           };
@@ -107,19 +118,31 @@ export class AuthService {
         });
       }
 
+      // Add debug log
+      console.log('Clerk is available, proceeding with initialization');
+
       // Initialize Clerk
       if (!window.Clerk.isInitialized) {
-        await window.Clerk.load({
-          publishableKey: publishableKey,
-          frontendApi: environment.clerkFrontendApi,
-          appearance: {
-            elements: {
-              rootBox: {
-                boxShadow: 'none',
+        console.log('Initializing Clerk with publishableKey and frontendApi');
+        try {
+          await window.Clerk.load({
+            publishableKey: publishableKey,
+            frontendApi: environment.clerkFrontendApi,
+            appearance: {
+              elements: {
+                rootBox: {
+                  boxShadow: 'none',
+                },
               },
             },
-          },
-        });
+          });
+          console.log('Clerk.load completed successfully');
+        } catch (loadError) {
+          console.error('Error during Clerk.load:', loadError);
+          throw loadError;
+        }
+      } else {
+        console.log('Clerk is already initialized');
       }
 
       this.clerk = window.Clerk;
@@ -145,9 +168,11 @@ export class AuthService {
       if (this.clerk.user) {
         await this.handleUserSignedIn(this.clerk.user);
       }
+      
+      console.log('Clerk initialization completed in AuthService');
 
     } catch (error) {
-      console.error('Error initializing Clerk:', error);
+      console.error('Error initializing Clerk in AuthService:', error);
       throw error;
     }
   }

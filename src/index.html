@@ -21,6 +21,13 @@
     document.addEventListener('DOMContentLoaded', function() {
       console.log('DOM Content Loaded');
     });
+
+    // Add specific Clerk error handling
+    window.addEventListener('error', function(event) {
+      if (event.filename && event.filename.includes('clerk')) {
+        console.error('Clerk script error:', event);
+      }
+    });
   </script>
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
@@ -30,13 +37,32 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
   <!-- Add Stripe.js before your closing head tag -->
   <script src="https://js.stripe.com/v3/"></script>
-  <!-- Add Clerk script -->
+  <!-- Add Clerk script with error handling -->
+  <script>
+    // Create a fallback in case the Clerk script fails to load
+    window.clerkScriptLoadTimeout = setTimeout(function() {
+      console.error('Clerk script did not load within the timeout period');
+      // You could add a UI notification here
+    }, 10000); // 10 second timeout
+    
+    function onClerkScriptLoad() {
+      console.log('Clerk script loaded successfully');
+      clearTimeout(window.clerkScriptLoadTimeout);
+    }
+    
+    function onClerkScriptError(error) {
+      console.error('Error loading Clerk script:', error);
+      clearTimeout(window.clerkScriptLoadTimeout);
+    }
+  </script>
   <script
     async
     crossorigin="anonymous"
     data-clerk-publishable-key="pk_live_Y2xlcmsubnVyYS1haS5hcHAk"
     src="https://clerk.nura-ai.app/v1/script.js"
-    type="text/javascript">
+    type="text/javascript"
+    onload="onClerkScriptLoad()"
+    onerror="onClerkScriptError(event)">
   </script>
 </head>
 <body class="mat-typography">
