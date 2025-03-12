@@ -62,12 +62,21 @@ services:
       - key: AWS_SECRET_ACCESS_KEY
         sync: false 
 
-  - type: web
+  - type: static
     name: nura-ai-frontend
     env: static
-    buildCommand: npm install && ng build --configuration=production
+    buildCommand: npm install && ng build --configuration=production --base-href="./"
     staticPublishPath: ./dist/islam-app/browser
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache
     routes:
       - type: rewrite
         source: /*
-        destination: /index.html 
+        destination: /index.html
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: 20.11.1 
