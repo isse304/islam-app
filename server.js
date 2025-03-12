@@ -1,3 +1,6 @@
+// Load environment variables from .env file
+require('dotenv').config();
+
 const express = require('express');
 const path = require('path');
 const compression = require('compression');
@@ -7,6 +10,11 @@ const createDebugMiddleware = require('./debug-middleware');
 const app = express();
 const PORT = process.env.PORT || 3001;
 const DIST_PATH = path.join(__dirname, 'dist/islam-app/browser');
+
+// Log environment info
+console.log('Environment:', process.env.NODE_ENV);
+console.log('Port:', PORT);
+console.log('API URL:', process.env.API_URL || 'Not set');
 
 // Compress all responses
 app.use(compression());

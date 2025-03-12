@@ -32,7 +32,8 @@ services:
     region: ohio
     buildCommand: |
       npm ci
-      npx ng build --configuration=production --base-href=/ --deploy-url=/
+      npm install -g @angular/cli
+      ng build --configuration=production --base-href=/ --deploy-url=/
     startCommand: node server.js
     envVars:
       - key: NODE_ENV
