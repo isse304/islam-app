@@ -10,7 +10,8 @@ declare global {
 @Injectable({ providedIn: 'root' })
 export class ClerkProvider {
   private clerk: any | null = null;
-  private readonly CLERK_SCRIPT_URL = 'https://robust-crawdad-47.clerk.accounts.dev/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+  // Using the standard Clerk script URL format
+  private readonly CLERK_SCRIPT_URL = 'https://clerk.nura-ai.app/v1/script.js';
 
   async getClerk(): Promise<any> {
     if (this.clerk) {
@@ -23,6 +24,7 @@ export class ClerkProvider {
     }
 
     try {
+      console.log('Loading Clerk script from:', this.CLERK_SCRIPT_URL);
       // Load the script synchronously
       const script = document.createElement('script');
       script.src = this.CLERK_SCRIPT_URL;
@@ -31,8 +33,14 @@ export class ClerkProvider {
       script.setAttribute('data-clerk-publishable-key', publishableKey);
       
       await new Promise<void>((resolve, reject) => {
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error('Failed to load Clerk script'));
+        script.onload = () => {
+          console.log('Clerk script loaded successfully');
+          resolve();
+        };
+        script.onerror = (e) => {
+          console.error('Failed to load Clerk script:', e);
+          reject(new Error('Failed to load Clerk script'));
+        };
         document.head.appendChild(script);
       });
 
@@ -40,8 +48,10 @@ export class ClerkProvider {
       await new Promise<void>((resolve) => {
         const checkClerk = () => {
           if (window.Clerk) {
+            console.log('Clerk object found in window');
             resolve();
           } else {
+            console.log('Waiting for Clerk to be available...');
             setTimeout(checkClerk, 50);
           }
         };
