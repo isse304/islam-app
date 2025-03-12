@@ -33,10 +33,19 @@ services:
     buildCommand: |
       npm ci
       NODE_ENV=production npx ng build --configuration=production
-    staticPublishPath: /dist/islam-app/browser/browser
+    staticPublishPath: ./dist/islam-app/browser
     headers:
       - path: /*
         name: Cache-Control
+        value: "no-store, no-cache, must-revalidate, proxy-revalidate"
+      - path: /*
+        name: Pragma
+        value: no-cache
+      - path: /*
+        name: Expires
+        value: "0"
+      - path: /*
+        name: Surrogate-Control
         value: no-store
       - path: /*
         name: Content-Security-Policy
