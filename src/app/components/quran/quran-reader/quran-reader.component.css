@@ -1,17 +1,18 @@
 @font-face {
   font-family: 'KFGQPC Hafs';
-  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2') format('woff2');
+  src: url('../../../assets/fonts/KFGQPC_HAFS_Uthmanic_Script.ttf') format('truetype'),
+       url('../../../assets/fonts/HafsSmart.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }
 
 .mushaf-mode {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', serif;
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
 }
 
 .mushaf-text {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', serif;
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
   direction: rtl;
   text-align: right;
   line-height: 2;
@@ -20,5 +21,5 @@
 
 /* Fallback fonts for better compatibility */
 .arabic-text {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Scheherazade', 'Amiri', serif;
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
 } 

@@ -39,11 +39,9 @@
   <script src="https://js.stripe.com/v3/"></script>
   <!-- Add Clerk script with error handling -->
   <script>
-    // Create a fallback in case the Clerk script fails to load
     window.clerkScriptLoadTimeout = setTimeout(function() {
       console.error('Clerk script did not load within the timeout period');
-      // You could add a UI notification here
-    }, 10000); // 10 second timeout
+    }, 15000); // Increased timeout to 15 seconds
     
     function onClerkScriptLoad() {
       console.log('Clerk script loaded successfully');
@@ -53,16 +51,24 @@
     function onClerkScriptError(error) {
       console.error('Error loading Clerk script:', error);
       clearTimeout(window.clerkScriptLoadTimeout);
+      // Retry loading the script
+      setTimeout(loadClerkScript, 2000);
     }
-  </script>
-  <script
-    async
-    crossorigin="anonymous"
-    data-clerk-publishable-key="pk_live_Y2xlcmsubnVyYS1haS5hcHAk"
-    src="https://clerk.nura-ai.app/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
-    type="text/javascript"
-    onload="onClerkScriptLoad()"
-    onerror="onClerkScriptError(event)">
+
+    function loadClerkScript() {
+      const script = document.createElement('script');
+      script.async = true;
+      script.crossOrigin = 'anonymous';
+      script.src = 'https://clerk.nura-ai.app/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+      script.type = 'text/javascript';
+      script.dataset.clerkPublishableKey = 'pk_live_Y2xlcmsubnVyYS1haS5hcHAk';
+      script.onload = onClerkScriptLoad;
+      script.onerror = onClerkScriptError;
+      document.head.appendChild(script);
+    }
+
+    // Initial load
+    loadClerkScript();
   </script>
 </head>
 <body class="mat-typography">

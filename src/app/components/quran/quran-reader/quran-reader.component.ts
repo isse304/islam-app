@@ -206,37 +206,52 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private async loadFonts() {
     try {
-      // Use the correct font URL
       const fontUrls = [
-        'assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2'
+        '../../../assets/fonts/KFGQPC_HAFS_Uthmanic_Script.ttf',
+        '../../../assets/fonts/HafsSmart.ttf'  // Fallback font
       ];
 
-      const fonts = await Promise.all(
-        fontUrls.map(async url => {
-          try {
-            const font = new FontFace('KFGQPC Hafs', `url(${url})`, {
-              style: 'normal',
-              weight: '400',
-              display: 'swap'
-            });
-            
-            const loadedFont = await font.load();
-            (document.fonts as any).add(loadedFont);
-            return loadedFont;
-          } catch (err) {
-            console.error(`Error loading font from ${url}:`, err);
-            throw err;
-          }
-        })
-      );
+      for (const url of fontUrls) {
+        try {
+          const fontName = url.includes('HAFS') ? 'KFGQPC Hafs' : 'Hafs Smart';
+          const font = new FontFace(fontName, `url(${url})`, {
+            style: 'normal',
+            weight: '400',
+            display: 'block'
+          });
+          
+          const loadedFont = await font.load();
+          (document.fonts as any).add(loadedFont);
+          console.log(`Font loaded successfully: ${fontName}`);
+        } catch (err) {
+          console.warn(`Failed to load font from ${url}, falling back to system fonts:`, err);
+          // Continue with next font rather than throwing
+        }
+      }
 
-      // Wait for fonts to be ready
-      await document.fonts.ready;
-      console.log('Fonts loaded successfully');
-      return fonts;
+      // Add system fonts as fallback
+      const systemFonts = [
+        'Traditional Arabic',
+        'Amiri',
+        'Scheherazade',
+        'Noto Naskh Arabic',
+        'Arial'
+      ];
+
+      for (const fontName of systemFonts) {
+        try {
+          const font = new FontFace(fontName, `local(${fontName})`);
+          await font.load();
+          (document.fonts as any).add(font);
+        } catch (err) {
+          console.warn(`System font ${fontName} not available`);
+        }
+      }
+
+      return true;
     } catch (error) {
-      console.error('Error in loadFonts:', error);
-      throw error;
+      console.warn('Font loading failed, falling back to system fonts:', error);
+      return false;
     }
   }
 

@@ -13,11 +13,11 @@ import { Component } from '@angular/core';
       <div class="relative">
         <!-- Hero Section -->
         <div class="container mx-auto px-4 py-16">
-          <div class="text-center mb-16">
-            <h1 class="text-5xl font-bold text-gray-800 dark:text-white mb-6">
-              Welcome to Nura
+          <div class="flex flex-col items-center justify-center text-center max-w-4xl mx-auto mb-16">
+            <h1 class="text-5xl md:text-6xl font-bold text-gray-800 dark:text-white mb-6 leading-tight">
+              Welcome to <span class="text-[#B7A57A]">Nura</span>
             </h1>
-            <p class="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+            <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Your spiritual companion for Quran, Duas, and Islamic learning. Begin your journey of faith and knowledge.
             </p>
           </div>
