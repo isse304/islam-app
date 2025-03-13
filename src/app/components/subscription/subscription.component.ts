@@ -221,17 +221,54 @@ export class SubscriptionComponent implements OnInit {
   async startSubscription() {
     if (this.isLoading) return;
     this.isLoading = true;
+    
+    console.log('Starting subscription process...');
 
     try {
+      console.log('Creating checkout session with price ID:', environment.stripeConfig.priceId);
       const response = await firstValueFrom(this.stripeService.createCheckoutSession(environment.stripeConfig.priceId));
+      console.log('Checkout session response:', response);
+      
       if (response?.url) {
+        console.log('Redirecting to checkout URL:', response.url);
         await this.stripeService.redirectToCheckout(response.url);
       } else {
+        console.error('No checkout URL received in response:', response);
         throw new Error('No checkout URL received');
       }
     } catch (error) {
       console.error('Error starting subscription:', error);
-      this.snackBar.open('Failed to start subscription process', 'Close', { duration: 5000 });
+      
+      // Check if this is a network error
+      if (error instanceof Error) {
+        console.error('Error details:', {
+          name: error.name,
+          message: error.message,
+          stack: error.stack
+        });
+      }
+      
+      // Check if API is reachable
+      try {
+        console.log('Testing API connectivity...');
+        const testUrl = `${environment.apiUrl}/api/health`;
+        const response = await fetch(testUrl, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        console.log('API connectivity test result:', {
+          status: response.status,
+          statusText: response.statusText,
+          contentType: response.headers.get('content-type'),
+          cors: response.headers.get('access-control-allow-origin')
+        });
+      } catch (apiError) {
+        console.error('API connectivity test failed:', apiError);
+      }
+      
+      this.snackBar.open('Failed to start subscription process. Please check console for details.', 'Close', { duration: 5000 });
     } finally {
       this.isLoading = false;
     }

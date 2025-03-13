@@ -550,12 +550,42 @@ export class AuthService {
   }
 
   async signOut(): Promise<void> {
-    await this.ensureInitialized();
-    if (!this.clerk) {
-      throw new Error('Clerk not initialized');
+    console.log('SignOut method called');
+    try {
+      await this.ensureInitialized();
+      if (!this.clerk) {
+        console.error('Clerk not initialized during signOut');
+        throw new Error('Clerk not initialized');
+      }
+      console.log('Clerk initialized, attempting to sign out...');
+      
+      // Check if we have an active session
+      if (!this.clerk.session) {
+        console.warn('No active Clerk session found during signOut');
+      }
+      
+      // Try/catch around actual signOut call for detailed error
+      try {
+        await this.clerk.signOut();
+        console.log('Clerk signOut successful');
+      } catch (signOutError) {
+        console.error('Error during Clerk signOut:', signOutError);
+        throw signOutError;
+      }
+      
+      // Clear any local user state
+      this.userSubject.next(null);
+      
+      // Navigate regardless of signOut result - user should be able to return to home
+      console.log('Navigating to home page after signOut');
+      this.router.navigate(['/']);
+    } catch (error) {
+      console.error('Error in signOut method:', error);
+      // Show visible error to user
+      if (window.confirm('Sign out failed. Would you like to reload the page?')) {
+        window.location.reload();
+      }
     }
-    await this.clerk.signOut();
-    this.router.navigate(['/']);
   }
 
   // Apply user preferences to Quran reader component

@@ -42,7 +42,17 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
 /* Uthmanic Font */
 @font-face {
   font-family: 'KFGQPC Uthmanic Script';
-  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2') format('woff2');
+  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+  unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
+}
+
+/* Fallback Hafs Smart Font */
+@font-face {
+  font-family: 'Hafs Smart';
+  src: url('/assets/fonts/HafsSmart.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
   font-display: block;
@@ -56,6 +66,10 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   line-height: 2;
   text-align: justify;
   margin: 1em 0;
+}
+
+.quran-text {
+  font-family: 'KFGQPC Uthmanic Script', 'Hafs Smart', serif;
 }
 
 /* Tooltip styling enhancement */
