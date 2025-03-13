@@ -2,12 +2,19 @@ import { Component, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 
+// Declare window with Clerk
+declare global {
+  interface Window {
+    Clerk: any;
+  }
+}
+
 @Component({
   selector: 'app-auth-buttons',
   template: `
     <div class="auth-buttons">
       <ng-container *ngIf="(authService.isLoggedIn$ | async) === false; else loggedIn">
-        <button (click)="authService.openSignIn()" 
+        <button (click)="openSignIn()" 
                 class="btn-signin"
                 #signInButton
                 aria-label="Sign In">
@@ -16,7 +23,7 @@ import { Router } from '@angular/router';
              tabindex="-1"></i>
           <span>Sign In</span>
         </button>
-        <button (click)="authService.openSignUp()"
+        <button (click)="openSignUp()"
                 class="btn-signup"
                 #signUpButton
                 aria-label="Sign Up">
@@ -183,22 +190,81 @@ export class AuthButtonsComponent {
     this.router.navigate(['/profile']);
   }
 
+  // Direct method to open sign in modal
+  openSignIn() {
+    console.log('Opening sign in with direct Clerk call');
+    try {
+      if (window.Clerk) {
+        const signInProps = {
+          redirectUrl: window.location.origin,
+          appearance: {
+            elements: {
+              rootBox: {
+                boxShadow: 'none',
+              },
+            },
+          },
+        };
+        window.Clerk.openSignIn(signInProps);
+      } else {
+        console.error('Clerk not available, falling back to authService');
+        this.authService.openSignIn();
+      }
+    } catch (error) {
+      console.error('Error opening sign in modal:', error);
+      // Alert user
+      alert('Failed to open sign in. Please try again.');
+    }
+  }
+
+  // Direct method to open sign up modal
+  openSignUp() {
+    console.log('Opening sign up with direct Clerk call');
+    try {
+      if (window.Clerk) {
+        const signUpProps = {
+          redirectUrl: window.location.origin,
+          appearance: {
+            elements: {
+              rootBox: {
+                boxShadow: 'none',
+              },
+            },
+          },
+        };
+        window.Clerk.openSignUp(signUpProps);
+      } else {
+        console.error('Clerk not available, falling back to authService');
+        this.authService.openSignUp();
+      }
+    } catch (error) {
+      console.error('Error opening sign up modal:', error);
+      // Alert user
+      alert('Failed to open sign up. Please try again.');
+    }
+  }
+
   async signOut() {
     console.log('Sign out button clicked');
     try {
+      // Direct Clerk signOut 
+      if (window.Clerk) {
+        console.log('Using direct Clerk signOut');
+        await window.Clerk.signOut();
+        console.log('Sign out successful with direct Clerk call');
+        window.location.href = '/';
+        return;
+      }
+      
+      // Fallback to service
       await this.authService.signOut();
       console.log('Sign out successful');
       // Force reload the page to clear any cached state
       window.location.href = '/';
     } catch (error) {
       console.error('Error during sign out:', error);
-      // Attempt direct Clerk signOut as fallback
-      try {
-        await window.Clerk?.signOut();
-        window.location.href = '/';
-      } catch (clerkError) {
-        console.error('Clerk direct sign out failed:', clerkError);
-      }
+      // Alert user
+      alert('Failed to sign out. Please try refreshing the page.');
     }
   }
 }

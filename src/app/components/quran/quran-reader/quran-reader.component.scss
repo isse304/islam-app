@@ -1,5 +1,5 @@
 // Variables
-$arabic-font-family: 'KFGQPC HAFS Uthmanic Script', 'UthmanicHafs', serif;
+$arabic-font-family: 'Scheherazade New', 'Noto Naskh Arabic', 'Amiri', serif;
 $primary-color: #B7A57A;
 $text-dark: #2D3748;
 $text-medium: #4A5568;
@@ -149,10 +149,12 @@ $text-medium: #4A5568;
 }
 
 .bismillah {
-  font-family: 'Scheherazade New', serif;
-  font-size: 2rem;
-  color: $text-dark;
-  margin-top: 1rem;
+  font-family: $arabic-font-family;
+  font-size: 36px;
+  text-align: center;
+  color: #1a1a1a;
+  margin-bottom: 2rem;
+  line-height: 1.5;
 }
 
 // Verse number
@@ -449,7 +451,7 @@ $text-medium: #4A5568;
 }
 
 .mushaf-line {
-  font-family: 'KFGQPC HAFS Uthmanic Script';
+  font-family: $arabic-font-family;
   font-size: 28px;
   line-height: 2.5;
   text-align: justify;
@@ -475,15 +477,6 @@ $text-medium: #4A5568;
   background-size: contain;
   background-repeat: no-repeat;
   transform: scale(0.9);
-}
-
-.bismillah {
-  font-family: 'KFGQPC HAFS Uthmanic Script';
-  font-size: 36px;
-  text-align: center;
-  color: #1a1a1a;
-  margin-bottom: 2rem;
-  line-height: 1.5;
 }
 
 .page-content {

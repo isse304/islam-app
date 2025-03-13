@@ -206,26 +206,32 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private async loadFonts() {
     try {
-      const fontUrls = [
-        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff2',
-        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff',
-        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.ttf'
+      // Use more reliable fonts that are already approved in the CSP
+      // First, try Google fonts that are already included in your app
+      const googleFonts = [
+        'Scheherazade New',
+        'Noto Naskh Arabic',
+        'Amiri'
       ];
-
-      // Try loading fonts in sequence
-      for (const url of fontUrls) {
-        try {
-          const font = new FontFace('KFGQPC Hafs', `url(${url})`);
-          const loadedFont = await font.load();
-          (document.fonts as any).add(loadedFont);
-          console.log(`Font loaded successfully from ${url}`);
-          break; // Stop after first successful load
-        } catch (err) {
-          console.warn(`Failed to load font from ${url}, trying next format...`);
-          continue;
-        }
-      }
-
+      
+      // For each Google font, create a DOM element to force load it
+      googleFonts.forEach(fontName => {
+        const element = document.createElement('span');
+        element.style.fontFamily = fontName;
+        element.style.visibility = 'hidden';
+        element.textContent = 'ﷺ'; // Arabic character to ensure the font loads properly
+        document.body.appendChild(element);
+        
+        // Remove after a short delay
+        setTimeout(() => {
+          document.body.removeChild(element);
+        }, 1000);
+        
+        console.log(`Preloaded Google font: ${fontName}`);
+      });
+      
+      // Fall back to system fonts if specific fonts aren't available
+      console.log('Successfully preloaded Arabic fonts from Google Fonts');
       return true;
     } catch (error) {
       console.warn('Font loading failed, falling back to system fonts:', error);
