@@ -214,7 +214,15 @@ export class AuthService {
 
   // Check if user is authenticated
   isAuthenticated(): boolean {
-    return !!this.clerk?.user;
+    const isAuth = !!this.clerk?.user;
+    console.log('isAuthenticated check result:', isAuth, 'clerk user:', !!this.clerk?.user);
+    
+    // Ensure the auth state is updated
+    if (isAuth) {
+      this.authStateSubject.next(true);
+    }
+    
+    return isAuth;
   }
 
   // Get user ID

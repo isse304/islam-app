@@ -166,7 +166,8 @@ export class QuranFlashService {
   }
 
   getPageImageUrl(page: number): string {
-    const url = `${this.IMAGE_PATH}${this.formatPageNumber(page)}.png`;
+    const formattedPage = this.formatPageNumber(page);
+    const url = `${this.IMAGE_PATH}${formattedPage}.png`;
     console.log('Generated URL:', url);
     return url;
   }

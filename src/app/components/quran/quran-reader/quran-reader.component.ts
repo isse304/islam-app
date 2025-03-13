@@ -372,13 +372,38 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private async loadSurahs(): Promise<void> {
     try {
-      console.log('Loading surah list...');
-      this.surahs = await firstValueFrom(this.quranService.getSurahList());
+      console.log('Starting to load surah list...');
+      const surahListObservable = this.quranService.getSurahList();
+      console.log('Surah list observable created, awaiting result...');
+      
+      // Add timeout to prevent infinite hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Timeout loading surah list')), 10000);
+      });
+      
+      // Race between the actual operation and timeout
+      this.surahs = await Promise.race([
+        firstValueFrom(surahListObservable),
+        timeoutPromise
+      ]) as any;
+      
       console.log('Loaded surah list successfully', this.surahs.length);
       return Promise.resolve();
     } catch (error) {
       console.error('Error loading surah list:', error);
-      return Promise.reject(error);
+      // Provide fallback surahs if loading fails
+      if (this.surahs.length === 0) {
+        console.log('Using fallback surah list');
+        // Add at least Surah Al-Fatiha as fallback
+        this.surahs = [{
+          number: 1,
+          name: 'Al-Fatiha',
+          englishName: 'The Opening',
+          englishNameTranslation: 'The Opening',
+          numberOfAyahs: 7
+        }];
+      }
+      return Promise.resolve(); // Resolve with fallback data instead of rejecting
     }
   }
 
@@ -1144,33 +1169,79 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     console.log('Loading mushaf page:', pageNumber);
     this.isLoading = true;
     
-    if (this.isDoublePageView) {
-      // In double view, ensure we start with even pages for right-to-left reading
-      const startPage = pageNumber % 2 === 0 ? pageNumber : pageNumber - 1;
-      console.log('Double view start page:', startPage);
-      this.currentPage = startPage;
-      this.displayPageNumber = this.quranFlash.actualToDisplayPage(startPage);
-      console.log('Double view display page:', this.displayPageNumber);
+    try {
+      // Check if page number is valid
+      if (pageNumber < this.FIRST_PAGE || pageNumber > this.LAST_PAGE) {
+        console.error(`Invalid page number: ${pageNumber}. Using first page.`);
+        pageNumber = this.FIRST_PAGE;
+      }
       
-      // Load current and next page
-      this.mushafImageUrl = this.quranFlash.getPageImageUrl(startPage);
-      if (startPage < this.LAST_PAGE) {
-        this.secondPageImageUrl = this.quranFlash.getPageImageUrl(startPage + 1);
+      if (this.isDoublePageView) {
+        // In double view, ensure we start with even pages for right-to-left reading
+        const startPage = pageNumber % 2 === 0 ? pageNumber : pageNumber - 1;
+        console.log('Double view start page:', startPage);
+        this.currentPage = startPage;
+        this.displayPageNumber = this.quranFlash.actualToDisplayPage(startPage);
+        console.log('Double view display page:', this.displayPageNumber);
+        
+        // Load current and next page
+        this.mushafImageUrl = this.quranFlash.getPageImageUrl(startPage);
+        console.log('First page image URL:', this.mushafImageUrl);
+        
+        // Preload first image to check if it exists
+        await this.preloadImage(this.mushafImageUrl);
+        
+        if (startPage < this.LAST_PAGE) {
+          this.secondPageImageUrl = this.quranFlash.getPageImageUrl(startPage + 1);
+          console.log('Second page image URL:', this.secondPageImageUrl);
+          
+          // Preload second image
+          await this.preloadImage(this.secondPageImageUrl);
+        } else {
+          this.secondPageImageUrl = '';
+        }
       } else {
+        this.currentPage = pageNumber;
+        this.displayPageNumber = this.quranFlash.actualToDisplayPage(pageNumber);
+        console.log('Single view display page:', this.displayPageNumber);
+        this.mushafImageUrl = this.quranFlash.getPageImageUrl(pageNumber);
+        console.log('Page image URL:', this.mushafImageUrl);
+        
+        // Preload image to check if it exists
+        await this.preloadImage(this.mushafImageUrl);
+        
         this.secondPageImageUrl = '';
       }
-    } else {
-      this.currentPage = pageNumber;
-      this.displayPageNumber = this.quranFlash.actualToDisplayPage(pageNumber);
-      console.log('Single view display page:', this.displayPageNumber);
-      this.mushafImageUrl = this.quranFlash.getPageImageUrl(pageNumber);
-      this.secondPageImageUrl = '';
+      
+      this.updateCurrentSurah(pageNumber);
+      this.updateUrlParams();
+      this.saveState();
+    } catch (error) {
+      console.error('Error loading mushaf page:', error);
+      // Show a toast or message to the user
+      this.toastService.show('Error loading Quran page');
+    } finally {
+      this.isLoading = false;
     }
-    
-    this.updateCurrentSurah(pageNumber);
-    this.isLoading = false;
-    this.updateUrlParams();
-    this.saveState();
+  }
+  
+  // Helper method to preload an image and verify it exists
+  private preloadImage(url: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      
+      img.onload = () => {
+        console.log(`Image loaded successfully: ${url}`);
+        resolve();
+      };
+      
+      img.onerror = () => {
+        console.error(`Error loading image: ${url}`);
+        reject(new Error(`Failed to load image: ${url}`));
+      };
+      
+      img.src = url;
+    });
   }
   
   private updateCurrentSurah(pageNumber: number) {
