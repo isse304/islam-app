@@ -1,4 +1,4 @@
-import { Component, ElementRef, ViewChild } from '@angular/core';
+import { Component, ElementRef, ViewChild, NgZone } from '@angular/core';
 import { AuthService } from '../services/auth.service';
 import { Router } from '@angular/router';
 
@@ -40,7 +40,7 @@ import { Router } from '@angular/router';
                  role="presentation">
             <span class="user-name">{{ user.firstName || user.email }}</span>
           </button>
-          <button (click)="authService.signOut()"
+          <button (click)="signOut()"
                   class="btn-signout"
                   #signOutButton
                   aria-label="Sign Out">
@@ -175,10 +175,58 @@ export class AuthButtonsComponent {
 
   constructor(
     public authService: AuthService,
-    private router: Router
+    private router: Router,
+    private ngZone: NgZone
   ) {}
   
   navigateToProfile() {
     this.router.navigate(['/profile']);
+  }
+
+  // Custom sign out method with fallback
+  signOut() {
+    console.log('Sign out button clicked');
+    
+    // First try the normal sign out method
+    this.authService.signOut()
+      .catch(error => {
+        console.error('Error in primary sign out method:', error);
+        
+        // If that fails, try a fallback approach
+        try {
+          if (window.Clerk) {
+            console.log('Attempting direct Clerk.signOut() call');
+            window.Clerk.signOut()
+              .then(() => {
+                console.log('Direct Clerk sign out successful');
+                this.ngZone.run(() => {
+                  setTimeout(() => {
+                    // Force navigation to homepage after sign out
+                    window.location.href = '/';
+                  }, 500);
+                });
+              })
+              .catch((directError: any) => {
+                console.error('Direct Clerk sign out failed:', directError);
+                // Last resort - reload the page
+                if (confirm('Sign out failed. Would you like to reload the page?')) {
+                  window.location.reload();
+                }
+              });
+          } else {
+            console.log('Clerk not available for direct sign out');
+            // Last resort - reload the page
+            if (confirm('Sign out failed. Would you like to reload the page?')) {
+              window.location.reload();
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Fallback sign out approach failed:', fallbackError);
+          // Last resort - reload the page
+          if (confirm('Sign out failed. Would you like to reload the page?')) {
+            window.location.reload();
+          }
+        }
+      });
   }
 }

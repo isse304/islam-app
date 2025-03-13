@@ -148,36 +148,96 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   async ngOnInit() {
     try {
-      // First, wait for both surahs and preferences
-      const [surahs, prefs] = await Promise.all([
-        firstValueFrom(this.quranService.getSurahList()),
-        this.authService.getUserSettings()
-      ]);
+      // Get surahs first
+      this.loadSurahs().then(() => {
+        // Then initialize the rest
+        this.initializeFromUrlAndPreferences();
+      }).catch(error => {
+        console.error('Error loading surahs:', error);
+        // Fallback to direct loading without preferences
+        this.initializeDefault();
+      });
 
-      // Set surahs
-      this.surahs = surahs;
+      // Setup audio events
+      this.setupAudioEvents();
+    } catch (error) {
+      console.error('Error initializing QuranReader:', error);
+      // Fallback initialization
+      this.initializeDefault();
+    }
+  }
 
+  private async loadSurahs(): Promise<void> {
+    try {
+      console.log('Loading surah list...');
+      this.surahs = await firstValueFrom(this.quranService.getSurahList());
+      console.log('Loaded surah list successfully', this.surahs.length);
+      return Promise.resolve();
+    } catch (error) {
+      console.error('Error loading surah list:', error);
+      return Promise.reject(error);
+    }
+  }
+
+  private async initializeFromUrlAndPreferences() {
+    try {
+      console.log('Initializing from URL and preferences...');
+      
       // Get URL parameters first as they take precedence
       const queryParams = new URLSearchParams(window.location.search);
       const modeParam = queryParams.get('mode');
       const surahParam = queryParams.get('surah');
-
+      
       // Set view mode first
       this.isMushafView = modeParam === 'mushaf';
+      console.log('View mode:', this.isMushafView ? 'Mushaf' : 'Translation');
+
+      // Try to get user preferences
+      let prefs: any = {
+        lastState: { lastSurah: 1, lastVerse: 1 },
+        selectedTranslation: '131',
+        selectedTafsir: 'en.tafsir-ibn-kathir',
+        fontSize: 24,
+        bookmarks: []
+      };
+      
+      try {
+        console.log('Getting user preferences...');
+        prefs = this.authService.getUserSettings();
+        console.log('User preferences loaded:', prefs);
+      } catch (prefsError) {
+        console.warn('Unable to load user preferences, using defaults:', prefsError);
+      }
 
       // Initialize state based on view mode
       if (this.isMushafView) {
         // In mushaf mode, only use surah parameter
         const parsedSurah = surahParam ? parseInt(surahParam) : (prefs?.lastState?.lastSurah || 1);
+        console.log('Mushaf mode: initializing with surah', parsedSurah);
         this.currentSurah = parsedSurah;
         this.selectedSurah = parsedSurah;
 
-        // Get page by surah
-        const page = this.quranFlash.surahPageMap[parsedSurah];
-        if (page) {
-          this.currentPage = page;
-          this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
-          await this.loadMushafPage(page);
+        try {
+          // Get page by surah
+          const page = this.quranFlash.surahPageMap[parsedSurah];
+          if (page) {
+            console.log('Loading page for surah:', parsedSurah, 'page:', page);
+            this.currentPage = page;
+            this.displayPageNumber = this.quranFlash.actualToDisplayPage(page);
+            await this.loadMushafPage(page);
+          } else {
+            console.warn('No page found for surah:', parsedSurah);
+            // Fallback to first page
+            this.currentPage = this.FIRST_PAGE;
+            this.displayPageNumber = 1;
+            await this.loadMushafPage(this.FIRST_PAGE);
+          }
+        } catch (pageError) {
+          console.error('Error loading mushaf page:', pageError);
+          // Fallback to first page
+          this.currentPage = this.FIRST_PAGE;
+          this.displayPageNumber = 1;
+          await this.loadMushafPage(this.FIRST_PAGE);
         }
       } else {
         // In translation mode, handle all parameters
@@ -186,45 +246,84 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         const reciterParam = queryParams.get('reciter');
         const tafsirParam = queryParams.get('tafsir');
 
-        // Initialize translation view settings
-        this.selectedReciter = await this.initializeReciter(reciterParam, prefs);
+        console.log('Translation mode: initializing parameters...');
+
+        // Initialize translation view settings with safe fallbacks
+        try {
+          this.selectedReciter = await this.initializeReciter(reciterParam, prefs);
+          console.log('Selected reciter:', this.selectedReciter);
+        } catch (reciterError) {
+          console.error('Error initializing reciter:', reciterError);
+          // Fallback to default reciter
+          this.selectedReciter = this.quranService.reciters[0];
+        }
+
         this.selectedTranslation = translationParam || prefs?.selectedTranslation || '131';
         this.selectedTafsir = tafsirParam || prefs?.selectedTafsir || 'en.tafsir-ibn-kathir';
         this.fontSize = prefs?.fontSize || 24;
         this.bookmarks = prefs?.bookmarks || [];
-        this.showWordByWord = prefs?.showWordByWord || false;
-        this.showingTranslation = prefs?.showingTranslation !== undefined ? prefs.showingTranslation : true;
-        this.arabicFont = prefs?.arabicFont || 'uthmani';
-        this.arabicFontSize = prefs?.arabicFontSize || 32;
-        this.isDarkMode = prefs?.isDarkMode || false;
+        
+        console.log('Settings initialized, loading surah content...');
 
         // Set current surah and load it
         const initialSurah = surahParam ? parseInt(surahParam) : (prefs?.lastState?.lastSurah || 1);
         this.currentSurah = initialSurah;
         this.selectedSurah = initialSurah;
-        await firstValueFrom(this.loadSurah(initialSurah));
+        
+        try {
+          console.log('Loading surah:', initialSurah);
+          await firstValueFrom(this.loadSurah(initialSurah));
+          console.log('Surah loaded successfully');
 
-        // Handle verse navigation if specified
-        if (ayahParam) {
-          const ayah = parseInt(ayahParam);
-          setTimeout(() => {
-            this.goToVerse(initialSurah, ayah);
-          }, 100);
-        } else if (prefs?.lastState?.lastVerse) {
-          setTimeout(() => {
-            this.goToVerse(initialSurah, prefs.lastState.lastVerse);
-          }, 100);
+          // Handle verse navigation if specified
+          if (ayahParam) {
+            const ayah = parseInt(ayahParam);
+            console.log('Navigating to verse:', ayah);
+            setTimeout(() => {
+              this.goToVerse(initialSurah, ayah);
+            }, 100);
+          } else if (prefs?.lastState?.lastVerse) {
+            console.log('Navigating to last verse:', prefs.lastState.lastVerse);
+            setTimeout(() => {
+              this.goToVerse(initialSurah, prefs.lastState.lastVerse);
+            }, 100);
+          }
+        } catch (surahError) {
+          console.error('Error loading surah content:', surahError);
+          // Show error message to user
+          this.toastService.show('Could not load Quran content. Please try again.');
+          this.isLoading = false;
         }
       }
-
-      // Setup audio events after preferences are loaded
-      this.setupAudioEvents();
 
       // Update URL to reflect current state
       this.updateUrlParams();
     } catch (error) {
-      console.error('Error initializing QuranReader:', error);
+      console.error('Error in initializeFromUrlAndPreferences:', error);
+      this.initializeDefault();
     }
+  }
+
+  private initializeDefault() {
+    console.log('Initializing default Quran reader state');
+    // Set default reciter
+    this.selectedReciter = this.quranService.reciters[0];
+    
+    // Set default translation
+    this.selectedTranslation = '131';
+    
+    // Set default surah to Al-Fatiha
+    this.currentSurah = 1;
+    this.selectedSurah = 1;
+    
+    // Load first surah
+    this.loadSurah(1).subscribe({
+      next: () => console.log('Default surah loaded successfully'),
+      error: (err) => console.error('Error loading default surah:', err)
+    });
+    
+    // Update URL
+    this.updateUrlParams();
   }
 
   private setupAudioEvents() {
