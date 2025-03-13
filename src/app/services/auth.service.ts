@@ -83,20 +83,24 @@ export class AuthService {
 
   private async initializeClerk(): Promise<void> {
     try {
+      console.log('Starting Clerk initialization...');
       // Wait for the DOM to be fully loaded
       if (document.readyState !== 'complete') {
+        console.log('Waiting for DOM to be complete...');
         await new Promise<void>((resolve) => {
           window.addEventListener('load', () => resolve());
         });
       }
 
       // Wait for Clerk to be available
+      console.log('Waiting for Clerk to be available...');
       await this.waitForClerk();
       
       // Get publishable key from environment
       const publishableKey = environment.clerkPublishableKey;
       
       if (!publishableKey) {
+        console.error('Missing Clerk publishable key in environment');
         throw new Error('Missing Clerk publishable key in environment');
       }
 
@@ -127,22 +131,28 @@ export class AuthService {
       }
 
       this.clerk = window.Clerk;
+      console.log('Clerk instance obtained:', !!this.clerk);
 
       // Set up auth state listener
       this.clerk.addListener(async (clerk: any) => {
+        console.log('Clerk auth state changed:', !!clerk.user);
         if (clerk.user) {
           await this.handleUserSignedIn(clerk.user);
           this.authStateSubject.next(true);
+          console.log('User signed in, auth state updated to true');
         } else {
           this.userSubject.next(null);
           this.authStateSubject.next(false);
+          console.log('User signed out, auth state updated to false');
         }
       });
 
       // Initialize user if already logged in
       if (this.clerk.user) {
+        console.log('User already logged in, initializing...');
         await this.handleUserSignedIn(this.clerk.user);
         this.authStateSubject.next(true);
+        console.log('Initial user state set to logged in');
       }
       
       console.log('Clerk initialization completed');
@@ -174,6 +184,7 @@ export class AuthService {
   // Get the current authentication token
   async getToken(): Promise<string | null> {
     try {
+      console.log('Getting auth token...');
       await this.ensureInitialized();
       
       if (!this.clerk) {
@@ -193,6 +204,7 @@ export class AuthService {
         return null;
       }
       
+      console.log('Successfully obtained auth token');
       return token;
     } catch (error) {
       console.error('Error getting token:', error);
@@ -247,20 +259,29 @@ export class AuthService {
   }
 
   private async handleUserSignedIn(clerkUser: any): Promise<void> {
-    const user: User = {
-      id: clerkUser.id,
-      email: clerkUser.primaryEmailAddress?.emailAddress || '',
-      firstName: clerkUser.firstName || '',
-      lastName: clerkUser.lastName || '',
-      imageUrl: clerkUser.imageUrl,
-      emailVerified: clerkUser.primaryEmailAddress?.verification?.status === 'verified',
-      createdAt: new Date(clerkUser.createdAt),
-      lastSignInAt: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt) : undefined,
-      preferences: await this.getUserPreferences(clerkUser.id),
-      isAdmin: clerkUser.isAdmin || false
-    };
+    console.log('User signed in, updating user data:', clerkUser.id);
     
-    this.userSubject.next(user);
+    try {
+      const user: User = {
+        id: clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress || '',
+        firstName: clerkUser.firstName || '',
+        lastName: clerkUser.lastName || '',
+        imageUrl: clerkUser.imageUrl,
+        emailVerified: clerkUser.primaryEmailAddress?.verification?.status === 'verified',
+        createdAt: new Date(clerkUser.createdAt),
+        lastSignInAt: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt) : undefined,
+        preferences: await this.getUserPreferences(clerkUser.id),
+        isAdmin: clerkUser.isAdmin || false
+      };
+      
+      this.userSubject.next(user);
+      this.authStateSubject.next(true);
+      
+      console.log('User data updated successfully:', user.email);
+    } catch (error) {
+      console.error('Error updating user data:', error);
+    }
   }
 
   // Get a specific user preference
@@ -833,11 +854,14 @@ export class AuthService {
   // Check if user is authenticated
   async checkAuthState(): Promise<boolean> {
     try {
+      console.log('Checking auth state...');
       const token = await this.getToken();
       const isAuth = !!token;
+      console.log('Auth state check result:', isAuth);
       this.authStateSubject.next(isAuth);
       return isAuth;
     } catch (error) {
+      console.error('Error checking auth state:', error);
       this.authStateSubject.next(false);
       return false;
     }

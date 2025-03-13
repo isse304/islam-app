@@ -162,14 +162,23 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       
       // Try to get authentication state but don't block initialization
       try {
+        console.log('Checking authentication state...');
         const isAuthenticated = await this.authService.isAuthenticated();
+        console.log('Authentication state:', isAuthenticated);
+        
+        // Subscribe to auth state changes
+        this.authService.isLoggedIn$.subscribe(isLoggedIn => {
+          console.log('Auth state changed:', isLoggedIn);
+          if (isLoggedIn) {
+            this.loadUserPreferences();
+          }
+        });
         
         // Load user preferences if authenticated
         if (isAuthenticated) {
-          const userPrefs = await this.authService.getUserSettings();
-          if (userPrefs) {
-            this.preferences = { ...this.preferences, ...userPrefs };
-          }
+          await this.loadUserPreferences();
+        } else {
+          console.log('User not authenticated, using default preferences');
         }
       } catch (authError) {
         console.warn('Auth error, continuing with default preferences:', authError);
@@ -185,6 +194,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       });
     } catch (error) {
       console.error('Error initializing Quran reader:', error);
+      // Try with default values as fallback
+      this.initializeWithDefaults();
     }
   }
 
@@ -1560,5 +1571,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
     
     return this.quranService.reciters[0];
+  }
+
+  private async loadUserPreferences() {
+    try {
+      console.log('Loading user preferences...');
+      const userPrefs = await this.authService.getUserSettings();
+      if (userPrefs) {
+        console.log('Loaded user preferences:', userPrefs);
+        this.preferences = { ...this.preferences, ...userPrefs };
+      }
+    } catch (prefsError) {
+      console.warn('Error loading user preferences, using defaults:', prefsError);
+    }
   }
 } 
