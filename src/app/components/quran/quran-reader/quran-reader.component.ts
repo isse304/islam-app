@@ -5,7 +5,7 @@ import { ClickOutsideDirective } from '../../../directives/click-outside.directi
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SttService } from '../../../services/stt.service';
 import { QuranFlashService } from '../../../services/quran-flash.service';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute, Params } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { AuthService } from '../../../services/auth.service';
 import { ToastService } from '../../../services/toast.service';
@@ -133,6 +133,13 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   verse: QuranVerse | null = null;
   activeWord: any = null;
   isMobile = window.innerWidth < 768;
+  preferences: any = {
+    lastState: { lastSurah: 1, lastVerse: 1 },
+    selectedTranslation: '131',
+    selectedTafsir: 'en.tafsir-ibn-kathir',
+    fontSize: 24,
+    bookmarks: []
+  };
 
   constructor(
     public quranService: QuranService,
@@ -141,30 +148,107 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private router: Router,
     private sanitizer: DomSanitizer,
     private authService: AuthService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private route: ActivatedRoute
   ) {
     // Don't set reciters here, wait for ngOnInit
   }
 
   async ngOnInit() {
     try {
-      // Get surahs first
-      this.loadSurahs().then(() => {
-        // Then initialize the rest
-        this.initializeFromUrlAndPreferences();
-      }).catch(error => {
-        console.error('Error loading surahs:', error);
-        // Fallback to direct loading without preferences
-        this.initializeDefault();
-      });
+      // Wait for authentication state to be determined
+      const isAuthenticated = await this.authService.isAuthenticated();
+      
+      // Load user preferences if authenticated
+      if (isAuthenticated) {
+        const userPrefs = await this.authService.getUserSettings();
+        if (userPrefs) {
+          this.preferences = { ...this.preferences, ...userPrefs };
+        }
+      }
 
-      // Setup audio events
-      this.setupAudioEvents();
+      // Initialize the reader with current preferences
+      await this.initializeReader();
+      
+      // Subscribe to route changes
+      this.route.queryParams.subscribe((params: Params) => {
+        this.processRouteParams(params);
+      });
     } catch (error) {
-      console.error('Error initializing QuranReader:', error);
-      // Fallback initialization
-      this.initializeDefault();
+      console.error('Error initializing Quran reader:', error);
     }
+  }
+
+  private processRouteParams(params: Params) {
+    const mode = params['mode'];
+    const surah = params['surah'];
+    if (mode) {
+      this.preferences.viewMode = mode;
+    }
+    if (surah) {
+      this.preferences.lastState.lastSurah = parseInt(surah, 10);
+    }
+    this.setupViewMode();
+  }
+
+  private async initializeReader() {
+    try {
+      // Load fonts before rendering
+      await this.loadFonts();
+      
+      // Initialize other reader components
+      await this.loadQuranText();
+      this.setupViewMode();
+    } catch (error) {
+      console.error('Error in reader initialization:', error);
+    }
+  }
+
+  private async loadFonts() {
+    try {
+      // Use the correct font URL
+      const fontUrls = [
+        'assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2'
+      ];
+
+      const fonts = await Promise.all(
+        fontUrls.map(async url => {
+          try {
+            const font = new FontFace('KFGQPC Hafs', `url(${url})`, {
+              style: 'normal',
+              weight: '400',
+              display: 'swap'
+            });
+            
+            const loadedFont = await font.load();
+            (document.fonts as any).add(loadedFont);
+            return loadedFont;
+          } catch (err) {
+            console.error(`Error loading font from ${url}:`, err);
+            throw err;
+          }
+        })
+      );
+
+      // Wait for fonts to be ready
+      await document.fonts.ready;
+      console.log('Fonts loaded successfully');
+      return fonts;
+    } catch (error) {
+      console.error('Error in loadFonts:', error);
+      throw error;
+    }
+  }
+
+  private async loadQuranText() {
+    // Implement the logic to load Quran text based on the current preferences
+    // This might involve calling the QuranService to get surah content
+    // and then setting up the component with that data
+  }
+
+  private setupViewMode() {
+    // Implement the logic to set up the view mode based on the current preferences
+    // This might involve setting isMushafView, currentSurah, etc.
   }
 
   private async loadSurahs(): Promise<void> {

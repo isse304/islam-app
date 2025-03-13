@@ -47,10 +47,8 @@ export class AuthService {
   private clerk: any;
   private userSubject = new BehaviorSubject<User | null>(null);
   user$ = this.userSubject.asObservable();
-  isLoggedIn$: Observable<boolean> = of(false);
-  private apiUrl = environment.production 
-    ? '/api'  // In production, use relative path
-    : 'http://localhost:3000/api'; // In development, use full URL
+  isLoggedIn$: Observable<boolean>;
+  private apiUrl = environment.apiUrl;
   private initializationPromise: Promise<void> | null = null;
   
   // Property to store the URL that the user tried to access before authentication
@@ -64,10 +62,16 @@ export class AuthService {
     private router: Router,
     private http: HttpClient
   ) {
+    // Initialize isLoggedIn$ observable
+    this.isLoggedIn$ = this.authStateSubject.asObservable();
+    
     // Initialize Clerk
     this.initializationPromise = this.initializeClerk();
+    
     // Check initial auth state
-    this.checkAuthState();
+    this.checkAuthState().then(isAuthenticated => {
+      this.authStateSubject.next(isAuthenticated);
+    });
   }
 
   private async ensureInitialized(): Promise<void> {
@@ -79,13 +83,6 @@ export class AuthService {
 
   private async initializeClerk(): Promise<void> {
     try {
-      // Get the publishable key from environment
-      const publishableKey = environment.clerkPublishableKey;
-      
-      if (!publishableKey) {
-        throw new Error('Missing Clerk publishable key in environment');
-      }
-
       // Wait for the DOM to be fully loaded
       if (document.readyState !== 'complete') {
         await new Promise<void>((resolve) => {
@@ -93,37 +90,19 @@ export class AuthService {
         });
       }
 
-      // Check if Clerk script is loaded with improved timeout handling
-      if (!window.Clerk) {
-        await new Promise<void>((resolve, reject) => {
-          let attempts = 0;
-          const maxAttempts = 150; // 15 seconds timeout (100ms * 150)
-          
-          const checkClerk = () => {
-            attempts++;
-            if (window.Clerk) {
-              console.log('Clerk object found in AuthService');
-              resolve();
-            } else if (attempts >= maxAttempts) {
-              console.error('Clerk not found after maximum attempts in AuthService');
-              reject(new Error('Timeout waiting for Clerk to load in AuthService'));
-            } else {
-              if (attempts % 10 === 0) { // Log only every 10 attempts
-                console.log(`AuthService: Waiting for Clerk (attempt ${attempts}/${maxAttempts})...`);
-              }
-              setTimeout(checkClerk, 100);
-            }
-          };
-          checkClerk();
-        });
+      // Wait for Clerk to be available
+      await this.waitForClerk();
+      
+      // Get publishable key from environment
+      const publishableKey = environment.clerkPublishableKey;
+      
+      if (!publishableKey) {
+        throw new Error('Missing Clerk publishable key in environment');
       }
 
-      // Add debug log
-      console.log('Clerk is available, proceeding with initialization');
-
-      // Initialize Clerk
+      // Initialize Clerk if not already initialized
       if (!window.Clerk.isInitialized) {
-        console.log('Initializing Clerk with publishableKey and frontendApi');
+        console.log('Initializing Clerk with publishableKey');
         try {
           await window.Clerk.load({
             publishableKey: publishableKey,
@@ -133,6 +112,10 @@ export class AuthService {
                 rootBox: {
                   boxShadow: 'none',
                 },
+                card: {
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                },
               },
             },
           });
@@ -141,40 +124,51 @@ export class AuthService {
           console.error('Error during Clerk.load:', loadError);
           throw loadError;
         }
-      } else {
-        console.log('Clerk is already initialized');
       }
 
       this.clerk = window.Clerk;
 
       // Set up auth state listener
-      this.clerk.addListener((clerk: any) => {
+      this.clerk.addListener(async (clerk: any) => {
         if (clerk.user) {
-          this.handleUserSignedIn(clerk.user);
+          await this.handleUserSignedIn(clerk.user);
+          this.authStateSubject.next(true);
         } else {
           this.userSubject.next(null);
+          this.authStateSubject.next(false);
         }
-      });
-
-      // Initialize isLoggedIn$ observable
-      this.isLoggedIn$ = new Observable((subscriber) => {
-        subscriber.next(!!this.clerk.user);
-        this.clerk.addListener((clerk: any) => {
-          subscriber.next(!!clerk.user);
-        });
       });
 
       // Initialize user if already logged in
       if (this.clerk.user) {
         await this.handleUserSignedIn(this.clerk.user);
+        this.authStateSubject.next(true);
       }
       
-      console.log('Clerk initialization completed in AuthService');
+      console.log('Clerk initialization completed');
 
     } catch (error) {
-      console.error('Error initializing Clerk in AuthService:', error);
+      console.error('Error initializing Clerk:', error);
+      this.authStateSubject.next(false);
       throw error;
     }
+  }
+
+  private async waitForClerk(maxAttempts = 150): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      let attempts = 0;
+      const checkClerk = () => {
+        attempts++;
+        if (window.Clerk) {
+          resolve();
+        } else if (attempts >= maxAttempts) {
+          reject(new Error('Timeout waiting for Clerk to load'));
+        } else {
+          setTimeout(checkClerk, 100);
+        }
+      };
+      checkClerk();
+    });
   }
 
   // Get the current authentication token
@@ -187,12 +181,13 @@ export class AuthService {
         return null;
       }
       
-      if (!this.clerk.session) {
+      const session = await this.clerk.session;
+      if (!session) {
         console.error('No active Clerk session');
         return null;
       }
       
-      const token = await this.clerk.session.getToken();
+      const token = await session.getToken();
       if (!token) {
         console.error('No token returned from Clerk session');
         return null;
@@ -549,19 +544,15 @@ export class AuthService {
     }
   }
 
+  // Sign out method
   async signOut(): Promise<void> {
     console.log('SignOut method called');
     try {
       await this.ensureInitialized();
+      
       if (!this.clerk) {
         console.error('Clerk not initialized during signOut');
         throw new Error('Clerk not initialized');
-      }
-      console.log('Clerk initialized, attempting to sign out...');
-      
-      // Check if we have an active session
-      if (!this.clerk.session) {
-        console.warn('No active Clerk session found during signOut');
       }
       
       // Try/catch around actual signOut call for detailed error
@@ -573,18 +564,17 @@ export class AuthService {
         throw signOutError;
       }
       
-      // Clear any local user state
+      // Clear local state
       this.userSubject.next(null);
+      this.authStateSubject.next(false);
+      localStorage.removeItem('isAuthenticated');
       
-      // Navigate regardless of signOut result - user should be able to return to home
-      console.log('Navigating to home page after signOut');
-      this.router.navigate(['/']);
+      // Navigate to home page
+      window.location.href = '/';
+      
     } catch (error) {
       console.error('Error in signOut method:', error);
-      // Show visible error to user
-      if (window.confirm('Sign out failed. Would you like to reload the page?')) {
-        window.location.reload();
-      }
+      throw error;
     }
   }
 

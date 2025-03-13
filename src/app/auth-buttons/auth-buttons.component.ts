@@ -183,50 +183,22 @@ export class AuthButtonsComponent {
     this.router.navigate(['/profile']);
   }
 
-  // Custom sign out method with fallback
-  signOut() {
+  async signOut() {
     console.log('Sign out button clicked');
-    
-    // First try the normal sign out method
-    this.authService.signOut()
-      .catch(error => {
-        console.error('Error in primary sign out method:', error);
-        
-        // If that fails, try a fallback approach
-        try {
-          if (window.Clerk) {
-            console.log('Attempting direct Clerk.signOut() call');
-            window.Clerk.signOut()
-              .then(() => {
-                console.log('Direct Clerk sign out successful');
-                this.ngZone.run(() => {
-                  setTimeout(() => {
-                    // Force navigation to homepage after sign out
-                    window.location.href = '/';
-                  }, 500);
-                });
-              })
-              .catch((directError: any) => {
-                console.error('Direct Clerk sign out failed:', directError);
-                // Last resort - reload the page
-                if (confirm('Sign out failed. Would you like to reload the page?')) {
-                  window.location.reload();
-                }
-              });
-          } else {
-            console.log('Clerk not available for direct sign out');
-            // Last resort - reload the page
-            if (confirm('Sign out failed. Would you like to reload the page?')) {
-              window.location.reload();
-            }
-          }
-        } catch (fallbackError) {
-          console.error('Fallback sign out approach failed:', fallbackError);
-          // Last resort - reload the page
-          if (confirm('Sign out failed. Would you like to reload the page?')) {
-            window.location.reload();
-          }
-        }
-      });
+    try {
+      await this.authService.signOut();
+      console.log('Sign out successful');
+      // Force reload the page to clear any cached state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Attempt direct Clerk signOut as fallback
+      try {
+        await window.Clerk?.signOut();
+        window.location.href = '/';
+      } catch (clerkError) {
+        console.error('Clerk direct sign out failed:', clerkError);
+      }
+    }
   }
 }

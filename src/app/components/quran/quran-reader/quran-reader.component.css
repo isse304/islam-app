@@ -1,0 +1,24 @@
+@font-face {
+  font-family: 'KFGQPC Hafs';
+  src: url('/assets/fonts/KFGQPC_HAFS_Uthmanic_Script.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.mushaf-mode {
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', serif;
+}
+
+.mushaf-text {
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', serif;
+  direction: rtl;
+  text-align: right;
+  line-height: 2;
+  font-size: 28px;
+}
+
+/* Fallback fonts for better compatibility */
+.arabic-text {
+  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Scheherazade', 'Amiri', serif;
+} 
