@@ -2,7 +2,7 @@ import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { RouterModule } from '@angular/router';
-import { FormsModule } from '@angular/forms';
+import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { HttpClientModule, HTTP_INTERCEPTORS } from '@angular/common/http';
 import { CommonModule } from '@angular/common';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -20,6 +20,7 @@ import { LearnComponent } from './components/learn/learn.component';
 import { AuthButtonsComponent } from './auth-buttons/auth-buttons.component';
 import { DuaTafsirComponent } from './components/dua/dua-tafsir.component';
 import { DuaInsightsComponent } from './components/dua-insights/dua-insights.component';
+import { ContactComponent } from './components/contact/contact.component';
 import { routes } from './app.routes';
 import { ErrorDialogComponent } from './components/shared/error-dialog/error-dialog.component';
 import { UsageComponent } from './components/usage/usage.component';
@@ -38,13 +39,15 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     DuaTafsirComponent,
     QuranReaderComponent,
     DuaInsightsComponent,
-    ErrorDialogComponent
+    ErrorDialogComponent,
+    ContactComponent
   ],
   imports: [
     BrowserModule,
     BrowserAnimationsModule,
     RouterModule.forRoot(routes),
     FormsModule,
+    ReactiveFormsModule,
     HttpClientModule,
     CommonModule,
     MatTooltipModule,
