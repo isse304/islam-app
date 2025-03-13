@@ -45,6 +45,7 @@
     function initializeClerk() {
       if (window.Clerk) {
         try {
+          console.log('Initializing Clerk - attempting to load with publishable key');
           window.Clerk.load({
             // Set appearance
             appearance: {
@@ -61,6 +62,12 @@
               }
             }
           });
+          
+          // Explicitly set up global handlers for Clerk
+          window.Clerk.addListener(({ user }) => {
+            console.log("Clerk auth state changed:", user ? "User signed in" : "User signed out");
+          });
+          
           console.log('Clerk initialized successfully');
         } catch (error) {
           console.error('Error initializing Clerk:', error);
@@ -91,7 +98,8 @@
     script.type = 'text/javascript';
     script.onload = function() {
       console.log('Clerk script loaded successfully');
-      initializeClerk();
+      // Set a slight delay to ensure full initialization
+      setTimeout(initializeClerk, 100);
     };
     script.onerror = function(error) {
       console.error('Error loading Clerk script:', error);

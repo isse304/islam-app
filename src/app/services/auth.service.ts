@@ -480,10 +480,17 @@ export class AuthService {
 
   async openSignIn(): Promise<void> {
     try {
+      console.log('Opening SignIn modal');
       await this.ensureInitialized();
       
       if (!this.clerk) {
-        throw new Error('Clerk not initialized');
+        console.error('Clerk not initialized when opening sign in');
+        if (window.Clerk) {
+          console.log('Using window.Clerk directly as fallback');
+          this.clerk = window.Clerk;
+        } else {
+          throw new Error('Clerk not initialized and not available in window');
+        }
       }
       
       const signInProps = {
@@ -497,6 +504,7 @@ export class AuthService {
         },
       };
 
+      console.log('Calling clerk.openSignIn with props:', signInProps);
       await this.clerk.openSignIn(signInProps);
       
       // After successful sign-in
@@ -507,16 +515,25 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Error during sign in:', error);
+      // Alert the user
+      alert('Could not open sign-in. Please try again later.');
       throw error;
     }
   }
 
   async openSignUp(): Promise<void> {
     try {
+      console.log('Opening SignUp modal');
       await this.ensureInitialized();
       
       if (!this.clerk) {
-        throw new Error('Clerk not initialized');
+        console.error('Clerk not initialized when opening sign up');
+        if (window.Clerk) {
+          console.log('Using window.Clerk directly as fallback');
+          this.clerk = window.Clerk;
+        } else {
+          throw new Error('Clerk not initialized and not available in window');
+        }
       }
       
       const signUpProps = {
@@ -530,6 +547,7 @@ export class AuthService {
         },
       };
 
+      console.log('Calling clerk.openSignUp with props:', signUpProps);
       await this.clerk.openSignUp(signUpProps);
       
       // After successful sign-up
@@ -540,6 +558,8 @@ export class AuthService {
       }
     } catch (error) {
       console.error('Error during sign up:', error);
+      // Alert the user
+      alert('Could not open sign-up. Please try again later.');
       throw error;
     }
   }
@@ -552,16 +572,28 @@ export class AuthService {
       
       if (!this.clerk) {
         console.error('Clerk not initialized during signOut');
-        throw new Error('Clerk not initialized');
+        if (window.Clerk) {
+          console.log('Using window.Clerk directly as fallback for signOut');
+          this.clerk = window.Clerk;
+        } else {
+          throw new Error('Clerk not initialized and not available in window');
+        }
       }
       
       // Try/catch around actual signOut call for detailed error
       try {
+        console.log('Calling clerk.signOut');
         await this.clerk.signOut();
         console.log('Clerk signOut successful');
       } catch (signOutError) {
         console.error('Error during Clerk signOut:', signOutError);
-        throw signOutError;
+        // Try a direct approach as a fallback
+        if (window.Clerk) {
+          console.log('Trying direct window.Clerk.signOut as fallback');
+          await window.Clerk.signOut();
+        } else {
+          throw signOutError;
+        }
       }
       
       // Clear local state
@@ -570,10 +602,13 @@ export class AuthService {
       localStorage.removeItem('isAuthenticated');
       
       // Navigate to home page
+      console.log('Redirecting to home page after sign out');
       window.location.href = '/';
       
     } catch (error) {
       console.error('Error in signOut method:', error);
+      // Alert the user
+      alert('Could not sign out properly. Please refresh the page and try again.');
       throw error;
     }
   }
