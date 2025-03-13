@@ -207,44 +207,22 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   private async loadFonts() {
     try {
       const fontUrls = [
-        '../../../assets/fonts/KFGQPC_HAFS_Uthmanic_Script.ttf',
-        '../../../assets/fonts/HafsSmart.ttf'  // Fallback font
+        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff2',
+        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff',
+        'https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.ttf'
       ];
 
+      // Try loading fonts in sequence
       for (const url of fontUrls) {
         try {
-          const fontName = url.includes('HAFS') ? 'KFGQPC Hafs' : 'Hafs Smart';
-          const font = new FontFace(fontName, `url(${url})`, {
-            style: 'normal',
-            weight: '400',
-            display: 'block'
-          });
-          
+          const font = new FontFace('KFGQPC Hafs', `url(${url})`);
           const loadedFont = await font.load();
           (document.fonts as any).add(loadedFont);
-          console.log(`Font loaded successfully: ${fontName}`);
+          console.log(`Font loaded successfully from ${url}`);
+          break; // Stop after first successful load
         } catch (err) {
-          console.warn(`Failed to load font from ${url}, falling back to system fonts:`, err);
-          // Continue with next font rather than throwing
-        }
-      }
-
-      // Add system fonts as fallback
-      const systemFonts = [
-        'Traditional Arabic',
-        'Amiri',
-        'Scheherazade',
-        'Noto Naskh Arabic',
-        'Arial'
-      ];
-
-      for (const fontName of systemFonts) {
-        try {
-          const font = new FontFace(fontName, `local(${fontName})`);
-          await font.load();
-          (document.fonts as any).add(font);
-        } catch (err) {
-          console.warn(`System font ${fontName} not available`);
+          console.warn(`Failed to load font from ${url}, trying next format...`);
+          continue;
         }
       }
 

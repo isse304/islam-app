@@ -1,18 +1,19 @@
 @font-face {
   font-family: 'KFGQPC Hafs';
-  src: url('../../../assets/fonts/KFGQPC_HAFS_Uthmanic_Script.ttf') format('truetype'),
-       url('../../../assets/fonts/HafsSmart.ttf') format('truetype');
+  src: url('https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff2') format('woff2'),
+       url('https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.woff') format('woff'),
+       url('https://cdn.qurancdn.com/assets/quran-fonts/hafs/hafs-smart-v14.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: block;
+  font-display: swap;
 }
 
 .mushaf-mode {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
+  font-family: 'KFGQPC Hafs', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
 }
 
 .mushaf-text {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
+  font-family: 'KFGQPC Hafs', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
   direction: rtl;
   text-align: right;
   line-height: 2;
@@ -21,5 +22,5 @@
 
 /* Fallback fonts for better compatibility */
 .arabic-text {
-  font-family: 'KFGQPC Hafs', 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Noto Naskh Arabic', serif;
+  font-family: 'KFGQPC Hafs', 'Scheherazade New', 'Noto Naskh Arabic', 'Traditional Arabic', serif;
 } 

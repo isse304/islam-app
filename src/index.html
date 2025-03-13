@@ -37,38 +37,72 @@
   <link href="https://fonts.googleapis.com/css2?family=Material+Icons" rel="stylesheet">
   <!-- Add Stripe.js before your closing head tag -->
   <script src="https://js.stripe.com/v3/"></script>
-  <!-- Add Clerk script with error handling -->
+  <!-- Add Clerk script with improved error handling -->
   <script>
-    window.clerkScriptLoadTimeout = setTimeout(function() {
-      console.error('Clerk script did not load within the timeout period');
-    }, 15000); // Increased timeout to 15 seconds
+    let clerkRetryCount = 0;
+    const MAX_RETRIES = 3;
     
-    function onClerkScriptLoad() {
+    function initializeClerk() {
+      if (window.Clerk) {
+        try {
+          window.Clerk.load({
+            // Set appearance
+            appearance: {
+              layout: {
+                logoPlacement: 'inside',
+                logoImageUrl: '/nura-logo.png',
+                showOptionalFields: true
+              },
+              elements: {
+                rootBox: {
+                  boxShadow: 'none',
+                  border: '1px solid #e5e7eb'
+                }
+              }
+            }
+          });
+          console.log('Clerk initialized successfully');
+        } catch (error) {
+          console.error('Error initializing Clerk:', error);
+          retryInitialization();
+        }
+      } else {
+        console.log('Waiting for Clerk to be available...');
+        setTimeout(initializeClerk, 100);
+      }
+    }
+
+    function retryInitialization() {
+      if (clerkRetryCount < MAX_RETRIES) {
+        clerkRetryCount++;
+        console.log(`Attempt ${clerkRetryCount} to initialize Clerk...`);
+        setTimeout(initializeClerk, 1000 * clerkRetryCount);
+      } else {
+        console.error('Failed to initialize Clerk after maximum retries');
+      }
+    }
+
+    // Load Clerk script
+    const script = document.createElement('script');
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    script.src = 'https://clerk.nura-ai.app/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
+    script.dataset.clerkPublishableKey = 'pk_live_Y2xlcmsubnVyYS1haS5hcHAk';
+    script.type = 'text/javascript';
+    script.onload = function() {
       console.log('Clerk script loaded successfully');
-      clearTimeout(window.clerkScriptLoadTimeout);
-    }
-    
-    function onClerkScriptError(error) {
+      initializeClerk();
+    };
+    script.onerror = function(error) {
       console.error('Error loading Clerk script:', error);
-      clearTimeout(window.clerkScriptLoadTimeout);
-      // Retry loading the script
-      setTimeout(loadClerkScript, 2000);
-    }
-
-    function loadClerkScript() {
-      const script = document.createElement('script');
-      script.async = true;
-      script.crossOrigin = 'anonymous';
-      script.src = 'https://clerk.nura-ai.app/npm/@clerk/clerk-js@5/dist/clerk.browser.js';
-      script.type = 'text/javascript';
-      script.dataset.clerkPublishableKey = 'pk_live_Y2xlcmsubnVyYS1haS5hcHAk';
-      script.onload = onClerkScriptLoad;
-      script.onerror = onClerkScriptError;
-      document.head.appendChild(script);
-    }
-
-    // Initial load
-    loadClerkScript();
+      if (clerkRetryCount < MAX_RETRIES) {
+        clerkRetryCount++;
+        setTimeout(() => {
+          document.head.appendChild(script);
+        }, 2000 * clerkRetryCount);
+      }
+    };
+    document.head.appendChild(script);
   </script>
 </head>
 <body class="mat-typography">
