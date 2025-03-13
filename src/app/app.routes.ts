@@ -8,17 +8,15 @@ import { ProfileComponent } from './profile/profile.component';
 import { UsageComponent } from './components/usage/usage.component';
 import { SubscriptionComponent } from './components/subscription/subscription.component';
 import { ContactComponent } from './components/contact/contact.component';
-
 export const routes: Routes = [
   { path: '', component: HomeComponent },
-  { path: 'quran/reader', component: QuranReaderComponent },
-  { path: 'learn/quran', component: LearnComponent },
-  { path: 'duas/collection', component: DuaComponent },
+  { path: 'quran', component: QuranReaderComponent },
+  { path: 'learn', component: LearnComponent },
+  { path: 'dua', component: DuaComponent },
   { path: 'auth/login', component: LoginComponent },
-  { path: 'auth/signup', redirectTo: 'auth/login' },
   { path: 'profile', component: ProfileComponent },
   { path: 'usage', component: UsageComponent },
-  { path: 'subscription', component: SubscriptionComponent },
   { path: 'contact', component: ContactComponent },
+  { path: 'subscription', component: SubscriptionComponent },
   { path: '**', redirectTo: '' } // Redirect any unknown paths to home
 ]; 

@@ -154,13 +154,11 @@ import { Component } from '@angular/core';
               <div>
                 <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Support</h4>
                 <ul class="space-y-2">
-                  <li><a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Help Center</a></li>
-                  <li><a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Contact Us</a></li>
-                  <li><a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">FAQ</a></li>
+                  <li><a routerLink="/contact" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Contact Us</a></li>
                 </ul>
               </div>
               <div>
-                <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Connect</h4>
+                <!-- <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Connect</h4>
                 <div class="flex space-x-4">
                   <a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">
                     <i class="fab fa-facebook text-2xl"></i>
@@ -170,8 +168,8 @@ import { Component } from '@angular/core';
                   </a>
                   <a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">
                     <i class="fab fa-instagram text-2xl"></i>
-                  </a>
-                </div>
+                  </a> -->
+                <!-- </div> -->
               </div>
             </div>
             <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700 text-center text-gray-600 dark:text-gray-300">

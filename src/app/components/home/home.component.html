@@ -3,8 +3,8 @@
     <h1>Welcome to Nura AI</h1>
     <p class="subtitle">Your Intelligent Islamic Knowledge Assistant</p>
     <div class="cta-buttons">
-      <a routerLink="/quran/reader" class="cta-button primary">Start Reading Quran</a>
-      <a routerLink="/duas/collection" class="cta-button secondary">Browse Duas</a>
+      <a routerLink="/quran" class="cta-button primary">Start Reading Quran</a>
+      <a routerLink="/chat" class="cta-button secondary">Ask Nura AI</a>
     </div>
   </div>
 </div>
@@ -25,7 +25,7 @@
         <li>Multiple renowned reciters</li>
         <li>Verse bookmarking</li>
       </ul>
-      <a routerLink="/quran/reader" class="feature-link">Open Quran Reader</a>
+      <a routerLink="/quran" class="feature-link">Open Quran Reader</a>
     </div>
 
     <!-- Dua Collection -->
@@ -34,15 +34,14 @@
         <i class="fas fa-hands-praying"></i>
       </div>
       <h3>Dua Collection</h3>
-      <p>Access a comprehensive collection of authentic duas with AI-powered insights and emotional context.</p>
+      <p>Access a comprehensive collection of authentic duas for every situation.</p>
       <ul class="feature-list">
-        <li>Categorized duas with translations</li>
-        <li>Emotional context understanding</li>
-        <li>Deep meaning analysis</li>
-        <li>Historical and practical insights</li>
-        <li>Save favorites for quick access</li>
+        <li>Categorized duas</li>
+        <li>Arabic text with translations</li>
+        <li>Audio recitations</li>
+        <li>Save favorites</li>
       </ul>
-      <a routerLink="/duas/collection" class="feature-link">Browse Duas</a>
+      <a routerLink="/dua" class="feature-link">Browse Duas</a>
     </div>
 
     <!-- Learn Quran -->
@@ -56,9 +55,8 @@
         <li>Tajweed rules</li>
         <li>Memorization tools</li>
         <li>Progress tracking</li>
-        <li>Practice exercises</li>
       </ul>
-      <a routerLink="/learn/quran" class="feature-link">Start Learning</a>
+      <a routerLink="/learn" class="feature-link">Start Learning</a>
     </div>
   </div>
 </section>
@@ -66,36 +64,52 @@
 <section class="ai-features-section">
   <h2>AI-Powered Features</h2>
   <div class="features-grid">
-    <!-- Emotional Search -->
+    <!-- AI Chat -->
     <div class="feature-card ai">
       <div class="feature-icon">
-        <i class="fas fa-heart"></i>
+        <i class="fas fa-robot"></i>
       </div>
-      <h3>Emotional Search</h3>
-      <p>Find duas that resonate with your emotional state and spiritual needs.</p>
+      <h3>Islamic AI Chat</h3>
+      <p>Get instant answers to your Islamic questions from our knowledgeable AI assistant.</p>
       <ul class="feature-list">
-        <li>Search by emotions and feelings</li>
-        <li>Context-aware recommendations</li>
-        <li>Personalized dua suggestions</li>
-        <li>Situation-based guidance</li>
+        <li>Quran and Hadith references</li>
+        <li>Scholarly opinions</li>
+        <li>Contextual understanding</li>
+        <li>Multi-language support</li>
       </ul>
-      <a routerLink="/duas/collection" class="feature-link">Try Emotional Search</a>
+      <a routerLink="/chat" class="feature-link">Chat with Nura</a>
     </div>
 
-    <!-- Dua Analysis -->
+    <!-- Dua Insights -->
     <div class="feature-card ai">
       <div class="feature-icon">
         <i class="fas fa-lightbulb"></i>
       </div>
-      <h3>Dua Analysis</h3>
-      <p>Understand duas deeply with AI-powered analysis and contextual insights.</p>
+      <h3>Dua Insights</h3>
+      <p>AI-powered analysis and explanations of duas and their contexts.</p>
       <ul class="feature-list">
-        <li>Meaning and context exploration</li>
+        <li>Deep meaning analysis</li>
+        <li>Historical context</li>
         <li>Related verses and hadiths</li>
-        <li>Historical significance</li>
-        <li>Practical application guidance</li>
+        <li>Practical applications</li>
       </ul>
-      <a routerLink="/duas/collection" class="feature-link">Explore Insights</a>
+      <a routerLink="/dua-insights" class="feature-link">Explore Insights</a>
+    </div>
+
+    <!-- Voice Interaction -->
+    <div class="feature-card ai">
+      <div class="feature-icon">
+        <i class="fas fa-microphone"></i>
+      </div>
+      <h3>Voice Interaction</h3>
+      <p>Natural voice interactions for a hands-free Islamic learning experience.</p>
+      <ul class="feature-list">
+        <li>Voice search</li>
+        <li>Speech-to-text</li>
+        <li>Audio responses</li>
+        <li>Multi-language support</li>
+      </ul>
+      <a routerLink="/voice" class="feature-link">Try Voice Features</a>
     </div>
   </div>
 </section>
@@ -105,8 +119,14 @@
     <h2>Begin Your Journey with Nura AI</h2>
     <p>Join our growing community of learners and seekers of knowledge</p>
     <div class="cta-buttons">
-      <a routerLink="/auth/signup" class="cta-button primary">Create Free Account</a>
-      <a routerLink="/about" class="cta-button secondary">Learn More</a>
+      <a routerLink="/signup" class="cta-button primary">Create Free Account</a>
     </div>
   </div>
 </section> 
+<!-- AI Features Section -->
+<div class="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-16" authRequired>
+  <h2 class="text-3xl font-bold text-gray-800 dark:text-white mb-8 text-center">
+    Powered by AI
+  </h2>
+  // ... rest of AI features section ...
+</div> 
