@@ -6,7 +6,8 @@ import compression from 'compression';
 import fs from 'fs';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import subscriptionRoutes from './server/dist/routes/subscription.js';  // Updated to use compiled version
+// Temporarily comment out subscription routes until we fix the build
+// import subscriptionRoutes from './server/dist/routes/subscription.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -120,6 +121,24 @@ app.get('*', (req, res) => {
   } else {
     console.log(`index.html not found at: ${indexPath}`);
     res.status(404).send('index.html not found. Build output directory structure issue.');
+  }
+});
+
+// Add basic webhook endpoint for Stripe
+app.post('/api/subscription/webhook', express.raw({type: 'application/json'}), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  
+  try {
+    console.log('Received webhook event:', req.body.type);
+    
+    // For now, just acknowledge the webhook
+    res.json({received: true});
+    
+    // Log the event for debugging
+    console.log('Webhook event data:', JSON.stringify(req.body, null, 2));
+  } catch (err) {
+    console.error('Webhook error:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 });
 
