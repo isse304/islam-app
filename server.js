@@ -1,11 +1,13 @@
 // Load environment variables from .env file
-require('dotenv').config();
-
-const express = require('express');
-const path = require('path');
-const compression = require('compression');
-const fs = require('fs');
-const createDebugMiddleware = require('./debug-middleware');
+import 'dotenv/config';
+import express from 'express';
+import path from 'path';
+import compression from 'compression';
+import fs from 'fs';
+import createDebugMiddleware from './debug-middleware.js';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import subscriptionRoutes from './routes/subscription.js';  // Note: add .js extension
 
 const app = express();
 const PORT = process.env.PORT || 3001;
