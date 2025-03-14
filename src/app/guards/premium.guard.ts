@@ -1,13 +1,13 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { SubscriptionService } from '../services/subscription.service';
+import { FirebaseAuthService } from '../services/firebase-auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PremiumGuard implements CanActivate {
   constructor(
-    private subscriptionService: SubscriptionService,
+    private authService: FirebaseAuthService,
     private router: Router
   ) {}
 
@@ -15,11 +15,29 @@ export class PremiumGuard implements CanActivate {
     route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): Promise<boolean> {
-    const feature = route.data['feature'] || 'this feature';
-    const hasAccess = await this.subscriptionService.checkPremiumAccess(feature);
+    const isAuthenticated = await this.authService.isAuthenticated();
     
-    if (!hasAccess) {
-      this.router.navigate(['/']);
+    if (!isAuthenticated) {
+      // Save current route and redirect to login
+      await this.authService.login();
+      return false;
+    }
+    
+    // Check if user has premium subscription
+    const user = await this.authService.user$.pipe().toPromise();
+    
+    // Enhanced subscription check - handle both formats
+    // 1. Check user preferences.subscriptionStatus (old way)
+    const subscriptionStatus = user?.preferences?.subscriptionStatus || '';
+    
+    // 2. Handle all possible subscription status formats
+    const isPremium = 
+      ['active', 'trial', 'premium'].includes(subscriptionStatus) || 
+      // Check if subscription status might be in API response 
+      await this.authService.isPremiumUser();
+    
+    if (!isPremium) {
+      this.router.navigate(['/pricing']);
       return false;
     }
     

@@ -1,12 +1,12 @@
 import { Injectable } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot } from '@angular/router';
-import { AuthService } from '../services/auth.service';
+import { FirebaseAuthService } from '../services/firebase-auth.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: FirebaseAuthService) {}
 
   async canActivate(
     route: ActivatedRouteSnapshot,
@@ -15,7 +15,7 @@ export class AuthGuard implements CanActivate {
     const isAuthenticated = await this.authService.checkAuthState();
     
     if (!isAuthenticated) {
-      // Save the current route and open Clerk modal
+      // Save the current route and redirect to login
       await this.authService.login();
       return false;
     }

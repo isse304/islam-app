@@ -2,11 +2,15 @@ import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { AuthGuard } from './guards/auth.guard';
 import { PremiumGuard } from './guards/premium.guard';
+import { HomeComponent } from './components/home/home.component';
+import { LoginComponent } from './auth/login/login.component';
+import { SignupComponent } from './auth/signup/signup.component';
+import { ForgotPasswordComponent } from './auth/forgot-password/forgot-password.component';
 
 const routes: Routes = [
   {
     path: '',
-    loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent)
+    component: HomeComponent
   },
   {
     path: 'learn-quran',
@@ -28,7 +32,17 @@ const routes: Routes = [
     path: 'usage',
     loadComponent: () => import('./components/usage/usage.component').then(m => m.UsageComponent),
     canActivate: [AuthGuard]
-  }
+  },
+  {
+    path: 'auth',
+    loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule)
+  },
+  {
+    path: 'profile',
+    loadComponent: () => import('./auth/profile/profile.component').then(m => m.ProfileComponent),
+    canActivate: [AuthGuard]
+  },
+  { path: '**', redirectTo: '' }
 ];
 
 @NgModule({

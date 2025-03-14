@@ -14,7 +14,10 @@ export const routes: Routes = [
   { path: 'quran', component: QuranReaderComponent },
   { path: 'learn', component: LearnComponent },
   { path: 'dua', component: DuaComponent },
-  { path: 'auth/login', component: LoginComponent },
+  { 
+    path: 'auth',
+    loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule)
+  },
   { path: 'profile', component: ProfileComponent },
   { path: 'usage', component: UsageComponent },
   { path: 'subscription', component: SubscriptionComponent },

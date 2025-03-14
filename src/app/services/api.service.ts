@@ -5,6 +5,7 @@ import { Observable, from, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
+import { FirebaseAuthService } from './firebase-auth.service';
 
 interface TafsirResponse {
   explanation: string;
@@ -28,7 +29,7 @@ export class ApiService {
 
   constructor(
     private http: HttpClient,
-    private authService: AuthService,
+    private authService: FirebaseAuthService,
     private notificationService: NotificationService
   ) {}
 
@@ -61,14 +62,29 @@ export class ApiService {
 
   private async makeRequest(method: 'get' | 'post', endpoint: string, body?: any): Promise<any> {
     try {
-      const headers = new HttpHeaders({
+      // Get Firebase auth token for all requests
+      let headers = new HttpHeaders({
         'Content-Type': 'application/json'
       });
+      
+      // Add authentication token if user is logged in
+      try {
+        const token = await this.authService.getToken();
+        if (token) {
+          headers = headers.set('Authorization', `Bearer ${token}`);
+          console.log('Added authentication token to request');
+        }
+      } catch (authError) {
+        console.warn('Not adding auth token to request:', authError);
+        // Continue without token for public endpoints
+      }
+
+      const options = { headers, withCredentials: true };
 
       if (method === 'get') {
-        return await this.http.get(`${this.baseUrl}${endpoint}`, { headers }).toPromise();
+        return await this.http.get(`${this.baseUrl}${endpoint}`, options).toPromise();
       } else {
-        return await this.http.post(`${this.baseUrl}${endpoint}`, body, { headers }).toPromise();
+        return await this.http.post(`${this.baseUrl}${endpoint}`, body, options).toPromise();
       }
     } catch (error: any) {
       throw this.handleError(error);
@@ -82,7 +98,7 @@ export class ApiService {
       const token = await this.authService.getToken();
       if (!token) {
         this.notificationService.warning('Please sign in to access AI features');
-        // Save current route and open Clerk modal
+        // Redirect to login page
         await this.authService.login();
         throw new Error('Authentication required');
       }
@@ -106,7 +122,7 @@ export class ApiService {
       console.error('API Request Error:', error);
       if (error.status === 401) {
         this.notificationService.warning('Please sign in to access AI features');
-        // Save current route and open Clerk modal
+        // Redirect to login page
         await this.authService.login();
         return null;
       }
@@ -127,8 +143,8 @@ export class ApiService {
         case 401:
           errorMessage = 'Please sign in to access this feature';
           notificationType = 'warning';
-          // Open Clerk modal
-          this.authService.login().catch(err => console.error('Error opening Clerk modal:', err));
+          // Redirect to login page
+          this.authService.login().catch(err => console.error('Error redirecting to login:', err));
           break;
         case 403:
           errorMessage = 'You do not have permission to access this feature';

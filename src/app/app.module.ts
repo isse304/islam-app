@@ -10,6 +10,17 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 
+// Import Firebase modules
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { environment } from '../environments/environment';
+
+// Initialize Firebase
+const app = initializeApp(environment.firebase);
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+
 import { AppComponent } from './app.component';
 import { HeaderComponent } from './components/header/header.component';
 import { HomeComponent } from './components/home/home.component';
@@ -24,9 +35,7 @@ import { ContactComponent } from './components/contact/contact.component';
 import { routes } from './app.routes';
 import { ErrorDialogComponent } from './components/shared/error-dialog/error-dialog.component';
 import { UsageComponent } from './components/usage/usage.component';
-import { environment } from '../environments/environment';
-import { ClerkProvider } from './providers/clerk.provider';
-import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { FirebaseAuthInterceptor } from './interceptors/firebase-auth.interceptor';
 
 @NgModule({
   declarations: [
@@ -56,10 +65,11 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     MatButtonModule
   ],
   providers: [
-    ClerkProvider,
+    // Provide Auth for the application
+    { provide: 'FIREBASE_AUTH', useValue: auth },
     {
       provide: HTTP_INTERCEPTORS,
-      useClass: AuthInterceptor,
+      useClass: FirebaseAuthInterceptor,
       multi: true
     }
   ],

@@ -1,0 +1,40 @@
+<div class="auth-container">
+  <mat-card class="auth-card">
+    <mat-card-header>
+      <mat-card-title>Verify Your Email</mat-card-title>
+    </mat-card-header>
+    
+    <mat-card-content>
+      <div class="verify-content">
+        <mat-icon color="primary" class="email-icon">email</mat-icon>
+        
+        <h3>Check Your Inbox</h3>
+        
+        <p class="message">
+          We've sent a verification email to <strong>{{ userEmail }}</strong>.
+          Please check your inbox and click the verification link to complete your registration.
+        </p>
+        
+        <p class="sub-message">
+          If you don't see the email, check your spam folder or click the button below to resend.
+        </p>
+        
+        <div class="button-container">
+          <button 
+            mat-raised-button 
+            color="primary" 
+            (click)="resendVerificationEmail()" 
+            [disabled]="isLoading"
+            class="full-width">
+            <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
+            <span *ngIf="!isLoading">Resend Verification Email</span>
+          </button>
+        </div>
+        
+        <div class="login-prompt">
+          <a (click)="goToLogin()">Back to Sign In</a>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div> 

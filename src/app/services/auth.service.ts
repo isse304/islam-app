@@ -1,16 +1,32 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, firstValueFrom } from 'rxjs';
+import { BehaviorSubject, Observable, of, from, throwError } from 'rxjs';
+import { catchError, map, switchMap, take, tap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
-// Add this to make TypeScript recognize the global Clerk object
-declare global {
-  interface Window {
-    Clerk: any;
-    __clerk_publishable_key?: string;
-  }
-}
+// Firebase imports
+import { initializeApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  sendPasswordResetEmail,
+  updateProfile,
+  onAuthStateChanged,
+  User as FirebaseUser,
+  UserCredential,
+  GoogleAuthProvider,
+  signInWithPopup,
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+  updateEmail,
+  deleteUser,
+  sendEmailVerification,
+  signInWithRedirect,
+} from 'firebase/auth';
 
 export interface User {
   id: string;
@@ -44,968 +60,335 @@ interface PricingTier {
   providedIn: 'root'
 })
 export class AuthService {
-  private clerk: any;
   private userSubject = new BehaviorSubject<User | null>(null);
+  private authStateSubject = new BehaviorSubject<boolean>(false);
+  
   user$ = this.userSubject.asObservable();
-  isLoggedIn$: Observable<boolean>;
-  private apiUrl = environment.apiUrl;
-  private initializationPromise: Promise<void> | null = null;
+  isLoggedIn$ = this.authStateSubject.asObservable();
+  
+  // Firebase app and auth instances
+  private firebaseApp = initializeApp(environment.firebase);
+  private auth = getAuth(this.firebaseApp);
   
   // Property to store the URL that the user tried to access before authentication
   redirectUrl: string | null = null;
-
   private readonly LAST_ROUTE_KEY = 'lastRoute';
   private readonly ROUTE_STATE_KEY = 'routeState';
-  private authStateSubject = new BehaviorSubject<boolean>(false);
 
   constructor(
     private router: Router,
     private http: HttpClient
   ) {
-    // Initialize isLoggedIn$ observable
-    this.isLoggedIn$ = this.authStateSubject.asObservable();
-    
-    // Initialize Clerk
-    this.initializationPromise = this.initializeClerk();
-    
-    // Check initial auth state
-    this.checkAuthState().then(isAuthenticated => {
-      this.authStateSubject.next(isAuthenticated);
-    });
-  }
-
-  private async ensureInitialized(): Promise<void> {
-    if (!this.initializationPromise) {
-      this.initializationPromise = this.initializeClerk();
-    }
-    await this.initializationPromise;
-  }
-
-  private async initializeClerk(): Promise<void> {
-    try {
-      console.log('Starting Clerk initialization...');
-      // Wait for the DOM to be fully loaded
-      if (document.readyState !== 'complete') {
-        console.log('Waiting for DOM to be complete...');
-        await new Promise<void>((resolve) => {
-          window.addEventListener('load', () => resolve());
-        });
-      }
-
-      // Wait for Clerk to be available
-      console.log('Waiting for Clerk to be available...');
-      await this.waitForClerk();
-      
-      // Get publishable key from environment
-      const publishableKey = environment.clerkPublishableKey;
-      
-      if (!publishableKey) {
-        console.error('Missing Clerk publishable key in environment');
-        throw new Error('Missing Clerk publishable key in environment');
-      }
-
-      // Initialize Clerk if not already initialized
-      if (!window.Clerk.isInitialized) {
-        console.log('Initializing Clerk with publishableKey');
-        try {
-          await window.Clerk.load({
-            publishableKey: publishableKey,
-            frontendApi: environment.clerkFrontendApi,
-            appearance: {
-              elements: {
-                rootBox: {
-                  boxShadow: 'none',
-                },
-                card: {
-                  borderRadius: '0.5rem',
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                },
-              },
-            },
-          });
-          console.log('Clerk.load completed successfully');
-        } catch (loadError) {
-          console.error('Error during Clerk.load:', loadError);
-          throw loadError;
-        }
-      }
-
-      this.clerk = window.Clerk;
-      console.log('Clerk instance obtained:', !!this.clerk);
-
-      // Set up auth state listener
-      this.clerk.addListener(async (clerk: any) => {
-        console.log('Clerk auth state changed:', !!clerk.user);
-        if (clerk.user) {
-          await this.handleUserSignedIn(clerk.user);
-          this.authStateSubject.next(true);
-          console.log('User signed in, auth state updated to true');
-        } else {
-          this.userSubject.next(null);
-          this.authStateSubject.next(false);
-          console.log('User signed out, auth state updated to false');
-        }
-      });
-
-      // Initialize user if already logged in
-      if (this.clerk.user) {
-        console.log('User already logged in, initializing...');
-        await this.handleUserSignedIn(this.clerk.user);
-        this.authStateSubject.next(true);
-        console.log('Initial user state set to logged in');
-      }
-      
-      console.log('Clerk initialization completed');
-
-    } catch (error) {
-      console.error('Error initializing Clerk:', error);
-      this.authStateSubject.next(false);
-      throw error;
-    }
-  }
-
-  private async waitForClerk(maxAttempts = 150): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      let attempts = 0;
-      const checkClerk = () => {
-        attempts++;
-        if (window.Clerk) {
-          resolve();
-        } else if (attempts >= maxAttempts) {
-          reject(new Error('Timeout waiting for Clerk to load'));
-        } else {
-          setTimeout(checkClerk, 100);
-        }
-      };
-      checkClerk();
-    });
-  }
-
-  // Get the current authentication token
-  async getToken(): Promise<string | null> {
-    try {
-      console.log('Getting auth token...');
-      await this.ensureInitialized();
-      
-      if (!this.clerk) {
-        console.error('Clerk not initialized in getToken');
-        return null;
-      }
-      
-      const session = await this.clerk.session;
-      if (!session) {
-        console.error('No active Clerk session');
-        return null;
-      }
-      
-      const token = await session.getToken();
-      if (!token) {
-        console.error('No token returned from Clerk session');
-        return null;
-      }
-      
-      console.log('Successfully obtained auth token');
-      return token;
-    } catch (error) {
-      console.error('Error getting token:', error);
-      return null;
-    }
-  }
-
-  // Check if user is authenticated
-  isAuthenticated(): boolean {
-    const isAuth = !!this.clerk?.user;
-    console.log('isAuthenticated check result:', isAuth, 'clerk user:', !!this.clerk?.user);
-    
-    // Ensure the auth state is updated
-    if (isAuth) {
-      this.authStateSubject.next(true);
-    }
-    
-    return isAuth;
-  }
-
-  // Get user ID
-  getUserId(): string | null {
-    return this.clerk?.user?.id || null;
-  }
-
-  // Update user profile
-  async updateProfile(data: { firstName?: string; lastName?: string }): Promise<void> {
-    if (!this.clerk?.user) {
-      throw new Error('User not authenticated');
-    }
-    
-    try {
-      await this.clerk.user.update(data);
-      // Update local user object
-      if (this.userSubject.value) {
-        const updatedUser = {
-          ...this.userSubject.value,
-          firstName: data.firstName || this.userSubject.value.firstName,
-          lastName: data.lastName || this.userSubject.value.lastName
-        };
-        this.userSubject.next(updatedUser);
-      }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error;
-    }
-  }
-
-  // Handle redirect after authentication
-  handleRedirect(): Promise<void> {
-    if (!this.clerk) {
-      return Promise.resolve();
-    }
-    
-    return this.clerk.handleRedirectCallback().then(() => {
-      if (this.clerk.user) {
-        this.handleUserSignedIn(this.clerk.user);
+    // Listen for authentication state changes
+    onAuthStateChanged(this.auth, (firebaseUser) => {
+      console.log('Firebase auth state changed:', !!firebaseUser);
+      if (firebaseUser) {
+        this.handleUserSignedIn(firebaseUser);
+      } else {
+        this.userSubject.next(null);
+        this.authStateSubject.next(false);
       }
     });
   }
 
-  private async handleUserSignedIn(clerkUser: any): Promise<void> {
-    console.log('User signed in, updating user data:', clerkUser.id);
+  // Convert Firebase user to our User model
+  private mapFirebaseUser(firebaseUser: FirebaseUser): User {
+    const names = firebaseUser.displayName?.split(' ') || ['', ''];
+    
+    return {
+      id: firebaseUser.uid,
+      email: firebaseUser.email || '',
+      firstName: names[0] || '',
+      lastName: names.slice(1).join(' ') || '',
+      imageUrl: firebaseUser.photoURL || '',
+      emailVerified: firebaseUser.emailVerified,
+      createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
+      lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
+      preferences: {},
+      isAdmin: false // Set this based on your admin logic, e.g., from a database check
+    };
+  }
+
+  private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
+    // Map the Firebase user to our User model
+    const user = this.mapFirebaseUser(firebaseUser);
     
     try {
-      const user: User = {
-        id: clerkUser.id,
-        email: clerkUser.primaryEmailAddress?.emailAddress || '',
-        firstName: clerkUser.firstName || '',
-        lastName: clerkUser.lastName || '',
-        imageUrl: clerkUser.imageUrl,
-        emailVerified: clerkUser.primaryEmailAddress?.verification?.status === 'verified',
-        createdAt: new Date(clerkUser.createdAt),
-        lastSignInAt: clerkUser.lastSignInAt ? new Date(clerkUser.lastSignInAt) : undefined,
-        preferences: await this.getUserPreferences(clerkUser.id),
-        isAdmin: clerkUser.isAdmin || false
-      };
+      // Fetch user preferences from your backend
+      const preferences = await this.fetchUserPreferences(user.id);
+      user.preferences = preferences;
       
+      // Check if user is an admin (optional)
+      const isAdmin = await this.checkIfUserIsAdmin(user.id);
+      user.isAdmin = isAdmin;
+      
+      // Update the user subject
       this.userSubject.next(user);
       this.authStateSubject.next(true);
-      
-      console.log('User data updated successfully:', user.email);
     } catch (error) {
-      console.error('Error updating user data:', error);
+      console.error('Error handling user sign in:', error);
+      // Still set the user with basic data even if we couldn't fetch preferences
+      this.userSubject.next(user);
+      this.authStateSubject.next(true);
     }
   }
 
-  // Get a specific user preference
-  getPreference<T>(key: string, defaultValue: T): T {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences) return defaultValue;
-    
-    return (user.preferences as any)[key] !== undefined 
-      ? (user.preferences as any)[key] 
-      : defaultValue;
-  }
-
-  // Set a specific user preference
-  async setPreference<T>(key: string, value: T): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user) return;
-    
-    if (!user.preferences) {
-      user.preferences = {};
-    }
-    
-    (user.preferences as any)[key] = value;
-    await this.saveUserPreferences(user.preferences);
-  }
-
-  // Sync Quran reading settings
-  async syncQuranSettings(settings: {
-    selectedReciter?: number;
-    selectedTranslation?: string;
-    fontSize?: number;
-    darkMode?: boolean;
-  }): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user) return;
-    
-    if (!user.preferences) {
-      user.preferences = {};
-    }
-    
-    // Only update the provided settings
-    user.preferences = {
-      ...user.preferences,
-      ...settings
-    };
-    
-    await this.saveUserPreferences(user.preferences);
-  }
-
-  // Get all user preferences
-  getUserSettings(): any {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences) {
-      return {
-        selectedReciter: 7,
-        selectedTranslation: '131',
-        fontSize: 24,
-        darkMode: false,
-        bookmarks: [] as string[]
-      };
-    }
-    
-    return { ...user.preferences };
-  }
-
-  private async getUserPreferences(userId: string): Promise<any> {
-    const defaultPrefs = {
-      selectedReciter: 7,
-      selectedTranslation: '131',
-      fontSize: 24,
-      darkMode: false,
-      bookmarks: [] as string[]
-    };
-
-    // First try to get from local storage as cache
+  private async fetchUserPreferences(userId: string): Promise<any> {
     try {
-      const storedPrefs = localStorage.getItem(`user_prefs_${userId}`);
-      if (storedPrefs) {
-        const parsedPrefs = JSON.parse(storedPrefs);
-        // Try to sync with backend
-        this.syncPreferencesToBackend(userId, parsedPrefs);
-        return parsedPrefs;
-      }
+      const response = await this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).toPromise();
+      return response || {};
     } catch (error) {
-      console.warn('Error reading from local storage:', error);
+      console.error('Error fetching user preferences:', error);
+      return {};
     }
+  }
 
-    // Try to get from backend
+  private async checkIfUserIsAdmin(userId: string): Promise<boolean> {
     try {
-      const token = await this.getToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-
-      const response = await this.http.get(`${this.apiUrl}/users/${userId}/preferences`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }).toPromise();
-
-      if (response) {
-        // Cache in local storage
-        localStorage.setItem(`user_prefs_${userId}`, JSON.stringify(response));
-        return response;
-      }
-    } catch (error: any) {
-      if (error.status === 404) {
-        // If preferences don't exist yet, create them
-        await this.saveUserPreferencesToBackend(userId, defaultPrefs);
-      } else {
-        console.warn('Error fetching preferences from backend:', error);
-      }
-    }
-
-    return defaultPrefs;
-  }
-
-  private async saveUserPreferencesToBackend(userId: string, preferences: any): Promise<void> {
-    try {
-      const token = await this.getToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-
-      await this.http.put(`${this.apiUrl}/users/${userId}/preferences`, preferences, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      }).toPromise();
-
-      // Update local storage
-      localStorage.setItem(`user_prefs_${userId}`, JSON.stringify(preferences));
-    } catch (error: any) {
-      console.warn('Error saving preferences to backend:', error);
-      // Still save to local storage as fallback
-      localStorage.setItem(`user_prefs_${userId}`, JSON.stringify(preferences));
-      
-      // If endpoint doesn't exist, log a more specific error
-      if (error.status === 404) {
-        console.warn('Backend API endpoint not found. Ensure the preferences endpoint is properly configured in your server.');
-      }
-    }
-  }
-
-  private async syncPreferencesToBackend(userId: string, preferences: any): Promise<void> {
-    try {
-      await this.saveUserPreferencesToBackend(userId, preferences);
-    } catch (error) {
-      console.warn('Failed to sync preferences to backend:', error);
-    }
-  }
-
-  async saveUserPreferences(preferences: any): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user) return;
-    
-    // Update local user object
-    user.preferences = { ...user.preferences, ...preferences };
-    this.userSubject.next(user);
-    
-    // Save to local storage as a fallback
-    localStorage.setItem(`user_prefs_${user.id}`, JSON.stringify(user.preferences));
-    
-    // Save to backend
-    try {
-      await this.saveUserPreferencesToBackend(user.id, user.preferences);
-    } catch (error) {
-      console.warn('Error saving preferences to backend:', error);
-    }
-  }
-
-  // Save a bookmark
-  async addBookmark(verseKey: string): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences) return;
-    
-    // Create bookmarks array if it doesn't exist
-    if (!user.preferences.bookmarks) {
-      user.preferences.bookmarks = [];
-    }
-    
-    // Add bookmark if it doesn't already exist
-    if (!user.preferences.bookmarks.includes(verseKey)) {
-      user.preferences.bookmarks.push(verseKey);
-      await this.saveUserPreferences(user.preferences);
-    }
-  }
-
-  // Remove a bookmark
-  async removeBookmark(verseKey: string): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences || !user.preferences.bookmarks) return;
-    
-    // Remove bookmark if it exists
-    const index = user.preferences.bookmarks.indexOf(verseKey);
-    if (index !== -1) {
-      user.preferences.bookmarks.splice(index, 1);
-      await this.saveUserPreferences(user.preferences);
-    }
-  }
-
-  // Check if a verse is bookmarked
-  isBookmarked(verseKey: string): boolean {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences || !user.preferences.bookmarks) return false;
-    
-    return user.preferences.bookmarks.includes(verseKey);
-  }
-
-  // Get all bookmarks
-  getBookmarks(): string[] {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences || !user.preferences.bookmarks) return [];
-    
-    return [...user.preferences.bookmarks];
-  }
-
-  async openSignIn(): Promise<void> {
-    try {
-      console.log('Opening SignIn modal');
-      await this.ensureInitialized();
-      
-      if (!this.clerk) {
-        console.error('Clerk not initialized when opening sign in');
-        if (window.Clerk) {
-          console.log('Using window.Clerk directly as fallback');
-          this.clerk = window.Clerk;
-        } else {
-          throw new Error('Clerk not initialized and not available in window');
-        }
+      // First try to check from localStorage to avoid unnecessary API calls
+      const cachedAdminStatus = localStorage.getItem(`admin_status_${userId}`);
+      if (cachedAdminStatus) {
+        return cachedAdminStatus === 'true';
       }
       
-      const signInProps = {
-        redirectUrl: window.location.origin,
-        appearance: {
-          elements: {
-            rootBox: {
-              boxShadow: 'none',
-            },
-          },
-        },
-      };
-
-      console.log('Calling clerk.openSignIn with props:', signInProps);
-      await this.clerk.openSignIn(signInProps);
-      
-      // After successful sign-in
-      if (this.isAuthenticated() && this.redirectUrl) {
-        const url = this.redirectUrl;
-        this.redirectUrl = null;
-        await this.router.navigateByUrl(url);
-      }
-    } catch (error) {
-      console.error('Error during sign in:', error);
-      // Alert the user
-      alert('Could not open sign-in. Please try again later.');
-      throw error;
-    }
-  }
-
-  async openSignUp(): Promise<void> {
-    try {
-      console.log('Opening SignUp modal');
-      await this.ensureInitialized();
-      
-      if (!this.clerk) {
-        console.error('Clerk not initialized when opening sign up');
-        if (window.Clerk) {
-          console.log('Using window.Clerk directly as fallback');
-          this.clerk = window.Clerk;
-        } else {
-          throw new Error('Clerk not initialized and not available in window');
-        }
-      }
-      
-      const signUpProps = {
-        redirectUrl: window.location.origin,
-        appearance: {
-          elements: {
-            rootBox: {
-              boxShadow: 'none',
-            },
-          },
-        },
-      };
-
-      console.log('Calling clerk.openSignUp with props:', signUpProps);
-      await this.clerk.openSignUp(signUpProps);
-      
-      // After successful sign-up
-      if (this.isAuthenticated() && this.redirectUrl) {
-        const url = this.redirectUrl;
-        this.redirectUrl = null;
-        await this.router.navigateByUrl(url);
-      }
-    } catch (error) {
-      console.error('Error during sign up:', error);
-      // Alert the user
-      alert('Could not open sign-up. Please try again later.');
-      throw error;
-    }
-  }
-
-  // Sign out method
-  async signOut(): Promise<void> {
-    console.log('SignOut method called');
-    try {
-      await this.ensureInitialized();
-      
-      if (!this.clerk) {
-        console.error('Clerk not initialized during signOut');
-        if (window.Clerk) {
-          console.log('Using window.Clerk directly as fallback for signOut');
-          this.clerk = window.Clerk;
-        } else {
-          throw new Error('Clerk not initialized and not available in window');
-        }
-      }
-      
-      // Try/catch around actual signOut call for detailed error
+      // If no cached value, try the API
       try {
-        console.log('Calling clerk.signOut');
-        await this.clerk.signOut();
-        console.log('Clerk signOut successful');
-      } catch (signOutError) {
-        console.error('Error during Clerk signOut:', signOutError);
-        // Try a direct approach as a fallback
-        if (window.Clerk) {
-          console.log('Trying direct window.Clerk.signOut as fallback');
-          await window.Clerk.signOut();
-        } else {
-          throw signOutError;
-        }
-      }
-      
-      // Clear local state
-      this.userSubject.next(null);
-      this.authStateSubject.next(false);
-      localStorage.removeItem('isAuthenticated');
-      
-      // Navigate to home page
-      console.log('Redirecting to home page after sign out');
-      window.location.href = '/';
-      
-    } catch (error) {
-      console.error('Error in signOut method:', error);
-      // Alert the user
-      alert('Could not sign out properly. Please refresh the page and try again.');
-      throw error;
-    }
-  }
-
-  // Apply user preferences to Quran reader component
-  applyQuranReaderPreferences(quranReader: any): void {
-    const user = this.userSubject.value;
-    if (!user || !user.preferences) return;
-    
-    // Apply preferences if they exist
-    if (user.preferences.selectedReciter !== undefined) {
-      quranReader.selectedReciter = this.findReciterById(user.preferences.selectedReciter);
-    }
-    
-    if (user.preferences.selectedTranslation !== undefined) {
-      quranReader.selectedTranslation = user.preferences.selectedTranslation;
-    }
-    
-    if (user.preferences.fontSize !== undefined) {
-      quranReader.fontSize = user.preferences.fontSize;
-    }
-    
-    if (user.preferences.darkMode !== undefined) {
-      quranReader.isDarkMode = user.preferences.darkMode;
-    }
-    
-    // Load bookmarks if they exist
-    if (user.preferences.bookmarks && user.preferences.bookmarks.length > 0) {
-      quranReader.bookmarks = user.preferences.bookmarks;
-    }
-  }
-  
-  // Helper method to find reciter by ID
-  private findReciterById(reciterId: number): any {
-    // This should be replaced with actual logic to find a reciter by ID
-    // For now, we'll return a default reciter object
-    return {
-      id: reciterId,
-      name: 'Default Reciter',
-      identifier: 'default',
-      surahIdentifier: 'default'
-    };
-  }
-
-  // Save Quran reader state
-  async saveQuranReaderState(state: {
-    surah?: number;
-    verse?: number;
-    position?: number;
-    lastRead?: Date;
-  }): Promise<void> {
-    await this.setPreference('quranReaderState', state);
-    
-    // Save reading history
-    const user = this.userSubject.value;
-    if (!user || !state.surah || !state.verse) return;
-    
-    try {
-      // First update local storage
-      const localHistory = localStorage.getItem(`reading_history_${user.id}`);
-      const history = localHistory ? JSON.parse(localHistory) : [];
-      
-      // Add new entry
-      const newEntry = {
-        surah: Number(state.surah),
-        verse: Number(state.verse),
-        timestamp: new Date().toISOString()  // Store as ISO string for consistency
-      };
-      
-      // Remove any duplicate entries for the same surah/verse
-      const filteredHistory = history.filter((entry: any) => 
-        entry.surah !== newEntry.surah || entry.verse !== newEntry.verse
-      );
-      
-      // Add new entry at the beginning and limit to 100 entries
-      filteredHistory.unshift(newEntry);
-      if (filteredHistory.length > 100) {
-        filteredHistory.length = 100;
-      }
-      
-      // Save to local storage
-      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(filteredHistory));
-      
-      // Try to save to backend
-      const token = await this.getToken();
-      if (!token) return;
-      
-      await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(newEntry)
-      });
-    } catch (error) {
-      console.error('Error saving reading history:', error);
-    }
-  }
-
-  // Get Quran reader state
-  getQuranReaderState(): any {
-    return this.getPreference('quranReaderState', {
-      surah: 1,
-      verse: 1,
-      position: 0,
-      lastRead: new Date()
-    });
-  }
-
-  // Get reading history from backend
-  async getReadingHistory(): Promise<any[]> {
-    const user = this.userSubject.value;
-    if (!user) return [];
-    
-    try {
-      // First try to get from local storage
-      const localHistory = localStorage.getItem(`reading_history_${user.id}`);
-      if (localHistory) {
-        const parsedHistory = JSON.parse(localHistory);
-        // If we find an empty array in localStorage, respect that the history was cleared
-        if (Array.isArray(parsedHistory) && parsedHistory.length === 0) {
-          return [];
-        }
-        return parsedHistory.map((entry: any) => ({
-          ...entry,
-          surah: Number(entry.surah),
-          verse: Number(entry.verse),
-          timestamp: new Date(entry.timestamp)
-        }));
-      }
-
-      // If no local history, try backend
-      const token = await this.getToken();
-      if (!token) return [];
-      
-      try {
-        const response = await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        const response = await this.http.get<{isAdmin: boolean}>(`${environment.apiUrl}/api/users/${userId}/admin-status`).toPromise();
         
-        if (response.ok) {
-          const history = await response.json();
-          // Cache in local storage
-          localStorage.setItem(`reading_history_${user.id}`, JSON.stringify(history));
-          return history.map((entry: any) => ({
-            ...entry,
-            surah: Number(entry.surah),
-            verse: Number(entry.verse),
-            timestamp: new Date(entry.timestamp)
-          }));
+        // Cache the result for 24 hours
+        if (response) {
+          localStorage.setItem(`admin_status_${userId}`, response.isAdmin ? 'true' : 'false');
         }
-        // If we get a 404, it means the endpoint doesn't exist yet
-        if (response.status === 404) {
-          // Store empty array in localStorage to prevent future backend calls
-          localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
-          return [];
-        }
-      } catch (error) {
-        console.warn('Error fetching reading history from backend (this is expected if the endpoint is not implemented yet):', error);
-        // Store empty array in localStorage to prevent future backend calls
-        localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
+        
+        return response?.isAdmin || false;
+      } catch (apiError) {
+        console.warn('Admin status API error, using fallback', apiError);
+        
+        // Use admin list from environment.ts
+        const isAdmin = environment.adminUsers.includes(userId);
+        
+        // Cache the result
+        localStorage.setItem(`admin_status_${userId}`, isAdmin ? 'true' : 'false');
+        
+        return isAdmin;
       }
     } catch (error) {
-      console.error('Error fetching reading history:', error);
-    }
-    
-    return [];
-  }
-
-  async subscribe(tier: PricingTier): Promise<void> {
-    // TODO: Implement actual payment processing
-    // This is a temporary mock implementation
-    localStorage.setItem('isPremiumUser', 'true');
-  }
-
-  async isPremiumUser(): Promise<boolean> {
-    return localStorage.getItem('isPremiumUser') === 'true';
-  }
-
-  // Save current route before navigation
-  saveCurrentRoute(url: string, state?: any) {
-    localStorage.setItem(this.LAST_ROUTE_KEY, url);
-    if (state) {
-      localStorage.setItem(this.ROUTE_STATE_KEY, JSON.stringify(state));
-    }
-  }
-
-  // Get saved route
-  getSavedRoute(): { url: string, state?: any } {
-    const url = localStorage.getItem(this.LAST_ROUTE_KEY) || '/';
-    let state: any;
-    try {
-      const savedState = localStorage.getItem(this.ROUTE_STATE_KEY);
-      state = savedState ? JSON.parse(savedState) : undefined;
-    } catch (e) {
-      console.error('Error parsing saved route state:', e);
-    }
-    return { url, state };
-  }
-
-  // Clear saved route
-  clearSavedRoute() {
-    localStorage.removeItem(this.LAST_ROUTE_KEY);
-    localStorage.removeItem(this.ROUTE_STATE_KEY);
-  }
-
-  // After successful authentication, restore the previous route
-  async restoreRoute() {
-    const { url, state } = this.getSavedRoute();
-    this.clearSavedRoute();
-    await this.router.navigateByUrl(url, { state });
-  }
-
-  // Get auth state as observable
-  getAuthState(): Observable<boolean> {
-    return this.authStateSubject.asObservable();
-  }
-
-  // Check if user is authenticated
-  async checkAuthState(): Promise<boolean> {
-    try {
-      console.log('Checking auth state...');
-      const token = await this.getToken();
-      const isAuth = !!token;
-      console.log('Auth state check result:', isAuth);
-      this.authStateSubject.next(isAuth);
-      return isAuth;
-    } catch (error) {
-      console.error('Error checking auth state:', error);
-      this.authStateSubject.next(false);
+      console.error('Error checking admin status:', error);
       return false;
     }
   }
 
-  // Handle login
-  async login() {
-    // Save current route before opening Clerk modal
-    this.saveCurrentRoute(
-      this.router.url,
-      this.router.getCurrentNavigation()?.extras?.state
-    );
+  // Check auth state (used in guards and components)
+  async checkAuthState(): Promise<boolean> {
+    return new Promise<boolean>((resolve) => {
+      const unsubscribe = onAuthStateChanged(this.auth, (user) => {
+        unsubscribe(); // Stop listening after first response
+        resolve(!!user);
+      });
+    });
+  }
+
+  // Check if user is authenticated
+  isAuthenticated(): boolean {
+    return !!this.auth.currentUser;
+  }
+
+  // Sign in with email and password
+  signIn(email: string, password: string): Promise<User> {
+    return signInWithEmailAndPassword(this.auth, email, password)
+      .then((userCredential) => {
+        return this.mapFirebaseUser(userCredential.user);
+      });
+  }
+
+  // Sign up with email and password
+  signUp(email: string, password: string, firstName: string, lastName: string): Promise<User> {
+    return createUserWithEmailAndPassword(this.auth, email, password)
+      .then(async (userCredential) => {
+        // Update the user profile with display name
+        await updateProfile(userCredential.user, {
+          displayName: `${firstName} ${lastName}`
+        });
+        
+        // Send email verification
+        await sendEmailVerification(userCredential.user);
+        
+        // Return the user
+        return this.mapFirebaseUser(userCredential.user);
+      });
+  }
+
+  // Sign in with Google
+  signInWithGoogle(): Promise<User> {
+    const provider = new GoogleAuthProvider();
     
+    // Add scopes for better profile access
+    provider.addScope('profile');
+    provider.addScope('email');
+    
+    // Always prompt for account selection to avoid auto-login issues
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+    
+    console.log('Starting Google sign-in process');
+    
+    // More reliable implementation
+    return signInWithPopup(this.auth, provider)
+      .then((result) => {
+        console.log('Google sign-in successful', result);
+        return this.mapFirebaseUser(result.user);
+      })
+      .catch(error => {
+        console.error('Google sign-in error:', error);
+        
+        // If popup fails, try redirect as fallback
+        if (error.code === 'auth/popup-blocked' || error.code === 'auth/popup-closed-by-user') {
+          console.log('Popup blocked or closed, trying redirect...');
+          
+          // For redirect, we need to save current URL to return to after auth
+          this.saveCurrentRoute();
+          
+          // Use redirect as fallback
+          signInWithRedirect(this.auth, provider);
+        }
+        
+        throw error;
+      });
+  }
+
+  // Sign out
+  async signOut(): Promise<void> {
+    await signOut(this.auth);
+    this.userSubject.next(null);
+    this.authStateSubject.next(false);
+    this.router.navigate(['/']);
+  }
+
+  // Reset password
+  resetPassword(email: string): Promise<void> {
+    return sendPasswordResetEmail(this.auth, email);
+  }
+
+  // Update user profile
+  async updateUserProfile(displayName?: string, photoURL?: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+    
+    await updateProfile(user, {
+      displayName: displayName || user.displayName,
+      photoURL: photoURL || user.photoURL
+    });
+    
+    // Update the current user in state
+    this.handleUserSignedIn(user);
+  }
+
+  // Change email
+  async changeEmail(newEmail: string, password: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user || !user.email) throw new Error('No authenticated user');
+    
+    // Re-authenticate the user
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+    
+    // Update email
+    await updateEmail(user, newEmail);
+    
+    // Update the current user in state
+    this.handleUserSignedIn(user);
+  }
+
+  // Change password
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user || !user.email) throw new Error('No authenticated user');
+    
+    // Re-authenticate the user
+    const credential = EmailAuthProvider.credential(user.email, currentPassword);
+    await reauthenticateWithCredential(user, credential);
+    
+    // Update password
+    await updatePassword(user, newPassword);
+  }
+
+  // Delete account
+  async deleteAccount(password: string): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user || !user.email) throw new Error('No authenticated user');
+    
+    // Re-authenticate the user
+    const credential = EmailAuthProvider.credential(user.email, password);
+    await reauthenticateWithCredential(user, credential);
+    
+    // Delete the user
+    await deleteUser(user);
+    this.userSubject.next(null);
+    this.authStateSubject.next(false);
+    this.router.navigate(['/']);
+  }
+
+  // Update user preferences
+  async updateUserPreferences(preferences: any): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No authenticated user');
+    
+    // Update preferences on your backend
+    await this.http.put(`${environment.apiUrl}/api/users/${user.uid}/preferences`, preferences).toPromise();
+    
+    // Update the current user in the state
+    const currentUser = this.userSubject.value;
+    if (currentUser) {
+      this.userSubject.next({
+        ...currentUser,
+        preferences: {...currentUser.preferences, ...preferences}
+      });
+    }
+  }
+
+  // Show login modal/UI
+  async login(): Promise<void> {
+    this.saveCurrentRoute();
+    this.router.navigate(['/auth/login']);
+  }
+
+  // Navigate to the originally requested URL after successful login
+  navigateToSavedRoute(): void {
+    const route = localStorage.getItem(this.LAST_ROUTE_KEY) || '/';
+    const state = localStorage.getItem(this.ROUTE_STATE_KEY);
+    
+    // Clear saved route
+    localStorage.removeItem(this.LAST_ROUTE_KEY);
+    localStorage.removeItem(this.ROUTE_STATE_KEY);
+    
+    // Navigate to saved route
     try {
-      await this.ensureInitialized();
-      if (!this.clerk) {
-        throw new Error('Clerk not initialized');
-      }
-      
-      // Open Clerk's sign in modal
-      await this.clerk.openSignIn({
-        redirectUrl: window.location.origin,
-        appearance: {
-          elements: {
-            rootBox: {
-              boxShadow: 'none',
-            },
-          },
-        },
+      const parsedState = state ? JSON.parse(state) : undefined;
+      this.router.navigateByUrl(route, {
+        state: parsedState
       });
     } catch (error) {
-      console.error('Error opening Clerk sign in:', error);
+      console.error('Error parsing route state:', error);
+      this.router.navigateByUrl(route);
     }
   }
 
-  // Reset subscription status
-  async resetSubscriptionStatus() {
-    localStorage.removeItem('isPremiumUser');
-    // You might want to also clear any other subscription-related data
-    try {
-      const user = this.userSubject.value;
-      if (user && user.preferences) {
-        delete user.preferences.subscriptionStatus;
-        await this.saveUserPreferences(user.preferences);
-      }
-    } catch (error) {
-      console.error('Error resetting subscription status:', error);
-    }
-  }
-
-  // Handle logout
-  async logout() {
-    this.authStateSubject.next(false);
-    // Implement your logout logic here
-  }
-
-  // Clear reading history
-  async clearReadingHistory(): Promise<void> {
-    const user = this.userSubject.value;
-    if (!user) return;
-    
-    try {
-      // Clear from local storage first
-      localStorage.removeItem(`reading_history_${user.id}`);
+  // Save the current route for later redirect
+  private saveCurrentRoute(): void {
+    const currentRoute = this.router.url;
+    if (currentRoute !== '/auth/login' && currentRoute !== '/auth/signup') {
+      localStorage.setItem(this.LAST_ROUTE_KEY, currentRoute);
       
-      // Try to clear from backend, but don't throw if endpoint doesn't exist
+      // Try to save route state if available
       try {
-        const token = await this.getToken();
-        if (token) {
-          await fetch(`${this.apiUrl}/users/${user.id}/reading-history`, {
-            method: 'DELETE',
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
+        const routeState = window.history.state;
+        if (routeState) {
+          localStorage.setItem(this.ROUTE_STATE_KEY, JSON.stringify(routeState));
         }
       } catch (error) {
-        // Log backend error but don't throw since we've already cleared local storage
-        console.warn('Error clearing reading history from backend (this is expected if the endpoint is not implemented yet):', error);
+        console.error('Error saving route state:', error);
       }
-
-      // Set an empty array in local storage to prevent reloading from backend
-      localStorage.setItem(`reading_history_${user.id}`, JSON.stringify([]));
-    } catch (error) {
-      console.error('Error clearing reading history:', error);
-      throw error;
-    }
-  }
-
-  // Update the resetAllUsersPremiumAccess method to use HTTP API
-  async resetAllUsersPremiumAccess(): Promise<void> {
-    try {
-      const user = await firstValueFrom(this.user$);
-      if (!user?.isAdmin) {
-        throw new Error('Unauthorized: Only admins can reset user access');
-      }
-
-      const token = await this.getToken();
-      if (!token) {
-        throw new Error('No authentication token available');
-      }
-
-      // Call the backend API to reset all users' premium access
-      await this.http.post(`${this.apiUrl}/admin/reset-premium-access`, {}, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      }).toPromise();
-
-      // Clear all premium-related data from local storage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key) {
-          // Clear isPremiumUser flag
-          if (key === 'isPremiumUser') {
-            localStorage.removeItem(key);
-          }
-          // Clear premium status from user preferences
-          if (key.startsWith('user_prefs_')) {
-            try {
-              const prefs = JSON.parse(localStorage.getItem(key) || '{}');
-              if (prefs.subscriptionStatus) {
-                delete prefs.subscriptionStatus;
-                localStorage.setItem(key, JSON.stringify(prefs));
-              }
-            } catch (error) {
-              console.warn(`Error processing preferences for key ${key}:`, error);
-            }
-          }
-        }
-      }
-      
-      console.log('Successfully reset premium access for all users and cleared local storage');
-    } catch (error) {
-      console.error('Error resetting user premium access:', error);
-      throw error;
     }
   }
 }

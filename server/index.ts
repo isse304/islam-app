@@ -7,7 +7,6 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { ClerkExpressWithAuth } from '@clerk/clerk-sdk-node';
 import { AuthenticatedRequest, authenticateUser } from './middleware/auth';
 import securityConfig from './middleware/security';
 import aiRouter from './routes/ai';
@@ -18,14 +17,72 @@ import { connectDatabase } from './config/database';
 import subscriptionRouter from './routes/subscription';
 import usageRouter from './routes/usage';
 
-// Load environment variables first, before any other imports
-const envPath = path.resolve(process.cwd(), '.env');
-const result = dotenv.config({ path: envPath });
+// Set NODE_ENV if not already set (development by default)
+process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+console.log(`Starting server in ${process.env.NODE_ENV} mode`);
 
-if (result.error) {
-    console.error('Error loading .env file:', result.error);
-    process.exit(1);
+// Load environment variables - try multiple locations
+function loadEnvVariables() {
+    const possiblePaths = [
+        path.resolve(process.cwd(), '.env'),              // Current working directory
+        path.resolve(process.cwd(), '../.env'),           // Parent directory
+        path.resolve(__dirname, '../.env'),               // Relative to current file's directory
+        path.resolve(__dirname, '../../.env'),            // Two levels up from current file
+    ];
+    
+    console.log('Looking for .env file in:');
+    for (const envPath of possiblePaths) {
+        console.log(`- ${envPath} (exists: ${fs.existsSync(envPath)})`);
+        
+        if (fs.existsSync(envPath)) {
+            const result = dotenv.config({ path: envPath });
+            if (result.error) {
+                console.warn(`Warning: Error loading .env from ${envPath}:`, result.error);
+            } else {
+                console.log(`✅ Successfully loaded .env from ${envPath}`);
+                // In development, validate required variables are present
+                validateEnvironmentVariables();
+                return true;
+            }
+        }
+    }
+    
+    if (process.env.NODE_ENV === 'development') {
+        console.error('❌ Could not find .env file in any of the checked locations');
+        console.log('Available environment variables:', Object.keys(process.env).length);
+        return false;
+    }
+    
+    // In production, we might get env vars from the deployment platform
+    console.log('No .env file found, but continuing (might use environment variables from deployment platform)');
+    return true;
 }
+
+function validateEnvironmentVariables() {
+    // Log the presence of important environment variables
+    const importantVars = [
+        'MONGODB_URI',
+        'OPENAI_API_KEY',
+        'FIREBASE_PROJECT_ID',
+        'FIREBASE_CLIENT_EMAIL',
+        'FIREBASE_PRIVATE_KEY',
+        'STRIPE_SECRET_KEY',
+        'STRIPE_PRICE_ID',
+        'RATE_LIMIT_WINDOW_MS',
+        'RATE_LIMIT_MAX_REQUESTS',
+        'DAILY_USER_LIMIT'
+    ];
+    
+    console.log('\nEnvironment Variables Status:');
+    for (const varName of importantVars) {
+        const exists = !!process.env[varName];
+        console.log(`- ${varName}: ${exists ? '✅ Set' : '❌ Missing'}`);
+    }
+    console.log();
+}
+
+// Try to load environment variables
+loadEnvVariables();
 
 // Configure logging
 const logger = winston.createLogger({
@@ -46,27 +103,6 @@ if (process.env.NODE_ENV !== 'production') {
     }));
 }
 
-// Validate required environment variables
-const requiredEnvVars = [
-    'CLERK_SECRET_KEY',
-    'CLERK_PUBLISHABLE_KEY',
-    'MONGODB_URI',
-    'CORS_ORIGIN',
-    'OPENAI_API_KEY',
-    'SESSION_SECRET',
-    'STRIPE_SECRET_KEY',
-    'STRIPE_PRICE_ID',
-    'STRIPE_WEBHOOK_SECRET',
-    'CLIENT_URL'
-];
-
-for (const envVar of requiredEnvVars) {
-    if (!process.env[envVar]) {
-        logger.error(`Missing required environment variable: ${envVar}`);
-        process.exit(1);
-    }
-}
-
 // Initialize Express app
 const app = express();
 const port = process.env.PORT || 3000;
@@ -85,8 +121,8 @@ const startServer = async () => {
             allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
         }));
         
-        // Initialize Clerk
-        app.use(ClerkExpressWithAuth());
+        // We're using Firebase auth, not Clerk, so we don't need this middleware
+        logger.info('Using Firebase authentication');
         
         // Configure session middleware with secure settings and MongoDB store
         app.use(session({
@@ -112,6 +148,16 @@ const startServer = async () => {
         app.use('/api/ai', aiRouter);
         app.use('/api/monitoring', monitoringRouter);
         app.use('/api/users', usersRouter);
+
+        // Health check endpoint
+        app.get('/api/health', (req: Request, res: Response) => {
+            res.status(200).json({ 
+                status: 'ok', 
+                message: 'API is running', 
+                environment: process.env.NODE_ENV || 'development',
+                timestamp: new Date().toISOString()
+            });
+        });
 
         // Start server
         app.listen(port, () => {

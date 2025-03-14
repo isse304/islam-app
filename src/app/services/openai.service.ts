@@ -5,6 +5,7 @@ import { environment } from '../../environments/environment';
 import { Dua } from './dua.service';
 import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
+import { FirebaseAuthService } from './firebase-auth.service';
 
 export interface AIResponse {
   content: string;
@@ -46,7 +47,7 @@ export class OpenAIService {
   
   constructor(
     private http: HttpClient,
-    private authService: AuthService,
+    private authService: FirebaseAuthService,
     private apiService: ApiService
   ) {}
 

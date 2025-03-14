@@ -1,5 +1,6 @@
 import { Component, OnInit } from '@angular/core';
-import { ClerkProvider } from './providers/clerk.provider';
+import { FirebaseAuthService } from './services/firebase-auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -8,44 +9,28 @@ import { ClerkProvider } from './providers/clerk.provider';
 })
 export class AppComponent implements OnInit {
   title = 'IslamApp';
-  initError: string | null = null;
-  isLoading = true;
-  initAttempts = 0;
-  maxAttempts = 3;
+  isLoading = false;
 
-  constructor(private clerkProvider: ClerkProvider) {}
+  constructor(
+    private authService: FirebaseAuthService,
+    private router: Router
+  ) {}
 
-  async ngOnInit() {
-    await this.initializeClerk();
+  ngOnInit() {
+    // Check for redirect result from Google auth
+    this.handleAuthRedirect();
   }
 
-  async initializeClerk() {
-    this.isLoading = true;
-    this.initError = null;
-    this.initAttempts++;
-    
+  private async handleAuthRedirect() {
     try {
-      console.log(`Attempt ${this.initAttempts} to initialize Clerk...`);
-      await this.clerkProvider.getClerk();
-      console.log('Clerk initialized successfully');
-      this.isLoading = false;
-      this.initAttempts = 0; // Reset attempts on success
-    } catch (error) {
-      console.error('Error initializing Clerk:', error);
-      
-      if (this.initAttempts < this.maxAttempts) {
-        console.log(`Retrying in 2 seconds... (Attempt ${this.initAttempts} of ${this.maxAttempts})`);
-        setTimeout(() => this.initializeClerk(), 2000);
-      } else {
-        this.initError = error instanceof Error ? error.message : 'Unknown error initializing Clerk';
-        this.isLoading = false;
-        console.error('Max retry attempts reached');
+      const result = await this.authService.handleRedirectResult();
+      if (result && result.user) {
+        console.log('Successfully signed in after redirect');
+        // Navigate to home or saved route
+        this.authService.navigateToSavedRoute();
       }
+    } catch (error) {
+      console.error('Error handling auth redirect:', error);
     }
-  }
-
-  async retryInitialization() {
-    this.initAttempts = 0; // Reset attempts for manual retry
-    await this.initializeClerk();
   }
 }

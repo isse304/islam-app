@@ -1,38 +1,43 @@
-import { Component, ElementRef, ViewChild, NgZone } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+import { Component, ElementRef, ViewChild, NgZone, OnInit, OnDestroy } from '@angular/core';
+import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { Router } from '@angular/router';
-
-// Declare window with Clerk
-declare global {
-  interface Window {
-    Clerk: any;
-  }
-}
+import { BehaviorSubject, Subscription, timer } from 'rxjs';
+import { take } from 'rxjs/operators';
+import { AuthStateService } from '../services/auth-state.service';
 
 @Component({
   selector: 'app-auth-buttons',
   template: `
     <div class="auth-buttons">
-      <ng-container *ngIf="(authService.isLoggedIn$ | async) === false; else loggedIn">
-        <button (click)="openSignIn()" 
-                class="btn-signin"
-                #signInButton
-                aria-label="Sign In">
-          <i class="fas fa-sign-in-alt mr-2" 
-             aria-hidden="true" 
-             tabindex="-1"></i>
-          <span>Sign In</span>
-        </button>
-        <button (click)="openSignUp()"
-                class="btn-signup"
-                #signUpButton
-                aria-label="Sign Up">
-          <i class="fas fa-user-plus mr-2" 
-             aria-hidden="true" 
-             tabindex="-1"></i>
-          <span>Sign Up</span>
-        </button>
+      <!-- Loading state while auth state is being determined -->
+      <ng-container *ngIf="isLoading; else authButtons">
+        <div class="loading-btn">
+          <div class="spinner"></div>
+        </div>
       </ng-container>
+      
+      <ng-template #authButtons>
+        <ng-container *ngIf="(authService.isLoggedIn$ | async) === false; else loggedIn">
+          <button (click)="openSignIn()" 
+                  class="btn-signin"
+                  #signInButton
+                  aria-label="Sign In">
+            <i class="fas fa-sign-in-alt mr-2" 
+               aria-hidden="true" 
+               tabindex="-1"></i>
+            <span>Sign In</span>
+          </button>
+          <button (click)="openSignUp()"
+                  class="btn-signup"
+                  #signUpButton
+                  aria-label="Sign Up">
+            <i class="fas fa-user-plus mr-2" 
+               aria-hidden="true" 
+               tabindex="-1"></i>
+            <span>Sign Up</span>
+          </button>
+        </ng-container>
+      </ng-template>
       
       <ng-template #loggedIn>
         <div class="user-profile">
@@ -65,6 +70,27 @@ declare global {
       display: flex;
       gap: 1rem;
       align-items: center;
+    }
+    
+    .loading-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 120px;
+      height: 40px;
+    }
+    
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(183, 165, 122, 0.3);
+      border-radius: 50%;
+      border-top-color: #B7A57A;
+      animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
     
     .btn-signin, .btn-signup, .btn-signout {
@@ -174,97 +200,112 @@ declare global {
     }
   `]
 })
-export class AuthButtonsComponent {
+export class AuthButtonsComponent implements OnInit, OnDestroy {
   @ViewChild('signInButton') signInButton!: ElementRef;
   @ViewChild('signUpButton') signUpButton!: ElementRef;
   @ViewChild('signOutButton') signOutButton!: ElementRef;
   @ViewChild('userInfo') userInfo!: ElementRef;
+  
+  isLoading = true;
+  private subscriptions: Subscription[] = [];
+  private minLoadingTime = 500; // Minimum time to show loading state in ms
 
   constructor(
-    public authService: AuthService,
+    public authService: FirebaseAuthService,
     private router: Router,
-    private ngZone: NgZone
+    private zone: NgZone,
+    private authStateService: AuthStateService
   ) {}
+  
+  ngOnInit() {
+    // First check if we have a cached user for immediate response
+    this.checkCachedUser();
+    
+    // Set a timer to ensure loading state is shown for at least minLoadingTime
+    const loadingTimer = timer(this.minLoadingTime).subscribe(() => {
+      // This will allow the loading state to be hidden after minLoadingTime
+      // but only if auth state has been determined
+      this.maybeHideLoading();
+    });
+    this.subscriptions.push(loadingTimer);
+
+    // Subscribe to auth state changes
+    const authSub = this.authService.user$.subscribe(user => {
+      // Once we get a response from the auth service, we can hide loading
+      this.maybeHideLoading();
+    });
+    this.subscriptions.push(authSub);
+
+    // Set a maximum loading time in case auth service is slow
+    const maxLoadingTimer = timer(1500).subscribe(() => {
+      // Force hide loading after maximum time
+      this.isLoading = false;
+    });
+    this.subscriptions.push(maxLoadingTimer);
+  }
+  
+  private checkCachedUser() {
+    try {
+      const cachedUser = localStorage.getItem('currentUser');
+      if (cachedUser) {
+        // If we have cached user info, we can hide loading faster
+        timer(300).pipe(take(1)).subscribe(() => {
+          this.isLoading = false;
+        });
+      }
+    } catch (error) {
+      // Ignore localStorage errors
+    }
+  }
+
+  private maybeHideLoading() {
+    // This helper checks if auth state is determined and min loading time passed
+    const cachedAuth = localStorage.getItem('isAuthenticated');
+    if (cachedAuth !== null) {
+      this.isLoading = false;
+    }
+  }
+
+  ngOnDestroy() {
+    // Clean up subscriptions
+    this.subscriptions.forEach(sub => sub.unsubscribe());
+  }
   
   navigateToProfile() {
     this.router.navigate(['/profile']);
   }
 
-  // Direct method to open sign in modal
+  // Navigate to sign in page
   openSignIn() {
-    console.log('Opening sign in with direct Clerk call');
-    try {
-      if (window.Clerk) {
-        const signInProps = {
-          redirectUrl: window.location.origin,
-          appearance: {
-            elements: {
-              rootBox: {
-                boxShadow: 'none',
-              },
-            },
-          },
-        };
-        window.Clerk.openSignIn(signInProps);
-      } else {
-        console.error('Clerk not available, falling back to authService');
-        this.authService.openSignIn();
-      }
-    } catch (error) {
-      console.error('Error opening sign in modal:', error);
-      // Alert user
-      alert('Failed to open sign in. Please try again.');
-    }
+    this.router.navigate(['/auth/login']);
   }
 
-  // Direct method to open sign up modal
+  // Navigate to sign up page
   openSignUp() {
-    console.log('Opening sign up with direct Clerk call');
-    try {
-      if (window.Clerk) {
-        const signUpProps = {
-          redirectUrl: window.location.origin,
-          appearance: {
-            elements: {
-              rootBox: {
-                boxShadow: 'none',
-              },
-            },
-          },
-        };
-        window.Clerk.openSignUp(signUpProps);
-      } else {
-        console.error('Clerk not available, falling back to authService');
-        this.authService.openSignUp();
-      }
-    } catch (error) {
-      console.error('Error opening sign up modal:', error);
-      // Alert user
-      alert('Failed to open sign up. Please try again.');
-    }
+    this.router.navigate(['/auth/signup']);
   }
 
   async signOut() {
-    console.log('Sign out button clicked');
     try {
-      // Direct Clerk signOut 
-      if (window.Clerk) {
-        console.log('Using direct Clerk signOut');
-        await window.Clerk.signOut();
-        console.log('Sign out successful with direct Clerk call');
-        window.location.href = '/';
-        return;
-      }
+      // Force UI to update immediately
+      this.isLoading = true;
       
-      // Fallback to service
-      await this.authService.signOut();
-      console.log('Sign out successful');
-      // Force reload the page to clear any cached state
-      window.location.href = '/';
+      // Need a timeout to ensure UI updates
+      setTimeout(async () => {
+        await this.authService.signOut();
+        
+        // Force UI update again after sign out
+        this.zone.run(() => {
+          // Reset loading
+          this.isLoading = false;
+          
+          // Navigate to home page
+          this.router.navigate(['/']);
+        });
+      }, 0);
     } catch (error) {
-      console.error('Error during sign out:', error);
-      // Alert user
-      alert('Failed to sign out. Please try refreshing the page.');
+      console.error('Error signing out:', error);
+      this.isLoading = false;
     }
   }
 }

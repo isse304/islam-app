@@ -7,11 +7,13 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { CommonModule } from '@angular/common';
 import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
+import { FirebaseAuthService } from '../../services/firebase-auth.service';
 
 declare const Stripe: any;
 
 interface SubscriptionStatus {
-  status: 'trial' | 'active' | 'cancelled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid';
+  status: 'trialing' | 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'free';
   plan: 'free' | 'standard' | 'premium';
   currentPeriodEnd: Date | null;
 }
@@ -177,7 +179,10 @@ export class SubscriptionComponent implements OnInit {
   constructor(
     private stripeService: StripeService,
     private snackBar: MatSnackBar,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private router: Router,
+    private authService: AuthService,
+    private firebaseAuthService: FirebaseAuthService
   ) {}
 
   ngOnInit() {
@@ -194,8 +199,8 @@ export class SubscriptionComponent implements OnInit {
     try {
       const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
       this.subscriptionStatus = {
-        status: response.status === 'canceled' ? 'cancelled' : 
-               response.status === 'trialing' ? 'trial' : 
+        status: response.status === 'canceled' ? 'canceled' : 
+               response.status === 'trialing' ? 'trialing' : 
                response.status as SubscriptionStatus['status'],
         plan: response.plan,
         currentPeriodEnd: response.currentPeriodEnd ? new Date(response.currentPeriodEnd) : null
@@ -223,33 +228,13 @@ export class SubscriptionComponent implements OnInit {
     this.isLoading = true;
     
     console.log('Starting subscription process...');
+    
+    // Show immediate user feedback
+    this.snackBar.open('Starting trial activation process...', '', { duration: 1500 });
 
     try {
-      console.log('Creating checkout session with price ID:', environment.stripeConfig.priceId);
-      const response = await firstValueFrom(this.stripeService.createCheckoutSession(environment.stripeConfig.priceId));
-      console.log('Checkout session response:', response);
-      
-      if (response?.url) {
-        console.log('Redirecting to checkout URL:', response.url);
-        await this.stripeService.redirectToCheckout(response.url);
-      } else {
-        console.error('No checkout URL received in response:', response);
-        throw new Error('No checkout URL received');
-      }
-    } catch (error) {
-      console.error('Error starting subscription:', error);
-      
-      // Check if this is a network error
-      if (error instanceof Error) {
-        console.error('Error details:', {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        });
-      }
-      
-      // Check if API is reachable
-      try {
+      // OPTIMIZED: Skip health check in development mode to speed up process
+      if (environment.production) {
         console.log('Testing API connectivity...');
         const testUrl = `${environment.apiUrl}/api/health`;
         const response = await fetch(testUrl, {
@@ -258,17 +243,80 @@ export class SubscriptionComponent implements OnInit {
             'Content-Type': 'application/json',
           },
         });
-        console.log('API connectivity test result:', {
-          status: response.status,
-          statusText: response.statusText,
-          contentType: response.headers.get('content-type'),
-          cors: response.headers.get('access-control-allow-origin')
-        });
-      } catch (apiError) {
-        console.error('API connectivity test failed:', apiError);
+        
+        if (response.status === 404 || response.status >= 500) {
+          console.warn('API health endpoint not available:', {
+            status: response.status,
+            statusText: response.statusText
+          });
+          
+          this.snackBar.open(
+            'Subscription service is currently unavailable. Please try again later.', 
+            'Close', 
+            { duration: 5000 }
+          );
+          return;
+        }
       }
       
-      this.snackBar.open('Failed to start subscription process. Please check console for details.', 'Close', { duration: 5000 });
+      // OPTIMIZED: Add timeout to prevent long requests
+      console.log('Creating checkout session with price ID:', environment.stripeConfig.priceId);
+      
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 5000)
+      );
+      
+      // Use Promise.race to implement timeout
+      const response = await Promise.race([
+        firstValueFrom(this.stripeService.createCheckoutSession(environment.stripeConfig.priceId)),
+        timeoutPromise
+      ]) as { url: string };
+      
+      console.log('Checkout session response:', response);
+      
+      if (response?.url) {
+        console.log('Redirecting to checkout URL:', response.url);
+        
+        // OPTIMIZED: Handle development mode faster
+        if (response.url.includes('mock-success') || response.url.includes('dev=true')) {
+          console.log('Development mode detected, simulating successful subscription');
+          
+          // In dev mode, update user preferences locally to enable features immediately
+          const authService = this.authService || this.firebaseAuthService;
+          if (authService) {
+            try {
+              await authService.updateUserPreferences({
+                subscriptionStatus: 'trial'
+              });
+              this.snackBar.open('Trial activated in development mode!', 'Close', { duration: 3000 });
+              
+              // Delay to show message before redirecting
+              setTimeout(() => {
+                this.router.navigate(['/dashboard']);
+              }, 1000);
+              return;
+            } catch (err) {
+              console.error('Error updating local subscription status:', err);
+            }
+          }
+        }
+        
+        await this.stripeService.redirectToCheckout(response.url);
+      } else {
+        console.error('No checkout URL received in response:', response);
+        throw new Error('No checkout URL received');
+      }
+    } catch (error) {
+      console.error('Error starting subscription:', error);
+      
+      // Check if this is a timeout error
+      let errorMessage = 'Failed to start subscription process. Please try again later.';
+      if (error instanceof Error && error.message === 'Request timeout') {
+        errorMessage = 'Request timed out. This might mean your server is running slowly. Try again or contact support.';
+      }
+      
+      this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
     } finally {
       this.isLoading = false;
     }

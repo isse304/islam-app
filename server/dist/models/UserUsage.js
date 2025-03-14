@@ -42,10 +42,11 @@ const userUsageSchema = new mongoose_1.Schema({
     status: {
         type: String,
         required: true,
-        enum: ['trial', 'active', 'canceled'],
+        enum: ['trial', 'active', 'canceled', 'free'],
         default: 'trial'
     },
     currentPeriodEnd: Date,
+    trialEnd: Date,
     aiRequests: {
         count: { type: Number, default: 0 },
         lastRequest: { type: Date }
@@ -59,6 +60,27 @@ userUsageSchema.methods.incrementAIRequestCount = async function () {
 };
 userUsageSchema.methods.canMakeAIRequest = async function () {
     return this.aiRequests.count < this.aiRequestLimit;
+};
+// New method to check if trial is still active
+userUsageSchema.methods.isTrialActive = function () {
+    if (this.status !== 'trial' || !this.trialEnd) {
+        return false;
+    }
+    const now = new Date();
+    return now < this.trialEnd;
+};
+// New method to calculate days left in trial
+userUsageSchema.methods.daysLeftInTrial = function () {
+    if (this.status !== 'trial' || !this.trialEnd) {
+        return null;
+    }
+    const now = new Date();
+    const diffTime = this.trialEnd.getTime() - now.getTime();
+    if (diffTime <= 0) {
+        return 0;
+    }
+    // Convert ms to days and round up
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 };
 exports.UserUsage = mongoose_1.default.model('UserUsage', userUsageSchema);
 //# sourceMappingURL=UserUsage.js.map

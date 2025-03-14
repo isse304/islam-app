@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Premium Access</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+            background-color: #f5f5f5;
+        }
+        h1, h2 {
+            color: #4a6da7;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        button {
+            background-color: #4a6da7;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #3a5d97;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Premium Access Fix Tool</h1>
+    
+    <div class="card">
+        <h2>Instructions</h2>
+        <p>This tool will help you fix the premium access for your account. Follow these steps:</p>
+        <ol>
+            <li><strong>First</strong>: Open this page in the same browser where you're using your app</li>
+            <li><strong>Second</strong>: Log in to your app (in another tab) with your account</li>
+            <li><strong>Third</strong>: Come back to this page and click the "Check Current Status" button</li>
+            <li><strong>Fourth</strong>: Click the "Fix Premium Access" button if needed</li>
+            <li><strong>Finally</strong>: Return to your app tab and refresh the page</li>
+        </ol>
+    </div>
+    
+    <div class="card">
+        <h2>Current User Information</h2>
+        <p>User ID to fix: <strong>PP9fgkr9lJYxLNNBS4NULNcah052</strong></p>
+        <button id="checkStatusBtn">Check Current Status</button>
+        <div id="statusResult"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Fix Premium Access</h2>
+        <p>Click the button below to fix premium access for this user:</p>
+        <button id="fixAllBtn">Fix Premium Access (All Methods)</button>
+        <div id="results"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Advanced Options</h2>
+        <button id="fixLocalStorageBtn">Fix localStorage Only</button>
+        <button id="clearCacheBtn">Clear Browser Cache</button>
+        <button id="resetStateBtn">Reset Auth State</button>
+    </div>
+    
+    <script>
+        // User ID to fix
+        const targetUserId = 'PP9fgkr9lJYxLNNBS4NULNcah052';
+        
+        // Check current status
+        document.getElementById('checkStatusBtn').addEventListener('click', () => {
+            const statusResult = document.getElementById('statusResult');
+            statusResult.innerHTML = '';
+            
+            try {
+                const output = document.createElement('pre');
+                
+                // Check current user in localStorage
+                const currentUserJson = localStorage.getItem('currentUser');
+                let currentUser = null;
+                if (currentUserJson) {
+                    try {
+                        currentUser = JSON.parse(currentUserJson);
+                        output.innerHTML += `Current user: ${currentUser.id} (${currentUser.email})\n`;
+                    } catch (error) {
+                        output.innerHTML += `Error parsing currentUser: ${error.message}\n`;
+                    }
+                } else {
+                    output.innerHTML += 'No currentUser found in localStorage. Are you logged in?\n';
+                }
+                
+                // Check authentication status
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                output.innerHTML += `Authentication status: ${isAuthenticated === 'true' ? 'Authenticated' : 'Not authenticated'}\n`;
+                
+                // Check premium status
+                const isPremium = localStorage.getItem('isPremiumUser');
+                output.innerHTML += `Premium status flag: ${isPremium === 'true' ? 'Premium' : 'Not premium'}\n`;
+                
+                // Check user preferences
+                const prefKey = `user_preferences_${targetUserId}`;
+                const prefsJson = localStorage.getItem(prefKey);
+                if (prefsJson) {
+                    try {
+                        const prefs = JSON.parse(prefsJson);
+                        output.innerHTML += `User preferences found:\n${JSON.stringify(prefs, null, 2)}\n`;
+                        
+                        if (prefs.subscriptionStatus === 'trial' || prefs.subscriptionStatus === 'active' || prefs.subscriptionStatus === 'premium') {
+                            output.innerHTML += `\nSubscription status: <span class="success">${prefs.subscriptionStatus} (✓ Should have premium access)</span>\n`;
+                        } else {
+                            output.innerHTML += `\nSubscription status: <span class="error">${prefs.subscriptionStatus || 'not set'} (✗ No premium access)</span>\n`;
+                        }
+                    } catch (error) {
+                        output.innerHTML += `Error parsing preferences: ${error.message}\n`;
+                    }
+                } else {
+                    output.innerHTML += `No preferences found for user ID: ${targetUserId}\n`;
+                }
+                
+                statusResult.appendChild(output);
+            } catch (error) {
+                statusResult.innerHTML = `<pre class="error">Error checking status: ${error.message}</pre>`;
+            }
+        });
+        
+        // Fix all premium access issues
+        document.getElementById('fixAllBtn').addEventListener('click', async () => {
+            const results = document.getElementById('results');
+            results.innerHTML = '<div>Fixing premium access...</div>';
+            
+            try {
+                // 1. Fix localStorage preferences
+                const prefKey = `user_preferences_${targetUserId}`;
+                let prefs = {};
+                
+                // Try to get existing preferences
+                const existingPrefs = localStorage.getItem(prefKey);
+                if (existingPrefs) {
+                    try {
+                        prefs = JSON.parse(existingPrefs);
+                    } catch (error) {
+                        console.error('Error parsing preferences:', error);
+                    }
+                }
+                
+                // Update subscription status
+                prefs.subscriptionStatus = 'trial';
+                
+                // Make sure other preferences exist
+                if (!prefs.selectedReciter) prefs.selectedReciter = 7;
+                if (!prefs.selectedTranslation) prefs.selectedTranslation = 'en.sahih';
+                if (!prefs.fontSize) prefs.fontSize = 18;
+                if (!prefs.bookmarks) prefs.bookmarks = [];
+                
+                // Save updated preferences
+                localStorage.setItem(prefKey, JSON.stringify(prefs));
+                
+                // 2. Set premium flag
+                localStorage.setItem('isPremiumUser', 'true');
+                
+                // 3. Make sure authentication flag is set
+                localStorage.setItem('isAuthenticated', 'true');
+                
+                results.innerHTML = `
+                <pre class="success">
+Premium access has been fixed successfully!
+
+Steps completed:
+✓ Updated user preferences with trial status
+✓ Set isPremiumUser flag to true
+✓ Ensured authentication flag is set
+
+Please go back to your app tab and refresh the page to see the changes.
+                </pre>
+                `;
+            } catch (error) {
+                results.innerHTML = `<pre class="error">Error fixing premium access: ${error.message}</pre>`;
+            }
+        });
+        
+        // Fix localStorage only
+        document.getElementById('fixLocalStorageBtn').addEventListener('click', () => {
+            try {
+                const prefKey = `user_preferences_${targetUserId}`;
+                let prefs = {};
+                
+                const existingPrefs = localStorage.getItem(prefKey);
+                if (existingPrefs) {
+                    prefs = JSON.parse(existingPrefs);
+                }
+                
+                prefs.subscriptionStatus = 'trial';
+                localStorage.setItem(prefKey, JSON.stringify(prefs));
+                
+                alert('localStorage preferences updated with trial status!');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+        
+        // Clear browser cache for the domain
+        document.getElementById('clearCacheBtn').addEventListener('click', () => {
+            if (confirm('This will clear localStorage for this website. Continue?')) {
+                localStorage.clear();
+                alert('localStorage cleared. You\'ll need to log in again in your app.');
+            }
+        });
+        
+        // Reset auth state
+        document.getElementById('resetStateBtn').addEventListener('click', () => {
+            try {
+                localStorage.removeItem('isAuthenticated');
+                localStorage.removeItem('isPremiumUser');
+                localStorage.removeItem('currentUser');
+                
+                alert('Auth state reset. Please log in again in your app.');
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        });
+    </script>
+</body>
+</html> 

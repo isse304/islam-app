@@ -113,5 +113,37 @@ router.put('/:userId/preferences', (0, auth_1.withAuth)(async (req, res) => {
     // This is a placeholder - implement actual database update
     res.json({ message: 'Preferences updated successfully', preferences });
 }));
+// Check if user has admin status
+router.get('/:userId/admin-status', (0, auth_1.withAuth)(async (req, res) => {
+    const userId = req.auth.userId;
+    const requestedUserId = req.params.userId;
+    // Log the request for debugging
+    console.log(`Admin status check - Auth userId: ${userId}, Requested userId: ${requestedUserId}`);
+    try {
+        // Check if ADMIN_USERS env variable exists
+        if (!process.env.ADMIN_USERS) {
+            console.log(`No ADMIN_USERS env variable defined, setting default admin status for ${userId} in ${process.env.NODE_ENV} mode`);
+            // In development mode, automatically grant admin status to make testing easier
+            const isDevMode = process.env.NODE_ENV === 'development';
+            res.json({
+                isAdmin: isDevMode,
+                message: isDevMode ?
+                    'Admin status granted automatically in development mode' :
+                    'Admin status check failed, ADMIN_USERS not configured'
+            });
+            return;
+        }
+        // Check if user is in admin list
+        // ADMIN_USERS can be a single ID or a comma-separated list
+        const adminUsers = process.env.ADMIN_USERS.split(',').map(id => id.trim());
+        const isAdmin = adminUsers.includes(userId);
+        console.log(`Admin status check for ${userId}: ${isAdmin ? 'Admin' : 'Not admin'}, Admin list: ${adminUsers.join(', ')}`);
+        res.json({ isAdmin });
+    }
+    catch (error) {
+        console.error('Error checking admin status:', error);
+        res.status(500).json({ error: 'Failed to check admin status' });
+    }
+}));
 exports.default = router;
 //# sourceMappingURL=users.js.map

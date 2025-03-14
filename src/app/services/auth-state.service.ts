@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { AuthService } from './auth.service';
+import { FirebaseAuthService } from './firebase-auth.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,7 +12,11 @@ export class AuthStateService {
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
   isPremiumUser$ = this.isPremiumSubject.asObservable();
 
-  constructor(private authService: AuthService) {
+  constructor(private authService: FirebaseAuthService) {
+    // Check for cached user first for immediate UI response
+    this.checkCachedUser();
+    
+    // Then check formal auth status
     this.checkAuthStatus();
     this.checkPremiumStatus();
     
@@ -23,9 +27,26 @@ export class AuthStateService {
     }, 60000); // Check every minute
 
     // Subscribe to auth changes to recheck premium status
-    this.authService.user$.subscribe(() => {
+    this.authService.user$.subscribe(user => {
+      // Update auth state when user state changes
+      const isAuthenticated = !!user;
+      this.setAuthenticated(isAuthenticated);
       this.checkPremiumStatus();
     });
+  }
+
+  // Check localStorage for cached user data (for immediate UI response)
+  private checkCachedUser() {
+    try {
+      const cachedUser = localStorage.getItem('currentUser');
+      if (cachedUser) {
+        // We have a cached user, so we can assume authenticated state
+        // This gives us immediate UI feedback before Firebase auth completes
+        this.setAuthenticated(true);
+      }
+    } catch (error) {
+      // Ignore errors when checking cache
+    }
   }
 
   setAuthenticated(value: boolean) {
@@ -38,14 +59,12 @@ export class AuthStateService {
   }
 
   setPremiumStatus(value: boolean) {
-    console.log('Setting premium status:', value);
     this.isPremiumSubject.next(value);
     localStorage.setItem('isPremiumUser', value.toString());
   }
 
   async isPremiumUser(): Promise<boolean> {
     const isPremium = localStorage.getItem('isPremiumUser') === 'true';
-    console.log('Checking premium status from storage:', isPremium);
     return isPremium;
   }
 
@@ -59,17 +78,16 @@ export class AuthStateService {
       // First check if user is authenticated
       const isAuthenticated = await this.authService.isAuthenticated();
       if (!isAuthenticated) {
-        console.log('User not authenticated, setting premium to false');
+        // Don't log this to reduce console noise
         this.setPremiumStatus(false);
         return;
       }
 
       // Then check premium status
       const hasPremium = await this.authService.isPremiumUser();
-      console.log('Premium status checked:', hasPremium);
       this.setPremiumStatus(hasPremium);
     } catch (error) {
-      console.error('Error checking premium status:', error);
+      // Reduce console noise for expected errors
       this.setPremiumStatus(false);
     }
   }
@@ -84,7 +102,8 @@ export class AuthStateService {
         this.setPremiumStatus(false);
       }
     } catch (error) {
-      console.error('Error updating auth state:', error);
+      // Reduce console noise
+      console.log('Auth state update: User not authenticated');
       this.setAuthenticated(false);
       this.setPremiumStatus(false);
     }
@@ -101,7 +120,6 @@ export class AuthStateService {
 
   // Force reset premium status (for testing/debugging)
   resetPremiumStatus() {
-    console.log('Resetting premium status');
     this.setPremiumStatus(false);
     localStorage.removeItem('isPremiumUser');
   }

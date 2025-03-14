@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { AuthService } from '../services/auth.service';
+import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { QuranService } from '../services/quran.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -547,19 +547,51 @@ export class ProfileComponent implements OnInit {
   showSuccessMessage = false;
 
   constructor(
-    private authService: AuthService,
+    private authService: FirebaseAuthService,
     public quranService: QuranService,
     public router: Router,
     private toastService: ToastService
   ) {}
 
   async ngOnInit() {
+    // Show default UI immediately
+    this.showDefaultUI();
+    
+    // Subscribe to auth state, but don't block rendering
     this.authService.user$.subscribe(user => {
       if (user) {
         this.user = user;
         this.loadUserData();
       }
     });
+  }
+
+  /**
+   * Initialize the UI with default values for immediate display
+   * This creates a more responsive feel while actual data loads
+   */
+  private showDefaultUI() {
+    // Default user info placeholder 
+    if (!this.user) {
+      this.user = {
+        email: 'Loading...',
+        firstName: 'Loading',
+        lastName: '...',
+        imageUrl: '',
+        createdAt: new Date()
+      };
+    }
+    
+    // Default preferences
+    this.preferences = {
+      selectedReciter: 7,
+      selectedTranslation: '131',
+      fontSize: 24,
+      bookmarks: []
+    };
+    
+    // Empty reading history (won't show initially)
+    this.readingHistory = [];
   }
 
   private async loadUserData() {
@@ -587,6 +619,7 @@ export class ProfileComponent implements OnInit {
       );
     } catch (error) {
       console.error('Error loading user data:', error);
+      // Already showing default UI, so no need for additional fallback
     }
   }
 

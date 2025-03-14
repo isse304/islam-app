@@ -4,8 +4,15 @@ export interface Environment {
   openaiApiKey?: string;
   elevenLabsApiKey?: string;
   sttApiKey?: string;
-  clerkPublishableKey: string;
-  clerkFrontendApi: string;
+  firebase: {
+    apiKey: string;
+    authDomain: string;
+    projectId: string;
+    storageBucket: string;
+    messagingSenderId: string;
+    appId: string;
+    measurementId?: string;
+  };
   aws: {
     accessKeyId?: string;
     secretAccessKey?: string;
@@ -15,4 +22,6 @@ export interface Environment {
     publishableKey: string;
     priceId: string;
   };
+  // List of admin user IDs
+  adminUsers: string[];
 } 
