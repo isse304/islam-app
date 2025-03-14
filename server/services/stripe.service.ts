@@ -8,7 +8,7 @@ export class StripeService {
 
     constructor(apiKey: string, priceId: string) {
         this.stripe = new Stripe(apiKey, {
-            apiVersion: '2023-10-16'
+            apiVersion: '2022-11-15'
         });
         this.priceId = priceId;
         this.isDevMode = process.env.NODE_ENV === 'development';

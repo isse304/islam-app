@@ -142,6 +142,11 @@ app.post('/api/subscription/webhook', express.raw({type: 'application/json'}), a
   }
 });
 
+// Initialize Stripe
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2025-02-24.acacia'  // Update API version
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

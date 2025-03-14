@@ -155,7 +155,7 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
 
         try {
             const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-                apiVersion: '2023-10-16'
+                apiVersion: '2022-11-15'  // Match type definitions
             });
             const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
             
