@@ -6,7 +6,7 @@ import compression from 'compression';
 import fs from 'fs';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import subscriptionRoutes from './routes/subscription.js';  // Note: add .js extension
+import subscriptionRoutes from './server/dist/routes/subscription.js';  // Updated to use compiled version
 
 const app = express();
 const PORT = process.env.PORT || 3001;
