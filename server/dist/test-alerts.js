@@ -29,3 +29,4 @@ async function testAlerts() {
 }
 // Run the tests
 testAlerts();
+//# sourceMappingURL=test-alerts.js.map
