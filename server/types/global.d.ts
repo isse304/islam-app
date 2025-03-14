@@ -59,4 +59,41 @@ declare module 'express-rate-limit' {
 
     function rateLimit(options?: Options): RequestHandler;
     export = rateLimit;
+}
+
+declare module 'nodemailer' {
+    interface SendMailOptions {
+        from?: string;
+        to?: string | string[];
+        subject?: string;
+        text?: string;
+        html?: string;
+        [key: string]: any;
+    }
+
+    interface Transporter {
+        sendMail(options: SendMailOptions): Promise<any>;
+    }
+
+    interface TransportOptions {
+        service?: string;
+        host?: string;
+        port?: number;
+        secure?: boolean;
+        auth?: {
+            user?: string;
+            pass?: string;
+        };
+        [key: string]: any;
+    }
+
+    function createTransport(options: TransportOptions): Transporter;
+    
+    interface NodemailerModule {
+        createTransport: typeof createTransport;
+        Transporter: Transporter;
+    }
+
+    const nodemailer: NodemailerModule;
+    export = nodemailer;
 } 
