@@ -4,7 +4,6 @@ import express from 'express';
 import path from 'path';
 import compression from 'compression';
 import fs from 'fs';
-import createDebugMiddleware from './debug-middleware.js';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import subscriptionRoutes from './routes/subscription.js';  // Note: add .js extension
@@ -40,9 +39,6 @@ console.log('API URL:', process.env.API_URL || 'Not set');
 
 // Compress all responses
 app.use(compression());
-
-// Use our debug middleware
-app.use(createDebugMiddleware(DIST_PATH));
 
 // Add headers for cache control
 app.use(function(req, res, next) {
