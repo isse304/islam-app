@@ -1,28 +1,19 @@
-@use '@angular/material' as mat;
+/* Import prebuilt Material theme */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
 
-@include mat.core();
+/* Tailwind CSS imports */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-$primary-palette: mat.define-palette(mat.$indigo-palette);
-$accent-palette: mat.define-palette(mat.$pink-palette, A200, A100, A400);
-$warn-palette: mat.define-palette(mat.$red-palette);
+/* Global styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+}
 
-$theme: mat.define-light-theme((
-  color: (
-    primary: $primary-palette,
-    accent: $accent-palette,
-    warn: $warn-palette,
-  ),
-  typography: mat.define-typography-config(),
-  density: 0,
-));
-
-@include mat.all-component-themes($theme);
-@include mat.icon-theme($theme);
-
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
-
-// Material Icons fix
+/* Material Icons fix */
 .material-icons {
   font-family: 'Material Icons';
   font-weight: normal;
@@ -39,7 +30,7 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   -webkit-font-smoothing: antialiased;
 }
 
-/* Uthmanic Font - Use system Arabic fonts as fallback */
+/* Arabic Fonts */
 @font-face {
   font-family: 'KFGQPC Uthmanic Script';
   src: local('Traditional Arabic'), local('Amiri'), local('Scheherazade'), local('Lateef'), local('Arabic Typesetting');
@@ -49,7 +40,6 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   unicode-range: U+0600-06FF, U+0750-077F, U+08A0-08FF, U+FB50-FDFF, U+FE70-FEFF;
 }
 
-/* Fallback Arabic Font */
 @font-face {
   font-family: 'Hafs Smart';
   src: local('Traditional Arabic'), local('Amiri'), local('Scheherazade'), local('Arabic Typesetting');
@@ -72,7 +62,7 @@ body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
   font-family: 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Arabic Typesetting', serif !important;
 }
 
-/* Tooltip styling enhancement */
+/* Tooltip styling */
 .word-tooltip {
   font-family: 'Roboto', sans-serif;
   font-size: 14px !important;

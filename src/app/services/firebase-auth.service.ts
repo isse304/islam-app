@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, from, throwError } from 'rxjs';
-import { catchError, map, switchMap, take, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, from, throwError, switchMap, firstValueFrom } from 'rxjs';
+import { catchError, map, take, tap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -182,40 +182,66 @@ export class FirebaseAuthService {
 
   private async fetchUserPreferences(userId: string): Promise<any> {
     try {
-      // First check if API is available
-      try {
-        const response = await this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).toPromise();
-        // If successful, cache the preferences
-        try {
-          localStorage.setItem(`user_preferences_${userId}`, JSON.stringify(response || {}));
-        } catch (cacheError) {
-          console.warn('Error caching preferences:', cacheError);
+      // First check localStorage cache with timestamp
+      const localPrefs = localStorage.getItem(`user_preferences_${userId}`);
+      const cacheTimestamp = localStorage.getItem(`user_preferences_timestamp_${userId}`);
+      
+      if (localPrefs && cacheTimestamp) {
+        const cacheTime = parseInt(cacheTimestamp, 10);
+        const now = Date.now();
+        // Use cache if it's less than 5 minutes old
+        if (now - cacheTime < 5 * 60 * 1000) {
+          console.log('Using cached preferences in fetchUserPreferences');
+          return JSON.parse(localPrefs);
         }
+      }
+      
+      // If cache is stale or not available, try API
+      try {
+        // Check when we last made an API call
+        const lastFetchTimestamp = localStorage.getItem(`last_preferences_fetch_${userId}`);
+        if (lastFetchTimestamp) {
+          const lastFetchTime = parseInt(lastFetchTimestamp, 10);
+          const now = Date.now();
+          // Only make API call if last fetch was more than 10 seconds ago
+          if (now - lastFetchTime < 10000) {
+            console.log('Throttling API fetch, using cached data');
+            if (localPrefs) {
+              return JSON.parse(localPrefs);
+            }
+          }
+        }
+        
+        // Update the last fetch timestamp
+        localStorage.setItem(`last_preferences_fetch_${userId}`, Date.now().toString());
+        
+        // Make the API call
+        const response = await this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).toPromise();
+        
+        // If successful, cache the preferences with timestamp
+        if (response) {
+          localStorage.setItem(`user_preferences_${userId}`, JSON.stringify(response));
+          localStorage.setItem(`user_preferences_timestamp_${userId}`, Date.now().toString());
+        }
+        
         return response || {};
       } catch (error) {
         console.warn('User preferences API endpoint not available, checking localStorage');
         
-        // Check for localStorage preferences as fallback
-        const localPrefs = localStorage.getItem(`user_preferences_${userId}`);
+        // Use localStorage preferences as fallback
         if (localPrefs) {
           try {
             return JSON.parse(localPrefs);
           } catch (parseError) {
-            console.warn('Error parsing localStorage preferences:', parseError);
+            console.error('Error parsing localStorage preferences:', parseError);
           }
         }
         
-        // Return default preferences if API endpoint doesn't exist and no localStorage data
-        return {
-          selectedReciter: 7,  // Default reciter
-          selectedTranslation: 'en.sahih', // Default translation
-          fontSize: 18,        // Default font size
-          darkMode: false,     // Default theme
-          bookmarks: []        // Empty bookmarks
-        };
+        // Return empty object if no preferences found
+        return {};
       }
     } catch (error) {
-      console.error('Error fetching user preferences:', error);
+      console.error('Error in fetchUserPreferences:', error);
       return {};
     }
   }
@@ -405,70 +431,56 @@ export class FirebaseAuthService {
 
   // Save user preferences
   async saveUserPreferences(preferences: any): Promise<void> {
+    return firstValueFrom(this.saveUserPreferencesObservable(preferences));
+  }
+
+  // Save user preferences (Observable version)
+  saveUserPreferencesObservable(preferences: any): Observable<any> {
     const user = this.auth.currentUser;
     if (!user) {
-      return Promise.reject(new Error('No user logged in'));
+      return throwError(() => new Error('No user logged in'));
     }
     
-    try {
-      try {
-        await this.http.put(`${environment.apiUrl}/api/users/${user.uid}/preferences`, preferences).toPromise();
-      } catch (error) {
-        console.warn('User preferences API endpoint not available for saving, using local storage instead');
-        // If API endpoint doesn't exist, fallback to localStorage
-        localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(preferences));
+    // Save to localStorage as backup with timestamp
+    localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(preferences));
+    localStorage.setItem(`user_preferences_timestamp_${user.uid}`, Date.now().toString());
+    
+    // Check when we last made an API call
+    const lastSaveTimestamp = localStorage.getItem(`last_preferences_save_${user.uid}`);
+    if (lastSaveTimestamp) {
+      const lastSaveTime = parseInt(lastSaveTimestamp, 10);
+      const now = Date.now();
+      // Only make API call if last save was more than 3 seconds ago
+      if (now - lastSaveTime < 3000) {
+        console.log('Throttling API call, returning cached result');
+        return of({ success: true, source: 'local', preferences });
       }
-    } catch (error) {
-      console.error('Error saving user preferences:', error);
-      throw error;
-    }
-  }
-
-  // Get reading history
-  async getReadingHistory(): Promise<any[]> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return Promise.reject(new Error('No user logged in'));
     }
     
-    try {
-      const result = await this.http.get<any[]>(`${environment.apiUrl}/api/users/${user.uid}/reading-history`).toPromise();
-      return result || [];
-    } catch (error) {
-      console.error('Error getting reading history:', error);
-      return [];
-    }
+    // Update the last save timestamp
+    localStorage.setItem(`last_preferences_save_${user.uid}`, Date.now().toString());
+    
+    // Try to save to server
+    return this.http.put<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`, preferences).pipe(
+      tap(() => {
+        // Update the last successful save timestamp
+        localStorage.setItem(`last_successful_save_${user.uid}`, Date.now().toString());
+      }),
+      catchError(error => {
+        console.warn('Could not save preferences to API:', error);
+        // If we got a 429 error, increase the throttle time
+        if (error.status === 429) {
+          const now = Date.now();
+          localStorage.setItem(`last_preferences_save_${user.uid}`, (now + 10000).toString()); // Add 10 seconds to throttle
+        }
+        return of({ success: true, source: 'local', preferences });
+      }),
+      map(() => preferences)
+    );
   }
 
-  // Remove bookmark
-  async removeBookmark(verseKey: string): Promise<void> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return Promise.reject(new Error('No user logged in'));
-    }
-    
-    try {
-      await this.http.delete(`${environment.apiUrl}/api/users/${user.uid}/bookmarks/${verseKey}`).toPromise();
-    } catch (error) {
-      console.error('Error removing bookmark:', error);
-      throw error;
-    }
-  }
-
-  // Clear reading history
-  async clearReadingHistory(): Promise<void> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return Promise.reject(new Error('No user logged in'));
-    }
-    
-    try {
-      await this.http.delete(`${environment.apiUrl}/api/users/${user.uid}/reading-history`).toPromise();
-    } catch (error) {
-      console.error('Error clearing reading history:', error);
-      throw error;
-    }
-  }
+  // updateUserPreferences is now an alias for saveUserPreferences for backward compatibility
+  updateUserPreferences = this.saveUserPreferences;
 
   // Show login modal/UI
   async login(): Promise<void> {
@@ -632,5 +644,445 @@ export class FirebaseAuthService {
       console.error('Error changing password:', error);
       throw error;
     }
+  }
+
+  // Get user preferences
+  getUserPreferences(): Observable<any> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      return throwError(() => new Error('No user logged in'));
+    }
+
+    // Try to get from localStorage cache first
+    const localPrefs = localStorage.getItem(`user_preferences_${user.uid}`);
+    if (localPrefs) {
+      try {
+        const cachedPrefs = JSON.parse(localPrefs);
+        // Check if cache is less than 5 minutes old
+        const cacheTimestamp = localStorage.getItem(`user_preferences_timestamp_${user.uid}`);
+        if (cacheTimestamp) {
+          const cacheTime = parseInt(cacheTimestamp, 10);
+          const now = Date.now();
+          // Only use cache if it's less than 5 minutes old
+          if (now - cacheTime < 5 * 60 * 1000) {
+            console.log('Using cached user preferences');
+            return of(cachedPrefs);
+          }
+        }
+      } catch (error) {
+        console.warn('Error parsing cached preferences:', error);
+      }
+    }
+
+    // Then try to get from API with throttling
+    console.log('Fetching user preferences from API');
+    return this.http.get<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`).pipe(
+      tap(prefs => {
+        // Save to localStorage with timestamp
+        try {
+          localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(prefs || {}));
+          localStorage.setItem(`user_preferences_timestamp_${user.uid}`, Date.now().toString());
+        } catch (error) {
+          console.warn('Error caching preferences:', error);
+        }
+      }),
+      catchError(error => {
+        console.warn('Could not fetch user preferences from API:', error);
+        
+        // Try localStorage as fallback
+        if (localPrefs) {
+          try {
+            return of(JSON.parse(localPrefs));
+          } catch (error) {
+            console.error('Error parsing localStorage preferences:', error);
+          }
+        }
+        
+        // Return empty preferences if nothing else works
+        return of({});
+      })
+    );
+  }
+
+  // Get user bookmarks
+  getBookmarks(): Observable<string[]> {
+    // First check if user is logged in
+    const user = this._user.value;
+    if (!user) {
+      return of([]);
+    }
+    
+    // Check for cached bookmarks (less than 5 minutes old)
+    const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
+    const cachedTimestampString = localStorage.getItem('bookmarks_timestamp');
+    
+    if (cachedBookmarksString && cachedTimestampString) {
+      const cachedTimestamp = parseInt(cachedTimestampString, 10);
+      const now = Date.now();
+      const fiveMinutesInMs = 5 * 60 * 1000;
+      
+      // If cache is less than 5 minutes old, use it
+      if (now - cachedTimestamp < fiveMinutesInMs) {
+        try {
+          const cachedBookmarks = JSON.parse(cachedBookmarksString);
+          console.log('Using cached bookmarks');
+          return of(cachedBookmarks);
+        } catch (e) {
+          console.warn('Failed to parse cached bookmarks:', e);
+          // Continue to API if parsing fails
+        }
+      }
+    }
+    
+    // Check if we recently made an API call (within last 10 seconds)
+    const lastAPICallString = localStorage.getItem('bookmarks_last_api_call');
+    if (lastAPICallString) {
+      const lastAPICall = parseInt(lastAPICallString, 10);
+      const now = Date.now();
+      const tenSecondsInMs = 10 * 1000;
+      
+      // If last API call was less than 10 seconds ago, return cached data or empty array
+      if (now - lastAPICall < tenSecondsInMs) {
+        console.log('Throttling bookmarks API call');
+        if (cachedBookmarksString) {
+          try {
+            return of(JSON.parse(cachedBookmarksString));
+          } catch (e) {
+            return of([]);
+          }
+        }
+        return of([]);
+      }
+    }
+    
+    // Store timestamp of this API call
+    localStorage.setItem('bookmarks_last_api_call', Date.now().toString());
+    
+    // Make the API call
+    return this.http.get<string[]>(`${environment.apiUrl}/api/users/${user.id}/bookmarks`).pipe(
+      map((response: string[]) => {
+        // Cache the successful response with timestamp
+        localStorage.setItem('bookmarks_cache', JSON.stringify(response));
+        localStorage.setItem('bookmarks_timestamp', Date.now().toString());
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error fetching bookmarks from API:', error);
+        
+        // If we get a 429 error, increase the throttle time
+        if (error.status === 429) {
+          localStorage.setItem('bookmarks_last_api_call', (Date.now() + 30000).toString()); // Wait 30 seconds more
+        }
+        
+        // Try to use cached data if available
+        if (cachedBookmarksString) {
+          try {
+            return of(JSON.parse(cachedBookmarksString));
+          } catch (e) {
+            console.warn('Failed to parse cached bookmarks as fallback');
+          }
+        }
+        
+        // Fallback to local storage
+        const localBookmarks = localStorage.getItem('bookmarks');
+        if (localBookmarks) {
+          try {
+            return of(JSON.parse(localBookmarks));
+          } catch (e) {
+            console.warn('Failed to parse local bookmarks');
+            return of([]);
+          }
+        }
+        return of([]);
+      })
+    );
+  }
+
+  // Add a bookmark
+  addBookmark(verseReference: string): Observable<any> {
+    // First check if user is logged in
+    const user = this._user.value;
+    if (!user) {
+      // Always save to localStorage even if not logged in
+      try {
+        const localBookmarks = localStorage.getItem('bookmarks') || '[]';
+        const bookmarks = JSON.parse(localBookmarks);
+        if (!bookmarks.includes(verseReference)) {
+          bookmarks.push(verseReference);
+          localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+        }
+      } catch (e) {
+        console.warn('Failed to save bookmark to localStorage');
+      }
+      return of({ success: true, source: 'local' });
+    }
+    
+    // Always update localStorage first for immediate access
+    try {
+      const localBookmarks = localStorage.getItem('bookmarks') || '[]';
+      const bookmarks = JSON.parse(localBookmarks);
+      if (!bookmarks.includes(verseReference)) {
+        bookmarks.push(verseReference);
+        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+      }
+      
+      // Update the cache
+      const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
+      if (cachedBookmarksString) {
+        try {
+          const cachedBookmarks = JSON.parse(cachedBookmarksString);
+          if (!cachedBookmarks.includes(verseReference)) {
+            cachedBookmarks.push(verseReference);
+            localStorage.setItem('bookmarks_cache', JSON.stringify(cachedBookmarks));
+            localStorage.setItem('bookmarks_timestamp', Date.now().toString());
+          }
+        } catch (e) {
+          console.warn('Failed to update bookmarks cache');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to save bookmark to localStorage');
+    }
+    
+    // Check if we recently made an API call (within last 3 seconds)
+    const lastAPICallString = localStorage.getItem('bookmarks_add_last_api_call');
+    if (lastAPICallString) {
+      const lastAPICall = parseInt(lastAPICallString, 10);
+      const now = Date.now();
+      const threeSecondsInMs = 3 * 1000;
+      
+      // If last API call was less than 3 seconds ago, return success without API call
+      if (now - lastAPICall < threeSecondsInMs) {
+        console.log('Throttling add bookmark API call');
+        return of({ success: true, source: 'local' });
+      }
+    }
+    
+    // Store timestamp of this API call
+    localStorage.setItem('bookmarks_add_last_api_call', Date.now().toString());
+    
+    // Make API call
+    return this.http.post<any>(`${environment.apiUrl}/api/users/${user.id}/bookmarks`, { verseReference }).pipe(
+      tap(() => {
+        // Update the last successful API call timestamp
+        localStorage.setItem('bookmarks_add_last_success', Date.now().toString());
+      }),
+      catchError(error => {
+        console.warn('Error adding bookmark to API:', error);
+        
+        // If we got a 429 error, increase the throttle time
+        if (error.status === 429) {
+          localStorage.setItem('bookmarks_add_last_api_call', (Date.now() + 10000).toString()); // Add 10 seconds to throttle
+        }
+        
+        return of({ success: true, source: 'local' });
+      })
+    );
+  }
+  
+  // Remove a bookmark
+  removeBookmark(verseReference: string): Observable<any> {
+    // First check if user is logged in
+    const user = this._user.value;
+    
+    // Always update localStorage first for immediate access
+    try {
+      const localBookmarks = localStorage.getItem('bookmarks') || '[]';
+      const bookmarks = JSON.parse(localBookmarks);
+      const updatedBookmarks = bookmarks.filter((b: string) => b !== verseReference);
+      localStorage.setItem('bookmarks', JSON.stringify(updatedBookmarks));
+      
+      // Update the cache
+      const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
+      if (cachedBookmarksString) {
+        try {
+          const cachedBookmarks = JSON.parse(cachedBookmarksString);
+          const updatedCache = cachedBookmarks.filter((b: string) => b !== verseReference);
+          localStorage.setItem('bookmarks_cache', JSON.stringify(updatedCache));
+          localStorage.setItem('bookmarks_timestamp', Date.now().toString());
+        } catch (e) {
+          console.warn('Failed to update bookmarks cache');
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to remove bookmark from localStorage');
+    }
+    
+    // If not logged in, just return success after localStorage update
+    if (!user) {
+      return of({ success: true, source: 'local' });
+    }
+    
+    // Check if we recently made an API call (within last 3 seconds)
+    const lastAPICallString = localStorage.getItem('bookmarks_remove_last_api_call');
+    if (lastAPICallString) {
+      const lastAPICall = parseInt(lastAPICallString, 10);
+      const now = Date.now();
+      const threeSecondsInMs = 3 * 1000;
+      
+      // If last API call was less than 3 seconds ago, return success without API call
+      if (now - lastAPICall < threeSecondsInMs) {
+        console.log('Throttling remove bookmark API call');
+        return of({ success: true, source: 'local' });
+      }
+    }
+    
+    // Store timestamp of this API call
+    localStorage.setItem('bookmarks_remove_last_api_call', Date.now().toString());
+    
+    // Make the API call
+    return this.http.delete<any>(`${environment.apiUrl}/api/users/${user.id}/bookmarks/${verseReference}`).pipe(
+      tap(() => {
+        // Update the last successful API call timestamp
+        localStorage.setItem('bookmarks_remove_last_success', Date.now().toString());
+      }),
+      catchError(error => {
+        console.warn('Error removing bookmark from API:', error);
+        
+        // If we got a 429 error, increase the throttle time
+        if (error.status === 429) {
+          localStorage.setItem('bookmarks_remove_last_api_call', (Date.now() + 10000).toString()); // Add 10 seconds to throttle
+        }
+        
+        return of({ success: true, source: 'local' });
+      })
+    );
+  }
+
+  // Get reading history
+  getReadingHistory(): Observable<any> {
+    // First check if user is logged in
+    const user = this._user.value;
+    if (!user) {
+      return of([]);
+    }
+
+    // Check if we have cached history data that's recent (last 5 minutes)
+    const cachedHistoryString = localStorage.getItem('reading_history_cache');
+    const cachedTimestampString = localStorage.getItem('reading_history_timestamp');
+    
+    if (cachedHistoryString && cachedTimestampString) {
+      const cachedTimestamp = parseInt(cachedTimestampString, 10);
+      const now = Date.now();
+      const fiveMinutesInMs = 5 * 60 * 1000;
+      
+      // If cache is less than 5 minutes old, use it
+      if (now - cachedTimestamp < fiveMinutesInMs) {
+        try {
+          const cachedHistory = JSON.parse(cachedHistoryString);
+          console.log('Using cached reading history');
+          return of(cachedHistory);
+        } catch (e) {
+          console.warn('Failed to parse cached reading history:', e);
+          // Continue to API if parsing fails
+        }
+      }
+    }
+    
+    // Check if we recently made an API call (within last 10 seconds)
+    const lastAPICallString = localStorage.getItem('reading_history_last_api_call');
+    if (lastAPICallString) {
+      const lastAPICall = parseInt(lastAPICallString, 10);
+      const now = Date.now();
+      const tenSecondsInMs = 10 * 1000;
+      
+      // If last API call was less than 10 seconds ago, return cached data or empty array
+      if (now - lastAPICall < tenSecondsInMs) {
+        console.log('Throttling reading history API call');
+        if (cachedHistoryString) {
+          try {
+            return of(JSON.parse(cachedHistoryString));
+          } catch (e) {
+            return of([]);
+          }
+        }
+        return of([]);
+      }
+    }
+    
+    // Store timestamp of this API call
+    localStorage.setItem('reading_history_last_api_call', Date.now().toString());
+    
+    // Make the API call
+    return this.http.get(`${environment.apiUrl}/api/users/${user.id}/reading-history`).pipe(
+      map((response: any) => {
+        // Cache the successful response with timestamp
+        localStorage.setItem('reading_history_cache', JSON.stringify(response));
+        localStorage.setItem('reading_history_timestamp', Date.now().toString());
+        return response;
+      }),
+      catchError(error => {
+        console.error('Could not fetch reading history from API:', error);
+        
+        // If we get a 429 error, increase the throttle time
+        if (error.status === 429) {
+          localStorage.setItem('reading_history_last_api_call', (Date.now() + 30000).toString()); // Wait 30 seconds more
+        }
+        
+        // Try to use cached data if available
+        if (cachedHistoryString) {
+          try {
+            const cachedHistory = JSON.parse(cachedHistoryString);
+            return of(cachedHistory);
+          } catch (e) {
+            console.warn('Failed to parse cached reading history as fallback:', e);
+          }
+        }
+        
+        // Fall back to localStorage reading history
+        const localHistory = localStorage.getItem('readingHistory');
+        if (localHistory) {
+          try {
+            return of(JSON.parse(localHistory));
+          } catch (e) {
+            console.warn('Failed to parse local reading history:', e);
+          }
+        }
+        
+        return of([]);
+      })
+    );
+  }
+
+  // Clear reading history
+  clearReadingHistory(): Observable<any> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      return throwError(() => new Error('No user logged in'));
+    }
+    
+    // Clear in localStorage
+    localStorage.removeItem(`reading_history_${user.uid}`);
+    
+    // Try to clear on server
+    return this.http.delete<any>(`${environment.apiUrl}/api/users/${user.uid}/reading-history`).pipe(
+      catchError(error => {
+        console.warn('Could not clear reading history on API:', error);
+        return of({ success: true, source: 'local' });
+      }),
+      map(() => ({ success: true }))
+    );
+  }
+
+  // Helper to get default preferences from local storage
+  private getDefaultPreferencesFromLocalStorage(): any {
+    try {
+      const prefsStr = localStorage.getItem('quranPreferences');
+      if (prefsStr) {
+        return JSON.parse(prefsStr);
+      }
+    } catch (e) {
+      console.error('Error parsing preferences from localStorage:', e);
+    }
+    
+    // Return default preferences
+    return {
+      selectedReciter: 7,
+      selectedTranslation: '131',
+      fontSize: 24,
+      showWordByWord: false,
+      darkMode: false,
+      bookmarks: []
+    };
   }
 } 

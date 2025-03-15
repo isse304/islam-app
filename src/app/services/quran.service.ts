@@ -216,6 +216,20 @@ export class QuranService {
       style: 'Murattal' 
     },
     { 
+      id: 2, 
+      name: 'Al-Hudhaify', 
+      identifier: 'Hudhaify_128kbps',
+      surahIdentifier: 'hudhaify',
+      style: 'Murattal' 
+    },
+    { 
+      id: 3, 
+      name: 'Mahmoud Khalil Al-Husary', 
+      identifier: 'Husary_128kbps',
+      surahIdentifier: 'mahmood_khaleel_al-husaree_iza3a',
+      style: 'Murattal' 
+    },
+    { 
       id: 4, 
       name: 'Saad Al-Ghamdi', 
       identifier: 'Ghamadi_40kbps',
@@ -223,10 +237,45 @@ export class QuranService {
       style: 'Murattal' 
     },
     { 
-      id: 2, 
-      name: 'Al-Hudhaify', 
-      identifier: 'Hudhaify_128kbps',
-      surahIdentifier: 'hudhaify',
+      id: 5, 
+      name: 'Muhammad Ayyub', 
+      identifier: 'Ayyub_128kbps',
+      surahIdentifier: 'muhammad_ayyoob',
+      style: 'Murattal' 
+    },
+    { 
+      id: 6, 
+      name: 'Abu Bakr Al-Shatri', 
+      identifier: 'Shatri_128kbps',
+      surahIdentifier: 'abu_bakr_ash-shaatree',
+      style: 'Murattal' 
+    },
+    { 
+      id: 8, 
+      name: 'Ahmed Al-Ajmy', 
+      identifier: 'ahmed_ibn_3ali_al-3ajamy',
+      surahIdentifier: 'ahmed_ibn_3ali_al-3ajamy',
+      style: 'Murattal' 
+    },
+    { 
+      id: 9, 
+      name: 'Abdullah Basfar', 
+      identifier: 'Abdullah_Basfar_192kbps',
+      surahIdentifier: 'abdullaah_basfar',
+      style: 'Murattal' 
+    },
+    { 
+      id: 10, 
+      name: 'Abdullah Matroud', 
+      identifier: 'Abdullah_Matroud_128kbps',
+      surahIdentifier: 'abdullah_matroud',
+      style: 'Murattal' 
+    },
+    { 
+      id: 11, 
+      name: 'Abdurrahman Sudais', 
+      identifier: 'Abdurrahman_Sudais_192kbps',
+      surahIdentifier: 'abdurrahmaan_as-sudais',
       style: 'Murattal' 
     }
   ];
@@ -294,7 +343,7 @@ export class QuranService {
             text: verse.text_uthmani,
             translation: verse.translations?.[0]?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || 'Translation not available',
             transliteration: verse.words?.map((word: any) => word.transliteration?.text || '').join(' ') || '',
-            audio: this.getVerseAudioUrl(7, `${surahNumber}:${verse.verse_number}`),
+            audio: `${surahNumber}:${verse.verse_number}`,
             words: verse.words?.map((word: any) => ({
               text: word.text_uthmani || '',
               translation: word.translation?.text || '',
@@ -407,7 +456,6 @@ export class QuranService {
       let reciterIdentifier: string;
       
       if (!reciter) {
-        console.warn(`Reciter with ID ${reciterId} not found, using default (Alafasy)`);
         reciterIdentifier = 'Alafasy_128kbps';
       } else {
         reciterIdentifier = reciter.identifier || 'Alafasy_128kbps';
@@ -423,20 +471,16 @@ export class QuranService {
       const verseNum = parseInt(verse, 10);
       
       if (isNaN(surahNum) || isNaN(verseNum) || surahNum < 1 || surahNum > 114 || verseNum < 1) {
-        console.warn(`Invalid verse key: ${verseKey}`);
+        console.error('Invalid surah or verse number:', { surah, verse });
         return '';
       }
+
+      // Primary URL using Islamic Network CDN
+      const primaryUrl = `https://cdn.islamic.network/quran/audio/128/${reciterIdentifier}/${formattedSurah}${formattedVerse}.mp3`;
       
-      // Get audio URL using a reliable source
-      let audioUrl = `https://everyayah.com/data/${reciterIdentifier}/${formattedSurah}${formattedVerse}.mp3`;
-      
-      // Log the generated URL for debugging
-      console.log(`Generated verse audio URL: ${audioUrl} for reciter ${reciterIdentifier}`);
-      
-      return audioUrl;
+      return primaryUrl;
     } catch (error) {
       console.error('Error generating verse audio URL:', error);
-      // Default fallback
       return '';
     }
   }
@@ -446,64 +490,28 @@ export class QuranService {
     const reciter = this.reciters.find(r => r.id === reciterId);
     
     if (!reciter) {
-      console.warn(`Reciter with ID ${reciterId} not found, using default`);
-      // Default to Alafasy
-      return this.getSurahAudioUrl(surahNumber, 7);
+      return this.getSurahAudioUrl(surahNumber, 7); // Default to Alafasy
+    }
+    
+    // Validate surah number
+    if (surahNumber < 1 || surahNumber > 114) {
+      console.error('Invalid surah number:', surahNumber);
+      return '';
     }
     
     // Format surah number for URL
     const formattedSurah = surahNumber.toString().padStart(3, '0');
     
-    // Validate surah number
-    if (surahNumber < 1 || surahNumber > 114) {
-      console.warn(`Invalid surah number: ${surahNumber}`);
-      return '';
-    }
+    // Primary URL using Islamic Network CDN
+    const primaryUrl = `https://cdn.islamic.network/quran/audio-surah/128/${reciter.identifier}/${formattedSurah}.mp3`;
     
-    try {
-      // Reliable URL patterns for popular reciters
-      // Each reciter's server has been verified for reliability
-      switch (reciter.id) {
-        case 1: // Abdul Basit
-          return `https://server7.mp3quran.net/basit/${formattedSurah}.mp3`;
-        
-        case 2: // Al-Hudhaify
-          return `https://server13.mp3quran.net/hutha/${formattedSurah}.mp3`;
-        
-        case 3: // Al-Minshawi
-          return `https://server8.mp3quran.net/minsh/${formattedSurah}.mp3`;
-        
-        case 4: // Saad Al-Ghamdi
-          return `https://server8.mp3quran.net/ghamdi/${formattedSurah}.mp3`;
-        
-        case 5: // As-Sudais
-          return `https://server11.mp3quran.net/sds/${formattedSurah}.mp3`;
-        
-        case 6: // Al-Ajmi
-          return `https://server11.mp3quran.net/ajm/${formattedSurah}.mp3`;
-        
-        case 7: // Mishary Rashid Alafasy
-          return `https://server8.mp3quran.net/afs/${formattedSurah}.mp3`;
-        
-        case 8: // Maher Al-Muaiqly
-          return `https://server12.mp3quran.net/maher/${formattedSurah}.mp3`;
-        
-        case 9: // Ahmed Al-Ajmi
-          return `https://server11.mp3quran.net/ahmad_huth/${formattedSurah}.mp3`;
-        
-        case 10: // Muhammad Siddiq Al-Minshawi
-          return `https://server10.mp3quran.net/minsh/${formattedSurah}.mp3`;
-        
-        default:
-          // Fallback to Alafasy as the most reliable source
-          console.log(`Using default reciter for ID: ${reciter.id}`);
-          return `https://server8.mp3quran.net/afs/${formattedSurah}.mp3`;
-      }
-    } catch (error) {
-      console.error(`Error generating URL for reciter ${reciterId}:`, error);
-      // Fallback to a reliable source
-      return `https://server8.mp3quran.net/afs/${formattedSurah}.mp3`;
-    }
+    // Fallback URLs in case primary fails
+    const fallbackUrls = [
+      `https://download.quranicaudio.com/quran/${reciter.surahIdentifier}/${formattedSurah}.mp3`,
+      `https://verse.mp3quran.net/arabic/mishary_alafasy/${formattedSurah}.mp3`
+    ];
+    
+    return primaryUrl;
   }
 
   // Optional: If you want to fetch actual word-by-word translations later
@@ -808,5 +816,46 @@ export class QuranService {
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {
     return this.http.get(`${this.quranComUrl}/verses/by_key/${surah}:${verse}`);
+  }
+
+  // Method to get all available reciters
+  getReciters(): any[] {
+    return this.reciters;
+  }
+
+  // Method to get all available translations
+  getAvailableTranslations(): Observable<any[]> {
+    // Use hardcoded translations as fallback in case the API endpoint fails
+    const fallbackTranslations = [
+      { id: '131', name: 'Sahih International', language: 'en' },
+      { id: '20', name: 'Sahih Al-Bukhari', language: 'en' },
+      { id: '149', name: 'Abdel Haleem', language: 'en' },
+      { id: '85', name: 'Abdul Majid Daryabadi', language: 'en' },
+      { id: '203', name: 'Dr. Mustafa Khattab', language: 'en' },
+      { id: '207', name: 'Saheeh International', language: 'en' },
+      { id: '84', name: 'Abdullah Yusuf Ali', language: 'en' },
+      { id: '22', name: 'Dr. Ghali', language: 'en' },
+      { id: '95', name: 'Muhammad Taqi-ud-Din al-Hilali and Muhammad Muhsin Khan', language: 'en' },
+      { id: '57', name: 'Yusuf Ali', language: 'en' },
+      { id: '17', name: 'Dr. T.B. Irving', language: 'en' }
+    ];
+
+    // Try to get translations from API, fall back to hardcoded list if it fails
+    return this.http.get<any[]>(`${environment.apiUrl}/api/quran/translations`).pipe(
+      catchError(error => {
+        console.error('Error fetching translations:', error);
+        return of(fallbackTranslations);
+      })
+    );
+  }
+
+  // Method to get a surah name by number
+  getSurahName(surahNumber: number): string {
+    if (surahNumber < 1 || surahNumber > 114) {
+      return '';
+    }
+    
+    const surah = this.surahs.find(s => s.number === surahNumber);
+    return surah ? surah.name : '';
   }
 }

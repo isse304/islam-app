@@ -1,21 +1,30 @@
 import dotenv from 'dotenv';
 import path from 'path';
-import https from 'https';
+import { fileURLToPath } from 'url';
 import fs from 'fs';
 import express, { Request, Response, NextFunction } from 'express';
 import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { AuthenticatedRequest, authenticateUser } from './middleware/auth';
+import { AuthenticatedRequest, withAuth } from './middleware/auth';
 import securityConfig from './middleware/security';
 import aiRouter from './routes/ai';
 import monitoringRouter from './routes/monitoring';
-import usersRouter from './routes/users';
+import userRouter from './routes/user';
 import winston from 'winston';
 import { connectDatabase } from './config/database';
 import subscriptionRouter from './routes/subscription';
 import usageRouter from './routes/usage';
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+import * as admin from 'firebase-admin';
+import quranRouter from './routes/quran';
+
+// ES Module equivalent of __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Set NODE_ENV if not already set (development by default)
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
@@ -26,8 +35,8 @@ function loadEnvVariables() {
     const possiblePaths = [
         path.resolve(process.cwd(), '.env'),              // Current working directory
         path.resolve(process.cwd(), '../.env'),           // Parent directory
-        path.resolve(__dirname, '../.env'),               // Relative to current file's directory
-        path.resolve(__dirname, '../../.env'),            // Two levels up from current file
+        path.resolve(path.dirname(__filename), '../.env'), // Relative to current file's directory
+        path.resolve(path.dirname(__filename), '../../.env'), // Two levels up from current file
     ];
     
     console.log('Looking for .env file in:');
@@ -93,107 +102,108 @@ const logger = winston.createLogger({
     ),
     transports: [
         new winston.transports.File({ filename: 'error.log', level: 'error' }),
-        new winston.transports.File({ filename: 'combined.log' })
+        new winston.transports.File({ filename: 'combined.log' }),
+        new winston.transports.Console({
+            format: winston.format.combine(
+                winston.format.colorize(),
+                winston.format.simple()
+            )
+        })
     ]
 });
 
-if (process.env.NODE_ENV !== 'production') {
-    logger.add(new winston.transports.Console({
-        format: winston.format.simple()
-    }));
-}
-
 // Initialize Express app
 const app = express();
-const port = process.env.PORT || 3000;
 
-// Connect to database and start server
+// Apply security middleware
+app.use(helmet());
+app.use(compression());
+
+// Configure CORS
+const corsOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:4200'];
+app.use(cors({
+    origin: corsOrigins,
+    credentials: true
+}));
+
+// Apply other middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Configure session middleware
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'development_session_secret',
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({
+        mongoUrl: process.env.MONGODB_URI,
+        ttl: 24 * 60 * 60 // 1 day
+    })
+}));
+
+// Configure rate limiting
+const limiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000', 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10)
+});
+app.use(limiter);
+
+// Health check endpoint
+app.get('/api/health', (req: Request, res: Response) => {
+    res.json({
+        status: 'ok',
+        message: 'API is running',
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Apply routes
+app.use('/api/ai', aiRouter);
+app.use('/api/monitoring', monitoringRouter);
+app.use('/api/users', userRouter);
+app.use('/api/subscription', subscriptionRouter);
+app.use('/api/usage', usageRouter);
+app.use('/api/quran', quranRouter);
+
+// Error handling middleware
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+    logger.error('Unhandled error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+});
+
+// Start server
 const startServer = async () => {
     try {
+        // Connect to database
         await connectDatabase(logger);
-        logger.info('Database connection established');
+        logger.info('Connected to MongoDB successfully');
 
-        // Apply middleware
-        app.use(cors({
-            origin: process.env.NODE_ENV === 'development' ? true : process.env.CORS_ORIGIN?.split(','),
-            credentials: true,
-            methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
-        }));
-        
-        // We're using Firebase auth, not Clerk, so we don't need this middleware
-        logger.info('Using Firebase authentication');
-        
-        // Configure session middleware with secure settings and MongoDB store
-        app.use(session({
-            secret: process.env.SESSION_SECRET!,
-            resave: false,
-            saveUninitialized: false,
-            store: MongoStore.create({
-                mongoUrl: process.env.MONGODB_URI,
-                ttl: 24 * 60 * 60,
-                autoRemove: 'native'
-            }),
-            cookie: {
-                secure: process.env.NODE_ENV === 'production',
-                httpOnly: true,
-                maxAge: 24 * 60 * 60 * 1000,
-                sameSite: 'strict'
-            }
-        }));
-
-        // Apply routes
-        app.use('/api/subscription', subscriptionRouter);
-        app.use('/api/usage', usageRouter);
-        app.use('/api/ai', aiRouter);
-        app.use('/api/monitoring', monitoringRouter);
-        app.use('/api/users', usersRouter);
-
-        // Health check endpoint
-        app.get('/api/health', (req: Request, res: Response) => {
-            res.status(200).json({ 
-                status: 'ok', 
-                message: 'API is running', 
-                environment: process.env.NODE_ENV || 'development',
-                timestamp: new Date().toISOString()
-            });
-        });
-
-        // Start server
+        // Start listening
+        const port = process.env.PORT || 3000;
         app.listen(port, () => {
-            logger.info(`Server is running on port ${port}`);
+            logger.info(`Server is running on port ${port} in ${process.env.NODE_ENV} mode`);
         });
-
-        // Graceful shutdown handling
-        process.on('SIGTERM', () => {
-            logger.info('SIGTERM received. Shutting down gracefully...');
-            mongoose.connection.close()
-                .then(() => {
-                    logger.info('MongoDB connection closed.');
-                    process.exit(0);
-                })
-                .catch(err => {
-                    logger.error('Error during shutdown:', err);
-                    process.exit(1);
-                });
-        });
-
     } catch (error) {
         logger.error('Failed to start server:', error);
         process.exit(1);
     }
 };
 
+// Initialize server
 startServer();
 
-app.get('/api/user-session', authenticateUser, (req: Request, res: Response) => {
-  const authReq = req as AuthenticatedRequest;
+app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    return res.json({
-      userId: authReq.auth.userId
+    if (!req.authData) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+    res.json({
+      userId: req.authData.userId
     });
   } catch (error) {
     console.error('Error fetching user session:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
-}); 
+})); 

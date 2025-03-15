@@ -1,0 +1,26 @@
+.pattern-bg {
+  background-image: url('/islamic-pattern-1.png');
+  background-repeat: repeat;
+  background-size: 200px;
+  filter: contrast(150%);
+  transform: rotate(30deg) scale(1.5);
+  opacity: 0.08;
+  mix-blend-mode: multiply;
+}
+
+.feature-category {
+  background: linear-gradient(to bottom right, rgba(183, 165, 122, 0.05), rgba(183, 165, 122, 0.02));
+  padding: 1.5rem;
+  border-radius: 1rem;
+  transition: transform 0.3s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+  }
+}
+
+.highlight-feature {
+  background: linear-gradient(to bottom right, rgba(183, 165, 122, 0.15), rgba(183, 165, 122, 0.05));
+  box-shadow: 0 4px 6px -1px rgba(183, 165, 122, 0.1), 0 2px 4px -1px rgba(183, 165, 122, 0.06);
+  transform: translateY(-2px);
+} 

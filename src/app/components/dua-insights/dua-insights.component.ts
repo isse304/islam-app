@@ -1,15 +1,33 @@
 import { Component, Input, OnInit } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Dua } from '../../services/dua.service';
 import { OpenAIService, AIResponse } from '../../services/openai.service';
 import { SubscriptionService } from '../../services/subscription.service';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { AuthStateService } from '../../services/auth-state.service';
+import { MatTabsModule } from '@angular/material/tabs';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatListModule } from '@angular/material/list';
 
 @Component({
   selector: 'app-dua-insights',
   templateUrl: './dua-insights.component.html',
   styleUrls: ['./dua-insights.component.css'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatTabsModule,
+    MatProgressSpinnerModule,
+    MatCardModule,
+    MatButtonModule,
+    MatIconModule,
+    MatListModule
+  ]
 })
 export class DuaInsightsComponent implements OnInit {
   @Input() dua!: Dua;

@@ -8,7 +8,8 @@ import { EmailService } from '../services/email.service';
 import { OpenAIService } from '../services/openai.service';
 import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
-import { authenticateUser } from '../middleware/auth';
+import { AuthenticatedRequest, withAuth } from '../middleware/auth';
+import * as admin from 'firebase-admin';
 
 const router = Router();
 const cacheService = new CacheService();
@@ -101,79 +102,81 @@ setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
 // Protected route for AI generation
-router.post('/chat', authenticateUser, (req: Request, res: Response) => {
-    // Check auth before proceeding
-    if (!req.auth?.userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    const userId = req.auth.userId;
-    
-    // Wrap in async function to use await
-    (async () => {
-        try {
-            // Get or create user usage record
-            let userUsage = await UserUsage.findOne({ userId });
-            if (!userUsage) {
-                userUsage = new UserUsage({ userId });
-                await userUsage.save();
-            }
-
-            // Check if user has exceeded their AI request limit
-            if (!await userUsage.canMakeAIRequest()) {
-                return res.status(403).json({ 
-                    error: 'AI request limit exceeded',
-                    limit: userUsage.aiRequestLimit,
-                    used: userUsage.aiRequests.count
-                });
-            }
-
-            // Process AI request here
-            const response = await openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
-                messages: [{ role: "user", content: req.body.message }]
-            });
-
-            // Increment AI request count
-            await userUsage.incrementAIRequestCount();
-
-            res.json({ response: response.choices[0].message.content });
-        } catch (error) {
-            console.error('Error in AI chat:', error);
-            res.status(500).json({ error: 'Internal server error' });
+router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.authData) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
         }
-    })();
-});
+        const userId = req.authData.userId;
+        
+        // Get or create user usage record
+        let userUsage = await UserUsage.findOne({ userId });
+        if (!userUsage) {
+            userUsage = new UserUsage({ userId });
+            await userUsage.save();
+        }
+
+        // Check if user has exceeded their AI request limit
+        if (!await userUsage.canMakeAIRequest()) {
+            res.status(403).json({ 
+                error: 'AI request limit exceeded',
+                limit: userUsage.aiRequestLimit,
+                used: userUsage.aiRequests.count
+            });
+            return;
+        }
+
+        // Process AI request here
+        const response = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: req.body.message }]
+        });
+
+        // Increment AI request count
+        await userUsage.incrementAIRequestCount();
+
+        res.json({ response: response.choices[0].message.content });
+    } catch (error) {
+        console.error('Error in AI chat:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
 
 // Get user's AI usage statistics
-router.get('/usage', authenticateUser, (req: Request, res: Response) => {
-    // Check auth before proceeding
-    if (!req.auth?.userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    
-    const userId = req.auth.userId;
-    
-    // Wrap in async function to use await
-    (async () => {
-        try {
-            const [costUsage, featureUsage] = await Promise.all([
-                costMonitorService.getUsage(userId),
-                usageService.getUserLimits(userId)
-            ]);
-
-            res.json({ 
-                costUsage,
-                featureUsage
-            });
-        } catch (error) {
-            console.error('Usage stats error:', error);
-            res.status(500).json({
-                error: 'Failed to fetch usage statistics',
-                message: 'An error occurred while fetching usage statistics'
-            });
+router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        if (!req.authData) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
         }
-    })();
-});
+        const userId = req.authData.userId;
+        
+        // Get Firebase user claims for subscription status
+        const userRecord = await admin.auth().getUser(userId);
+        const claims = userRecord.customClaims || {};
+        
+        const [costUsage, featureUsage] = await Promise.all([
+            costMonitorService.getUsage(userId),
+            usageService.getUserLimits(userId)
+        ]);
+
+        res.json({ 
+            costUsage,
+            featureUsage,
+            subscription: {
+                status: claims.subscriptionStatus || 'inactive',
+                premium: claims.premium || false,
+                endDate: claims.subscriptionEnd
+            }
+        });
+    } catch (error) {
+        console.error('Usage stats error:', error);
+        res.status(500).json({
+            error: 'Failed to fetch usage statistics',
+            message: 'An error occurred while fetching usage statistics'
+        });
+    }
+}));
 
 export default router; 

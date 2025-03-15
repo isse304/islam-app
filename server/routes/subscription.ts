@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express';
 import { StripeService } from '../services/stripe.service';
-import { authenticateUser } from '../middleware/auth';
+import { authenticateUser, withAuth } from '../middleware/auth';
 import Stripe from 'stripe';
+import * as admin from 'firebase-admin';
+import { AuthenticatedRequest } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -54,103 +56,53 @@ try {
 type RequestHandler = express.RequestHandler;
 
 // Create a checkout session for subscription
-router.post('/create-checkout', 
-    authenticateUser,
-    ((req: Request, res: Response) => {
-        try {
-            const userId = req.auth?.userId;
-            if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-            
-            // Ensure we have stripe service
-            if (!stripeService) {
-                // Provide a better fallback in development mode
-                if (isDevMode) {
-                    console.log('[DEV] Returning mock checkout session without Stripe service');
-                    
-                    // OPTIMIZATION: Auto-activate trial status in development
-                    try {
-                        // Update the user's preferences with trial status to unlock features
-                        // This simulates what would happen after successful checkout
-                        const UserUsageModel = require('../models/UserUsage').UserUsage;
-                        UserUsageModel.findOneAndUpdate(
-                            { userId },
-                            { 
-                                userId,
-                                status: 'trialing',
-                                trialEnd: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days from now
-                            },
-                            { upsert: true, new: true }
-                        ).then((_: any) => {
-                            console.log(`[DEV] Updated user ${userId} with trial status`);
-                        }).catch((error: any) => {
-                            console.error(`[DEV] Error updating trial status:`, error);
-                        });
-                    } catch (error: any) {
-                        console.error('[DEV] Error setting up mock trial:', error);
-                    }
-                    
-                    return res.json({ 
-                        url: `${process.env.CLIENT_URL || 'http://localhost:4200'}/subscription/mock-success?dev=true&trial=activated`,
-                        trialActivated: true
-                    });
-                }
-                
-                return res.status(503).json({ 
-                    error: 'Subscription service unavailable',
-                    message: 'Stripe service is not configured properly. This is expected in development without proper keys.'
-                });
-            }
-            
-            return stripeService.createCheckoutSession(userId)
-                .then(session => res.json({ url: session }))
-                .catch(error => {
-                    console.error('Error creating checkout session:', error);
-                    
-                    // In development mode, provide a fallback response
-                    if (isDevMode) {
-                        console.log('[DEV] Providing fallback checkout URL after error');
-                        return res.json({ 
-                            url: `${process.env.CLIENT_URL || 'http://localhost:4200'}/subscription/mock-success?error=true&dev=true`,
-                            devFallback: true
-                        });
-                    }
-                    
-                    res.status(500).json({ error: 'Failed to create checkout session' });
-                });
-        } catch (error) {
-            console.error('Unexpected error in create-checkout route:', error);
-            
-            // In development mode, provide a fallback response
-            if (isDevMode) {
-                return res.json({ 
-                    url: `${process.env.CLIENT_URL || 'http://localhost:4200'}/subscription/mock-success?unexpectedError=true&dev=true`,
-                    devFallback: true
-                });
-            }
-            
-            res.status(500).json({ error: 'Internal server error' });
+router.post('/create-checkout', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        // In development mode, return mock checkout URL
+        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+        if (isDevelopment) {
+            console.log('Development mode: Returning mock checkout URL');
+            const mockCheckoutUrl = `${process.env.CLIENT_URL || 'http://localhost:4200'}/subscription/mock-success`;
+            res.json({ url: mockCheckoutUrl });
+            return;
         }
-    }) as RequestHandler
-);
+        
+        // Regular auth check for non-development environments
+        if (!req.authData) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const userId = req.authData.userId;
+        const userRecord = await admin.auth().getUser(userId);
+
+        // Create checkout session
+        const session = await stripeService.createCheckoutSession(userId);
+
+        res.json({ url: session });
+    } catch (error) {
+        console.error('Checkout session creation error:', error);
+        res.status(500).json({ error: 'Failed to create checkout session' });
+    }
+});
 
 // Handle Stripe webhooks
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+router.post('/webhook', express.raw({ type: 'application/json' }) as RequestHandler, async (req: Request, res: Response): Promise<void> => {
     try {
         // Skip webhook processing if stripe service is not available
         if (!stripeService) {
-            return res.status(503).json({ 
+            res.status(503).json({ 
                 error: 'Webhook processing unavailable',
                 message: 'Stripe service is not configured properly'
             });
+            return;
         }
         
         const sig = req.headers['stripe-signature'];
         const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
         if (!sig || !webhookSecret) {
-            return res.status(400).json({ error: 'Missing signature or webhook secret' });
+            res.status(400).json({ error: 'Missing signature or webhook secret' });
+            return;
         }
 
         try {
@@ -159,82 +111,99 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req, r
             });
             const event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
             
+            // Handle subscription events
+            switch (event.type) {
+                case 'customer.subscription.created':
+                case 'customer.subscription.updated': {
+                    const subscription = event.data.object as Stripe.Subscription;
+                    const userId = subscription.metadata?.userId;
+                    if (userId) {
+                        await admin.auth().setCustomUserClaims(userId, {
+                            subscriptionStatus: subscription.status,
+                            premium: subscription.status === 'active',
+                            subscriptionEnd: new Date(subscription.current_period_end * 1000).toISOString()
+                        });
+                    }
+                    break;
+                }
+                case 'customer.subscription.deleted': {
+                    const subscription = event.data.object as Stripe.Subscription;
+                    const userId = subscription.metadata?.userId;
+                    if (userId) {
+                        await admin.auth().setCustomUserClaims(userId, {
+                            subscriptionStatus: 'inactive',
+                            premium: false,
+                            subscriptionEnd: null
+                        });
+                    }
+                    break;
+                }
+            }
+            
             await stripeService.handleWebhook(event);
             res.json({ received: true });
+            return;
         } catch (error) {
             console.error('Webhook error:', error);
             res.status(400).json({ error: 'Webhook error' });
+            return;
         }
     } catch (error) {
         console.error('Unexpected error in webhook route:', error);
         res.status(500).json({ error: 'Internal server error' });
+        return;
     }
 });
 
 // Get subscription status
-router.get('/status', 
-    authenticateUser,
-    ((req: Request, res: Response) => {
-        try {
-            const userId = req.auth?.userId;
-            if (!userId) {
-                return res.status(401).json({ error: 'Unauthorized' });
-            }
-            
-            // Ensure we have stripe service
-            if (!stripeService) {
-                // In development mode without keys, return mock premium status
-                if (isDevMode) {
-                    console.log('[DEV] Returning mock subscription status without Stripe service');
-                    return res.json({
-                        status: 'active',
-                        plan: 'premium',
-                        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                        devFallback: true
-                    });
-                }
-                
-                return res.status(503).json({ 
-                    error: 'Subscription service unavailable',
-                    message: 'Stripe service is not configured properly'
-                });
-            }
-            
-            return stripeService.getSubscriptionStatus(userId)
-                .then(status => res.json(status))
-                .catch(error => {
-                    console.error('Error getting subscription status:', error);
-                    
-                    // In development mode, provide a fallback status
-                    if (isDevMode) {
-                        console.log('[DEV] Providing fallback subscription status after error');
-                        return res.json({
-                            status: 'active',
-                            plan: 'premium',
-                            currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                            devFallback: true
-                        });
-                    }
-                    
-                    res.status(500).json({ error: 'Failed to get subscription status' });
-                });
-        } catch (error) {
-            console.error('Unexpected error in status route:', error);
-            
-            // In development mode, provide a fallback status
-            if (isDevMode) {
-                return res.json({
-                    status: 'active',
-                    plan: 'premium',
-                    currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-                    devFallback: true,
-                    error: 'Caught unexpected error but provided fallback'
-                });
-            }
-            
-            res.status(500).json({ error: 'Internal server error' });
+router.get('/status', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    try {
+        // In development mode, return mock subscription status
+        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+        if (isDevelopment) {
+            console.log('Development mode: Returning mock subscription status');
+            res.json({
+                status: 'active',
+                premium: true,
+                endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days from now
+            });
+            return;
         }
-    }) as RequestHandler
-);
+        
+        // Regular auth check for non-development environments
+        if (!req.authData) {
+            res.status(401).json({ error: 'Unauthorized' });
+            return;
+        }
+        const userId = req.authData.userId;
+        const userRecord = await admin.auth().getUser(userId);
+        const claims = userRecord.customClaims || {};
+
+        // Check if subscription has expired
+        if (claims.subscriptionEnd) {
+            const subscriptionEnd = new Date(claims.subscriptionEnd);
+            if (subscriptionEnd < new Date()) {
+                // Reset claims if subscription has expired
+                await admin.auth().setCustomUserClaims(userId, {
+                    subscriptionStatus: 'inactive',
+                    premium: false,
+                    subscriptionEnd: null
+                });
+                claims.subscriptionStatus = 'inactive';
+                claims.premium = false;
+                claims.subscriptionEnd = null;
+            }
+        }
+
+        res.json({
+            status: claims.subscriptionStatus || 'inactive',
+            premium: claims.premium || false,
+            endDate: claims.subscriptionEnd
+        });
+    } catch (error) {
+        console.error('Subscription status error:', error);
+        res.status(500).json({ error: 'Failed to fetch subscription status' });
+    }
+});
 
 export default router; 

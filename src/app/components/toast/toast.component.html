@@ -1,0 +1,6 @@
+<div class="toast" [class.show]="show" [ngClass]="position">
+  <div class="toast-content" [ngClass]="type">
+    <i [class]="getIcon()"></i>
+    <span>{{ message }}</span>
+  </div>
+</div> 

@@ -2,10 +2,17 @@ import { Component, OnInit } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { AuthStateService } from '../../services/auth-state.service';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatSelectModule } from '@angular/material/select';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatIconModule } from '@angular/material/icon';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -18,11 +25,22 @@ interface SurahData {
 }
 
 @Component({
-    selector: 'app-learn',
-    templateUrl: './learn.component.html',
-    styleUrls: ['./learn.component.scss'],
-    standalone: true,
-    imports: [CommonModule, FormsModule]
+  selector: 'app-learn',
+  templateUrl: './learn.component.html',
+  styleUrls: ['./learn.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    MatButtonModule,
+    MatCardModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatSelectModule,
+    MatProgressSpinnerModule,
+    MatIconModule
+  ]
 })
 export class LearnComponent implements OnInit {
   selectedSurah: number = 1;

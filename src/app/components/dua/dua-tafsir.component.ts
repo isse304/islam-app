@@ -1,7 +1,11 @@
 import { Component, Input } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { TafsirService } from '../../services/tafsir.service';
 import { SubscriptionService } from '../../services/subscription.service';
-import { Router } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 
 @Component({
   selector: 'app-dua-tafsir',
@@ -86,7 +90,15 @@ import { Router } from '@angular/router';
     .leading-relaxed {
       line-height: 1.75;
     }
-  `]
+  `],
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    MatButtonModule,
+    MatIconModule,
+    MatProgressSpinnerModule
+  ]
 })
 export class DuaTafsirComponent {
   @Input() arabic: string = '';

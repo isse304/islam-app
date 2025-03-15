@@ -1,109 +1,261 @@
-<div class="profile-container">
+<div class="profile-page-container">
   <div class="profile-header">
-    <h1>My Profile</h1>
-    <button mat-raised-button color="warn" (click)="signOut()">Sign Out</button>
+    <h1>Your Profile</h1>
   </div>
-  
-  <!-- Loading indicator -->
-  <div *ngIf="isLoading" class="loading-container">
-    <mat-spinner diameter="40"></mat-spinner>
-    <p>Loading profile data...</p>
+
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading your profile information...</p>
   </div>
-  
-  <div class="profile-content" [class.content-loading]="isLoading">
-    <mat-card class="profile-card">
-      <mat-card-header>
-        <mat-card-title>Personal Information</mat-card-title>
-      </mat-card-header>
+
+  <div class="profile-content" *ngIf="!isLoading">
+    <mat-tab-group animationDuration="300ms" class="profile-tabs">
+     
+      <!-- Reading Preferences Tab -->
+      <mat-tab label="Reading Preferences">
+        <div class="tab-content">
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Quran Reading Settings</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <form [formGroup]="preferencesForm" (ngSubmit)="savePreferences()">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Reciter</mat-label>
+                    <mat-select formControlName="selectedReciter">
+                      <mat-option *ngFor="let reciter of reciters" [value]="reciter.id">
+                        {{reciter.name}}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Translation</mat-label>
+                    <mat-select formControlName="selectedTranslation">
+                      <mat-option *ngFor="let translation of translations" [value]="translation.id">
+                        {{translation.name}}
+                      </mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row preferences-slider">
+                  <label>Font Size: {{preferencesForm.get('fontSize')?.value}}px</label>
+                  <mat-slider min="14" max="36" step="1" discrete [displayWith]="formatLabel">
+                    <input matSliderThumb formControlName="fontSize">
+                  </mat-slider>
+                </div>
+                
+                <div class="form-row toggle-row">
+                  <mat-slide-toggle formControlName="showWordByWord" color="primary">
+                    Show Word-by-Word Translation
+                  </mat-slide-toggle>
+                </div>
+                
+                <div class="form-row toggle-row">
+                  <mat-slide-toggle formControlName="darkMode" color="primary">
+                    Dark Mode
+                  </mat-slide-toggle>
+                </div>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="preferencesForm.invalid || isSavingPrefs">
+                    <mat-spinner diameter="20" *ngIf="isSavingPrefs"></mat-spinner>
+                    <span *ngIf="!isSavingPrefs">Save Preferences</span>
+                  </button>
+                </div>
+              </form>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
       
-      <mat-card-content>
-        <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
-          <div class="name-fields">
-            <mat-form-field appearance="outline" class="name-field">
-              <mat-label>First Name</mat-label>
-              <input matInput formControlName="firstName" placeholder="First Name">
-              <mat-error *ngIf="profileForm.get('firstName')?.hasError('required')">
-                First name is required
-              </mat-error>
-            </mat-form-field>
-            
-            <mat-form-field appearance="outline" class="name-field">
-              <mat-label>Last Name</mat-label>
-              <input matInput formControlName="lastName" placeholder="Last Name">
-              <mat-error *ngIf="profileForm.get('lastName')?.hasError('required')">
-                Last name is required
-              </mat-error>
-            </mat-form-field>
-          </div>
-          
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Email</mat-label>
-            <input matInput formControlName="email" type="email" placeholder="Email">
-            <mat-hint>Email cannot be changed directly</mat-hint>
-          </mat-form-field>
-          
-          <div class="action-buttons">
-            <button mat-raised-button color="primary" type="submit" [disabled]="profileForm.invalid || isLoading">
-              <mat-icon>save</mat-icon> Update Profile
-            </button>
-          </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
-    
-    <mat-card class="password-card">
-      <mat-card-header>
-        <mat-card-title>Change Password</mat-card-title>
-      </mat-card-header>
+      <!-- Bookmarks Tab -->
+      <mat-tab label="Bookmarks">
+        <div class="tab-content">
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Your Bookmarks</mat-card-title>
+              <mat-card-subtitle *ngIf="bookmarks.length > 0">
+                Your saved verses for quick access
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="empty-state" *ngIf="bookmarks.length === 0">
+                <mat-icon class="empty-icon">bookmark_border</mat-icon>
+                <p>You don't have any bookmarks yet.</p>
+                <p>Add a bookmark while reading the Quran to see it here.</p>
+              </div>
+              
+              <div class="bookmark-list" *ngIf="bookmarks.length > 0">
+                <div class="bookmark-item" *ngFor="let bookmark of bookmarks">
+                  <div class="bookmark-details">
+                    <span class="bookmark-title">{{getFullSurahName(bookmark.split(':')[0])}}</span>
+                    <span class="bookmark-verse">Verse {{bookmark.split(':')[1]}}</span>
+                  </div>
+                  <div class="bookmark-actions">
+                    <button mat-icon-button color="primary" (click)="goToVerse(bookmark)" matTooltip="Go to this verse">
+                      <mat-icon>visibility</mat-icon>
+                    </button>
+                    <button mat-icon-button color="warn" (click)="removeBookmark(bookmark)" matTooltip="Remove bookmark">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
       
-      <mat-card-content>
-        <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Current Password</mat-label>
-            <input matInput formControlName="currentPassword" [type]="hideCurrentPassword ? 'password' : 'text'">
-            <button mat-icon-button matSuffix (click)="hideCurrentPassword = !hideCurrentPassword" type="button">
-              <mat-icon>{{hideCurrentPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-            </button>
-            <mat-error *ngIf="passwordForm.get('currentPassword')?.hasError('required')">
-              Current password is required
-            </mat-error>
-          </mat-form-field>
+      <!-- Reading History Tab -->
+      <mat-tab label="Reading History">
+        <div class="tab-content">
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Your Reading History</mat-card-title>
+              <mat-card-subtitle *ngIf="readingHistory!.length > 0">
+                Continue where you left off
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="empty-state" *ngIf="readingHistory!.length === 0">
+                <mat-icon class="empty-icon">history</mat-icon>
+                <p>No reading history yet.</p>
+                <p>Your recent reading activity will appear here.</p>
+              </div>
+              
+              <div class="history-list" *ngIf="readingHistory!.length > 0">
+                <div class="history-item" *ngFor="let entry of readingHistory">
+                  <div class="history-details">
+                    <div class="history-main-info">
+                      <span class="history-title">{{getFullSurahName(entry.surah)}}</span>
+                      <span class="history-verse">Verse {{entry.verse}}</span>
+                    </div>
+                    <span class="history-time">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
+                  </div>
+                  <div class="history-actions">
+                    <button mat-icon-button color="primary" (click)="goToHistoryEntry(entry)" matTooltip="Continue reading">
+                      <mat-icon>play_arrow</mat-icon>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="clear-history" *ngIf="readingHistory!.length > 0">
+                <button mat-button color="warn" (click)="clearHistory()">
+                  <mat-icon>delete_sweep</mat-icon> Clear History
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+       <!-- Account Tab -->
+       <mat-tab label="Account">
+        <div class="tab-content">
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Personal Information</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>First Name</mat-label>
+                    <input matInput formControlName="firstName" placeholder="First Name">
+                    <mat-error *ngIf="profileForm.get('firstName')?.hasError('required')">First name is required</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Last Name</mat-label>
+                    <input matInput formControlName="lastName" placeholder="Last Name">
+                    <mat-error *ngIf="profileForm.get('lastName')?.hasError('required')">Last name is required</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Email</mat-label>
+                    <input matInput formControlName="email" placeholder="Email">
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="profileForm.invalid">
+                    Update Profile
+                  </button>
+                </div>
+              </form>
+            </mat-card-content>
+          </mat-card>
           
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>New Password</mat-label>
-            <input matInput formControlName="newPassword" [type]="hideNewPassword ? 'password' : 'text'">
-            <button mat-icon-button matSuffix (click)="hideNewPassword = !hideNewPassword" type="button">
-              <mat-icon>{{hideNewPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-            </button>
-            <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('required')">
-              New password is required
-            </mat-error>
-            <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('minlength')">
-              Password must be at least 6 characters
-            </mat-error>
-          </mat-form-field>
+          <mat-card class="profile-card">
+            <mat-card-header>
+              <mat-card-title>Change Password</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Current Password</mat-label>
+                    <input matInput [type]="hideCurrentPassword ? 'password' : 'text'" formControlName="currentPassword">
+                    <button mat-icon-button matSuffix (click)="hideCurrentPassword = !hideCurrentPassword" type="button">
+                      <mat-icon>{{hideCurrentPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="passwordForm.get('currentPassword')?.hasError('required')">Current password is required</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>New Password</mat-label>
+                    <input matInput [type]="hideNewPassword ? 'password' : 'text'" formControlName="newPassword">
+                    <button mat-icon-button matSuffix (click)="hideNewPassword = !hideNewPassword" type="button">
+                      <mat-icon>{{hideNewPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('required')">New password is required</mat-error>
+                    <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('minlength')">Password must be at least 6 characters</mat-error>
+                  </mat-form-field>
+                </div>
+                
+                <div class="form-row">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Confirm Password</mat-label>
+                    <input matInput [type]="hideConfirmPassword ? 'password' : 'text'" formControlName="confirmPassword">
+                    <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword" type="button">
+                      <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                    </button>
+                    <mat-error *ngIf="passwordForm.get('confirmPassword')?.hasError('required')">Please confirm your password</mat-error>
+                  </mat-form-field>
+                  <mat-error *ngIf="passwordForm.hasError('notMatching') && !passwordForm.get('confirmPassword')?.hasError('required')">
+                    Passwords don't match
+                  </mat-error>
+                </div>
+                
+                <div class="form-actions">
+                  <button mat-raised-button color="primary" type="submit" [disabled]="passwordForm.invalid || isChangingPassword">
+                    <mat-spinner diameter="20" *ngIf="isChangingPassword"></mat-spinner>
+                    <span *ngIf="!isChangingPassword">Change Password</span>
+                  </button>
+                </div>
+              </form>
+            </mat-card-content>
+          </mat-card>
           
-          <mat-form-field appearance="outline" class="full-width">
-            <mat-label>Confirm Password</mat-label>
-            <input matInput formControlName="confirmPassword" [type]="hideConfirmPassword ? 'password' : 'text'">
-            <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword" type="button">
-              <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-            </button>
-            <mat-error *ngIf="passwordForm.get('confirmPassword')?.hasError('required')">
-              Confirm password is required
-            </mat-error>
-            <mat-error *ngIf="passwordForm.hasError('passwordMismatch')">
-              Passwords do not match
-            </mat-error>
-          </mat-form-field>
-          
-          <div class="action-buttons">
-            <button mat-raised-button color="primary" type="submit" [disabled]="passwordForm.invalid || isChangingPassword">
-              <mat-icon>lock</mat-icon> Change Password
+          <div class="sign-out-container">
+            <button mat-raised-button color="warn" (click)="signOut()">
+              <mat-icon>exit_to_app</mat-icon> Sign Out
             </button>
           </div>
-        </form>
-      </mat-card-content>
-    </mat-card>
+        </div>
+      </mat-tab>
+      
+    </mat-tab-group>
   </div>
 </div> 

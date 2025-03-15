@@ -1,7 +1,7 @@
 {
     "compilerOptions": {
-      "target": "es2020",
-      "module": "commonjs",
+      "target": "ES2020",
+      "module": "ES2020",
       "lib": ["es2020"],
       "outDir": "./dist",
       "rootDir": "./",
@@ -9,7 +9,7 @@
       "esModuleInterop": true,
       "skipLibCheck": true,
       "forceConsistentCasingInFileNames": true,
-      "moduleResolution": "node",
+      "moduleResolution": "bundler",
       "resolveJsonModule": true,
       "sourceMap": true,
       "baseUrl": ".",
@@ -19,8 +19,10 @@
       ],
       "types": [
         "node",
-        "express"
-      ]
+        "express",
+        "compression"
+      ],
+      "allowSyntheticDefaultImports": true
     },
     "include": [
       "**/*.ts"

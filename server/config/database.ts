@@ -8,11 +8,15 @@ interface DatabaseConfig {
 
 const configs: Record<string, DatabaseConfig> = {
     development: {
-        uri: process.env.MONGODB_URI || 'mongodb://localhost:27017/islamapp',
+        uri: process.env.MONGODB_URI || 'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura',
         options: {
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
-            family: 4
+            family: 4,
+            retryWrites: true,
+            retryReads: true,
+            maxPoolSize: 10,
+            minPoolSize: 5
         }
     },
     production: {
@@ -39,11 +43,13 @@ export const connectDatabase = async (logger: winston.Logger) => {
         throw new Error(`Invalid environment: ${env}`);
     }
 
-    try {
-        await mongoose.connect(config.uri, config.options);
-        logger.info(`Connected to MongoDB in ${env} mode`);
+    // Validate MongoDB URI
+    if (!config.uri) {
+        throw new Error('MongoDB URI is not defined. Please set MONGODB_URI in your environment variables.');
+    }
 
-        // Set up connection monitoring
+    try {
+        // Add event listeners before connecting
         mongoose.connection.on('error', (error) => {
             logger.error('MongoDB connection error:', error);
         });
@@ -55,6 +61,21 @@ export const connectDatabase = async (logger: winston.Logger) => {
         mongoose.connection.on('reconnected', () => {
             logger.info('MongoDB reconnected');
         });
+
+        mongoose.connection.on('connected', () => {
+            logger.info('MongoDB connected successfully');
+        });
+
+        // Set mongoose options
+        mongoose.set('strictQuery', true);
+        
+        // Attempt to connect
+        await mongoose.connect(config.uri, {
+            ...config.options,
+            autoIndex: env === 'development', // Only create indexes in development
+        });
+
+        logger.info(`Connected to MongoDB in ${env} mode`);
 
         // Graceful shutdown
         process.on('SIGINT', async () => {
@@ -70,6 +91,13 @@ export const connectDatabase = async (logger: winston.Logger) => {
 
     } catch (error) {
         logger.error('Error connecting to MongoDB:', error);
-        process.exit(1);
+        if (env === 'development') {
+            logger.info('Development mode: Please ensure MongoDB is running locally or provide a valid MONGODB_URI');
+            logger.info('You can:');
+            logger.info('1. Install and start MongoDB locally');
+            logger.info('2. Use MongoDB Atlas (https://www.mongodb.com/cloud/atlas)');
+            logger.info('3. Set MONGODB_URI in your .env file');
+        }
+        throw error;
     }
 }; 

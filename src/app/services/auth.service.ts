@@ -8,27 +8,28 @@ import { environment } from '../../environments/environment';
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import {
-  getAuth,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  sendPasswordResetEmail,
-  updateProfile,
-  onAuthStateChanged,
+  Auth,
   User as FirebaseUser,
   UserCredential,
-  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  getAuth,
+  onAuthStateChanged,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
   signInWithPopup,
+  signOut,
+  GoogleAuthProvider,
+  updateProfile,
+  signInWithRedirect,
   EmailAuthProvider,
   reauthenticateWithCredential,
-  updatePassword,
   updateEmail,
-  deleteUser,
-  sendEmailVerification,
-  signInWithRedirect,
+  updatePassword,
+  deleteUser
 } from 'firebase/auth';
 
-export interface User {
+export interface AppUser {
   id: string;
   email: string;
   firstName?: string;
@@ -60,7 +61,7 @@ interface PricingTier {
   providedIn: 'root'
 })
 export class AuthService {
-  private userSubject = new BehaviorSubject<User | null>(null);
+  private userSubject = new BehaviorSubject<AppUser | null>(null);
   private authStateSubject = new BehaviorSubject<boolean>(false);
   
   user$ = this.userSubject.asObservable();
@@ -91,8 +92,8 @@ export class AuthService {
     });
   }
 
-  // Convert Firebase user to our User model
-  private mapFirebaseUser(firebaseUser: FirebaseUser): User {
+  // Convert Firebase user to our AppUser model
+  private mapFirebaseUser(firebaseUser: FirebaseUser): AppUser {
     const names = firebaseUser.displayName?.split(' ') || ['', ''];
     
     return {
@@ -110,7 +111,7 @@ export class AuthService {
   }
 
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
-    // Map the Firebase user to our User model
+    // Map the Firebase user to our AppUser model
     const user = this.mapFirebaseUser(firebaseUser);
     
     try {
@@ -194,7 +195,7 @@ export class AuthService {
   }
 
   // Sign in with email and password
-  signIn(email: string, password: string): Promise<User> {
+  signIn(email: string, password: string): Promise<AppUser> {
     return signInWithEmailAndPassword(this.auth, email, password)
       .then((userCredential) => {
         return this.mapFirebaseUser(userCredential.user);
@@ -202,7 +203,7 @@ export class AuthService {
   }
 
   // Sign up with email and password
-  signUp(email: string, password: string, firstName: string, lastName: string): Promise<User> {
+  signUp(email: string, password: string, firstName: string, lastName: string): Promise<AppUser> {
     return createUserWithEmailAndPassword(this.auth, email, password)
       .then(async (userCredential) => {
         // Update the user profile with display name
@@ -219,7 +220,7 @@ export class AuthService {
   }
 
   // Sign in with Google
-  signInWithGoogle(): Promise<User> {
+  signInWithGoogle(): Promise<AppUser> {
     const provider = new GoogleAuthProvider();
     
     // Add scopes for better profile access

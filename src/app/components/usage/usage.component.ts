@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { CommonModule } from '@angular/common';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
 
 interface UsageLimits {
   status: 'trial' | 'active' | 'cancelled';
@@ -26,7 +29,12 @@ interface UsageLimits {
 @Component({
   selector: 'app-usage',
   standalone: true,
-  imports: [CommonModule],
+  imports: [
+    CommonModule,
+    MatProgressBarModule,
+    MatButtonModule,
+    MatCardModule
+  ],
   template: `
     <div class="usage-container p-4">
       <div class="mb-4">

@@ -1,4 +1,6 @@
 import { Component, ElementRef, ViewChild, NgZone, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subscription, timer } from 'rxjs';
@@ -198,7 +200,9 @@ import { AuthStateService } from '../services/auth-state.service';
         justify-content: center;
       }
     }
-  `]
+  `],
+  standalone: true,
+  imports: [CommonModule, RouterModule]
 })
 export class AuthButtonsComponent implements OnInit, OnDestroy {
   @ViewChild('signInButton') signInButton!: ElementRef;

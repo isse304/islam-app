@@ -1,36 +1,19 @@
-import { Component, OnInit } from '@angular/core';
-import { FirebaseAuthService } from './services/firebase-auth.service';
-import { Router } from '@angular/router';
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
+import { HeaderComponent } from './components/header/header.component';
 
 @Component({
   selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule,
+    HeaderComponent
+  ]
 })
-export class AppComponent implements OnInit {
+export class AppComponent {
   title = 'IslamApp';
-  isLoading = false;
-
-  constructor(
-    private authService: FirebaseAuthService,
-    private router: Router
-  ) {}
-
-  ngOnInit() {
-    // Check for redirect result from Google auth
-    this.handleAuthRedirect();
-  }
-
-  private async handleAuthRedirect() {
-    try {
-      const result = await this.authService.handleRedirectResult();
-      if (result && result.user) {
-        console.log('Successfully signed in after redirect');
-        // Navigate to home or saved route
-        this.authService.navigateToSavedRoute();
-      }
-    } catch (error) {
-      console.error('Error handling auth redirect:', error);
-    }
-  }
 }

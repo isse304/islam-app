@@ -2,12 +2,23 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DuaService, Dua, DuaCategory } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SubscriptionService } from '../../services/subscription.service';
 import { DuaInsightsComponent } from '../dua-insights/dua-insights.component';
+import { DuaTafsirComponent } from './dua-tafsir.component';
 import { AuthStateService } from '../../services/auth-state.service';
 import { firstValueFrom } from 'rxjs';
 import { first } from 'rxjs/operators';
+import { FormsModule } from '@angular/forms';
+import { MatButtonModule } from '@angular/material/button';
+import { MatCardModule } from '@angular/material/card';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatIconModule } from '@angular/material/icon';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
 interface EmotionalDuaResponse {
   duas: Dua[];
@@ -17,7 +28,24 @@ interface EmotionalDuaResponse {
 @Component({
     selector: 'app-dua',
     templateUrl: './dua.component.html',
-    styleUrls: ['./dua.component.css']
+    styleUrls: ['./dua.component.css'],
+    standalone: true,
+    imports: [
+        CommonModule,
+        FormsModule,
+        RouterModule,
+        MatButtonModule,
+        MatCardModule,
+        MatChipsModule,
+        MatIconModule,
+        MatInputModule,
+        MatProgressSpinnerModule,
+        MatFormFieldModule,
+        MatSelectModule,
+        MatTooltipModule,
+        DuaInsightsComponent,
+        DuaTafsirComponent
+    ]
 })
 export class DuaComponent implements OnInit, OnDestroy {
   selectedCategory: DuaCategory | null = null;

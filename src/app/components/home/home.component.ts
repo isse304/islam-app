@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 
 @Component({
   selector: 'app-home',
@@ -179,7 +181,12 @@ import { Component } from '@angular/core';
         </footer>
       </div>
     </div>
-  `
+  `,
+  standalone: true,
+  imports: [
+    CommonModule,
+    RouterModule
+  ]
 })
 export class HomeComponent {
   currentYear = new Date().getFullYear();
