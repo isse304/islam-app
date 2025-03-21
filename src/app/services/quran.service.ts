@@ -201,83 +201,9 @@ export class QuranService {
   };
   
   readonly reciters = [
-    { 
-      id: 7, 
-      name: 'Mishary Rashid Alafasy', 
-      identifier: 'Alafasy_128kbps',
-      surahIdentifier: 'mishaari_raashid_al_3afaasee',
-      style: 'Murattal' 
-    },
-    { 
-      id: 1, 
-      name: 'Abdul Basit', 
-      identifier: 'Abdul_Basit_Murattal_192kbps',
-      surahIdentifier: 'abdul_basit_murattal',
-      style: 'Murattal' 
-    },
-    { 
-      id: 2, 
-      name: 'Al-Hudhaify', 
-      identifier: 'Hudhaify_128kbps',
-      surahIdentifier: 'hudhaify',
-      style: 'Murattal' 
-    },
-    { 
-      id: 3, 
-      name: 'Mahmoud Khalil Al-Husary', 
-      identifier: 'Husary_128kbps',
-      surahIdentifier: 'mahmood_khaleel_al-husaree_iza3a',
-      style: 'Murattal' 
-    },
-    { 
-      id: 4, 
-      name: 'Saad Al-Ghamdi', 
-      identifier: 'Ghamadi_40kbps',
-      surahIdentifier: 'sa3d_al-ghaamidi',
-      style: 'Murattal' 
-    },
-    { 
-      id: 5, 
-      name: 'Muhammad Ayyub', 
-      identifier: 'Ayyub_128kbps',
-      surahIdentifier: 'muhammad_ayyoob',
-      style: 'Murattal' 
-    },
-    { 
-      id: 6, 
-      name: 'Abu Bakr Al-Shatri', 
-      identifier: 'Shatri_128kbps',
-      surahIdentifier: 'abu_bakr_ash-shaatree',
-      style: 'Murattal' 
-    },
-    { 
-      id: 8, 
-      name: 'Ahmed Al-Ajmy', 
-      identifier: 'ahmed_ibn_3ali_al-3ajamy',
-      surahIdentifier: 'ahmed_ibn_3ali_al-3ajamy',
-      style: 'Murattal' 
-    },
-    { 
-      id: 9, 
-      name: 'Abdullah Basfar', 
-      identifier: 'Abdullah_Basfar_192kbps',
-      surahIdentifier: 'abdullaah_basfar',
-      style: 'Murattal' 
-    },
-    { 
-      id: 10, 
-      name: 'Abdullah Matroud', 
-      identifier: 'Abdullah_Matroud_128kbps',
-      surahIdentifier: 'abdullah_matroud',
-      style: 'Murattal' 
-    },
-    { 
-      id: 11, 
-      name: 'Abdurrahman Sudais', 
-      identifier: 'Abdurrahman_Sudais_192kbps',
-      surahIdentifier: 'abdurrahmaan_as-sudais',
-      style: 'Murattal' 
-    }
+    { id: 1, name: 'Mishary Alafasy', identifier: 'ar.alafasy', surahIdentifier: 'ar.alafasy', style: 'Murattal' },
+    { id: 2, name: 'Abdul Basit', identifier: 'ar.abdulbasitmurattal', surahIdentifier: 'ar.abdulbasitmurattal', style: 'Murattal' },
+    { id: 3, name: 'Saood Shuraim', identifier: 'ar.saoodshuraym', surahIdentifier: 'ar.saudalshuraim', style: 'Murattal' }
   ];
 
   readonly translations = [
@@ -326,34 +252,56 @@ export class QuranService {
     }
   }
 
-  getSurah(surahNumber: number, translationId: string = '131'): Observable<QuranVerse[]> {
-    const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,translation,transliteration&translation_fields=text&translations=${translationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
+  getSurah(surahNumber: number, translationId: string = '131', reciterId: number = 1): Observable<QuranVerse[]> {
+    // Ensure the translationId is a string
+    const safeTranslationId = String(translationId);
+    console.log(`QuranService: Getting surah ${surahNumber} with translation ID: "${safeTranslationId}" and reciter ID: ${reciterId}`);
+    
+    const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,translation,transliteration&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
+    
+    console.log(`QuranService: API URL: ${quranComUrl}`);
     
     return this.http.get(quranComUrl).pipe(
       map((response: any) => {
         if (!response?.verses) {
+          console.error('QuranService: Invalid response format - missing verses property');
           throw new Error('Invalid response format');
         }
+        
+        console.log(`QuranService: Received ${response.verses.length} verses from API`);
+        
+        if (response.verses.length > 0) {
+          const firstVerse = response.verses[0];
+          console.log(`QuranService: First verse translations array:`, firstVerse.translations);
+          
+          if (!firstVerse.translations || firstVerse.translations.length === 0) {
+            console.error('QuranService: No translations received in response');
+          }
+        }
+        
         return response.verses.map((verse: any) => {
           if (!verse.translations?.[0]?.text) {
-            console.error('Missing translation for verse:', verse.verse_number);
+            console.error(`QuranService: Missing translation for verse ${verse.verse_number}`);
           }
-          return {
+          
+          const mappedVerse = {
             number: verse.verse_number,
             text: verse.text_uthmani,
             translation: verse.translations?.[0]?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || 'Translation not available',
             transliteration: verse.words?.map((word: any) => word.transliteration?.text || '').join(' ') || '',
-            audio: `${surahNumber}:${verse.verse_number}`,
+            audio: this.getVerseAudioUrl(reciterId, `${surahNumber}:${verse.verse_number}`),
             words: verse.words?.map((word: any) => ({
               text: word.text_uthmani || '',
               translation: word.translation?.text || '',
               transliteration: word.transliteration?.text || ''
             })) || []
           };
+          
+          return mappedVerse;
         });
       }),
       catchError(error => {
-        console.error('Error fetching surah:', error);
+        console.error('QuranService: Error fetching surah:', error);
         throw error;
       })
     );
@@ -453,20 +401,15 @@ export class QuranService {
         ? this.reciters.find(r => r.id === reciterId)
         : this.reciters.find(r => r.identifier === reciterId);
         
-      let reciterIdentifier: string;
-      
       if (!reciter) {
-        reciterIdentifier = 'Alafasy_128kbps';
-      } else {
-        reciterIdentifier = reciter.identifier || 'Alafasy_128kbps';
+        console.error('Reciter not found:', reciterId);
+        return '';
       }
-      
+
       // Format surah and verse for the URL
       const [surah, verse] = verseKey.split(':').map(part => part.trim());
-      const formattedSurah = surah.padStart(3, '0');
-      const formattedVerse = verse.padStart(3, '0');
       
-      // Validate the URL by checking if the surah and verse are valid numbers
+      // Validate the numbers
       const surahNum = parseInt(surah, 10);
       const verseNum = parseInt(verse, 10);
       
@@ -475,10 +418,26 @@ export class QuranService {
         return '';
       }
 
-      // Primary URL using Islamic Network CDN
-      const primaryUrl = `https://cdn.islamic.network/quran/audio/128/${reciterIdentifier}/${formattedSurah}${formattedVerse}.mp3`;
+      // Calculate global ayah number for the Islamic Network CDN
+      const ayahNumber = this.calculateGlobalAyahNumber(surahNum, verseNum);
       
-      return primaryUrl;
+      // Get the correct bitrate for the reciter
+      let bitrate = '128';
+      switch (reciter.identifier) {
+        case 'ar.abdulbasitmurattal':
+          bitrate = '192';
+          break;
+        case 'ar.saoodshuraym':
+          bitrate = '64';
+          break;
+        default:
+          bitrate = '128';
+      }
+      
+      // Use Islamic Network CDN with the correct bitrate
+      const url = `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter.identifier}/${ayahNumber}.mp3`;
+      //console.log('Generated audio URL:', url);
+      return url;
     } catch (error) {
       console.error('Error generating verse audio URL:', error);
       return '';
@@ -486,32 +445,33 @@ export class QuranService {
   }
 
   getSurahAudioUrl(surahNumber: number, reciterId: number): string {
-    // Find reciter by ID
-    const reciter = this.reciters.find(r => r.id === reciterId);
-    
-    if (!reciter) {
-      return this.getSurahAudioUrl(surahNumber, 7); // Default to Alafasy
-    }
-    
-    // Validate surah number
-    if (surahNumber < 1 || surahNumber > 114) {
-      console.error('Invalid surah number:', surahNumber);
+    try {
+      // Find reciter by ID
+      const reciter = this.reciters.find(r => r.id === reciterId);
+      
+      if (!reciter) {
+        console.error('Reciter not found:', reciterId);
+        return '';
+      }
+      
+      // Validate surah number
+      if (surahNumber < 1 || surahNumber > 114) {
+        console.error('Invalid surah number:', surahNumber);
+        return '';
+      }
+      
+      // All reciters use 128 kbps for full surah playback
+      const bitrate = '128';
+      
+      // For full surah, use surahIdentifier instead of identifier for Shuraim
+      const identifier = reciter.id === 3 ? reciter.surahIdentifier : reciter.identifier;
+      
+      // Use Islamic Network CDN with the correct bitrate
+      return `https://cdn.islamic.network/quran/audio-surah/${bitrate}/${identifier}/${surahNumber}.mp3`;
+    } catch (error) {
+      console.error('Error generating surah audio URL:', error);
       return '';
     }
-    
-    // Format surah number for URL
-    const formattedSurah = surahNumber.toString().padStart(3, '0');
-    
-    // Primary URL using Islamic Network CDN
-    const primaryUrl = `https://cdn.islamic.network/quran/audio-surah/128/${reciter.identifier}/${formattedSurah}.mp3`;
-    
-    // Fallback URLs in case primary fails
-    const fallbackUrls = [
-      `https://download.quranicaudio.com/quran/${reciter.surahIdentifier}/${formattedSurah}.mp3`,
-      `https://verse.mp3quran.net/arabic/mishary_alafasy/${formattedSurah}.mp3`
-    ];
-    
-    return primaryUrl;
   }
 
   // Optional: If you want to fetch actual word-by-word translations later
@@ -857,5 +817,19 @@ export class QuranService {
     
     const surah = this.surahs.find(s => s.number === surahNumber);
     return surah ? surah.name : '';
+  }
+
+  // Add this helper method to calculate global ayah number
+  private calculateGlobalAyahNumber(surah: number, ayah: number): number {
+    // Verse counts for each surah (1-based indexing)
+    const verseCounts = [7,286,200,176,120,165,206,75,129,109,123,111,43,52,99,128,111,110,98,135,112,78,118,64,77,227,93,88,69,60,34,30,73,54,45,83,182,88,75,85,54,53,89,59,37,35,38,29,18,45,60,49,62,55,78,96,29,22,24,13,14,11,11,18,12,12,30,52,52,44,28,28,20,56,40,31,50,40,46,42,29,19,36,25,22,17,19,26,30,20,15,21,11,8,8,19,5,8,8,11,11,8,3,9,5,4,7,3,6,3,5,4,5,6];
+    
+    // Calculate the global ayah number
+    let globalAyah = ayah;
+    for (let i = 0; i < surah - 1; i++) {
+      globalAyah += verseCounts[i];
+    }
+    
+    return globalAyah;
   }
 }

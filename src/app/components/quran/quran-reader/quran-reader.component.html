@@ -28,7 +28,7 @@
           
           <!-- Surah Suggestions -->
           <div *ngFor="let suggestion of searchSuggestions" 
-               (click)="suggestion.type === 'surah' && suggestion.number ? selectSurah(suggestion.number) : goToVerse(+suggestion.surahNumber!, +suggestion.verseNumber!)"
+               (click)="suggestion.type === 'surah' && suggestion.number ? selectSurah(suggestion.number) : goToVerse(+suggestion.verseNumber!, +suggestion.surahNumber!)"
                class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
             
             <!-- Surah Result -->
@@ -77,23 +77,35 @@
         <!-- Translation Selection -->
         <div class="space-y-3">
           <label class="text-gray-700 font-medium block">Translation</label>
-          <select [(ngModel)]="selectedTranslation"
-                  (ngModelChange)="selectTranslation($event)"
-                  class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-            <option *ngFor="let trans of quranService.translations" [value]="trans.id">
-              {{trans.name}}
-            </option>
-          </select>
+          <div class="relative">
+            <select [(ngModel)]="selectedTranslation"
+                    (ngModelChange)="selectTranslation($event)"
+                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
+                    [disabled]="isLoading">
+              <option *ngFor="let trans of quranService.translations" 
+                     [value]="trans.id.toString()">
+                {{trans.name}}
+              </option>
+            </select>
+            <!-- Loading spinner -->
+            <div *ngIf="isLoading" class="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <div class="animate-spin rounded-full h-4 w-4 border-2 border-[#B7A57A] border-t-transparent"></div>
+            </div>
+          </div>
+          <!-- Debug Display -->
+          <!-- <div class="text-xs text-gray-500 mt-1">
+            Current translation: {{selectedTranslation}}
+          </div> -->
         </div>
 
         <!-- Reciter Selection -->
         <div class="space-y-2">
           <label class="text-gray-700 font-medium block">Reciter</label>
-          <select [(ngModel)]="selectedReciter"
-                  (ngModelChange)="selectReciter($event)"
+          <select [(ngModel)]="selectedReciter.id"
+                  (change)="onReciterChange($event)"
                   class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-            <option *ngFor="let reciter of quranService.reciters" [ngValue]="reciter">
-              {{reciter.name}} ({{reciter.style}})
+            <option *ngFor="let reciter of reciters" [value]="reciter.id">
+              {{reciter.name}}
             </option>
           </select>
         </div>
@@ -102,7 +114,7 @@
         <div class="space-y-2">
           <label class="text-gray-700 font-medium block">Tafsir</label>
           <select [(ngModel)]="selectedTafsir"
-                  (ngModelChange)="selectTafsir($event)"
+                  (ngModelChange)="selectedTafsir = $event"
                   class="w-full rounded-lg border-gray-300 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
             <option value="en.tafsir-ibn-kathir">Ibn Kathir (English)</option>
             <option value="ar.tafsir-ibn-kathir">Ibn Kathir (Arabic)</option>

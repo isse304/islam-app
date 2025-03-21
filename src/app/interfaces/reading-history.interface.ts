@@ -1,5 +1,12 @@
-export interface ReadingHistoryEntry {
+export interface ReadingHistory {
   surah: number;
   verse: number;
-  timestamp: string | Date;
+  timestamp: Date;
+  userId: string;
+}
+
+export interface ReadingHistoryResponse {
+  success: boolean;
+  message?: string;
+  history: ReadingHistory[];
 } 

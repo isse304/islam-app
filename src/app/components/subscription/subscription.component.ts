@@ -18,7 +18,22 @@ declare const Stripe: any;
 interface SubscriptionStatus {
   status: 'trialing' | 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'free';
   plan: 'free' | 'standard' | 'premium';
-  currentPeriodEnd: Date | null;
+  currentPeriodEnd?: Date | null;
+  features?: {
+    aiChat: boolean;
+    tafsirAccess: boolean;
+    wordByWord: boolean;
+  };
+}
+
+interface SubscriptionResponse {
+  status: 'trialing' | 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'free';
+  plan: 'free' | 'standard' | 'premium';
+  features?: {
+    aiChat: boolean;
+    tafsirAccess: boolean;
+    wordByWord: boolean;
+  };
 }
 
 @Component({
@@ -41,6 +56,7 @@ export class SubscriptionComponent implements OnInit {
   subscriptionStatus?: SubscriptionStatus;
   feature?: string;
   isLoading = false;
+  loadError: string | null = null;
 
   constructor(
     private stripeService: StripeService,
@@ -52,7 +68,15 @@ export class SubscriptionComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    this.stripe = Stripe(environment.stripeConfig.publishableKey);
+    // Initialize Stripe immediately
+    try {
+      this.stripe = Stripe(environment.stripeConfig.publishableKey);
+    } catch (error) {
+      console.error('Error initializing Stripe:', error);
+      this.loadError = 'Failed to initialize payment system';
+    }
+
+    // Load subscription status with timeout
     this.loadSubscriptionStatus();
     
     // Get feature from URL query params
@@ -63,17 +87,41 @@ export class SubscriptionComponent implements OnInit {
 
   private async loadSubscriptionStatus() {
     try {
-      const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
+      // Set loading state
+      this.isLoading = true;
+      this.loadError = null;
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 10000);
+      });
+
+      // Race between actual request and timeout
+      const response = await Promise.race([
+        firstValueFrom(this.stripeService.getSubscriptionStatus()),
+        timeoutPromise
+      ]) as SubscriptionResponse;
+
       this.subscriptionStatus = {
         status: response.status === 'canceled' ? 'canceled' : 
                response.status === 'trialing' ? 'trialing' : 
                response.status as SubscriptionStatus['status'],
         plan: response.plan,
-        currentPeriodEnd: response.currentPeriodEnd ? new Date(response.currentPeriodEnd) : null
+        features: response.features
       };
     } catch (error) {
-      this.snackBar.open('Failed to load subscription status', 'Close', { duration: 5000 });
+      console.error('Error loading subscription status:', error);
+      this.loadError = 'Failed to load subscription status. Please try again.';
+      this.snackBar.open(this.loadError, 'Close', { duration: 5000 });
+    } finally {
+      this.isLoading = false;
     }
+  }
+
+  // Add retry functionality
+  async retryLoad() {
+    this.loadError = null;
+    await this.loadSubscriptionStatus();
   }
 
   isFeatureHighlighted(category: string): boolean {
@@ -93,98 +141,68 @@ export class SubscriptionComponent implements OnInit {
     if (this.isLoading) return;
     this.isLoading = true;
     
-    console.log('Starting subscription process...');
-    
-    // Show immediate user feedback
-    this.snackBar.open('Starting trial activation process...', '', { duration: 1500 });
-
     try {
-      // OPTIMIZED: Skip health check in development mode to speed up process
-      if (environment.production) {
-        console.log('Testing API connectivity...');
-        const testUrl = `${environment.apiUrl}/api/health`;
-        const response = await fetch(testUrl, {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-        });
-        
-        if (response.status === 404 || response.status >= 500) {
-          console.warn('API health endpoint not available:', {
-            status: response.status,
-            statusText: response.statusText
-          });
-          
-          this.snackBar.open(
-            'Subscription service is currently unavailable. Please try again later.', 
-            'Close', 
-            { duration: 5000 }
-          );
-          return;
-        }
-      }
-      
-      // OPTIMIZED: Add timeout to prevent long requests
-      console.log('Creating checkout session with price ID:', environment.stripeConfig.priceId);
-      
+      // Show immediate user feedback
+      this.snackBar.open('Starting subscription process...', '', { duration: 1500 });
+
       // Create a timeout promise
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 5000)
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
       );
       
-      // Use Promise.race to implement timeout
+      // Race between actual request and timeout
       const response = await Promise.race([
         firstValueFrom(this.stripeService.createCheckoutSession(environment.stripeConfig.priceId)),
         timeoutPromise
       ]) as { url: string };
       
-      console.log('Checkout session response:', response);
-      
       if (response?.url) {
-        console.log('Redirecting to checkout URL:', response.url);
-        
-        // OPTIMIZED: Handle development mode faster
+        // Handle development mode
         if (response.url.includes('mock-success') || response.url.includes('dev=true')) {
-          console.log('Development mode detected, simulating successful subscription');
-          
-          // In dev mode, update user preferences locally to enable features immediately
-          const authService = this.authService || this.firebaseAuthService;
-          if (authService) {
-            try {
-              await authService.updateUserPreferences({
-                subscriptionStatus: 'trial'
-              });
-              this.snackBar.open('Trial activated in development mode!', 'Close', { duration: 3000 });
-              
-              // Delay to show message before redirecting
-              setTimeout(() => {
-                this.router.navigate(['/dashboard']);
-              }, 1000);
-              return;
-            } catch (err) {
-              console.error('Error updating local subscription status:', err);
-            }
-          }
+          await this.handleDevModeSuccess();
+          return;
         }
         
         await this.stripeService.redirectToCheckout(response.url);
       } else {
-        console.error('No checkout URL received in response:', response);
         throw new Error('No checkout URL received');
       }
     } catch (error) {
-      console.error('Error starting subscription:', error);
-      
-      // Check if this is a timeout error
-      let errorMessage = 'Failed to start subscription process. Please try again later.';
-      if (error instanceof Error && error.message === 'Request timeout') {
-        errorMessage = 'Request timed out. This might mean your server is running slowly. Try again or contact support.';
-      }
-      
-      this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
+      this.handleSubscriptionError(error);
     } finally {
       this.isLoading = false;
     }
+  }
+
+  private async handleDevModeSuccess() {
+    console.log('Development mode detected, simulating successful subscription');
+    
+    const authService = this.authService || this.firebaseAuthService;
+    if (authService) {
+      try {
+        await authService.updateUserPreferences({
+          subscriptionStatus: 'trial'
+        });
+        this.snackBar.open('Trial activated in development mode!', 'Close', { duration: 3000 });
+        
+        setTimeout(() => {
+          this.router.navigate(['/dashboard']);
+        }, 1000);
+      } catch (err) {
+        console.error('Error updating local subscription status:', err);
+        this.handleSubscriptionError(err);
+      }
+    }
+  }
+
+  private handleSubscriptionError(error: any) {
+    console.error('Error in subscription process:', error);
+    
+    let errorMessage = 'Failed to start subscription process. Please try again later.';
+    if (error instanceof Error && error.message === 'Request timeout') {
+      errorMessage = 'Request timed out. Please try again or contact support.';
+    }
+    
+    this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
   }
 } 

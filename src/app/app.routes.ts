@@ -8,7 +8,6 @@ import { UsageComponent } from './components/usage/usage.component';
 import { SubscriptionComponent } from './components/subscription/subscription.component';
 import { ContactComponent } from './components/contact/contact.component';
 import { authRoutes } from './auth/auth.module';
-
 export const routes: Routes = [
   { path: '', component: HomeComponent },
   { path: 'quran', component: QuranReaderComponent },

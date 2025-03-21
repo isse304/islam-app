@@ -37,7 +37,11 @@ export class PremiumGuard implements CanActivate {
       await this.authService.isPremiumUser();
     
     if (!isPremium) {
-      this.router.navigate(['/pricing']);
+      // Save the attempted URL to redirect back after subscription
+      const returnUrl = state.url;
+      this.router.navigate(['/premium'], { 
+        queryParams: { returnUrl }
+      });
       return false;
     }
     

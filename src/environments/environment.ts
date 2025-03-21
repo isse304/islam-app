@@ -25,5 +25,5 @@ export const environment: Environment = {
     priceId: 'price_1R1TPjGYeNehzlUZi71dNilr'
   },
   // List of admin user IDs (moved from .env to environment.ts for client-side access)
-  adminUsers: ['9XOc3JIUgPhjB2V6WEYGbUOasmD2']
+  adminUsers: ['test-admin-user']
 }; 

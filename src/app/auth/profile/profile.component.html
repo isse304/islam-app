@@ -1,261 +1,344 @@
-<div class="profile-page-container">
-  <div class="profile-header">
-    <h1>Your Profile</h1>
+<div class="min-h-screen bg-[#FAF3E0]">
+  <!-- Header -->
+  <div class="bg-[#B7A57A] text-white py-12 px-4 shadow-lg">
+    <div class="container mx-auto text-center">
+      <h1 class="text-4xl font-bold mb-2">Your Profile</h1>
+      <p class="text-white/90 text-lg">Manage your Quran reading preferences and history</p>
+    </div>
   </div>
 
-  <div class="loading-container" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
-    <p>Loading your profile information...</p>
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="container mx-auto px-4 py-8 flex justify-center items-center min-h-[60vh]">
+    <div class="text-center">
+      <mat-spinner diameter="50" class="mx-auto mb-4"></mat-spinner>
+      <p class="text-gray-600">Loading your profile information...</p>
+    </div>
   </div>
 
-  <div class="profile-content" *ngIf="!isLoading">
-    <mat-tab-group animationDuration="300ms" class="profile-tabs">
-     
+  <!-- Main Content -->
+  <div class="container mx-auto px-4 py-8" *ngIf="!isLoading">
+    <mat-tab-group animationDuration="300ms" class="bg-white rounded-xl shadow-lg overflow-hidden">
       <!-- Reading Preferences Tab -->
-      <mat-tab label="Reading Preferences">
-        <div class="tab-content">
-          <mat-card class="profile-card">
-            <mat-card-header>
-              <mat-card-title>Quran Reading Settings</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <form [formGroup]="preferencesForm" (ngSubmit)="savePreferences()">
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Reciter</mat-label>
-                    <mat-select formControlName="selectedReciter">
-                      <mat-option *ngFor="let reciter of reciters" [value]="reciter.id">
-                        {{reciter.name}}
-                      </mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-                
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Translation</mat-label>
-                    <mat-select formControlName="selectedTranslation">
-                      <mat-option *ngFor="let translation of translations" [value]="translation.id">
-                        {{translation.name}}
-                      </mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                </div>
-                
-                <div class="form-row preferences-slider">
-                  <label>Font Size: {{preferencesForm.get('fontSize')?.value}}px</label>
-                  <mat-slider min="14" max="36" step="1" discrete [displayWith]="formatLabel">
-                    <input matSliderThumb formControlName="fontSize">
-                  </mat-slider>
-                </div>
-                
-                <div class="form-row toggle-row">
-                  <mat-slide-toggle formControlName="showWordByWord" color="primary">
-                    Show Word-by-Word Translation
-                  </mat-slide-toggle>
-                </div>
-                
-                <div class="form-row toggle-row">
-                  <mat-slide-toggle formControlName="darkMode" color="primary">
-                    Dark Mode
-                  </mat-slide-toggle>
-                </div>
-                
-                <div class="form-actions">
-                  <button mat-raised-button color="primary" type="submit" [disabled]="preferencesForm.invalid || isSavingPrefs">
-                    <mat-spinner diameter="20" *ngIf="isSavingPrefs"></mat-spinner>
-                    <span *ngIf="!isSavingPrefs">Save Preferences</span>
-                  </button>
-                </div>
-              </form>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </mat-tab>
-      
-      <!-- Bookmarks Tab -->
-      <mat-tab label="Bookmarks">
-        <div class="tab-content">
-          <mat-card class="profile-card">
-            <mat-card-header>
-              <mat-card-title>Your Bookmarks</mat-card-title>
-              <mat-card-subtitle *ngIf="bookmarks.length > 0">
-                Your saved verses for quick access
-              </mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="empty-state" *ngIf="bookmarks.length === 0">
-                <mat-icon class="empty-icon">bookmark_border</mat-icon>
-                <p>You don't have any bookmarks yet.</p>
-                <p>Add a bookmark while reading the Quran to see it here.</p>
-              </div>
-              
-              <div class="bookmark-list" *ngIf="bookmarks.length > 0">
-                <div class="bookmark-item" *ngFor="let bookmark of bookmarks">
-                  <div class="bookmark-details">
-                    <span class="bookmark-title">{{getFullSurahName(bookmark.split(':')[0])}}</span>
-                    <span class="bookmark-verse">Verse {{bookmark.split(':')[1]}}</span>
-                  </div>
-                  <div class="bookmark-actions">
-                    <button mat-icon-button color="primary" (click)="goToVerse(bookmark)" matTooltip="Go to this verse">
-                      <mat-icon>visibility</mat-icon>
-                    </button>
-                    <button mat-icon-button color="warn" (click)="removeBookmark(bookmark)" matTooltip="Remove bookmark">
-                      <mat-icon>delete</mat-icon>
-                    </button>
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <div class="flex items-center gap-2 py-2">
+            <mat-icon class="text-[#B7A57A]">settings</mat-icon>
+            <span>Reading Preferences</span>
+          </div>
+        </ng-template>
+        
+        <div class="p-6">
+          <form [formGroup]="preferencesForm" (ngSubmit)="savePreferences()" class="max-w-2xl mx-auto">
+            <div class="space-y-6">
+              <!-- Reciter Selection -->
+              <div class="form-group">
+                <label class="block text-gray-700 mb-2 font-medium">Select Reciter</label>
+                <div class="relative">
+                  <select formControlName="selectedReciter" [compareWith]="compareById"
+                          class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#B7A57A] focus:ring-0 bg-white appearance-none cursor-pointer">
+                    <option *ngFor="let reciter of reciters" [value]="reciter.id">
+                      {{reciter.name}}
+                    </option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <mat-icon class="text-gray-500">expand_more</mat-icon>
                   </div>
                 </div>
               </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </mat-tab>
-      
-      <!-- Reading History Tab -->
-      <mat-tab label="Reading History">
-        <div class="tab-content">
-          <mat-card class="profile-card">
-            <mat-card-header>
-              <mat-card-title>Your Reading History</mat-card-title>
-              <mat-card-subtitle *ngIf="readingHistory!.length > 0">
-                Continue where you left off
-              </mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="empty-state" *ngIf="readingHistory!.length === 0">
-                <mat-icon class="empty-icon">history</mat-icon>
-                <p>No reading history yet.</p>
-                <p>Your recent reading activity will appear here.</p>
-              </div>
-              
-              <div class="history-list" *ngIf="readingHistory!.length > 0">
-                <div class="history-item" *ngFor="let entry of readingHistory">
-                  <div class="history-details">
-                    <div class="history-main-info">
-                      <span class="history-title">{{getFullSurahName(entry.surah)}}</span>
-                      <span class="history-verse">Verse {{entry.verse}}</span>
-                    </div>
-                    <span class="history-time">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
-                  </div>
-                  <div class="history-actions">
-                    <button mat-icon-button color="primary" (click)="goToHistoryEntry(entry)" matTooltip="Continue reading">
-                      <mat-icon>play_arrow</mat-icon>
-                    </button>
+
+              <!-- Translation Selection -->
+              <div class="form-group">
+                <label class="block text-gray-700 mb-2 font-medium">Select Translation</label>
+                <div class="relative">
+                  <select formControlName="selectedTranslation"
+                          class="w-full px-4 py-3 rounded-lg border-2 border-gray-200 focus:border-[#B7A57A] focus:ring-0 bg-white appearance-none cursor-pointer">
+                    <option *ngFor="let translation of translations" [value]="translation.id">
+                      {{translation.name}}
+                    </option>
+                  </select>
+                  <div class="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none">
+                    <mat-icon class="text-gray-500">expand_more</mat-icon>
                   </div>
                 </div>
               </div>
-              
-              <div class="clear-history" *ngIf="readingHistory!.length > 0">
-                <button mat-button color="warn" (click)="clearHistory()">
-                  <mat-icon>delete_sweep</mat-icon> Clear History
+
+              <!-- Save Button -->
+              <div class="flex justify-end">
+                <button mat-raised-button type="submit" 
+                        [disabled]="preferencesForm.invalid || isSavingPrefs"
+                        class="bg-[#B7A57A] hover:bg-[#9b8a65] text-white px-8 py-3 rounded-lg transition-colors">
+                  <mat-spinner diameter="20" *ngIf="isSavingPrefs"></mat-spinner>
+                  <span *ngIf="!isSavingPrefs">Save Preferences</span>
                 </button>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </form>
         </div>
       </mat-tab>
-       <!-- Account Tab -->
-       <mat-tab label="Account">
-        <div class="tab-content">
-          <mat-card class="profile-card">
-            <mat-card-header>
-              <mat-card-title>Personal Information</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
+
+      <!-- Bookmarks Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <div class="flex items-center gap-2 py-2">
+            <mat-icon class="text-[#B7A57A]">bookmark</mat-icon>
+            <span>Bookmarks</span>
+          </div>
+        </ng-template>
+
+        <div class="p-6">
+          <!-- Empty State -->
+          <div *ngIf="bookmarks.length === 0" class="text-center py-12">
+            <mat-icon class="text-[#B7A57A] text-6xl mb-4">bookmark_border</mat-icon>
+            <h3 class="text-xl font-semibold mb-2">No Bookmarks Yet</h3>
+            <p class="text-gray-600">Add bookmarks while reading the Quran to save your favorite verses.</p>
+          </div>
+
+          <!-- Bookmarks List -->
+          <div *ngIf="bookmarks.length > 0" class="space-y-4">
+            <div *ngFor="let bookmark of bookmarks" 
+                 class="bg-gray-50 rounded-lg p-4 flex items-center justify-between hover:bg-gray-100 transition-colors">
+              <div class="flex-1">
+                <h3 class="text-lg font-semibold text-[#B7A57A]">{{getFullSurahName(bookmark.split(':')[0])}}</h3>
+                <p class="text-gray-600">Verse {{bookmark.split(':')[1]}}</p>
+              </div>
+              <div class="flex gap-2">
+                <button mat-icon-button (click)="goToVerse(bookmark)" 
+                        class="text-[#B7A57A] hover:bg-[#B7A57A]/10"
+                        matTooltip="Go to verse">
+                  <mat-icon>visibility</mat-icon>
+                </button>
+                <button mat-icon-button (click)="removeBookmark(bookmark)"
+                        class="text-red-500 hover:bg-red-50"
+                        matTooltip="Remove bookmark">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Reading History Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <div class="flex items-center gap-2 py-2">
+            <mat-icon class="text-[#B7A57A]">history</mat-icon>
+            <span>Reading History</span>
+          </div>
+        </ng-template>
+
+        <div class="p-6">
+          <!-- Empty State -->
+          <div *ngIf="readingHistory!.length === 0" class="text-center py-12">
+            <mat-icon class="text-[#B7A57A] text-6xl mb-4">history</mat-icon>
+            <h3 class="text-xl font-semibold mb-2">No Reading History</h3>
+            <p class="text-gray-600">Your reading progress will appear here as you explore the Quran.</p>
+          </div>
+
+          <!-- History List -->
+          <div *ngIf="readingHistory!.length > 0" class="space-y-4">
+            <div *ngFor="let entry of readingHistory" 
+                 class="bg-gray-50 rounded-lg p-4 hover:bg-gray-100 transition-colors">
+              <div class="flex items-center justify-between">
+                <div class="flex-1">
+                  <h3 class="text-lg font-semibold text-[#B7A57A]">{{getFullSurahName(entry.surah)}}</h3>
+                  <div class="flex items-center gap-4">
+                    <p class="text-gray-600">Verse {{entry.verse}}</p>
+                    <span class="text-gray-400 text-sm">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
+                  </div>
+                </div>
+                <button mat-icon-button (click)="goToHistoryEntry(entry)"
+                        class="text-[#B7A57A] hover:bg-[#B7A57A]/10"
+                        matTooltip="Continue reading">
+                  <mat-icon>play_arrow</mat-icon>
+                </button>
+              </div>
+            </div>
+
+            <!-- Clear History Button -->
+            <div class="flex justify-end mt-6" *ngIf="readingHistory!.length > 0">
+              <button mat-stroked-button color="warn" (click)="clearHistory()"
+                      class="border-red-500 text-red-500 hover:bg-red-50">
+                <mat-icon class="mr-2">delete_sweep</mat-icon>
+                Clear History
+              </button>
+            </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- Account Tab -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <div class="flex items-center gap-2 py-2">
+            <mat-icon class="text-[#B7A57A]">person</mat-icon>
+            <span>Account</span>
+          </div>
+        </ng-template>
+
+        <div class="p-6">
+          <div class="max-w-2xl mx-auto space-y-6">
+            <!-- Personal Information -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+              <h2 class="text-xl font-semibold text-[#B7A57A] mb-4">Personal Information</h2>
               <form [formGroup]="profileForm" (ngSubmit)="updateProfile()">
-                <div class="form-row">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <mat-form-field appearance="outline">
                     <mat-label>First Name</mat-label>
-                    <input matInput formControlName="firstName" placeholder="First Name">
-                    <mat-error *ngIf="profileForm.get('firstName')?.hasError('required')">First name is required</mat-error>
+                    <input matInput formControlName="firstName">
+                    <mat-error *ngIf="profileForm.get('firstName')?.hasError('required')">
+                      First name is required
+                    </mat-error>
                   </mat-form-field>
-                </div>
-                
-                <div class="form-row">
+
                   <mat-form-field appearance="outline">
                     <mat-label>Last Name</mat-label>
-                    <input matInput formControlName="lastName" placeholder="Last Name">
-                    <mat-error *ngIf="profileForm.get('lastName')?.hasError('required')">Last name is required</mat-error>
+                    <input matInput formControlName="lastName">
+                    <mat-error *ngIf="profileForm.get('lastName')?.hasError('required')">
+                      Last name is required
+                    </mat-error>
                   </mat-form-field>
                 </div>
-                
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
-                    <mat-label>Email</mat-label>
-                    <input matInput formControlName="email" placeholder="Email">
-                  </mat-form-field>
-                </div>
-                
-                <div class="form-actions">
-                  <button mat-raised-button color="primary" type="submit" [disabled]="profileForm.invalid">
+
+                <mat-form-field appearance="outline" class="w-full">
+                  <mat-label>Email</mat-label>
+                  <input matInput formControlName="email" type="email">
+                </mat-form-field>
+
+                <div class="flex justify-end">
+                  <button mat-raised-button color="primary" type="submit"
+                          [disabled]="profileForm.invalid"
+                          class="bg-[#B7A57A] hover:bg-[#9b8a65] text-white">
                     Update Profile
                   </button>
                 </div>
               </form>
-            </mat-card-content>
-          </mat-card>
-          
-          <mat-card class="profile-card">
-            <mat-card-header>
-              <mat-card-title>Change Password</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
+            </div>
+
+            <!-- Change Password -->
+            <div class="bg-white rounded-lg shadow-sm border p-6">
+              <h2 class="text-xl font-semibold text-[#B7A57A] mb-4">Change Password</h2>
               <form [formGroup]="passwordForm" (ngSubmit)="changePassword()">
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
+                <div class="space-y-4">
+                  <mat-form-field appearance="outline" class="w-full">
                     <mat-label>Current Password</mat-label>
-                    <input matInput [type]="hideCurrentPassword ? 'password' : 'text'" formControlName="currentPassword">
-                    <button mat-icon-button matSuffix (click)="hideCurrentPassword = !hideCurrentPassword" type="button">
+                    <input matInput [type]="hideCurrentPassword ? 'password' : 'text'" 
+                           formControlName="currentPassword">
+                    <button mat-icon-button matSuffix type="button"
+                            (click)="hideCurrentPassword = !hideCurrentPassword">
                       <mat-icon>{{hideCurrentPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
                     </button>
-                    <mat-error *ngIf="passwordForm.get('currentPassword')?.hasError('required')">Current password is required</mat-error>
                   </mat-form-field>
-                </div>
-                
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
+
+                  <mat-form-field appearance="outline" class="w-full">
                     <mat-label>New Password</mat-label>
-                    <input matInput [type]="hideNewPassword ? 'password' : 'text'" formControlName="newPassword">
-                    <button mat-icon-button matSuffix (click)="hideNewPassword = !hideNewPassword" type="button">
+                    <input matInput [type]="hideNewPassword ? 'password' : 'text'"
+                           formControlName="newPassword">
+                    <button mat-icon-button matSuffix type="button"
+                            (click)="hideNewPassword = !hideNewPassword">
                       <mat-icon>{{hideNewPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
                     </button>
-                    <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('required')">New password is required</mat-error>
-                    <mat-error *ngIf="passwordForm.get('newPassword')?.hasError('minlength')">Password must be at least 6 characters</mat-error>
                   </mat-form-field>
-                </div>
-                
-                <div class="form-row">
-                  <mat-form-field appearance="outline">
+
+                  <mat-form-field appearance="outline" class="w-full">
                     <mat-label>Confirm Password</mat-label>
-                    <input matInput [type]="hideConfirmPassword ? 'password' : 'text'" formControlName="confirmPassword">
-                    <button mat-icon-button matSuffix (click)="hideConfirmPassword = !hideConfirmPassword" type="button">
+                    <input matInput [type]="hideConfirmPassword ? 'password' : 'text'"
+                           formControlName="confirmPassword">
+                    <button mat-icon-button matSuffix type="button"
+                            (click)="hideConfirmPassword = !hideConfirmPassword">
                       <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
                     </button>
-                    <mat-error *ngIf="passwordForm.get('confirmPassword')?.hasError('required')">Please confirm your password</mat-error>
                   </mat-form-field>
-                  <mat-error *ngIf="passwordForm.hasError('notMatching') && !passwordForm.get('confirmPassword')?.hasError('required')">
-                    Passwords don't match
-                  </mat-error>
                 </div>
-                
-                <div class="form-actions">
-                  <button mat-raised-button color="primary" type="submit" [disabled]="passwordForm.invalid || isChangingPassword">
+
+                <div class="flex justify-end mt-4">
+                  <button mat-raised-button color="primary" type="submit"
+                          [disabled]="passwordForm.invalid || isChangingPassword"
+                          class="bg-[#B7A57A] hover:bg-[#9b8a65] text-white">
                     <mat-spinner diameter="20" *ngIf="isChangingPassword"></mat-spinner>
                     <span *ngIf="!isChangingPassword">Change Password</span>
                   </button>
                 </div>
               </form>
-            </mat-card-content>
-          </mat-card>
-          
-          <div class="sign-out-container">
-            <button mat-raised-button color="warn" (click)="signOut()">
-              <mat-icon>exit_to_app</mat-icon> Sign Out
-            </button>
+            </div>
+
+            <!-- Sign Out Button -->
+            <div class="flex justify-center">
+              <button mat-raised-button color="warn" (click)="signOut()"
+                      class="bg-red-500 hover:bg-red-600 text-white px-8">
+                <mat-icon class="mr-2">exit_to_app</mat-icon>
+                Sign Out
+              </button>
+            </div>
           </div>
         </div>
       </mat-tab>
-      
     </mat-tab-group>
   </div>
-</div> 
+</div>
+
+<style>
+/* Custom styles for Material components */
+::ng-deep .mat-mdc-tab-group {
+  @apply rounded-xl overflow-hidden;
+}
+
+::ng-deep .mat-mdc-tab-header {
+  @apply bg-white border-b border-gray-200;
+}
+
+::ng-deep .mat-mdc-tab-label-active {
+  @apply text-[#B7A57A];
+}
+
+::ng-deep .mat-mdc-form-field-outline {
+  @apply border-gray-300;
+}
+
+::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-outline {
+  @apply border-[#B7A57A];
+}
+
+::ng-deep .mat-mdc-form-field.mat-focused .mat-mdc-form-field-outline-thick {
+  @apply border-[#B7A57A];
+}
+
+::ng-deep .mat-mdc-form-field .mat-mdc-form-field-flex:hover .mat-mdc-form-field-outline {
+  @apply opacity-100;
+}
+
+::ng-deep .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-outline-start,
+::ng-deep .mat-mdc-form-field-appearance-outline .mat-mdc-form-field-outline-end {
+  @apply border-gray-300;
+}
+
+::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused .mat-mdc-form-field-outline-start,
+::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused .mat-mdc-form-field-outline-end {
+  @apply border-[#B7A57A];
+}
+
+/* Remove blue focus ring from selects */
+select:focus {
+  @apply outline-none ring-0;
+}
+
+/* Animations */
+.bookmark-item, .history-item {
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.bookmark-item:hover, .history-item:hover {
+  @apply transform scale-[1.02];
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .container {
+    @apply px-4;
+  }
+  
+  .mat-mdc-tab-label {
+    @apply min-w-0;
+  }
+}
+</style> 

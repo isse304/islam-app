@@ -1,6 +1,9 @@
 import express, { Response, RequestHandler, Request, Router } from 'express';
 import OpenAI from 'openai';
 import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { UserUsage } from '../models/UserUsage';
 import { CacheService } from '../services/cache.service';
 import { CostMonitorService } from '../services/cost-monitor.service';
@@ -11,31 +14,25 @@ import { StripeService } from '../services/stripe.service';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
 import * as admin from 'firebase-admin';
 
+// ES Module path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+
 const router = Router();
+const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+
+// Initialize base services
 const cacheService = new CacheService();
 const emailService = new EmailService();
 const openAIService = new OpenAIService();
+const stripeService = new StripeService();
+const usageService = new UsageService(stripeService);
 const costMonitorService = new CostMonitorService(emailService);
 
-// Check for required Stripe environment variables
-const hasStripeConfig = process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID;
-if (!hasStripeConfig) {
-    console.warn('⚠️ Missing Stripe configuration. Using mock Stripe service in development mode.');
-    // Use dummy values in development
-    const dummyKey = 'sk_test_dummy';
-    const dummyPriceId = 'price_dummy';
-    const stripeService = new StripeService(
-        process.env.STRIPE_SECRET_KEY || dummyKey, 
-        process.env.STRIPE_PRICE_ID || dummyPriceId
-    );
-    var usageService = new UsageService(stripeService);
-} else {
-    const stripeService = new StripeService(process.env.STRIPE_SECRET_KEY!, process.env.STRIPE_PRICE_ID!);
-    var usageService = new UsageService(stripeService);
-}
-
 // Set default values for rate limiting in development mode
-const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 if (isDevelopment) {
     if (!process.env.RATE_LIMIT_WINDOW_MS) {
         process.env.RATE_LIMIT_WINDOW_MS = '900000';  // 15 minutes in milliseconds
@@ -65,7 +62,7 @@ router.use(limiter);
 
 // Initialize OpenAI with explicit API key
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY || 'sk-mock-key-for-development'
+    apiKey: process.env.OPENAI_API_KEY
 });
 
 // Helper function to estimate tokens
@@ -104,11 +101,11 @@ setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 // Protected route for AI generation
 router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.authData) {
+        if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
-        const userId = req.authData.userId;
+        const userId = req.auth.userId;
         
         // Get or create user usage record
         let userUsage = await UserUsage.findOne({ userId });
@@ -146,11 +143,11 @@ router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response): 
 // Get user's AI usage statistics
 router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.authData) {
+        if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
-        const userId = req.authData.userId;
+        const userId = req.auth.userId;
         
         // Get Firebase user claims for subscription status
         const userRecord = await admin.auth().getUser(userId);

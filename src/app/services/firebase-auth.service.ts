@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, from, throwError, switchMap, firstValueFrom } from 'rxjs';
-import { catchError, map, take, tap } from 'rxjs/operators';
+import { BehaviorSubject, Observable, of, from, throwError, switchMap, firstValueFrom, timeout, retry, catchError, map } from 'rxjs';
+import { take, tap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 
@@ -43,12 +43,28 @@ export interface AppUser {
   preferences?: {
     selectedReciter?: number;
     selectedTranslation?: string;
-    fontSize?: number;
-    darkMode?: boolean;
     bookmarks?: string[];
     subscriptionStatus?: string;
   };
   isAdmin: boolean;
+  token?: string;
+}
+
+export interface BookmarkResponse {
+  success: boolean;
+  message: string;
+  bookmarks: string[];
+}
+
+export interface ReadingHistoryResponse {
+  success: boolean;
+  history: any[];
+}
+
+export interface UserPreferences {
+    selectedReciter: number;
+    selectedTranslation: string;
+    bookmarks: string[];
 }
 
 @Injectable({
@@ -67,6 +83,38 @@ export class FirebaseAuthService {
   redirectUrl: string | null = null;
   private readonly LAST_ROUTE_KEY = 'lastRoute';
   private readonly ROUTE_STATE_KEY = 'routeState';
+
+  private readonly PREFERENCES_CACHE_KEY = 'user_preferences';
+  private readonly USER_CACHE_KEY = 'user_data';
+  private readonly REQUEST_CACHE_DURATION = 60000; // 1 minute cache for API requests
+  private readonly USER_DATA_CACHE_DURATION = 300000; // 5 minutes cache for user data
+  private readonly THROTTLE_DURATION = 5000; // 5 seconds between requests
+  private lastPreferencesRequest: number = 0;
+  private lastRequestTimes: { [key: string]: number } = {};
+  private preferencesCache: {
+    data: any;
+    timestamp: number;
+  } | null = null;
+  private readonly CACHE_DURATION = 5000; // 5 seconds
+  private preferencesSubject = new BehaviorSubject<any>(null);
+  preferences$ = this.preferencesSubject.asObservable();
+
+  // Single source of truth for user data
+  private userDataSubject = new BehaviorSubject<{
+    preferences?: any;
+    history?: any[];
+    bookmarks?: string[];
+  } | null>(null);
+
+  // Public observables
+  userData$ = this.userDataSubject.asObservable();
+  history$ = this.userData$.pipe(map(data => data?.history));
+  bookmarks$ = this.userData$.pipe(map(data => data?.bookmarks));
+
+  // Add caching mechanism
+  private savePreferencesQueue: any[] = [];
+  private isSaving = false;
+  private readonly SAVE_INTERVAL = 2000; // 2 seconds
 
   constructor(
     private router: Router,
@@ -133,19 +181,29 @@ export class FirebaseAuthService {
   }
 
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
-    // Map the Firebase user to our User model
-    const user = this.mapFirebaseUser(firebaseUser);
-    
     try {
-      // Store basic user info in localStorage for faster app loading
+      // Get the token immediately
+      const token = await firebaseUser.getIdToken();
+      
+      // Map the Firebase user to our User model with token
+      const user: AppUser = {
+        id: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        firstName: firebaseUser.displayName?.split(' ')[0] || '',
+        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        imageUrl: firebaseUser.photoURL || '',
+        emailVerified: firebaseUser.emailVerified,
+        createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
+        lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
+        preferences: {},
+        isAdmin: false, // Default to false, we don't use admin functionality
+        token: token
+      };
+      
+      // Store user info in localStorage for faster app loading
       localStorage.setItem('currentUser', JSON.stringify({
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        imageUrl: user.imageUrl,
-        emailVerified: user.emailVerified,
-        createdAt: user.createdAt
+        ...user,
+        token
       }));
       
       // Mark as authenticated in localStorage
@@ -154,96 +212,170 @@ export class FirebaseAuthService {
       // Update the user subject with basic data immediately
       this._user.next(user);
       
-      // Fetch user preferences in the background
-      this.fetchUserPreferences(user.id)
+      // Load preferences from localStorage first for immediate state
+      const localPrefs = localStorage.getItem(`user_preferences_${user.id}`);
+      if (localPrefs) {
+        try {
+          const prefs = JSON.parse(localPrefs);
+          user.preferences = prefs;
+          this._user.next({ ...user });
+        } catch (error) {
+          console.warn('Error parsing local preferences:', error);
+        }
+      }
+      
+      // Then fetch user preferences from server
+      this.getUserPreferences()
         .then(preferences => {
           user.preferences = preferences;
           this._user.next({ ...user });
+          
+          // Update localStorage with server preferences
+          localStorage.setItem(`user_preferences_${user.id}`, JSON.stringify(preferences));
         })
         .catch(error => {
           console.warn('Error fetching user preferences:', error);
         });
-      
-      // Check if user is admin in the background
-      this.checkIfUserIsAdmin(user.id)
-        .then(isAdmin => {
-          user.isAdmin = isAdmin;
-          this._user.next({ ...user });
-        })
-        .catch(error => {
-          console.warn('Error checking admin status:', error);
-        });
+        
     } catch (error) {
       console.error('Error handling user sign in:', error);
       // Still set the user with basic data even if we couldn't fetch preferences
-      this._user.next(user);
+      this._user.next(null);
     }
   }
 
-  private async fetchUserPreferences(userId: string): Promise<any> {
-    try {
-      // First check localStorage cache with timestamp
-      const localPrefs = localStorage.getItem(`user_preferences_${userId}`);
-      const cacheTimestamp = localStorage.getItem(`user_preferences_timestamp_${userId}`);
-      
-      if (localPrefs && cacheTimestamp) {
-        const cacheTime = parseInt(cacheTimestamp, 10);
-        const now = Date.now();
-        // Use cache if it's less than 5 minutes old
-        if (now - cacheTime < 5 * 60 * 1000) {
-          console.log('Using cached preferences in fetchUserPreferences');
-          return JSON.parse(localPrefs);
-        }
-      }
-      
-      // If cache is stale or not available, try API
-      try {
-        // Check when we last made an API call
-        const lastFetchTimestamp = localStorage.getItem(`last_preferences_fetch_${userId}`);
-        if (lastFetchTimestamp) {
-          const lastFetchTime = parseInt(lastFetchTimestamp, 10);
-          const now = Date.now();
-          // Only make API call if last fetch was more than 10 seconds ago
-          if (now - lastFetchTime < 10000) {
-            console.log('Throttling API fetch, using cached data');
-            if (localPrefs) {
-              return JSON.parse(localPrefs);
-            }
-          }
-        }
-        
-        // Update the last fetch timestamp
-        localStorage.setItem(`last_preferences_fetch_${userId}`, Date.now().toString());
-        
-        // Make the API call
-        const response = await this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).toPromise();
-        
-        // If successful, cache the preferences with timestamp
-        if (response) {
-          localStorage.setItem(`user_preferences_${userId}`, JSON.stringify(response));
-          localStorage.setItem(`user_preferences_timestamp_${userId}`, Date.now().toString());
-        }
-        
-        return response || {};
-      } catch (error) {
-        console.warn('User preferences API endpoint not available, checking localStorage');
-        
-        // Use localStorage preferences as fallback
-        if (localPrefs) {
-          try {
-            return JSON.parse(localPrefs);
-          } catch (parseError) {
-            console.error('Error parsing localStorage preferences:', parseError);
-          }
-        }
-        
-        // Return empty object if no preferences found
-        return {};
-      }
-    } catch (error) {
-      console.error('Error in fetchUserPreferences:', error);
-      return {};
+  async getUserPreferences(): Promise<any> {
+    // Check memory cache first
+    if (this.preferencesCache && Date.now() - this.preferencesCache.timestamp < this.CACHE_DURATION) {
+        return this.preferencesCache.data;
     }
+
+    // Check localStorage cache
+    const cachedData = localStorage.getItem(this.PREFERENCES_CACHE_KEY);
+    if (cachedData) {
+        try {
+            const { data, timestamp } = JSON.parse(cachedData);
+            if (Date.now() - timestamp < this.REQUEST_CACHE_DURATION) {
+                this.preferencesCache = { data, timestamp };
+                return data;
+            }
+        } catch (e) {
+            console.warn('Error parsing cached preferences:', e);
+        }
+    }
+
+    try {
+        const user = this.auth.currentUser;
+        if (!user) {
+            return this.getDefaultPreferences();
+        }
+
+        const token = await user.getIdToken(true);
+        
+        const response = await firstValueFrom(
+            this.http.get<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }).pipe(
+                timeout(30000),
+                retry(3),
+                catchError(error => {
+                    console.error('Error fetching preferences:', error);
+                    return of(this.getDefaultPreferences());
+                })
+            )
+        );
+
+        // Update cache
+        this.preferencesCache = {
+            data: response,
+            timestamp: Date.now()
+        };
+
+        // Update localStorage cache
+        this.cachePreferences(response);
+        
+        return response;
+    } catch (error) {
+        console.error('Error fetching preferences:', error);
+        return this.getDefaultPreferences();
+    }
+  }
+
+  private cachePreferences(data: any): void {
+    try {
+      localStorage.setItem(this.PREFERENCES_CACHE_KEY, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (e) {
+      console.warn('Error caching preferences:', e);
+    }
+  }
+
+  // Update saveUserPreferences with better debouncing
+  async saveUserPreferences(preferences: any): Promise<UserPreferences> {
+    // Update local cache immediately
+    this.preferencesCache = {
+        data: { ...this.preferencesCache?.data, ...preferences },
+        timestamp: Date.now()
+    };
+
+    // Add to queue
+    this.savePreferencesQueue.push(preferences);
+
+    // If already saving, return
+    if (this.isSaving) {
+        return this.preferencesCache.data;
+    }
+
+    // Start save process
+    this.isSaving = true;
+
+    try {
+        await new Promise(resolve => setTimeout(resolve, this.SAVE_INTERVAL));
+
+        // Merge all queued preferences
+        const mergedPreferences = this.savePreferencesQueue.reduce((acc, curr) => ({
+            ...acc,
+            ...curr
+        }), {});
+
+        // Clear queue
+        this.savePreferencesQueue = [];
+
+        const user = this.auth.currentUser;
+        if (!user) throw new Error('No user logged in');
+
+        const token = await user.getIdToken();
+        await this.http.put<any>(
+            `${environment.apiUrl}/api/users/${user.uid}/preferences`,
+            mergedPreferences,
+            {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }
+        ).toPromise();
+
+        return this.preferencesCache.data;
+    } catch (error: any) {
+        if (error?.status !== 429) {
+            console.error('Error saving preferences:', error);
+        }
+        throw error;
+    } finally {
+        this.isSaving = false;
+    }
+  }
+
+  // Clear preferences cache
+  private clearPreferencesCache(): void {
+    localStorage.removeItem(this.PREFERENCES_CACHE_KEY);
+    this.preferencesSubject.next(null);
   }
 
   private async checkIfUserIsAdmin(userId: string): Promise<boolean> {
@@ -397,7 +529,7 @@ export class FirebaseAuthService {
     try {
       // Try to get from API first
       try {
-        const apiPrefs = await this.fetchUserPreferences(user.uid);
+        const apiPrefs = await this.getUserPreferences();
         if (Object.keys(apiPrefs).length > 0) {
           return apiPrefs;
         }
@@ -417,10 +549,8 @@ export class FirebaseAuthService {
       
       // Return default preferences if nothing is found
       return {
-        selectedReciter: 7,
+        selectedReciter: 1,
         selectedTranslation: 'en.sahih', 
-        fontSize: 18,
-        darkMode: false,
         bookmarks: []
       };
     } catch (error) {
@@ -429,58 +559,86 @@ export class FirebaseAuthService {
     }
   }
 
-  // Save user preferences
-  async saveUserPreferences(preferences: any): Promise<void> {
-    return firstValueFrom(this.saveUserPreferencesObservable(preferences));
-  }
-
-  // Save user preferences (Observable version)
-  saveUserPreferencesObservable(preferences: any): Observable<any> {
+  // Save reading history entry
+  async saveReadingHistory(entry: any): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) {
-      return throwError(() => new Error('No user logged in'));
+      throw new Error('No user logged in');
     }
-    
-    // Save to localStorage as backup with timestamp
-    localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(preferences));
-    localStorage.setItem(`user_preferences_timestamp_${user.uid}`, Date.now().toString());
-    
-    // Check when we last made an API call
-    const lastSaveTimestamp = localStorage.getItem(`last_preferences_save_${user.uid}`);
-    if (lastSaveTimestamp) {
-      const lastSaveTime = parseInt(lastSaveTimestamp, 10);
-      const now = Date.now();
-      // Only make API call if last save was more than 3 seconds ago
-      if (now - lastSaveTime < 3000) {
-        console.log('Throttling API call, returning cached result');
-        return of({ success: true, source: 'local', preferences });
+
+    // Save to localStorage first
+    try {
+      const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+      if (!Array.isArray(prefs.readingHistory)) {
+        prefs.readingHistory = [];
       }
+      
+      // Add new entry at the beginning
+      prefs.readingHistory.unshift({
+        ...entry,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Keep only last 100 entries
+      prefs.readingHistory = prefs.readingHistory.slice(0, 100);
+      
+      // Save back to localStorage
+      localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
+    } catch (error) {
+      console.warn('Error saving history to localStorage:', error);
     }
-    
-    // Update the last save timestamp
-    localStorage.setItem(`last_preferences_save_${user.uid}`, Date.now().toString());
-    
-    // Try to save to server
-    return this.http.put<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`, preferences).pipe(
-      tap(() => {
-        // Update the last successful save timestamp
-        localStorage.setItem(`last_successful_save_${user.uid}`, Date.now().toString());
-      }),
-      catchError(error => {
-        console.warn('Could not save preferences to API:', error);
-        // If we got a 429 error, increase the throttle time
-        if (error.status === 429) {
-          const now = Date.now();
-          localStorage.setItem(`last_preferences_save_${user.uid}`, (now + 10000).toString()); // Add 10 seconds to throttle
+
+    // Then save to server
+    try {
+      const token = await user.getIdToken(true);
+      await this.http.post<any>(
+        `${environment.apiUrl}/api/users/${user.uid}/reading-history`,
+        entry,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
-        return of({ success: true, source: 'local', preferences });
-      }),
-      map(() => preferences)
-    );
+      ).toPromise();
+    } catch (error) {
+      console.error('Error saving reading history to server:', error);
+      throw error;
+    }
   }
 
-  // updateUserPreferences is now an alias for saveUserPreferences for backward compatibility
-  updateUserPreferences = this.saveUserPreferences;
+  // Check if user has access to AI features
+  async hasAIAccess(): Promise<boolean> {
+    try {
+      const user = this.auth.currentUser;
+      if (!user) {
+        return false;
+      }
+
+      // First check Firebase custom claims
+      const idTokenResult = await user.getIdToken(true);
+      const token = await user.getIdTokenResult(true);
+      
+      // Check for premium status in claims
+      if (token.claims['premium'] === true || 
+          token.claims['subscriptionStatus'] === 'active' ||
+          token.claims['subscriptionStatus'] === 'premium') {
+        return true;
+      }
+
+      // Check user preferences for subscription status
+      const prefs = await this.getUserPreferences();
+      if (prefs?.subscriptionStatus === 'active' || 
+          prefs?.subscriptionStatus === 'premium') {
+        return true;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Error checking AI access:', error);
+      return false;
+    }
+  }
 
   // Show login modal/UI
   async login(): Promise<void> {
@@ -527,6 +685,15 @@ export class FirebaseAuthService {
     }
   }
 
+  // Helper method to validate verse reference
+  private isValidVerseReference(verseReference: string): boolean {
+    if (!verseReference || typeof verseReference !== 'string') return false;
+    const [surahStr, verseStr] = verseReference.split(':');
+    const surah = parseInt(surahStr);
+    const verse = parseInt(verseStr);
+    return !isNaN(surah) && !isNaN(verse) && surah >= 1 && surah <= 114 && verse >= 1;
+  }
+
   // Save QuranReader state
   async saveQuranReaderState(state: any): Promise<void> {
     const user = this.auth.currentUser;
@@ -535,31 +702,44 @@ export class FirebaseAuthService {
     }
 
     try {
+      // Validate state before saving
+      if (!state || !state.surah || !state.verse || 
+          typeof state.surah !== 'number' || typeof state.verse !== 'number' ||
+          state.surah < 1 || state.surah > 114 || state.verse < 1) {
+        console.warn('Invalid state provided to saveQuranReaderState:', state);
+        return;
+      }
+
       // First, get current user settings
       const userSettings = await this.getUserSettings();
       
-      // Add this state to reading history
+      // Add this state to reading history if it's different from the last entry
       const readingHistory = userSettings.readingHistory || [];
-      readingHistory.unshift({
-        ...state,
-        timestamp: new Date()
-      });
+      const lastEntry = readingHistory[0];
       
-      // Keep only the last 20 items
-      const updatedHistory = readingHistory.slice(0, 20);
-      
-      // Try to update via API first
-      try {
-        await this.http.put(
-          `${environment.apiUrl}/api/users/${user.uid}/reading-history`, 
-          updatedHistory
-        ).toPromise();
-      } catch (error) {
-        console.warn('Reading history API endpoint not available, using localStorage instead');
-        // Save to localStorage as fallback
-        const preferences = await this.getUserSettings();
-        preferences.readingHistory = updatedHistory;
-        localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(preferences));
+      // Only add if it's a different verse than the last one
+      if (!lastEntry || lastEntry.surah !== state.surah || lastEntry.verse !== state.verse) {
+        readingHistory.unshift({
+          ...state,
+          timestamp: new Date()
+        });
+        
+        // Keep only the last 20 items
+        const updatedHistory = readingHistory.slice(0, 20);
+        
+        // Try to update via API first
+        try {
+          await this.http.put(
+            `${environment.apiUrl}/api/users/${user.uid}/reading-history`, 
+            updatedHistory
+          ).toPromise();
+        } catch (error) {
+          console.warn('Reading history API endpoint not available, using localStorage instead');
+          // Save to localStorage as fallback
+          const preferences = await this.getUserSettings();
+          preferences.readingHistory = updatedHistory;
+          localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(preferences));
+        }
       }
     } catch (error) {
       console.error('Error saving Quran reader state:', error);
@@ -646,443 +826,319 @@ export class FirebaseAuthService {
     }
   }
 
-  // Get user preferences
-  getUserPreferences(): Observable<any> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return throwError(() => new Error('No user logged in'));
-    }
+  // Helper methods for request throttling
+  private shouldThrottle(key: string): boolean {
+    const lastRequest = this.lastRequestTimes[key] || 0;
+    return Date.now() - lastRequest < this.THROTTLE_DURATION;
+  }
 
-    // Try to get from localStorage cache first
-    const localPrefs = localStorage.getItem(`user_preferences_${user.uid}`);
-    if (localPrefs) {
-      try {
-        const cachedPrefs = JSON.parse(localPrefs);
-        // Check if cache is less than 5 minutes old
-        const cacheTimestamp = localStorage.getItem(`user_preferences_timestamp_${user.uid}`);
-        if (cacheTimestamp) {
-          const cacheTime = parseInt(cacheTimestamp, 10);
-          const now = Date.now();
-          // Only use cache if it's less than 5 minutes old
-          if (now - cacheTime < 5 * 60 * 1000) {
-            console.log('Using cached user preferences');
-            return of(cachedPrefs);
+  private updateLastRequestTime(key: string): void {
+    this.lastRequestTimes[key] = Date.now();
+  }
+
+  getDefaultPreferences(): any {
+    return {
+      selectedReciter: 1,
+      selectedTranslation: '131',
+      bookmarks: [],
+      lastState: {
+        isMushafView: false,
+        lastSurah: 1,
+        lastVerse: 1,
+        lastPage: 1
+      },
+      readingHistory: []
+    };
+  }
+
+  // Cache and throttling helpers
+  private getCachedData(key: string): any {
+    try {
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+      
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < this.USER_DATA_CACHE_DURATION) {
+        return data;
+      }
+      return null;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  private setCachedData(key: string, data: any): void {
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Error caching data:', error);
+    }
+  }
+
+  // User data management
+  private async loadUserData(userId: string): Promise<void> {
+    try {
+      // Check cache first
+      const cached = this.getCachedData(this.USER_CACHE_KEY);
+      if (cached) {
+        this.userDataSubject.next(cached);
+        return;
+      }
+
+    const user = this.auth.currentUser;
+      if (!user) return;
+
+      const token = await user.getIdToken(true);
+      
+      // Single API call to get all user data
+      const response = await this.http.get<any>(
+        `${environment.apiUrl}/api/users/${userId}/profile`,
+        {
+          headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
           }
+        }
+      ).toPromise();
+
+      if (response) {
+        const userData = {
+          preferences: response.preferences || this.getDefaultPreferences(),
+          history: response.history || [],
+          bookmarks: response.preferences?.bookmarks || []
+        };
+
+        this.setCachedData(this.USER_CACHE_KEY, userData);
+        this.userDataSubject.next(userData);
         }
       } catch (error) {
-        console.warn('Error parsing cached preferences:', error);
-      }
+      console.error('Error loading user data:', error);
+      const defaults = {
+        preferences: this.getDefaultPreferences(),
+        history: [],
+        bookmarks: []
+      };
+      this.userDataSubject.next(defaults);
     }
-
-    // Then try to get from API with throttling
-    console.log('Fetching user preferences from API');
-    return this.http.get<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`).pipe(
-      tap(prefs => {
-        // Save to localStorage with timestamp
-        try {
-          localStorage.setItem(`user_preferences_${user.uid}`, JSON.stringify(prefs || {}));
-          localStorage.setItem(`user_preferences_timestamp_${user.uid}`, Date.now().toString());
-        } catch (error) {
-          console.warn('Error caching preferences:', error);
-        }
-      }),
-      catchError(error => {
-        console.warn('Could not fetch user preferences from API:', error);
-        
-        // Try localStorage as fallback
-        if (localPrefs) {
-          try {
-            return of(JSON.parse(localPrefs));
-          } catch (error) {
-            console.error('Error parsing localStorage preferences:', error);
-          }
-        }
-        
-        // Return empty preferences if nothing else works
-        return of({});
-      })
-    );
   }
 
-  // Get user bookmarks
-  getBookmarks(): Observable<string[]> {
-    // First check if user is logged in
-    const user = this._user.value;
-    if (!user) {
-      return of([]);
-    }
-    
-    // Check for cached bookmarks (less than 5 minutes old)
-    const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
-    const cachedTimestampString = localStorage.getItem('bookmarks_timestamp');
-    
-    if (cachedBookmarksString && cachedTimestampString) {
-      const cachedTimestamp = parseInt(cachedTimestampString, 10);
-      const now = Date.now();
-      const fiveMinutesInMs = 5 * 60 * 1000;
-      
-      // If cache is less than 5 minutes old, use it
-      if (now - cachedTimestamp < fiveMinutesInMs) {
-        try {
-          const cachedBookmarks = JSON.parse(cachedBookmarksString);
-          console.log('Using cached bookmarks');
-          return of(cachedBookmarks);
-        } catch (e) {
-          console.warn('Failed to parse cached bookmarks:', e);
-          // Continue to API if parsing fails
+  // Public methods for user data management
+  async updatePreferences(preferences: any): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No user logged in');
+
+    const current = this.userDataSubject.getValue() || {};
+    const updated = { ...current, preferences };
+
+    // Update state immediately
+    this.userDataSubject.next(updated);
+
+    // Save to server
+    const token = await user.getIdToken();
+    await this.http.put<any>(
+      `${environment.apiUrl}/api/users/${user.uid}/profile`,
+      { preferences },
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       }
-    }
-    
-    // Check if we recently made an API call (within last 10 seconds)
-    const lastAPICallString = localStorage.getItem('bookmarks_last_api_call');
-    if (lastAPICallString) {
-      const lastAPICall = parseInt(lastAPICallString, 10);
-      const now = Date.now();
-      const tenSecondsInMs = 10 * 1000;
-      
-      // If last API call was less than 10 seconds ago, return cached data or empty array
-      if (now - lastAPICall < tenSecondsInMs) {
-        console.log('Throttling bookmarks API call');
-        if (cachedBookmarksString) {
-          try {
-            return of(JSON.parse(cachedBookmarksString));
-          } catch (e) {
-            return of([]);
-          }
-        }
-        return of([]);
-      }
-    }
-    
-    // Store timestamp of this API call
-    localStorage.setItem('bookmarks_last_api_call', Date.now().toString());
-    
-    // Make the API call
-    return this.http.get<string[]>(`${environment.apiUrl}/api/users/${user.id}/bookmarks`).pipe(
-      map((response: string[]) => {
-        // Cache the successful response with timestamp
-        localStorage.setItem('bookmarks_cache', JSON.stringify(response));
-        localStorage.setItem('bookmarks_timestamp', Date.now().toString());
-        return response;
-      }),
-      catchError(error => {
-        console.error('Error fetching bookmarks from API:', error);
-        
-        // If we get a 429 error, increase the throttle time
-        if (error.status === 429) {
-          localStorage.setItem('bookmarks_last_api_call', (Date.now() + 30000).toString()); // Wait 30 seconds more
-        }
-        
-        // Try to use cached data if available
-        if (cachedBookmarksString) {
-          try {
-            return of(JSON.parse(cachedBookmarksString));
-          } catch (e) {
-            console.warn('Failed to parse cached bookmarks as fallback');
-          }
-        }
-        
-        // Fallback to local storage
-        const localBookmarks = localStorage.getItem('bookmarks');
-        if (localBookmarks) {
-          try {
-            return of(JSON.parse(localBookmarks));
-          } catch (e) {
-            console.warn('Failed to parse local bookmarks');
-            return of([]);
-          }
-        }
-        return of([]);
-      })
-    );
+    ).toPromise();
   }
 
-  // Add a bookmark
-  addBookmark(verseReference: string): Observable<any> {
-    // First check if user is logged in
-    const user = this._user.value;
-    if (!user) {
-      // Always save to localStorage even if not logged in
-      try {
-        const localBookmarks = localStorage.getItem('bookmarks') || '[]';
-        const bookmarks = JSON.parse(localBookmarks);
-        if (!bookmarks.includes(verseReference)) {
-          bookmarks.push(verseReference);
-          localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-        }
-      } catch (e) {
-        console.warn('Failed to save bookmark to localStorage');
-      }
-      return of({ success: true, source: 'local' });
-    }
-    
-    // Always update localStorage first for immediate access
-    try {
-      const localBookmarks = localStorage.getItem('bookmarks') || '[]';
-      const bookmarks = JSON.parse(localBookmarks);
-      if (!bookmarks.includes(verseReference)) {
-        bookmarks.push(verseReference);
-        localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
-      }
-      
-      // Update the cache
-      const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
-      if (cachedBookmarksString) {
-        try {
-          const cachedBookmarks = JSON.parse(cachedBookmarksString);
-          if (!cachedBookmarks.includes(verseReference)) {
-            cachedBookmarks.push(verseReference);
-            localStorage.setItem('bookmarks_cache', JSON.stringify(cachedBookmarks));
-            localStorage.setItem('bookmarks_timestamp', Date.now().toString());
-          }
-        } catch (e) {
-          console.warn('Failed to update bookmarks cache');
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to save bookmark to localStorage');
-    }
-    
-    // Check if we recently made an API call (within last 3 seconds)
-    const lastAPICallString = localStorage.getItem('bookmarks_add_last_api_call');
-    if (lastAPICallString) {
-      const lastAPICall = parseInt(lastAPICallString, 10);
-      const now = Date.now();
-      const threeSecondsInMs = 3 * 1000;
-      
-      // If last API call was less than 3 seconds ago, return success without API call
-      if (now - lastAPICall < threeSecondsInMs) {
-        console.log('Throttling add bookmark API call');
-        return of({ success: true, source: 'local' });
-      }
-    }
-    
-    // Store timestamp of this API call
-    localStorage.setItem('bookmarks_add_last_api_call', Date.now().toString());
-    
-    // Make API call
-    return this.http.post<any>(`${environment.apiUrl}/api/users/${user.id}/bookmarks`, { verseReference }).pipe(
-      tap(() => {
-        // Update the last successful API call timestamp
-        localStorage.setItem('bookmarks_add_last_success', Date.now().toString());
-      }),
-      catchError(error => {
-        console.warn('Error adding bookmark to API:', error);
-        
-        // If we got a 429 error, increase the throttle time
-        if (error.status === 429) {
-          localStorage.setItem('bookmarks_add_last_api_call', (Date.now() + 10000).toString()); // Add 10 seconds to throttle
-        }
-        
-        return of({ success: true, source: 'local' });
-      })
-    );
-  }
-  
-  // Remove a bookmark
-  removeBookmark(verseReference: string): Observable<any> {
-    // First check if user is logged in
-    const user = this._user.value;
-    
-    // Always update localStorage first for immediate access
-    try {
-      const localBookmarks = localStorage.getItem('bookmarks') || '[]';
-      const bookmarks = JSON.parse(localBookmarks);
-      const updatedBookmarks = bookmarks.filter((b: string) => b !== verseReference);
-      localStorage.setItem('bookmarks', JSON.stringify(updatedBookmarks));
-      
-      // Update the cache
-      const cachedBookmarksString = localStorage.getItem('bookmarks_cache');
-      if (cachedBookmarksString) {
-        try {
-          const cachedBookmarks = JSON.parse(cachedBookmarksString);
-          const updatedCache = cachedBookmarks.filter((b: string) => b !== verseReference);
-          localStorage.setItem('bookmarks_cache', JSON.stringify(updatedCache));
-          localStorage.setItem('bookmarks_timestamp', Date.now().toString());
-        } catch (e) {
-          console.warn('Failed to update bookmarks cache');
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to remove bookmark from localStorage');
-    }
-    
-    // If not logged in, just return success after localStorage update
-    if (!user) {
-      return of({ success: true, source: 'local' });
-    }
-    
-    // Check if we recently made an API call (within last 3 seconds)
-    const lastAPICallString = localStorage.getItem('bookmarks_remove_last_api_call');
-    if (lastAPICallString) {
-      const lastAPICall = parseInt(lastAPICallString, 10);
-      const now = Date.now();
-      const threeSecondsInMs = 3 * 1000;
-      
-      // If last API call was less than 3 seconds ago, return success without API call
-      if (now - lastAPICall < threeSecondsInMs) {
-        console.log('Throttling remove bookmark API call');
-        return of({ success: true, source: 'local' });
-      }
-    }
-    
-    // Store timestamp of this API call
-    localStorage.setItem('bookmarks_remove_last_api_call', Date.now().toString());
-    
-    // Make the API call
-    return this.http.delete<any>(`${environment.apiUrl}/api/users/${user.id}/bookmarks/${verseReference}`).pipe(
-      tap(() => {
-        // Update the last successful API call timestamp
-        localStorage.setItem('bookmarks_remove_last_success', Date.now().toString());
-      }),
-      catchError(error => {
-        console.warn('Error removing bookmark from API:', error);
-        
-        // If we got a 429 error, increase the throttle time
-        if (error.status === 429) {
-          localStorage.setItem('bookmarks_remove_last_api_call', (Date.now() + 10000).toString()); // Add 10 seconds to throttle
-        }
-        
-        return of({ success: true, source: 'local' });
-      })
-    );
-  }
-
-  // Get reading history
+  // Reading history methods
   getReadingHistory(): Observable<any> {
-    // First check if user is logged in
-    const user = this._user.value;
-    if (!user) {
-      return of([]);
-    }
+    return this.user$.pipe(
+      switchMap(user => {
+        if (!user) {
+          return of({ success: false, message: 'User not authenticated' });
+        }
 
-    // Check if we have cached history data that's recent (last 5 minutes)
-    const cachedHistoryString = localStorage.getItem('reading_history_cache');
-    const cachedTimestampString = localStorage.getItem('reading_history_timestamp');
-    
-    if (cachedHistoryString && cachedTimestampString) {
-      const cachedTimestamp = parseInt(cachedTimestampString, 10);
-      const now = Date.now();
-      const fiveMinutesInMs = 5 * 60 * 1000;
-      
-      // If cache is less than 5 minutes old, use it
-      if (now - cachedTimestamp < fiveMinutesInMs) {
-        try {
-          const cachedHistory = JSON.parse(cachedHistoryString);
-          console.log('Using cached reading history');
-          return of(cachedHistory);
-        } catch (e) {
-          console.warn('Failed to parse cached reading history:', e);
-          // Continue to API if parsing fails
+        const cacheKey = `reading_history_${user.id}`;
+        const cachedHistory = this.getCachedData(cacheKey);
+        
+        if (cachedHistory) {
+          return of({ success: true, history: cachedHistory });
         }
-      }
-    }
-    
-    // Check if we recently made an API call (within last 10 seconds)
-    const lastAPICallString = localStorage.getItem('reading_history_last_api_call');
-    if (lastAPICallString) {
-      const lastAPICall = parseInt(lastAPICallString, 10);
-      const now = Date.now();
-      const tenSecondsInMs = 10 * 1000;
-      
-      // If last API call was less than 10 seconds ago, return cached data or empty array
-      if (now - lastAPICall < tenSecondsInMs) {
-        console.log('Throttling reading history API call');
-        if (cachedHistoryString) {
-          try {
-            return of(JSON.parse(cachedHistoryString));
-          } catch (e) {
-            return of([]);
+
+        if (this.shouldThrottle(`history_${user.id}`)) {
+          return of({ success: true, history: [] });
+        }
+
+        this.updateLastRequestTime(`history_${user.id}`);
+        
+        return this.http.get<any>(
+          `${environment.apiUrl}/api/users/${user.id}/reading-history`,
+          {
+          headers: {
+            'Authorization': `Bearer ${user.token}`
           }
-        }
-        return of([]);
-      }
-    }
-    
-    // Store timestamp of this API call
-    localStorage.setItem('reading_history_last_api_call', Date.now().toString());
-    
-    // Make the API call
-    return this.http.get(`${environment.apiUrl}/api/users/${user.id}/reading-history`).pipe(
-      map((response: any) => {
-        // Cache the successful response with timestamp
-        localStorage.setItem('reading_history_cache', JSON.stringify(response));
-        localStorage.setItem('reading_history_timestamp', Date.now().toString());
-        return response;
-      }),
-      catchError(error => {
-        console.error('Could not fetch reading history from API:', error);
-        
-        // If we get a 429 error, increase the throttle time
-        if (error.status === 429) {
-          localStorage.setItem('reading_history_last_api_call', (Date.now() + 30000).toString()); // Wait 30 seconds more
-        }
-        
-        // Try to use cached data if available
-        if (cachedHistoryString) {
-          try {
-            const cachedHistory = JSON.parse(cachedHistoryString);
-            return of(cachedHistory);
-          } catch (e) {
-            console.warn('Failed to parse cached reading history as fallback:', e);
           }
-        }
-        
-        // Fall back to localStorage reading history
-        const localHistory = localStorage.getItem('readingHistory');
-        if (localHistory) {
-          try {
-            return of(JSON.parse(localHistory));
-          } catch (e) {
-            console.warn('Failed to parse local reading history:', e);
-          }
-        }
-        
-        return of([]);
+        ).pipe(
+          tap(response => {
+            if (response.success && response.history) {
+              this.setCachedData(cacheKey, response.history);
+            }
+          }),
+          catchError(error => {
+            console.error('Error fetching reading history:', error);
+            return of({ success: true, history: [] });
+          })
+        );
       })
     );
   }
 
-  // Clear reading history
-  clearReadingHistory(): Observable<any> {
+  async addToHistory(entry: any): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No user logged in');
+
+    const current = this.userDataSubject.getValue();
+    const history = [...(current?.history || [])];
+    history.unshift(entry);
+
+    // Update state immediately
+    this.userDataSubject.next({ ...current, history: history.slice(0, 100) });
+
+    // Save to server
+    const token = await user.getIdToken();
+    await this.http.post<any>(
+      `${environment.apiUrl}/api/users/${user.uid}/reading-history`,
+      entry,
+      {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    ).toPromise();
+  }
+
+  async clearHistory(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) throw new Error('No user logged in');
+
+    // Update state immediately
+    const current = this.userDataSubject.getValue();
+    this.userDataSubject.next({ ...current, history: [] });
+
+    // Clear on server
+    const token = await user.getIdToken();
+    await this.http.delete<any>(
+      `${environment.apiUrl}/api/users/${user.uid}/reading-history`,
+          {
+            headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      }
+    ).toPromise();
+  }
+
+  // Bookmark methods
+  removeBookmark(bookmark: string): Observable<BookmarkResponse> {
     const user = this.auth.currentUser;
     if (!user) {
-      return throwError(() => new Error('No user logged in'));
+      return of({ success: false, message: 'User not logged in', bookmarks: [] });
     }
-    
-    // Clear in localStorage
-    localStorage.removeItem(`reading_history_${user.uid}`);
-    
-    // Try to clear on server
-    return this.http.delete<any>(`${environment.apiUrl}/api/users/${user.uid}/reading-history`).pipe(
-      catchError(error => {
-        console.warn('Could not clear reading history on API:', error);
-        return of({ success: true, source: 'local' });
-      }),
-      map(() => ({ success: true }))
+
+    // Update local state immediately
+    const current = this.userDataSubject.getValue();
+    const bookmarks = (current?.bookmarks || []).filter(b => b !== bookmark);
+    this.userDataSubject.next({ ...current, bookmarks });
+
+    return from(user.getIdToken()).pipe(
+      switchMap(token => {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        return this.http.delete<BookmarkResponse>(
+          `${environment.apiUrl}/api/users/${user.uid}/bookmarks/${bookmark}`,
+          { headers }
+        ).pipe(
+          tap(response => {
+            if (response.success) {
+              this.userDataSubject.next({ ...current, bookmarks: response.bookmarks });
+            }
+          }),
+          catchError(error => {
+            // Revert local state on error
+            this.userDataSubject.next(current);
+            console.error('Error removing bookmark:', error);
+            return of({ success: false, message: 'Failed to remove bookmark', bookmarks: [] });
+          })
+        );
+      })
     );
   }
 
-  // Helper to get default preferences from local storage
-  private getDefaultPreferencesFromLocalStorage(): any {
-    try {
-      const prefsStr = localStorage.getItem('quranPreferences');
-      if (prefsStr) {
-        return JSON.parse(prefsStr);
-      }
-    } catch (e) {
-      console.error('Error parsing preferences from localStorage:', e);
+  addBookmark(bookmark: string): Observable<BookmarkResponse> {
+    const user = this.auth.currentUser;
+    if (!user) {
+      return of({ success: false, message: 'User not logged in', bookmarks: [] });
     }
-    
-    // Return default preferences
-    return {
-      selectedReciter: 7,
-      selectedTranslation: '131',
-      fontSize: 24,
-      showWordByWord: false,
-      darkMode: false,
-      bookmarks: []
-    };
+
+    // Update local state immediately
+    const current = this.userDataSubject.getValue();
+    const bookmarks = [...(current?.bookmarks || [])];
+    if (!bookmarks.includes(bookmark)) {
+      bookmarks.push(bookmark);
+      this.userDataSubject.next({ ...current, bookmarks });
+    }
+
+    return from(user.getIdToken()).pipe(
+      switchMap(token => {
+        const headers = {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        };
+        return this.http.post<BookmarkResponse>(
+          `${environment.apiUrl}/api/users/${user.uid}/bookmarks`,
+          { verseReference: bookmark },
+          { headers }
+        ).pipe(
+          tap(response => {
+            if (response.success) {
+              this.userDataSubject.next({ ...current, bookmarks: response.bookmarks });
+            }
+          }),
+          catchError(error => {
+            // Revert local state on error
+            this.userDataSubject.next(current);
+            console.error('Error adding bookmark:', error);
+            return of({ success: false, message: 'Failed to add bookmark', bookmarks: [] });
+          })
+        );
+      })
+    );
+  }
+
+  getBookmarks(): Observable<string[]> {
+    return this.user$.pipe(
+      switchMap(user => {
+        if (!user) return of([]);
+        
+        // Get the actual Firebase user from auth instance
+        const firebaseUser = this.auth.currentUser;
+        if (!firebaseUser) return of([]);
+
+        return from(firebaseUser.getIdToken()).pipe(
+          switchMap(token => this.http.get<string[]>(
+            `${environment.apiUrl}/api/users/${firebaseUser.uid}/bookmarks`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          )),
+          map(bookmarks => Array.isArray(bookmarks) ? bookmarks : []),
+          catchError(error => {
+            console.error('Error loading bookmarks:', error);
+            return of(this.getDefaultPreferences().bookmarks || []);
+          })
+        );
+      })
+    );
   }
 } 

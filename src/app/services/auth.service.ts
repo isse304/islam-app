@@ -136,7 +136,20 @@ export class AuthService {
 
   private async fetchUserPreferences(userId: string): Promise<any> {
     try {
-      const response = await this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).toPromise();
+      const token = await this.auth.currentUser?.getIdToken();
+      if (!token) {
+        console.warn('No auth token available for fetching preferences');
+        return {};
+      }
+
+      const response = await this.http.get<any>(
+        `${environment.apiUrl}/api/users/${userId}/preferences`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      ).toPromise();
       return response || {};
     } catch (error) {
       console.error('Error fetching user preferences:', error);
@@ -154,7 +167,20 @@ export class AuthService {
       
       // If no cached value, try the API
       try {
-        const response = await this.http.get<{isAdmin: boolean}>(`${environment.apiUrl}/api/users/${userId}/admin-status`).toPromise();
+        const token = await this.auth.currentUser?.getIdToken();
+        if (!token) {
+          console.warn('No auth token available for checking admin status');
+          return false;
+        }
+
+        const response = await this.http.get<{isAdmin: boolean}>(
+          `${environment.apiUrl}/api/users/${userId}/admin-status`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        ).toPromise();
         
         // Cache the result for 24 hours
         if (response) {
@@ -332,19 +358,42 @@ export class AuthService {
 
   // Update user preferences
   async updateUserPreferences(preferences: any): Promise<void> {
-    const user = this.auth.currentUser;
-    if (!user) throw new Error('No authenticated user');
-    
-    // Update preferences on your backend
-    await this.http.put(`${environment.apiUrl}/api/users/${user.uid}/preferences`, preferences).toPromise();
-    
-    // Update the current user in the state
-    const currentUser = this.userSubject.value;
-    if (currentUser) {
-      this.userSubject.next({
-        ...currentUser,
-        preferences: {...currentUser.preferences, ...preferences}
-      });
+    try {
+      const user = this.auth.currentUser;
+      if (!user) {
+        throw new Error('No authenticated user');
+      }
+
+      const token = await user.getIdToken();
+      if (!token) {
+        throw new Error('No authentication token available');
+      }
+
+      await this.http.put(
+        `${environment.apiUrl}/api/users/${user.uid}/preferences`,
+        preferences,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      ).toPromise();
+
+      // Update local user object
+      const currentUser = this.userSubject.value;
+      if (currentUser) {
+        this.userSubject.next({
+          ...currentUser,
+          preferences: {
+            ...currentUser.preferences,
+            ...preferences
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error updating user preferences:', error);
+      throw error;
     }
   }
 

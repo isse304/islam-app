@@ -4,8 +4,8 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterModule } from '@angular/router';
 import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subscription, forkJoin, of } from 'rxjs';
-import { catchError, takeUntil, map } from 'rxjs/operators';
+import { Subscription, forkJoin, of, take, timeout, catchError, finalize, retry, from } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -21,7 +21,20 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuranService } from '../../services/quran.service';
-import { ReadingHistoryEntry } from '../../interfaces/reading-history.interface';
+import { ReadingHistory, ReadingHistoryResponse } from '../../interfaces/reading-history.interface';
+
+interface Translation {
+  id: string;
+  name: string;
+}
+
+// Create UserPreferences interface if it doesn't exist
+interface UserPreferences {
+  selectedReciter: string | number;
+  selectedTranslation: string;
+  bookmarks?: string[];
+  lastState?: any;
+}
 
 @Component({
   selector: 'app-profile',
@@ -62,9 +75,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   
   // Quran preferences
   reciters: any[] = [];
-  translations: any[] = [];
+  translations: Translation[] = [];
   bookmarks: string[] = [];
-  readingHistory: ReadingHistoryEntry[] = [];
+  readingHistory: ReadingHistory[] = [];
   
   // Cache flags to prevent redundant API calls
   private preferencesLoaded = false;
@@ -76,6 +89,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private subscriptions: Subscription[] = [];
   private lastSaveTime: number = 0;
 
+  // Add preferences property in class
+  private preferences: UserPreferences | null = null;
+
   constructor(
     private fb: FormBuilder,
     private authService: FirebaseAuthService,
@@ -83,18 +99,91 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private router: Router,
     private snackBar: MatSnackBar
   ) {
-    // Initialize forms immediately for a responsive UI
-    this.initializeForms();
+    // Initialize forms with default values first
+    this.initializeForms(null, null, 24);
     
-    // Pre-fill form with data from localStorage if available
-    this.prefillFromCache();
-    
-    // Load reciters directly since it's a synchronous operation
+    // Load reciters and translations synchronously since they're in memory
     this.reciters = this.quranService.reciters;
-    this.recitersLoaded = this.reciters.length > 0;
+    this.translations = this.quranService.translations.map(t => ({
+      id: t.id.toString(),
+      name: t.name
+    }));
   }
 
-  private initializeForms() {
+  private clearMockData() {
+    // Clear all mock data from localStorage and sessionStorage
+    const keysToRemove = [
+      'bookmarks',
+      'quran_bookmarks',
+      'reading_history',
+      'history_cache',
+      'quranPreferences',
+      'quran_selected_translation',
+      'quran_selected_reciter',
+      'quran_font_size',
+      'quran_reader_state',
+      'quran_last_read',
+      'quran_history',
+      'quran_user_bookmarks',
+      'quran_mock_data',
+      'quran_cache',
+      'user_preferences',
+      'user_bookmarks',
+      'user_history',
+      'last_read_verse',
+      'last_read_surah'
+    ];
+
+    // Clear all mock data
+    keysToRemove.forEach(key => {
+      localStorage.removeItem(key);
+      sessionStorage.removeItem(key);
+    });
+
+    // Also clear any keys that start with these prefixes
+    const prefixesToClear = ['quran_', 'user_', 'reading_', 'bookmark_', 'history_'];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && prefixesToClear.some(prefix => key.startsWith(prefix))) {
+        localStorage.removeItem(key);
+      }
+    }
+  }
+
+  private loadCachedPreferences() {
+    try {
+      const cachedPrefs = localStorage.getItem('quranReaderPreferences');
+      let reciterId = null;
+      let translationId = null;
+      let fontSize = 24;
+
+      if (cachedPrefs) {
+        const prefs = JSON.parse(cachedPrefs);
+        console.log('Found cached preferences:', prefs);
+        
+        if (prefs.reciterId && this.quranService.reciters.some(r => r.id === prefs.reciterId)) {
+          reciterId = prefs.reciterId;
+        }
+        if (prefs.translationId) {
+          translationId = prefs.translationId;
+        }
+        if (prefs.fontSize) {
+          fontSize = prefs.fontSize;
+        }
+      }
+
+      // Initialize forms with loaded preferences
+      this.initializeForms(reciterId, translationId, fontSize);
+      
+    } catch (error) {
+      console.warn('Error loading cached preferences:', error);
+      // Initialize forms with default values if there's an error
+      this.initializeForms(null, null, 24);
+    }
+  }
+
+  private initializeForms(reciterId: number | null, translationId: string | null, fontSize: number) {
+    // Initialize profile and password forms
     this.profileForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
@@ -106,197 +195,134 @@ export class ProfileComponent implements OnInit, OnDestroy {
       newPassword: ['', [Validators.required, Validators.minLength(6)]],
       confirmPassword: ['', [Validators.required]]
     }, { validator: this.checkPasswords });
-    
-    this.preferencesForm = this.fb.group({
-      selectedReciter: [7],
-      selectedTranslation: ['131'],
-      fontSize: [24],
-      showWordByWord: [false],
-      darkMode: [false]
-    });
-  }
 
-  private prefillFromCache() {
-    try {
-      // Check if we have cached user info
-      const cachedUserStr = localStorage.getItem('currentUser');
-      if (cachedUserStr) {
-        const cachedUser = JSON.parse(cachedUserStr);
-        if (cachedUser) {
-          // Pre-fill form with cached data for immediate display
-          this.profileForm.patchValue({
-            firstName: cachedUser.firstName || '',
-            lastName: cachedUser.lastName || '',
-            email: cachedUser.email || ''
-          });
-          
-          // We can hide loading since we're showing cached data
-          setTimeout(() => {
-            this.isLoading = false;
-          }, 100);
-        }
-      }
-      
-      // Load preferences from localStorage
-      const prefsStr = localStorage.getItem('quranPreferences');
-      if (prefsStr) {
-        const prefs = JSON.parse(prefsStr);
-        if (prefs) {
-          this.preferencesForm.patchValue({
-            selectedReciter: prefs.selectedReciter || 7,
-            selectedTranslation: prefs.selectedTranslation || '131',
-            fontSize: prefs.fontSize || 24,
-            showWordByWord: prefs.showWordByWord || false,
-            darkMode: prefs.darkMode || false
-          });
-        }
-      }
-      
-      // Load bookmarks from localStorage
-      const bookmarksStr = localStorage.getItem('bookmarks');
-      if (bookmarksStr) {
-        this.bookmarks = JSON.parse(bookmarksStr) || [];
-      }
-    } catch (error) {
-      // Ignore cache errors, will load from auth service
+    // If no reciter is set, use the first available reciter
+    if (!reciterId && this.reciters.length > 0) {
+      reciterId = this.reciters[0].id;
     }
+
+    // If no translation is set, use the first available translation
+    if (!translationId && this.translations.length > 0) {
+      translationId = this.translations[0].id;
+    }
+
+    // Create preferences form with loaded or default values
+    this.preferencesForm = this.fb.group({
+      selectedReciter: [reciterId, [Validators.required, Validators.min(1), Validators.max(3)]],
+      selectedTranslation: [translationId, Validators.required],
+      fontSize: [fontSize, [Validators.required, Validators.min(14), Validators.max(36)]]
+    });
+
+    console.log('Forms initialized with values:', {
+      reciter: reciterId,
+      translation: translationId,
+      fontSize: fontSize
+    });
   }
 
   ngOnInit(): void {
-    // Get current user
-    const userSub = this.authService.user$.subscribe(user => {
-      if (user) {
-        this.user = user;
-        // Load preferences only if not already loaded
-        if (!this.preferencesLoaded) {
-          this.loadUserPreferences();
-        }
-        // Load history only if not already loaded
-        if (!this.historyLoaded) {
-          this.loadReadingHistory();
-        }
-        // Load bookmarks only if not already loaded
-        if (!this.bookmarksLoaded) {
-          this.loadUserBookmarks();
-        }
-      } else {
+    // Initialize forms with default/cached values immediately
+    this.initializeWithCachedData();
+    
+    // Then load from server in background
+    const userSub = this.authService.user$.pipe(
+      take(1)
+    ).subscribe(user => {
+      if (!user) {
         this.router.navigate(['/login']);
+        return;
       }
+
+      this.user = user;
+      // Load all data in parallel in background
+      this.loadServerDataInBackground();
     });
+
     this.subscriptions.push(userSub);
-    
-    // Load translations only if not already loaded
-    if (!this.translationsLoaded) {
-      this.loadTranslations();
-    }
-    
-    // Load reciters if needed
-    if (!this.recitersLoaded) {
-      this.loadReciters();
-    }
   }
-  
-  private loadUserPreferences() {
-    if (this.preferencesLoaded) return;
-    
-    this.isLoading = true;
-    
-    const prefsSub = this.authService.getUserPreferences().subscribe(
-      (prefs: any) => {
-        console.log('Loaded user preferences:', prefs);
-        if (prefs) {
-          this.preferencesForm.patchValue({
-            selectedReciter: prefs.reciterId || 7,
-            selectedTranslation: prefs.translationId || '131',
-            fontSize: prefs.fontSize || 18,
-            showWordByWord: prefs.showWordByWord || false,
-            darkMode: prefs.darkMode || false
-          });
-        }
-        this.preferencesLoaded = true;
-        this.isLoading = false;
-      },
-      (error: any) => {
-        console.error('Error loading user preferences:', error);
-        // Try to load from localStorage as fallback
-        const localPrefs = localStorage.getItem('quranReaderPreferences');
-        if (localPrefs) {
-          try {
-            const prefs = JSON.parse(localPrefs);
-            this.preferencesForm.patchValue({
-              selectedReciter: prefs.reciterId || 7,
-              selectedTranslation: prefs.translationId || '131',
-              fontSize: prefs.fontSize || 18,
-              showWordByWord: prefs.showWordByWord || false,
-              darkMode: prefs.darkMode || false
-            });
-          } catch (e) {
-            // Use defaults if parsing fails
-          }
-        }
-        this.preferencesLoaded = true;
-        this.isLoading = false;
-      }
-    );
-    
-    this.subscriptions.push(prefsSub);
-  }
-  
-  private loadReadingHistory() {
-    if (this.historyLoaded) return;
-    this.isLoading = true;
 
-    const historySub = this.authService.getReadingHistory().pipe(
-      map(response => {
-        // Ensure we have an array and not the browser History object
-        let history = [];
-        if (Array.isArray(response)) {
-          history = response;
-        } else if (response && response.history && Array.isArray(response.history)) {
-          history = response.history;
-        } else if (response && Array.isArray(response.data)) {
-          history = response.data;
-        } else if (response && typeof response === 'object') {
-          // If response is an object, convert it to an array
-          history = Object.values(response);
-        }
+  private initializeWithCachedData() {
+    try {
+      // Get cached preferences
+      const cachedPrefs = localStorage.getItem('quran_reader_preferences');
+      const prefs = cachedPrefs ? JSON.parse(cachedPrefs) : {};
+      
+      // Initialize forms with cached or default values
+      this.initializeForms(
+        prefs.selectedReciter || 1,
+        prefs.selectedTranslation || '131',
+        prefs.fontSize || 24
+      );
 
-        // Ensure we have an array even if all else fails
-        if (!Array.isArray(history)) {
-          history = [];
-        }
-
-        // Validate and transform each entry
-        return history
-          .filter((entry: ReadingHistoryEntry) =>
-            entry &&
-            typeof entry.surah === 'number' &&
-            typeof entry.verse === 'number' &&
-            entry.surah > 0 &&
-            entry.surah <= 114
-          )
-          .map((entry: ReadingHistoryEntry) => ({
-            surah: entry.surah,
-            verse: entry.verse,
-            timestamp: entry.timestamp ? new Date(entry.timestamp) : new Date()
-          }))
-          .sort((a: ReadingHistoryEntry, b: ReadingHistoryEntry) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
-      }),
-      catchError(error => {
-        console.error('Error loading reading history:', error);
-        return of([]);
-      })
-    ).subscribe(history => {
-      this.readingHistory = Array.isArray(history) ? history : [];
+      // Set cached bookmarks and history
+      this.bookmarks = prefs.bookmarks || [];
+      this.readingHistory = prefs.readingHistory || [];
+      
+      // Mark as loaded to prevent loading indicators
+      this.bookmarksLoaded = true;
       this.historyLoaded = true;
+      this.preferencesLoaded = true;
       this.isLoading = false;
-    });
 
-    this.subscriptions.push(historySub);
+    } catch (error) {
+      console.warn('Error loading cached data:', error);
+      // Initialize with defaults if cache fails
+      this.initializeForms(1, '131', 24);
+      this.isLoading = false;
+    }
   }
-  
+
+  private loadServerDataInBackground() {
+    // Load all data in parallel
+    forkJoin({
+      preferences: from(this.authService.getUserPreferences()).pipe(
+        catchError(error => {
+          console.warn('Error loading preferences:', error);
+          return of(null);
+        })
+      ),
+      bookmarks: this.authService.getBookmarks().pipe(
+        catchError(error => {
+          console.warn('Error loading bookmarks:', error);
+          return of([]);
+        })
+      ),
+      history: this.authService.getReadingHistory().pipe(
+        catchError(error => {
+          console.warn('Error loading history:', error);
+          return of({ success: false, history: [] });
+        })
+      )
+    }).subscribe({
+      next: ({ preferences, bookmarks, history }) => {
+        // Update preferences if received
+        if (preferences) {
+          this.initializeForms(
+            preferences.selectedReciter || this.preferencesForm.get('selectedReciter')?.value,
+            preferences.selectedTranslation || this.preferencesForm.get('selectedTranslation')?.value,
+            preferences.fontSize || this.preferencesForm.get('fontSize')?.value
+          );
+          
+          // Update localStorage
+          localStorage.setItem('quran_reader_preferences', JSON.stringify(preferences));
+        }
+
+        // Update bookmarks if received
+        if (bookmarks?.length > 0) {
+          this.bookmarks = bookmarks;
+        }
+
+        // Update history if received
+        if (history?.success && history.history?.length > 0) {
+          this.readingHistory = history.history;
+        }
+      },
+      error: (error) => {
+        console.warn('Error loading server data:', error);
+      }
+    });
+  }
+
   ngOnDestroy(): void {
     // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
@@ -374,53 +400,83 @@ export class ProfileComponent implements OnInit, OnDestroy {
   
   async savePreferences(): Promise<void> {
     if (this.preferencesForm.invalid) {
-      return;
+        return;
     }
     
-    // Check if we've saved preferences too recently
     const now = Date.now();
-    if (now - this.lastSaveTime < 5000) { // Less than 5 seconds since last save
-      this.snackBar.open('Please wait a moment before saving again', 'Close', { duration: 2000 });
-      return;
+    if (now - this.lastSaveTime < 5000) {
+        this.snackBar.open('Please wait a moment before saving again', 'Close', { duration: 2000 });
+        return;
     }
     
     this.lastSaveTime = now;
     this.isSavingPrefs = true;
     const formValues = this.preferencesForm.value;
     
-    const prefsToSave = {
-      reciterId: formValues.selectedReciter,
-      translationId: formValues.selectedTranslation,
-      fontSize: formValues.fontSize,
-      showWordByWord: formValues.showWordByWord,
-      darkMode: formValues.darkMode
-    };
-    
-    // First save to localStorage for immediate access with timestamp
-    localStorage.setItem('quranReaderPreferences', JSON.stringify(prefsToSave));
-    localStorage.setItem('preferences_save_timestamp', now.toString());
-    
-    try {
-      // Only save to server if authenticated and not too frequent
-      const isAuthenticated = await this.authService.isAuthenticated();
-      if (!isAuthenticated) {
-        this.snackBar.open('Preferences saved locally', 'Close', { duration: 2000 });
+    // Ensure reciterId is valid
+    const reciterId = this.validateReciterId(parseInt(formValues.selectedReciter, 10));
+    if (!reciterId) {
+        this.snackBar.open('Invalid reciter selected', 'Close', { duration: 3000 });
         this.isSavingPrefs = false;
         return;
-      }
-      
-      await this.authService.saveUserPreferences(prefsToSave);
-      this.snackBar.open('Preferences saved successfully', 'Close', { duration: 3000 });
+    }
+    
+    // Get current preferences from localStorage
+    let currentPrefs;
+    try {
+        currentPrefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+    } catch (error) {
+        console.warn('Error reading current preferences:', error);
+        currentPrefs = {};
+    }
+    
+    const prefsToSave = {
+        ...currentPrefs,
+        selectedReciter: reciterId,
+        selectedTranslation: formValues.selectedTranslation,
+        fontSize: formValues.fontSize,
+        lastState: currentPrefs.lastState || {
+            lastSurah: 1,
+            lastVerse: 1,
+            isMushafView: false
+        }
+    };
+    
+    // Save to localStorage immediately
+    try {
+        localStorage.setItem('quran_reader_preferences', JSON.stringify(prefsToSave));
+        localStorage.setItem('quranReaderPreferences', JSON.stringify({
+            reciterId: reciterId,
+            translationId: formValues.selectedTranslation,
+            fontSize: formValues.fontSize
+        }));
+    } catch (error) {
+        console.warn('Error saving to localStorage:', error);
+    }
+    
+    try {
+        const isAuthenticated = await this.authService.isAuthenticated();
+        if (!isAuthenticated) {
+            this.snackBar.open('Preferences saved locally', 'Close', { duration: 2000 });
+            this.isSavingPrefs = false;
+            return;
+        }
+        
+        // Save to server
+        await this.authService.saveUserPreferences(prefsToSave);
+        this.preferences = prefsToSave;
+        this.preferencesForm.markAsPristine();
+        
+        this.snackBar.open('Preferences saved successfully', 'Close', { duration: 3000 });
     } catch (error: any) {
-      // Handle rate limiting errors specially
-      if (error.status === 429) {
-        this.snackBar.open('Too many requests. Preferences saved locally.', 'Close', { duration: 3000 });
-      } else {
-        console.error('Error saving preferences to server:', error);
-        this.snackBar.open('Preferences saved locally, but could not save to server', 'Close', { duration: 3000 });
-      }
+        if (error.status === 429) {
+            this.snackBar.open('Too many requests. Preferences saved locally.', 'Close', { duration: 3000 });
+        } else {
+            console.error('Error saving preferences to server:', error);
+            this.snackBar.open('Preferences saved locally, but could not save to server', 'Close', { duration: 3000 });
+        }
     } finally {
-      this.isSavingPrefs = false;
+        this.isSavingPrefs = false;
     }
   }
   
@@ -432,13 +488,18 @@ export class ProfileComponent implements OnInit, OnDestroy {
         
         // Update preferences on server
         const bookmarkSub = this.authService.removeBookmark(bookmark).subscribe(
-          () => {
+          response => {
+            if (response.bookmarks) {
+              this.bookmarks = response.bookmarks;
+            }
             this.snackBar.open('Bookmark removed', 'Close', {
               duration: 2000
             });
           },
-          (error: any) => {
+          error => {
             console.error('Error removing bookmark:', error);
+            // Revert local change if server update fails
+            this.bookmarks.splice(index, 0, bookmark);
             this.snackBar.open('Failed to remove bookmark', 'Close', {
               duration: 3000
             });
@@ -451,57 +512,110 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
   
   goToVerse(bookmark: string): void {
-    const [surahStr, verseStr] = bookmark.split(':');
-    const surah = parseInt(surahStr, 10);
-    const verse = parseInt(verseStr, 10);
+    const [surah, verse] = bookmark.split(':').map(Number);
+    if (!surah || !verse) return;
     
-    if (isNaN(surah) || isNaN(verse)) {
-      console.error('Invalid bookmark format:', bookmark);
-      return;
-    }
-
-    // Pass the verse info through router state
     this.router.navigate(['/quran'], {
       queryParams: { 
         surah,
         mode: 'translation'
-      },
-      state: { 
-        verseToScroll: verse,
-        initialVerse: verse
       }
+    }).then(() => {
+      // Use the exact working scrollToVerse implementation
+      const attemptScroll = (attempts = 0) => {
+        const verseElement = document.getElementById(`verse-${verse}`);
+        if (verseElement) {
+          // Remove any existing highlights first
+          document.querySelectorAll('.highlight-verse').forEach(el => {
+            el.classList.remove('highlight-verse');
+          });
+
+          // Calculate scroll position with header offset
+          const headerOffset = 80;
+          const elementPosition = verseElement.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.scrollY - headerOffset;
+          
+          // Scroll to verse
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          
+          // Add highlight class
+          verseElement.classList.add('highlight-verse');
+          
+          // Remove highlight after animation
+          setTimeout(() => {
+            verseElement.classList.remove('highlight-verse');
+          }, 2000);
+        } else if (attempts < 5) {
+          // Retry up to 5 times with increasing delays
+          setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
+        }
+      };
+
+      // Initial attempt after a short delay
+      setTimeout(() => attemptScroll(), 100);
     });
   }
   
-  goToHistoryEntry(entry: ReadingHistoryEntry): void {
-    if (!entry || typeof entry.surah !== 'number' || typeof entry.verse !== 'number') {
-      console.error('Invalid history entry:', entry);
-      return;
-    }
-
-    // Pass the verse info through router state
+  goToHistoryEntry(entry: ReadingHistory): void {
+    if (!entry.surah || !entry.verse) return;
+    
     this.router.navigate(['/quran'], {
       queryParams: { 
         surah: entry.surah,
         mode: 'translation'
-      },
-      state: { 
-        verseToScroll: entry.verse,
-        initialVerse: entry.verse
       }
+    }).then(() => {
+      // Use the exact working scrollToVerse implementation
+      const attemptScroll = (attempts = 0) => {
+        const verseElement = document.getElementById(`verse-${entry.verse}`);
+        if (verseElement) {
+          // Remove any existing highlights first
+          document.querySelectorAll('.highlight-verse').forEach(el => {
+            el.classList.remove('highlight-verse');
+          });
+
+          // Calculate scroll position with header offset
+          const headerOffset = 80;
+          const elementPosition = verseElement.getBoundingClientRect().top;
+          const offsetPosition = elementPosition + window.scrollY - headerOffset;
+          
+          // Scroll to verse
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: 'smooth'
+          });
+          
+          // Add highlight class
+          verseElement.classList.add('highlight-verse');
+          
+          // Remove highlight after animation
+          setTimeout(() => {
+            verseElement.classList.remove('highlight-verse');
+          }, 2000);
+        } else if (attempts < 5) {
+          // Retry up to 5 times with increasing delays
+          setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
+        }
+      };
+
+      // Initial attempt after a short delay
+      setTimeout(() => attemptScroll(), 100);
     });
   }
   
   clearHistory(): void {
     if (confirm('Are you sure you want to clear your reading history?')) {
-      const clearSub = this.authService.clearReadingHistory().subscribe(
+      const clearSub = from(this.authService.clearHistory()).subscribe(
         () => {
           this.readingHistory = [];
           this.snackBar.open('Reading history cleared', 'Close', {
             duration: 2000
           });
         },
-        (error: any) => {
+        (error: Error) => {
           console.error('Error clearing history:', error);
           this.snackBar.open('Failed to clear reading history', 'Close', {
             duration: 3000
@@ -535,67 +649,60 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private loadTranslations(): void {
     if (this.translationsLoaded) return;
     
-    const transSub = this.quranService.getTranslations().subscribe(
-      (translations) => {
-        // Ensure translations is an array
-        this.translations = Array.isArray(translations) ? translations : [];
-        this.translationsLoaded = true;
-      },
-      (error) => {
-        console.error('Error loading translations:', error);
-        this.translations = [];
-        this.translationsLoaded = true;
+    // Get translations from QuranService
+    this.translations = this.quranService.translations.map(t => ({
+      id: t.id.toString(),
+      name: t.name
+    }));
+    
+    // Load current translation from preferences
+    const cachedPrefs = localStorage.getItem('quranReaderPreferences');
+    if (cachedPrefs) {
+      try {
+        const prefs = JSON.parse(cachedPrefs);
+        if (prefs.translationId) {
+          this.preferencesForm.patchValue({
+            selectedTranslation: prefs.translationId
+          });
+        }
+      } catch (error) {
+        console.warn('Error loading translation preference:', error);
       }
-    );
-    this.subscriptions.push(transSub);
+    }
+    
+    this.translationsLoaded = true;
   }
 
   // Load user bookmarks
-  loadUserBookmarks(): void {
+  private loadUserBookmarks(): void {
     if (this.bookmarksLoaded) return;
     
     this.isLoading = true;
+    this.bookmarks = []; // Initialize as empty array
     
-    const bookmarksSub = this.getBookmarks().subscribe(
-      bookmarks => {
-        this.bookmarks = bookmarks;
+    const bookmarksSub = this.authService.bookmarks$.subscribe({
+      next: (bookmarks) => {
+        // Ensure bookmarks is treated as an array
+        const bookmarksArray = Array.isArray(bookmarks) ? bookmarks : [];
+        
+        // Filter out any invalid bookmarks
+        this.bookmarks = bookmarksArray.filter(bookmark => {
+          if (!bookmark || typeof bookmark !== 'string') return false;
+          const [surah, verse] = bookmark.split(':').map(Number);
+          return !isNaN(surah) && !isNaN(verse) && surah >= 1 && surah <= 114;
+        });
+        this.bookmarksLoaded = true;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading bookmarks:', error);
+        this.bookmarks = [];
         this.bookmarksLoaded = true;
         this.isLoading = false;
       }
-    );
+    });
     
     this.subscriptions.push(bookmarksSub);
-  }
-
-  // Get bookmarks with validation
-  getBookmarks() {
-    return this.authService.getBookmarks().pipe(
-      map(bookmarks => {
-        // Ensure we have an array
-        if (!Array.isArray(bookmarks)) {
-          console.warn('Bookmarks is not an array:', bookmarks);
-          return [];
-        }
-        
-        // Filter and validate bookmarks
-        return bookmarks.filter(bookmark => {
-          if (!bookmark || typeof bookmark !== 'string') return false;
-          if (!bookmark.includes(':')) return false;
-          
-          const [surahStr, verseStr] = bookmark.split(':');
-          const surah = parseInt(surahStr);
-          const verse = parseInt(verseStr);
-          
-          return !isNaN(surah) && !isNaN(verse) && 
-                 surah >= 1 && surah <= 114 && 
-                 verse >= 1;
-        });
-      }),
-      catchError(error => {
-        console.error('Error getting bookmarks:', error);
-        return of([]);
-      })
-    );
   }
 
   // Method to get both Arabic and English surah names
@@ -608,12 +715,128 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private loadReciters(): void {
     if (this.recitersLoaded) return;
     
-    // Ensure reciters is an array
-    this.reciters = Array.isArray(this.quranService.reciters) ? this.quranService.reciters : [];
-    this.recitersLoaded = true;
+    // Get reciters from QuranService
+    this.reciters = this.quranService.reciters;
+    console.log('Loading reciters:', this.reciters);
     
-    if (this.reciters.length === 0) {
-      console.error('No reciters loaded from QuranService');
+    // Load current reciter from preferences
+    const cachedPrefs = localStorage.getItem('quranReaderPreferences');
+    if (cachedPrefs) {
+      try {
+        const prefs = JSON.parse(cachedPrefs);
+        if (prefs.reciterId) {
+          const reciterId = parseInt(prefs.reciterId, 10);
+          console.log('Setting reciter from cache:', reciterId);
+          this.preferencesForm.patchValue({
+            selectedReciter: reciterId
+          }, { emitEvent: true });
+        }
+      } catch (error) {
+        console.warn('Error loading reciter preference:', error);
+        this.preferencesForm.patchValue({
+          selectedReciter: 1
+        }, { emitEvent: true });
+      }
     }
+    
+    this.recitersLoaded = true;
+  }
+
+  // Add this method to check for duplicates
+  private isDuplicateBookmark(bookmark: string): boolean {
+    return this.bookmarks.includes(bookmark);
+  }
+
+  private isDuplicateHistory(entry: ReadingHistory): boolean {
+    return this.readingHistory.some(h => 
+      h.surah === entry.surah && 
+      h.verse === entry.verse &&
+      new Date(h.timestamp).getTime() > Date.now() - 1000 * 60 // Within last minute
+    );
+  }
+
+  private isValidVerseForHistory(surah: number, verse: number): boolean {
+    return (
+      Number.isInteger(surah) &&
+      Number.isInteger(verse) &&
+      surah > 0 &&
+      surah <= 114 &&
+      verse > 0
+    );
+  }
+
+  // Add compareById function for mat-select comparison
+  compareById(id1: number, id2: number): boolean {
+    return id1 === id2;
+  }
+
+  private validateReciterId(reciterId: number | undefined): number | null {
+    // Check if the reciterId exists in our reciters array
+    if (reciterId && this.quranService.reciters.some(r => r.id === reciterId)) {
+      return reciterId;
+    }
+    return null;
+  }
+
+  private loadReadingHistory(): void {
+    if (this.historyLoaded) return;
+    this.isLoading = true;
+
+    // Load from server
+    const historySub = this.authService.getReadingHistory().pipe(
+      // Only try once
+      take(1)
+    ).subscribe({
+      next: (response: ReadingHistoryResponse) => {
+        if (response.success && response.history) {
+          // Filter and sort server history
+          const serverHistory = response.history.filter((entry: ReadingHistory) => {
+            if (!entry || !entry.surah || !entry.verse) return false;
+            const timestamp = new Date(entry.timestamp);
+            return timestamp <= new Date() && // No future dates
+                   entry.surah >= 1 && entry.surah <= 114 && // Valid surah
+                   entry.verse >= 1; // Valid verse
+          }).sort((a: ReadingHistory, b: ReadingHistory) => 
+            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+          );
+
+          // Update component state
+          this.readingHistory = serverHistory;
+
+          // Update localStorage
+          try {
+            const localPrefs = localStorage.getItem('quran_reader_preferences');
+            const prefs = localPrefs ? JSON.parse(localPrefs) : {};
+            prefs.readingHistory = serverHistory;
+            localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
+          } catch (error) {
+            console.warn('Error updating localStorage with server history:', error);
+          }
+        }
+        this.historyLoaded = true;
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading reading history from server:', error);
+        this.historyLoaded = true;
+        this.isLoading = false;
+      }
+    });
+
+    this.subscriptions.push(historySub);
+  }
+
+  private loadUserData() {
+    // This method is no longer needed
+  }
+
+  private loadBookmarks() {
+    // This method is no longer needed
+  }
+
+  // Fix initializeForm method name
+  private initializeForm(): void {
+    // Pass default values for reciterId, translationId, and fontSize
+    this.initializeForms(1, '131', 24);
   }
 } 

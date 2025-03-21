@@ -1,8 +1,10 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { loadStripe, Stripe } from '@stripe/stripe-js';
 import { environment } from '../../environments/environment';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, from } from 'rxjs';
+import { FirebaseAuthService } from './firebase-auth.service';
+import { switchMap } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
@@ -10,7 +12,10 @@ import { Observable, firstValueFrom } from 'rxjs';
 export class StripeService {
   private stripe: Promise<Stripe | null>;
 
-  constructor(private http: HttpClient) {
+  constructor(
+    private http: HttpClient,
+    private authService: FirebaseAuthService
+  ) {
     this.stripe = loadStripe(environment.stripeConfig.publishableKey || '');
   }
 
@@ -29,11 +34,28 @@ export class StripeService {
 
   // Get current subscription status
   getSubscriptionStatus(): Observable<{
-    status: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'trialing' | 'unpaid';
+    status: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'trialing' | 'unpaid' | 'inactive';
     plan: 'free' | 'standard' | 'premium';
-    currentPeriodEnd?: Date;
+    features: {
+      aiChat: boolean;
+      tafsirAccess: boolean;
+      wordByWord: boolean;
+    };
   }> {
-    return this.http.get<any>(`${environment.apiUrl}/api/subscription/status`);
+    return from(this.authService.getToken()).pipe(
+      switchMap(token => {
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+        
+        const headers = new HttpHeaders().set('Authorization', `Bearer ${token}`);
+        
+        return this.http.get<any>(
+          `${environment.apiUrl}/api/subscription/status`,
+          { headers }
+        );
+      })
+    );
   }
 
   // Cancel subscription

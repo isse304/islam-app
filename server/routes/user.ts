@@ -2,22 +2,31 @@ import express, { Response } from 'express';
 import * as admin from 'firebase-admin';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
 import mongoose from 'mongoose';
-import { Request } from 'express';
 
 const router = express.Router();
 
-// Define interfaces to match frontend
+// Define interfaces
 interface UserPreferences {
+    userId: string;
     selectedReciter: number;
     selectedTranslation: string;
     fontSize: number;
-    bookmarks: string[];
+    isDarkMode: boolean;
+    arabicFont: string;
+    showWordByWord: boolean;
+    isMushafView: boolean;
+    isDoublePageView: boolean;
     lastState?: {
+        lastSurah: number;
+        lastVerse: number;
         isMushafView: boolean;
-        lastSurah?: number;
-        lastVerse?: number;
-        lastPage?: number;
+        timestamp: Date;
     };
+    readingHistory?: Array<{
+        surah: number;
+        verse: number;
+        timestamp: string;
+    }>;
 }
 
 interface ReadingHistoryEntry {
@@ -35,19 +44,27 @@ const readingHistorySchema = new mongoose.Schema<ReadingHistoryEntry>({
     verse: { type: Number, required: true }
 });
 
+// Create compound unique index on userId and surah to ensure one entry per surah per user
+readingHistorySchema.index({ userId: 1, surah: 1 }, { unique: true });
+
 const userPreferencesSchema = new mongoose.Schema({
     userId: { type: String, required: true, unique: true },
     preferences: {
-        selectedReciter: { type: Number, default: 7 },
+        selectedReciter: { type: Number, default: 1 },
         selectedTranslation: { type: String, default: '131' },
-        fontSize: { type: Number, default: 24 },
         bookmarks: [String],
         lastState: {
             isMushafView: Boolean,
             lastSurah: Number,
             lastVerse: Number,
-            lastPage: Number
-        }
+            lastPage: Number,
+            timestamp: { type: Date, default: Date.now }
+        },
+        readingHistory: [{
+            surah: Number,
+            verse: Number,
+            timestamp: { type: Date, default: Date.now }
+        }]
     }
 });
 
@@ -55,439 +72,397 @@ const userPreferencesSchema = new mongoose.Schema({
 const ReadingHistory = mongoose.model('ReadingHistory', readingHistorySchema);
 const UserPreferences = mongoose.model('UserPreferences', userPreferencesSchema);
 
-// Get user profile and preferences
-router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Helper function to verify user access
+const verifyUserAccess = (req: AuthenticatedRequest, userId: string): boolean => {
+    if (!req.auth) return false;
+    return req.auth.userId === userId;
+};
+
+// Helper function to get default preferences
+const getDefaultPreferences = (userId: string) => ({
+    userId,
+    preferences: {
+        selectedReciter: 1,
+        selectedTranslation: '131',
+        bookmarks: [],
+        lastState: {
+            isMushafView: false,
+            lastSurah: 1,
+            lastVerse: 1,
+            lastPage: 1,
+            timestamp: new Date()
+        },
+        readingHistory: []
+    }
+});
+
+// Get user data (preferences, bookmarks, history)
+router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is accessing their own profile
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only access own profile' });
-            return;
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth.userId;
+        const userId = req.auth!.userId;
         
-        // Get Firebase user data
-        let userRecord;
-        if (process.env.NODE_ENV === 'development') {
-            // Mock user data in development
-            userRecord = {
-                email: 'test@example.com',
-                displayName: 'Test User',
-                photoURL: null,
-                metadata: {
-                    creationTime: new Date().toISOString()
-                }
-            };
-        } else {
-            userRecord = await admin.auth().getUser(userId);
+        // Get or create user preferences
+        const userPrefs = await UserPreferences.findOne({ userId }) || 
+                         await UserPreferences.create(getDefaultPreferences(userId));
+
+        // Ensure preferences exist
+        const preferences = userPrefs.preferences || getDefaultPreferences(userId).preferences;
+
+        res.json({
+            success: true,
+            preferences: preferences,
+            bookmarks: preferences.bookmarks || [],
+            history: preferences.readingHistory || []
+        });
+    } catch (error) {
+        console.error('Error getting user data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
+
+// Update user data
+router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
-        
-        // Get or create preferences
-        let preferences = await UserPreferences.findOne({ userId });
-        if (!preferences) {
-            preferences = await UserPreferences.create({
-                userId,
-                preferences: {
-                    selectedReciter: 7,
-                    selectedTranslation: '131',
-                    fontSize: 24,
-                    bookmarks: []
-                }
-            });
+
+        const userId = req.auth!.userId;
+        const { preferences: newPreferences } = req.body;
+
+        // Get or create user preferences
+        let userPrefs = await UserPreferences.findOne({ userId });
+        if (!userPrefs) {
+            userPrefs = await UserPreferences.create(getDefaultPreferences(userId));
+        }
+
+        // Ensure preferences exist
+        const currentPreferences = userPrefs.preferences || getDefaultPreferences(userId).preferences;
+
+        // Update preferences
+        if (newPreferences) {
+            userPrefs.preferences = {
+                ...currentPreferences,
+                ...newPreferences,
+                bookmarks: newPreferences.bookmarks || currentPreferences.bookmarks || [],
+                readingHistory: newPreferences.readingHistory || currentPreferences.readingHistory || []
+            };
+            await userPrefs.save();
+        }
+
+        // Get the updated preferences
+        const savedPreferences = userPrefs.preferences || getDefaultPreferences(userId).preferences;
+
+        res.json({
+            success: true,
+            preferences: savedPreferences,
+            bookmarks: savedPreferences.bookmarks || [],
+            history: savedPreferences.readingHistory || []
+        });
+    } catch (error) {
+        console.error('Error updating user data:', error);
+        res.status(500).json({ error: 'Failed to update user data' });
+    }
+}));
+
+// For backward compatibility - redirect old endpoints to new ones
+router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const userId = req.auth!.userId;
+        const userPrefs = await UserPreferences.findOne({ userId }) || await UserPreferences.create(getDefaultPreferences(userId));
+        res.json({
+            success: true,
+            preferences: userPrefs.preferences
+        });
+    } catch (error) {
+        console.error('Error getting preferences:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+}));
+
+router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const userId = req.auth!.userId;
+        const { preferences: newPreferences } = req.body;
+
+        // Get or create user preferences
+        let userPrefs = await UserPreferences.findOne({ userId });
+        if (!userPrefs) {
+            userPrefs = await UserPreferences.create(getDefaultPreferences(userId));
+        }
+
+        // Update preferences
+        if (newPreferences) {
+            userPrefs.preferences = {
+                ...userPrefs.preferences,
+                ...newPreferences,
+                bookmarks: newPreferences.bookmarks || userPrefs.preferences?.bookmarks || [],
+                readingHistory: newPreferences.readingHistory || userPrefs.preferences?.readingHistory || []
+            };
+            await userPrefs.save();
         }
 
         res.json({
-            user: {
-                email: userRecord.email,
-                firstName: userRecord.displayName?.split(' ')[0] || '',
-                lastName: userRecord.displayName?.split(' ')[1] || '',
-                imageUrl: userRecord.photoURL,
-                createdAt: userRecord.metadata.creationTime
-            },
-            preferences: preferences.preferences
+            success: true,
+            preferences: userPrefs.preferences
         });
     } catch (error) {
-        console.error('Error getting user profile:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        console.error('Error updating preferences:', error);
+        res.status(500).json({ error: 'Failed to update preferences' });
     }
 }));
 
-// Get only user preferences
-router.get('/:userId/preferences', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Get reading history
+router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        // In development mode, proceed with the request using the userId from the URL
-        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDevelopment) {
-            console.log('Development mode: Using userId from URL params for preferences');
-            const userId = req.params.userId;
-            
-            // Get or create preferences
-            let preferences = await UserPreferences.findOne({ userId });
-            if (!preferences) {
-                preferences = await UserPreferences.create({
-                    userId,
-                    preferences: {
-                        selectedReciter: 7,
-                        selectedTranslation: '131',
-                        fontSize: 24,
-                        bookmarks: []
-                    }
-                });
-            }
-            
-            res.json(preferences.preferences);
-            return;
-        }
-        
-        // Regular auth check for non-development environments
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is accessing their own preferences
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only access own preferences' });
-            return;
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth.userId;
-        
-        // Get or create preferences
-        let preferences = await UserPreferences.findOne({ userId });
-        if (!preferences) {
-            preferences = await UserPreferences.create({
-                userId,
-                preferences: {
-                    selectedReciter: 7,
-                    selectedTranslation: '131',
-                    fontSize: 24,
-                    bookmarks: []
-                }
+        const userId = req.auth!.userId;
+        const history = await ReadingHistory.find({ userId })
+            .sort({ timestamp: -1 })
+            .limit(100)
+            .lean();
+
+        res.json({ success: true, history });
+    } catch (error) {
+        console.error('Error getting reading history:', error);
+        res.status(500).json({ success: false, error: 'Failed to get reading history' });
+    }
+}));
+
+// Save reading history entry
+router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const userId = req.auth!.userId;
+        const { surah, verse } = req.body;
+
+        // Enhanced input validation
+        if (!surah || !verse) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields: surah and verse are required.' 
             });
         }
 
-        res.json(preferences.preferences);
-    } catch (error) {
-        console.error('Error getting user preferences:', error);
-        res.status(500).json({ error: 'Internal server error' });
-    }
-});
+        // Convert to numbers and validate
+        const surahNum = Number(surah);
+        const verseNum = Number(verse);
 
-// Update user preferences
-router.put('/:userId/preferences', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        // In development mode, proceed with the request using the userId from the URL
-        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDevelopment) {
-            console.log('Development mode: Using userId from URL params for updating preferences');
-            const userId = req.params.userId;
-            const newPreferences = req.body;
-            
-            // Update or create preferences
-            const preferences = await UserPreferences.findOneAndUpdate(
-                { userId },
-                { preferences: newPreferences },
-                { new: true, upsert: true }
-            );
-            
-            res.json({ preferences: preferences.preferences });
-            return;
+        if (isNaN(surahNum) || isNaN(verseNum)) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid input: surah and verse must be valid numbers.' 
+            });
         }
+
+        if (surahNum < 1 || surahNum > 114 || verseNum < 1) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Invalid input: surah must be between 1 and 114, verse must be positive.' 
+            });
+        }
+
+        // Find existing entry for this surah
+        let historyEntry = await ReadingHistory.findOne({ userId, surah: surahNum });
         
-        // Regular auth check for non-development environments
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is updating their own preferences
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only update own preferences' });
-            return;
-        }
-
-        const userId = req.auth.userId;
-        const newPreferences = req.body;
-
-        // Update or create preferences
-        const preferences = await UserPreferences.findOneAndUpdate(
-            { userId },
-            { preferences: newPreferences },
-            { new: true, upsert: true }
-        );
-
-        res.json({ preferences: preferences.preferences });
-    } catch (error) {
-        console.error('Preferences update error:', error);
-        res.status(500).json({ error: 'Failed to update preferences' });
-    }
-});
-
-// Get reading history
-router.get('/:userId/history', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is accessing their own history
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only access own history' });
-            return;
+        if (historyEntry) {
+            // Update existing entry
+            historyEntry.verse = verseNum;
+            historyEntry.timestamp = new Date();
+            await historyEntry.save();
+        } else {
+            // Create new entry if none exists
+            historyEntry = new ReadingHistory({
+                userId,
+                surah: surahNum,
+                verse: verseNum,
+                timestamp: new Date()
+            });
+            await historyEntry.save();
         }
 
-        const history = await ReadingHistory.find({ userId: req.auth.userId })
-            .sort({ timestamp: -1 })
-            .limit(100); // Limit to last 100 entries
-
-        res.json({ history });
-    } catch (error) {
-        console.error('History fetch error:', error);
-        res.status(500).json({ error: 'Failed to fetch reading history' });
-    }
-}));
-
-// Add reading history entry
-router.post('/:userId/history', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is adding to their own history
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only add to own history' });
-            return;
+        // Update user preferences with latest reading state
+        const userPrefs = await UserPreferences.findOne({ userId });
+        if (userPrefs && userPrefs.preferences) {
+            if (!userPrefs.preferences.lastState) {
+                userPrefs.preferences.lastState = {
+                    isMushafView: false,
+                    lastSurah: surahNum,
+                    lastVerse: verseNum,
+                    lastPage: 1,
+                    timestamp: new Date()
+                };
+            } else {
+                userPrefs.preferences.lastState = {
+                    ...userPrefs.preferences.lastState,
+                    lastSurah: surahNum,
+                    lastVerse: verseNum,
+                    timestamp: new Date()
+                };
+            }
+            await userPrefs.save();
         }
 
-        const { surah, verse } = req.body;
-        
-        // Validate surah and verse numbers
-        if (!surah || !verse || surah < 1 || surah > 114 || verse < 1) {
-            res.status(400).json({ error: 'Invalid surah or verse number' });
-            return;
-        }
-
-        // Create new history entry
-        const historyEntry = new ReadingHistory({
-            userId: req.auth.userId,
-            surah,
-            verse,
-            timestamp: new Date()
+        res.json({ 
+            success: true, 
+            entry: historyEntry,
+            message: 'Reading history updated successfully'
         });
-
-        await historyEntry.save();
-        res.json({ message: 'Reading history entry added successfully' });
     } catch (error) {
-        console.error('History entry error:', error);
-        res.status(500).json({ error: 'Failed to add history entry' });
+        console.error('Error saving reading history:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to save reading history',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 }));
 
 // Clear reading history
-router.delete('/:userId/history', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is clearing their own history
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only clear own history' });
-            return;
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
 
-        await ReadingHistory.deleteMany({ userId: req.auth.userId });
-        res.json({ message: 'Reading history cleared successfully' });
+        const userId = req.auth!.userId;
+        await ReadingHistory.deleteMany({ userId });
+
+        res.json({ success: true, message: 'Reading history cleared' });
     } catch (error) {
-        console.error('History clear error:', error);
-        res.status(500).json({ error: 'Failed to clear reading history' });
+        console.error('Error clearing reading history:', error);
+        res.status(500).json({ success: false, error: 'Failed to clear reading history' });
     }
 }));
 
 // Get user bookmarks
-router.get('/:userId/bookmarks', (req: Request, res: Response) => {
+router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = req.params.userId;
-        
-        if (process.env.NODE_ENV === 'development') {
-            // In development, return mock bookmarks
-            res.json(['1:1', '2:255', '36:1', '67:1', '112:1']);
-        } else {
-            // In production, you would fetch from a database
-            // For now, return an empty array
-            res.json([]);
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
-    } catch (error) {
-        console.error('Error fetching bookmarks:', error);
-        res.status(500).json({ error: 'Failed to retrieve bookmarks' });
-    }
-});
 
-// Add a bookmark
-router.post('/:userId/bookmarks', (req: Request, res: Response) => {
+        const userId = req.auth!.userId;
+        const userPrefs = await UserPreferences.findOne({ userId }) || await UserPreferences.create(getDefaultPreferences(userId));
+        res.json(userPrefs?.preferences?.bookmarks || []);
+    } catch (error) {
+        console.error('Error getting bookmarks:', error);
+        res.status(500).json({ success: false, error: 'Failed to get bookmarks' });
+    }
+}));
+
+// Add bookmark
+router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = req.params.userId;
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
+        }
+
+        const userId = req.auth!.userId;
         const { verseReference } = req.body;
-        
+
         if (!verseReference) {
-            return res.status(400).json({ error: 'Verse reference is required' });
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Verse reference is required',
+                bookmarks: []
+            });
         }
-        
-        if (process.env.NODE_ENV === 'development') {
-            // In development, just acknowledge the addition
-            console.log(`Added bookmark ${verseReference} for user ${userId}`);
-            res.json({ success: true, message: 'Bookmark added successfully' });
-        } else {
-            // In production, you would add to a database
-            res.json({ success: true, message: 'Bookmark added successfully' });
+
+        // Get or create user preferences with default values
+        let userPrefs = await UserPreferences.findOne({ userId });
+        if (!userPrefs || !userPrefs.preferences) {
+            userPrefs = await UserPreferences.create(getDefaultPreferences(userId));
         }
+
+        // At this point we know userPrefs and preferences exist
+        const preferences = userPrefs.preferences!;
+
+        // Ensure bookmarks array exists
+        if (!preferences.bookmarks) {
+            preferences.bookmarks = [];
+        }
+
+        // Add bookmark if it doesn't exist
+        if (!preferences.bookmarks.includes(verseReference)) {
+            preferences.bookmarks.push(verseReference);
+            await userPrefs.save();
+        }
+
+        res.json({ 
+            success: true, 
+            message: 'Bookmark added successfully',
+            bookmarks: preferences.bookmarks 
+        });
     } catch (error) {
         console.error('Error adding bookmark:', error);
-        res.status(500).json({ error: 'Failed to add bookmark' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to add bookmark',
+            bookmarks: []
+        });
     }
-});
+}));
 
-// Delete a bookmark
-router.delete('/:userId/bookmarks/:verseReference', (req: Request, res: Response) => {
+// Delete bookmark
+router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        const userId = req.params.userId;
-        const verseReference = req.params.verseReference;
-        
-        if (process.env.NODE_ENV === 'development') {
-            // In development, just acknowledge the deletion
-            console.log(`Removed bookmark ${verseReference} for user ${userId}`);
-            res.json({ success: true, message: 'Bookmark removed successfully' });
-        } else {
-            // In production, you would remove from a database
-            res.json({ success: true, message: 'Bookmark removed successfully' });
+        if (!verifyUserAccess(req, req.params.userId)) {
+            return res.status(403).json({ error: 'Forbidden' });
         }
+
+        const userId = req.auth!.userId;
+        const bookmark = req.params.bookmark;
+
+        // Get or create user preferences with default values
+        let userPrefs = await UserPreferences.findOne({ userId });
+        if (!userPrefs || !userPrefs.preferences) {
+            userPrefs = await UserPreferences.create(getDefaultPreferences(userId));
+        }
+
+        // At this point we know userPrefs and preferences exist
+        const preferences = userPrefs.preferences!;
+
+        // Ensure bookmarks array exists
+        if (!preferences.bookmarks) {
+            preferences.bookmarks = [];
+        }
+
+        // Remove bookmark
+        preferences.bookmarks = preferences.bookmarks.filter(b => b !== bookmark);
+        await userPrefs.save();
+
+        res.json({ 
+            success: true, 
+            message: 'Bookmark removed successfully',
+            bookmarks: preferences.bookmarks 
+        });
     } catch (error) {
         console.error('Error removing bookmark:', error);
-        res.status(500).json({ error: 'Failed to remove bookmark' });
+        res.status(500).json({ 
+            success: false, 
+            message: 'Failed to remove bookmark',
+            bookmarks: []
+        });
     }
-});
-
-// Check if user is admin
-router.get('/:userId/admin-status', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    try {
-        // In development mode, automatically grant admin access
-        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDevelopment) {
-            console.log('Development mode: Auto-granting admin status for user:', req.params.userId);
-            res.json({ isAdmin: true });
-            return;
-        }
-        
-        // Regular auth check for non-development environments
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        
-        // Verify user is checking their own admin status
-        if (req.auth.userId !== req.params.userId) {
-            res.status(403).json({ error: 'Forbidden - Can only check own admin status' });
-            return;
-        }
-
-        // Check against admin list from environment variables
-        const adminUsers = process.env.ADMIN_USERS ? process.env.ADMIN_USERS.split(',') : [];
-        const isAdmin = adminUsers.includes(req.auth.userId);
-        
-        res.json({ isAdmin });
-    } catch (error) {
-        console.error('Admin status check error:', error);
-        res.status(500).json({ error: 'Failed to check admin status' });
-    }
-});
-
-// Get reading history
-router.get('/:userId/reading-history', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const { userId } = req.params;
-    
-    // In development mode, return mock data
-    const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-    if (isDevelopment) {
-        console.log('Development mode: Returning mock reading history');
-        
-        // Return mock reading history
-        const mockHistory = [
-            { surah: 1, verse: 1, timestamp: new Date(Date.now() - 86400000) },
-            { surah: 2, verse: 255, timestamp: new Date(Date.now() - 172800000) },
-            { surah: 36, verse: 1, timestamp: new Date(Date.now() - 259200000) }
-        ];
-        
-        res.json(mockHistory);
-        return;
-    }
-    
-    try {
-        // For production, you would get this from your database
-        // const history = await db.getUserReadingHistory(userId);
-        
-        // For now, return empty array
-        res.json([]);
-    } catch (error) {
-        console.error('Error getting reading history:', error);
-        res.status(500).json({ error: 'Failed to get reading history' });
-    }
-});
-
-// Update reading history
-router.put('/:userId/reading-history', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const { userId } = req.params;
-    const history = req.body;
-    
-    // In development mode, just acknowledge
-    const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-    if (isDevelopment) {
-        console.log('Development mode: Acknowledging reading history update');
-        res.json({ success: true });
-        return;
-    }
-    
-    try {
-        // For production, you would save this to your database
-        // await db.updateUserReadingHistory(userId, history);
-        
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error updating reading history:', error);
-        res.status(500).json({ error: 'Failed to update reading history' });
-    }
-});
-
-// Delete reading history
-router.delete('/:userId/reading-history', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
-    const { userId } = req.params;
-    
-    // In development mode, just acknowledge
-    const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-    if (isDevelopment) {
-        console.log('Development mode: Acknowledging reading history deletion');
-        res.json({ success: true });
-        return;
-    }
-    
-    try {
-        // For production, you would clear this from your database
-        // await db.clearUserReadingHistory(userId);
-        
-        res.json({ success: true });
-    } catch (error) {
-        console.error('Error clearing reading history:', error);
-        res.status(500).json({ error: 'Failed to clear reading history' });
-    }
-});
+}));
 
 export default router; 

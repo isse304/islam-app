@@ -1,0 +1,8 @@
+{
+  "/content/api": {
+    "target": "https://apis-prelive.quran.foundation",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+} 
