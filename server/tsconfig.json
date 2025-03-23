@@ -28,5 +28,5 @@
       ]
     },
     "exclude": ["node_modules"],
-    "include": ["./routes/**/*.ts", "./services/**/*.ts", "./models/**/*.ts", "./middleware/**/*.ts", "./types/**/*.ts"]
+    "include": ["./routes/**/*.ts", "./services/**/*.ts", "./models/**/*.ts", "./middleware/**/*.ts", "./types/**/*.ts", "./index.ts", "./config/**/*.ts"]
 }
