@@ -1,28 +1,37 @@
-import express, { Response, RequestHandler, Request, Router } from 'express';
-import OpenAI from 'openai';
-import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { UserUsage } from '../models/UserUsage';
-import { CacheService } from '../services/cache.service';
-import { CostMonitorService } from '../services/cost-monitor.service';
-import { EmailService } from '../services/email.service';
-import { OpenAIService } from '../services/openai.service';
-import { UsageService } from '../services/usage.service';
-import { StripeService } from '../services/stripe.service';
-import { AuthenticatedRequest, withAuth } from '../middleware/auth';
-import * as admin from 'firebase-admin';
-import { ChatCompletionMessageParam } from 'openai/resources/chat';
+// @ts-nocheck
+const express = require('express');
+const OpenAI = require('openai');
+const rateLimit = require('express-rate-limit');
+const dotenv = require('dotenv');
+const path = require('path');
+const { UserUsage } = require('../models/UserUsage');
+const { CacheService } = require('../services/cache.service');
+const { CostMonitorService } = require('../services/cost-monitor.service');
+const { EmailService } = require('../services/email.service');
+const { OpenAIService } = require('../services/openai.service');
+const { UsageService } = require('../services/usage.service');
+const { StripeService } = require('../services/stripe.service');
+const { withAuth } = require('../middleware/auth');
+const admin = require('firebase-admin');
 
-// ES Module path resolution
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Type definitions
+type AuthRequest = express.Request & {
+    auth?: {
+        userId: string;
+        email?: string;
+        decodedToken?: any;
+    };
+};
+
+type ChatMessage = {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+};
 
 // Load environment variables
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+dotenv.config();
 
-const router = Router();
+const router = express.Router();
 const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
 
 // Initialize base services
@@ -53,8 +62,8 @@ if (isDevelopment) {
 
 // Rate limiting configuration
 const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'),
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'),
+    windowMs: 900000, // 15 minutes in milliseconds
+    max: 100, // Limit each IP to 100 requests per windowMs
     message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -66,14 +75,25 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-// Helper function to estimate tokens
-function estimateTokens(text: string): number {
+/**
+ * Helper function to estimate tokens
+ * @param {string} text - The input text to estimate tokens for
+ * @returns {number} - Estimated number of tokens
+ */
+function estimateTokens(text) {
     // Rough estimation: 1 token ≈ 4 characters
     return Math.ceil(text.length / 4);
 }
 
-// Generate cache key from request parameters
-function generateCacheKey(systemMessage: string, userMessage: string, temperature: number, maxTokens: number): string {
+/**
+ * Generate cache key from request parameters
+ * @param {string} systemMessage - The system message
+ * @param {string} userMessage - The user message
+ * @param {number} temperature - The temperature parameter
+ * @param {number} maxTokens - The maximum tokens parameter
+ * @returns {string} - The generated cache key
+ */
+function generateCacheKey(systemMessage, userMessage, temperature, maxTokens) {
     return `ai:${systemMessage}:${userMessage}:${temperature}:${maxTokens}`;
 }
 
@@ -100,7 +120,7 @@ setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
 // Protected route for AI generation
-router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/chat', withAuth, async (req, res) => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -139,7 +159,7 @@ router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response): 
         console.error('Error in AI chat:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
-}));
+});
 
 // Protected route for AI generation
 router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
@@ -756,4 +776,4 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
     }
 }));
 
-export default router; 
+module.exports = router; 

@@ -23,8 +23,12 @@
     "@angular/platform-browser-dynamic": "^16.2.0",
     "@angular/router": "^16.2.0",
     "@stripe/stripe-js": "^3.0.0",
+    "@types/fuse": "2.6.2",
     "firebase": "^10.7.0",
+    "fuse.js": "7.1.0",
+    "localforage": "1.10.0",
     "ngx-stripe": "^16.4.0",
+    "openai": "4.89.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.13.0"
