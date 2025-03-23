@@ -6,6 +6,20 @@ interface DatabaseConfig {
     options: mongoose.ConnectOptions;
 }
 
+// Create logger instance
+const logger = winston.createLogger({
+    level: 'info',
+    format: winston.format.combine(
+        winston.format.timestamp(),
+        winston.format.json()
+    ),
+    transports: [
+        new winston.transports.Console({
+            format: winston.format.simple()
+        })
+    ]
+});
+
 const configs: Record<string, DatabaseConfig> = {
     development: {
         uri: process.env.MONGODB_URI || 'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura',
@@ -35,7 +49,13 @@ const configs: Record<string, DatabaseConfig> = {
     }
 };
 
-export const connectDatabase = async (logger: winston.Logger) => {
+// Add proper error type
+const handleError = (error: Error): void => {
+    logger.error('MongoDB connection error:', error);
+};
+
+export const connectDatabase = async (externalLogger?: winston.Logger) => {
+    const dbLogger = externalLogger || logger;
     const env = process.env.NODE_ENV || 'development';
     const config = configs[env];
 
@@ -50,20 +70,20 @@ export const connectDatabase = async (logger: winston.Logger) => {
 
     try {
         // Add event listeners before connecting
-        mongoose.connection.on('error', (error) => {
-            logger.error('MongoDB connection error:', error);
+        mongoose.connection.on('error', (error: Error) => {
+            handleError(error);
         });
 
         mongoose.connection.on('disconnected', () => {
-            logger.warn('MongoDB disconnected. Attempting to reconnect...');
+            dbLogger.warn('MongoDB disconnected. Attempting to reconnect...');
         });
 
         mongoose.connection.on('reconnected', () => {
-            logger.info('MongoDB reconnected');
+            dbLogger.info('MongoDB reconnected');
         });
 
         mongoose.connection.on('connected', () => {
-            logger.info('MongoDB connected successfully');
+            dbLogger.info('MongoDB connected successfully');
         });
 
         // Set mongoose options
@@ -75,28 +95,28 @@ export const connectDatabase = async (logger: winston.Logger) => {
             autoIndex: env === 'development', // Only create indexes in development
         });
 
-        logger.info(`Connected to MongoDB in ${env} mode`);
+        dbLogger.info(`Connected to MongoDB in ${env} mode`);
 
         // Graceful shutdown
         process.on('SIGINT', async () => {
             try {
                 await mongoose.connection.close();
-                logger.info('MongoDB connection closed through app termination');
+                dbLogger.info('MongoDB connection closed through app termination');
                 process.exit(0);
             } catch (err) {
-                logger.error('Error during MongoDB shutdown:', err);
+                dbLogger.error('Error during MongoDB shutdown:', err);
                 process.exit(1);
             }
         });
 
     } catch (error) {
-        logger.error('Error connecting to MongoDB:', error);
+        dbLogger.error('Error connecting to MongoDB:', error);
         if (env === 'development') {
-            logger.info('Development mode: Please ensure MongoDB is running locally or provide a valid MONGODB_URI');
-            logger.info('You can:');
-            logger.info('1. Install and start MongoDB locally');
-            logger.info('2. Use MongoDB Atlas (https://www.mongodb.com/cloud/atlas)');
-            logger.info('3. Set MONGODB_URI in your .env file');
+            dbLogger.info('Development mode: Please ensure MongoDB is running locally or provide a valid MONGODB_URI');
+            dbLogger.info('You can:');
+            dbLogger.info('1. Install and start MongoDB locally');
+            dbLogger.info('2. Use MongoDB Atlas (https://www.mongodb.com/cloud/atlas)');
+            dbLogger.info('3. Set MONGODB_URI in your .env file');
         }
         throw error;
     }

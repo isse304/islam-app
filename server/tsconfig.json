@@ -11,10 +11,13 @@
       "forceConsistentCasingInFileNames": true,
       "moduleResolution": "node",
       "resolveJsonModule": true,
+      "allowJs": true,
+      "declaration": true,
       "baseUrl": ".",
       "paths": {
         "*": ["node_modules/*"]
-      }
+      },
+      "typeRoots": ["./node_modules/@types"]
     },
     "include": [
       "**/*"
