@@ -3,27 +3,22 @@ import session from 'express-session';
 import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import { AuthenticatedRequest, withAuth } from './middleware/auth';
-import securityConfig from './middleware/security';
-import aiRouter from './routes/ai';
-import userRouter from './routes/user';
-import usageRouter from './routes/usage';
-import quranRouter from './routes/quran';
-import subscriptionRouter from './routes/subscription';
+import { AuthenticatedRequest, withAuth } from './middleware/auth.js';
+import securityConfig from './middleware/security.js';
+import * as aiRouter from './routes/ai.js';
+import userRouter from './routes/user.js';
+import usageRouter from './routes/usage.js';
+import quranRouter from './routes/quran.js';
+import subscriptionRouter from './routes/subscription.js';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 import winston from 'winston';
 import path from 'path';
-import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { getApps } from 'firebase-admin/app';
-import { auth } from './config/firebase';
-import { connectDatabase } from './config/database';
-
-// ES Module path resolution
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+import { auth } from './config/firebase.js';
+import { connectDatabase } from './config/database.js';
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -94,14 +89,14 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Session configuration
-const sessionConfig = {
+const sessionConfig: session.SessionOptions = {
     secret: process.env.SESSION_SECRET || 'dev_secret',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI,
+        mongoUrl: process.env.MONGODB_URI || '',
         ttl: 24 * 60 * 60 // 1 day
-    }),
+    }) as session.Store,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 1 day
@@ -116,7 +111,7 @@ app.use(securityConfig.rateLimiter);
 app.use(securityConfig.securityHeaders);
 
 // API Routes
-app.use('/api/ai', aiRouter);
+app.use('/api/ai', aiRouter.default || aiRouter);
 app.use('/api/users', userRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);

@@ -776,4 +776,4 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
     }
 }));
 
-module.exports = router; 
+export = router; 

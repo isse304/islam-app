@@ -1,7 +1,7 @@
 import Stripe from 'stripe';
-import { UserUsage } from '../models/UserUsage';
+import { UserUsage } from '../models/UserUsage.js';
 import { Request } from 'express';
-import { auth } from '../config/firebase';
+import { auth } from '../config/firebase.js';
 
 export class StripeService {
     private stripe: Stripe;
