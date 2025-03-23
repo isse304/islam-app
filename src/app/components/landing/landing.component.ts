@@ -93,15 +93,9 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
   }
 
-  getStarted() {
-    // Check if user is logged in
-    this.authService.isAuthenticated().then(isAuth => {
-      if (isAuth) {
-        this.router.navigate(['/home']);
-      } else {
-        this.router.navigate(['/auth/register']);
-      }
-    });
+  getStarted(event: Event) {
+    event.preventDefault();
+    this.router.navigate(['/thank-you']);
   }
 
   learnMore() {
@@ -110,5 +104,13 @@ export class LandingComponent implements OnInit, OnDestroy {
     if (featuresSection) {
       featuresSection.scrollIntoView({ behavior: 'smooth' });
     }
+  }
+
+  handleFormSubmit(event: SubmitEvent) {
+    // Let the form submit normally to Formspree
+    // After 1.5 seconds (giving time for Formspree to process), navigate to our thank-you page
+    setTimeout(() => {
+      this.router.navigate(['/thank-you']);
+    }, 1500);
   }
 } 

@@ -1,32 +1,34 @@
 {
     "compilerOptions": {
-      "target": "es2018",
-      "module": "node16",
-      "lib": ["es2018", "esnext.asynciterable"],
-      "skipLibCheck": true,
-      "sourceMap": true,
-      "outDir": "./dist",
-      "moduleResolution": "node16",
-      "removeComments": true,
-      "noImplicitAny": false,
-      "strictNullChecks": true,
-      "strictFunctionTypes": true,
-      "noImplicitThis": true,
-      "noUnusedLocals": false,
-      "noUnusedParameters": false,
-      "noImplicitReturns": false,
-      "noFallthroughCasesInSwitch": true,
-      "allowSyntheticDefaultImports": true,
-      "esModuleInterop": true,
-      "emitDecoratorMetadata": true,
-      "experimentalDecorators": true,
-      "resolveJsonModule": true,
-      "baseUrl": ".",
-      "typeRoots": [
-        "./node_modules/@types",
-        "./types"
-      ]
+        "target": "ES2022",
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "outDir": "dist",
+        "esModuleInterop": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "skipLibCheck": true,
+        "resolveJsonModule": true,
+        "allowSyntheticDefaultImports": true,
+        "sourceMap": true,
+        "baseUrl": ".",
+        "rootDir": ".",
+        "allowJs": true,
+        "noEmit": false,
+        "isolatedModules": true
     },
-    "exclude": ["node_modules"],
-    "include": ["./routes/**/*.ts", "./services/**/*.ts", "./models/**/*.ts", "./middleware/**/*.ts", "./types/**/*.ts", "./index.ts", "./config/**/*.ts"]
+    "ts-node": {
+        "swc": true,
+        "transpileOnly": true,
+        "compilerOptions": {
+            "module": "CommonJS"
+        }
+    },
+    "include": [
+        "**/*.ts"
+    ],
+    "exclude": [
+        "node_modules",
+        "dist"
+    ]
 }

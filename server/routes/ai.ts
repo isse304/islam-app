@@ -1,18 +1,18 @@
 // @ts-nocheck
-const express = require('express');
-const OpenAI = require('openai');
-const rateLimit = require('express-rate-limit');
-const dotenv = require('dotenv');
-const path = require('path');
-const { UserUsage } = require('../models/UserUsage');
-const { CacheService } = require('../services/cache.service');
-const { CostMonitorService } = require('../services/cost-monitor.service');
-const { EmailService } = require('../services/email.service');
-const { OpenAIService } = require('../services/openai.service');
-const { UsageService } = require('../services/usage.service');
-const { StripeService } = require('../services/stripe.service');
-const { withAuth } = require('../middleware/auth');
-const admin = require('firebase-admin');
+import express from 'express';
+import OpenAI from 'openai';
+import rateLimit from 'express-rate-limit';
+import dotenv from 'dotenv';
+import path from 'path';
+import { UserUsage } from '../models/UserUsage';
+import { CacheService } from '../services/cache.service';
+import { CostMonitorService } from '../services/cost-monitor.service';
+import { EmailService } from '../services/email.service';
+import { OpenAIService } from '../services/openai.service';
+import { UsageService } from '../services/usage.service';
+import { StripeService } from '../services/stripe.service';
+import { withAuth } from '../middleware/auth';
+import * as admin from 'firebase-admin';
 
 // Type definitions
 type AuthRequest = express.Request & {

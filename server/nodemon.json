@@ -1,6 +1,5 @@
 {
   "watch": ["**/*"],
   "ext": "ts,json",
-  "exec": "tsx watch index.ts",
-  "ignore": ["node_modules", "dist"]
+  "exec": "ts-node ./index.ts"
 } 
