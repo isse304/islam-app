@@ -20,17 +20,15 @@ import { MatButtonModule } from '@angular/material/button';
         <p class="text-xl text-gray-300 mb-8 max-w-xl mx-auto">
           You've been added to our waitlist. We'll notify you as soon as Nura AI is ready.
         </p>
-        <!-- <p class="text-gray-400 mb-8">
+        <p class="text-gray-400 mb-8">
           In the meantime, follow us on social media for updates and sneak peeks.
-        </p> -->
-        <!-- <div class="flex justify-center space-x-6">
-          <a href="https://twitter.com/nuraai" target="_blank" class="text-gray-400 hover:text-[#B7A57A] transition-colors">
-            <mat-icon>twitter</mat-icon>
-          </a>
-          <a href="https://linkedin.com/company/nuraai" target="_blank" class="text-gray-400 hover:text-[#B7A57A] transition-colors">
+        </p>
+        <div class="flex justify-center space-x-6">
+         
+          <a href="https://www.linkedin.com/in/issekun/" target="_blank" class="text-gray-400 hover:text-[#B7A57A] transition-colors">
             <mat-icon>linkedin</mat-icon>
           </a>
-        </div> -->
+        </div>
         <button routerLink="/" class="mt-12 px-8 py-3 rounded-lg border border-[#B7A57A] hover:bg-[#B7A57A] transition-colors">
           Back to Home
         </button>

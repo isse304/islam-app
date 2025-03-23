@@ -22,6 +22,7 @@ type ActiveFeature = 'tafsir' | 'dua-search' | 'dua-insights';
 export class LandingComponent implements OnInit, OnDestroy {
   activeFeature: ActiveFeature = 'tafsir';
   private autoRotateInterval: any;
+  private isDestroyed = false;
 
   constructor(
     private router: Router,
@@ -33,28 +34,46 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy() {
+    this.isDestroyed = true;
     this.stopAutoRotate();
   }
 
   private startAutoRotate() {
+    if (this.isDestroyed) return;
+    
+    this.stopAutoRotate(); // Clear any existing interval
+    
     this.autoRotateInterval = setInterval(() => {
-      const features: ActiveFeature[] = ['tafsir', 'dua-search', 'dua-insights'];
-      const currentIndex = features.indexOf(this.activeFeature);
-      const nextIndex = (currentIndex + 1) % features.length;
-      this.activeFeature = features[nextIndex];
-    }, 6000); // Rotate every 6 seconds
+      if (this.isDestroyed) {
+        this.stopAutoRotate();
+        return;
+      }
+
+      try {
+        const features: ActiveFeature[] = ['tafsir', 'dua-search', 'dua-insights'];
+        const currentIndex = features.indexOf(this.activeFeature);
+        const nextIndex = (currentIndex + 1) % features.length;
+        this.activeFeature = features[nextIndex];
+      } catch (error) {
+        console.error('Error during auto-rotation:', error);
+        this.stopAutoRotate();
+      }
+    }, 6000);
   }
 
   private stopAutoRotate() {
     if (this.autoRotateInterval) {
       clearInterval(this.autoRotateInterval);
+      this.autoRotateInterval = null;
     }
   }
 
   showFeature(feature: ActiveFeature) {
-    this.stopAutoRotate(); // Stop auto-rotation when user clicks
+    if (this.isDestroyed) return;
+    
+    this.stopAutoRotate();
     this.activeFeature = feature;
-    this.startAutoRotate(); // Restart auto-rotation
+    this.startAutoRotate();
   }
 
   async login() {

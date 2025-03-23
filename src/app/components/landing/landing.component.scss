@@ -194,11 +194,11 @@ form {
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateX(10px);
+    transform: translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateY(0);
   }
 }
 
@@ -219,27 +219,4 @@ form {
     background-color: #1A365D;
     color: white;
   }
-}
-
-// Sidebar menu enhancements
-.group {
-  &:hover {
-    .group-hover\:text-\[\#B7A57A\] {
-      color: #B7A57A;
-    }
-    
-    .group-hover\:opacity-100 {
-      opacity: 1;
-    }
-  }
-}
-
-// Indicator line transition
-.rounded-full {
-  transition: background-color 0.3s ease;
-}
-
-// Ensure content transitions are smooth
-.flex-1 > div {
-  transition: opacity 0.3s ease-in-out;
 } 
