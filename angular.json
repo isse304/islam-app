@@ -41,6 +41,7 @@
               }
             ],
             "styles": [
+              "@angular/material/prebuilt-themes/indigo-pink.css",
               "src/styles.scss"
             ],
             "scripts": [],
@@ -68,24 +69,14 @@
                 }
               ],
               "outputHashing": "all",
-              "baseHref": "/",
-              "fileReplacements": [
-                {
-                  "replace": "src/environments/environment.ts",
-                  "with": "src/environments/environment.prod.ts"
-                }
-              ],
-              "optimization": {
-                "scripts": true,
-                "styles": {
-                  "minify": true,
-                  "inlineCritical": false
-                },
-                "fonts": true
-              },
               "sourceMap": false,
               "namedChunks": false,
-              "extractLicenses": true
+              "aot": true,
+              "extractLicenses": true,
+              "vendorChunk": false,
+              "buildOptimizer": true,
+              "optimization": true,
+              "progress": false
             },
             "development": {
               "buildOptimizer": false,
@@ -105,10 +96,10 @@
           },
           "configurations": {
             "production": {
-              "buildTarget": "IslamApp:build:production"
+              "browserTarget": "IslamApp:build:production"
             },
             "development": {
-              "buildTarget": "IslamApp:build:development"
+              "browserTarget": "IslamApp:build:development"
             }
           },
           "defaultConfiguration": "development"
