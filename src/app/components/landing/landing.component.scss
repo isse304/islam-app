@@ -1,0 +1,245 @@
+// Custom styles for the landing page
+:host {
+  display: block;
+  width: 100%;
+}
+
+// Smooth scrolling for the entire page
+html {
+  scroll-behavior: smooth;
+}
+
+// Blob animation
+@keyframes blob {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(30px, -50px) scale(1.1);
+  }
+  66% {
+    transform: translate(-20px, 20px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob {
+  animation: blob 7s infinite;
+}
+
+.animation-delay-2000 {
+  animation-delay: 2s;
+}
+
+.animation-delay-4000 {
+  animation-delay: 4s;
+}
+
+// Custom animations
+@keyframes float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+.floating {
+  animation: float 3s ease-in-out infinite;
+}
+
+// Hover effects for feature cards
+.feature-card {
+  transition: transform 0.3s ease-in-out;
+  
+  &:hover {
+    transform: translateY(-5px);
+  }
+}
+
+// Custom scrollbar
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #B7A57A;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9b8a65;
+}
+
+.nura-png{
+    background-image: 
+    linear-gradient(to right, rgba(183, 165, 122, 0.95), rgba(155, 138, 101, 0.95)),
+    url('/islamic-pattern-2.png');
+}
+
+// Mobile styles
+@media (max-width: 640px) {
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  h1 {
+    font-size: 2.5rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .feature-card {
+    margin-bottom: 1.5rem;
+  }
+
+  .grid {
+    gap: 1.5rem !important;
+  }
+
+  .floating-features {
+    display: none;
+  }
+}
+
+// Tablet styles
+@media (min-width: 641px) and (max-width: 1024px) {
+  h1 {
+    font-size: 3rem !important;
+  }
+
+  .grid {
+    gap: 2rem !important;
+  }
+}
+
+// Ensure images are responsive
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+// Add smooth transitions
+.transition-all {
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 300ms;
+}
+
+// Improve form responsiveness
+form {
+  input, button {
+    width: 100%;
+    
+    @media (min-width: 768px) {
+      width: auto;
+    }
+  }
+}
+
+// Fix for sticky footer on mobile
+.fixed-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 1rem;
+  
+  @media (max-width: 640px) {
+    padding: 0.75rem;
+  }
+}
+
+// Mobile menu styles
+@media (max-width: 768px) {
+  .mobile-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(26, 54, 93, 0.95);
+    z-index: 50;
+    
+    &__content {
+      padding: 2rem;
+    }
+    
+    &__link {
+      display: block;
+      padding: 1rem;
+      color: white;
+      font-size: 1.25rem;
+      text-align: center;
+      
+      &:hover {
+        background: rgba(183, 165, 122, 0.1);
+      }
+    }
+  }
+}
+
+// Add fade-in animation
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+
+// Hover effects for floating features
+.floating-feature {
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+  }
+  
+  &.active {
+    background-color: #1A365D;
+    color: white;
+  }
+}
+
+// Sidebar menu enhancements
+.group {
+  &:hover {
+    .group-hover\:text-\[\#B7A57A\] {
+      color: #B7A57A;
+    }
+    
+    .group-hover\:opacity-100 {
+      opacity: 1;
+    }
+  }
+}
+
+// Indicator line transition
+.rounded-full {
+  transition: background-color 0.3s ease;
+}
+
+// Ensure content transitions are smooth
+.flex-1 > div {
+  transition: opacity 0.3s ease-in-out;
+} 

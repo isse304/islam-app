@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, firstValueFrom } from 'rxjs';
+import { Observable, of, firstValueFrom, from, BehaviorSubject } from 'rxjs';
+import { map } from 'rxjs/operators';
 import duasData from '../components/dua/duas.json';
 import localforage from 'localforage';
 import Fuse from 'fuse.js';
@@ -29,6 +30,13 @@ interface EmotionalDuaResponse {
   insights: string;
 }
 
+interface AIResponse {
+  content: string;  // Make content required, not optional
+  success?: boolean;
+  error?: string;
+  message?: string;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -37,10 +45,14 @@ export class DuaService {
   private readonly DUA_STORAGE_KEY = 'duas_data';
   private readonly AI_INSIGHTS_KEY = 'dua_ai_insights';
   private readonly CATEGORIES_KEY = 'dua_categories';
+  private readonly EMOTIONAL_DUA_CACHE_KEY = 'emotional_dua_cache';
+  private readonly CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
   private localDuas: { [key in DuaCategory]?: Dua[] } = {};
   private aiInsightsCache: { [key: string]: string } = {};
   private categoriesCache: { [key: string]: Dua[] } = {};
   private fuseSearch: Fuse<Dua>;
+  private _isLoading = new BehaviorSubject<boolean>(false);
+  isLoading$ = this._isLoading.asObservable();
   
   // Emotion synonyms mapping
   private emotionSynonyms = {
@@ -291,19 +303,76 @@ export class DuaService {
   }
 
   extractEmotionsFromText(text: string): Observable<string[]> {
-    return this.http.post<string[]>(`${environment.apiUrl}/api/emotions/extract`, { text });
+    // Use local emotion extraction instead of API call
+    return of(this.extractEmotionsLocally(text));
+  }
+
+  private extractEmotionsLocally(text: string): string[] {
+    const emotionKeywords = {
+      'anxious': ['worried', 'nervous', 'stressed', 'uneasy', 'fearful', 'tense', 'restless', 'apprehensive', 'concerned'],
+      'sad': ['depressed', 'unhappy', 'down', 'blue', 'sorrowful', 'heartbroken', 'grief', 'melancholy', 'gloomy'],
+      'angry': ['frustrated', 'mad', 'annoyed', 'irritated', 'furious', 'upset', 'outraged', 'enraged', 'hostile'],
+      'grateful': ['thankful', 'blessed', 'appreciative', 'content', 'satisfied', 'fulfilled', 'indebted', 'humbled'],
+      'hopeful': ['optimistic', 'positive', 'confident', 'assured', 'encouraged', 'inspired', 'motivated', 'eager'],
+      'scared': ['afraid', 'frightened', 'terrified', 'fearful', 'anxious', 'panicked', 'threatened', 'intimidated'],
+      'guilty': ['remorseful', 'regretful', 'ashamed', 'sorry', 'repentant', 'apologetic', 'conscience-stricken'],
+      'confused': ['uncertain', 'unsure', 'lost', 'perplexed', 'doubtful', 'bewildered', 'puzzled', 'disoriented'],
+      'lonely': ['isolated', 'alone', 'abandoned', 'disconnected', 'solitary', 'neglected', 'rejected'],
+      'peaceful': ['calm', 'serene', 'tranquil', 'relaxed', 'composed', 'at ease', 'content', 'harmonious']
+    };
+
+    const textLower = text.toLowerCase();
+    const foundEmotions: string[] = [];
+
+    Object.entries(emotionKeywords).forEach(([emotion, synonyms]) => {
+      if (synonyms.some(synonym => textLower.includes(synonym)) || textLower.includes(emotion)) {
+        foundEmotions.push(emotion);
+      }
+    });
+
+    // If no emotions found, just use the original text as an emotion
+    if (foundEmotions.length === 0 && text.trim()) {
+      foundEmotions.push(text.trim());
+    }
+
+    return foundEmotions;
+  }
+
+  private getFromCache(key: string): any {
+    try {
+      const cached = localStorage.getItem(key);
+      if (!cached) return null;
+      
+      const { data, timestamp } = JSON.parse(cached);
+      if (Date.now() - timestamp < this.CACHE_DURATION) {
+        return data;
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error reading from cache:', error);
+      return null;
+    }
+  }
+
+  private saveToCache(key: string, data: any): void {
+    try {
+      localStorage.setItem(key, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.warn('Error saving to cache:', error);
+    }
   }
 
   async getEmotionalDuasWithAI(input: string): Promise<{ duas: Dua[], insights: string }> {
     try {
-      // Extract emotions from the input text
-      const emotions = await firstValueFrom(this.extractEmotionsFromText(input));
-      
-      if (emotions.length === 0) {
-        // If no emotions detected, treat the entire input as an emotion
-        emotions.push(input.toLowerCase().trim());
-      }
+      // Set loading state
+      this._isLoading.next(true);
 
+      // Extract emotions locally
+      const emotions = this.extractEmotionsLocally(input);
+      
       // Get duas for all emotions
       const allDuas: Dua[] = [];
       for (const emotion of emotions) {
@@ -314,71 +383,35 @@ export class DuaService {
       // Remove duplicates
       const uniqueDuas = this.getUniqueDuas(allDuas);
       
-      if (uniqueDuas.length === 0) {
-        return this.getRecommendedDuasFromSources(emotions.join(' and '));
-      }
-
-      const prompt = {
-        systemMessage: `You are a knowledgeable Islamic scholar specializing in emotional well-being and spiritual guidance through duas. 
-        ${emotions.length > 1 ? 'The person is experiencing multiple emotions, so please address each one separately and then provide combined guidance.' : ''}
-        
-        Provide personalized advice in the following format:
-        
-        ${emotions.length > 1 ? emotions.map(emotion => `
-        ADDRESSING ${emotion.toUpperCase()}:
-        1. Understanding This Emotion:
-        [Brief explanation validating ${emotion} from an Islamic perspective]
-        
-        2. Specific Guidance for ${emotion}:
-        [How to handle ${emotion} based on Quran and Sunnah]
-        
-        3. Relevant Example:
-        [A specific example from Islamic history related to ${emotion}]
-        `).join('\n\n') : ''}
-        
-        ${emotions.length > 1 ? '\nCOMBINED GUIDANCE:' : ''}
-        1. Understanding Your Emotion${emotions.length > 1 ? 's' : ''}:
-        [${emotions.length > 1 ? 'Explain how these emotions interact and affect each other' : 'Brief explanation validating the emotion from an Islamic perspective'}]
-        
-        2. Historical Example:
-        [A specific example from Quran or Seerah where a prophet, companion, or person mentioned in Quran experienced this emotion${emotions.length > 1 ? 's' : ''}. Include the specific Surah and verse numbers.]
-        
-        3. Learning from Example:
-        [How this example teaches us to handle ${emotions.length > 1 ? 'these emotions' : 'this emotion'} constructively]
-
-        4. Spiritual Advice:
-        [Break down into 2-3 short, focused paragraphs with specific Quranic verses or hadith supporting each point]
-        
-        5. Practical Steps:
-        • [Step 1: Immediate action with spiritual basis]
-        • [Step 2: Daily practice with prophetic example]
-        • [Step 3: Social/community aspect]
-        • [Step 4: Long-term spiritual growth]
-        • [Step 5: Specific dua or dhikr practice]
-
-        6. Related Verses & Hadith:
-        • [2-3 relevant Quranic verses with Surah and verse numbers]
-        • [2-3 relevant hadith with full references]`,
-        userMessage: `A person is experiencing: ${emotions.join(' and ')}
-        Context: ${input}
-        
-        Available duas:
-        ${uniqueDuas.map(dua => `
-        - ${dua.title}
-        Arabic: ${dua.arabic}
-        Translation: ${dua.translation}
-        Reference: ${dua.reference}
-        Virtue: ${dua.virtue || 'Not specified'}
-        `).join('\n')}
-        
-        Please provide comprehensive guidance addressing ${emotions.length > 1 ? 'each emotion separately and then combined guidance' : 'this emotion'}.`,
-        temperature: 0.4,
-        maxTokens: 2000
-      };
-
       try {
-        const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-        const insights = response?.content || this.getFallbackInsights(emotions.join(' and '));
+        // Call the emotional dua search API
+        const response = await this.apiService.generateEmotionalDuaResponse(emotions.join(' and '), input);
+        
+        // Try to parse the insights if it's a string
+        let parsedInsights = '';
+        if (typeof response?.content === 'string') {
+          try {
+            // Clean up the string before parsing
+            const cleanContent = response.content
+              .replace(/\n/g, '')
+              .replace(/\s+/g, ' ')
+              .trim();
+            
+            if (cleanContent.startsWith('{')) {
+              const parsed = JSON.parse(cleanContent);
+              parsedInsights = parsed.understanding || 
+                             parsed.content || 
+                             this.getFallbackInsights(emotions.join(' and '));
+            } else {
+              parsedInsights = response.content;
+            }
+          } catch (parseError) {
+            console.warn('Error parsing insights:', parseError);
+            parsedInsights = response.content;
+          }
+        } else {
+          parsedInsights = response?.content || this.getFallbackInsights(emotions.join(' and '));
+        }
 
         // Sort duas by relevance to the emotions
         const sortedDuas = uniqueDuas.sort((a, b) => {
@@ -391,12 +424,14 @@ export class DuaService {
           return bEmotions - aEmotions;
         });
 
+        this._isLoading.next(false);
         return {
           duas: sortedDuas,
-          insights
+          insights: parsedInsights
         };
       } catch (error) {
         console.error('Error generating AI insights:', error);
+        this._isLoading.next(false);
         return {
           duas: uniqueDuas,
           insights: this.getFallbackInsights(emotions.join(' and '))
@@ -404,6 +439,7 @@ export class DuaService {
       }
     } catch (error) {
       console.error('Error getting emotional duas with AI:', error);
+      this._isLoading.next(false);
       return {
         duas: [],
         insights: this.getFallbackInsights(input)
@@ -462,9 +498,8 @@ Related Verses & Hadith:
         temperature: 0.4,
         maxTokens: 2000
       };
-
       try {
-        const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
+        const response = await this.apiService.generateAIResponse(prompt);
         const result = JSON.parse(response?.content || '{"duas":[],"insights":""}');
         
         if (!result.duas || !result.insights) {

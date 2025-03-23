@@ -21,7 +21,7 @@ export const environment: Environment = {
     region: 'us-east-1'
   },
   stripeConfig: {
-    publishableKey: 'pk_test_51R1nqsGYeNehzlUZBgXi4s6sf5u4BvRkXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj',
+    publishableKey: 'pk_test_51R1RShGYeNehzlUZBgXi4s6sf5u4BvRkXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj',
     priceId: 'price_1R1TPjGYeNehzlUZi71dNilr'
   },
   // List of admin user IDs (moved from .env to environment.ts for client-side access)

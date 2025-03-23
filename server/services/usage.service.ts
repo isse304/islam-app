@@ -29,8 +29,8 @@ export class UsageService {
 
         try {
             // Check subscription status
-            const subscriptionStatus = await this.stripeService.getSubscriptionStatus(userId);
-            const isActive = subscriptionStatus.status === 'active' || subscriptionStatus.status === 'trialing';
+            const status = await this.stripeService.getSubscriptionStatus(userId);
+            const isActive = status === 'active' || status === 'trialing';
             
             if (!isActive) {
                 throw new Error('Active subscription required');
@@ -52,7 +52,7 @@ export class UsageService {
             aiRequests: number;
         };
     }> {
-        const [usage, subscription] = await Promise.all([
+        const [usage, status] = await Promise.all([
             UserUsage.findOne({ userId }),
             this.stripeService.getSubscriptionStatus(userId)
         ]);
@@ -63,8 +63,8 @@ export class UsageService {
 
         return {
             subscription: {
-                status: subscription.status,
-                trial_end: subscription.currentPeriodEnd
+                status,
+                trial_end: status === 'trialing' ? usage.currentPeriodEnd : undefined
             },
             usage: {
                 aiRequests: usage.aiRequests.count

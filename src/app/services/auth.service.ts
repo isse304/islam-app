@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, of, from, throwError } from 'rxjs';
+import { BehaviorSubject, Observable, of, from, throwError, firstValueFrom } from 'rxjs';
 import { catchError, map, switchMap, take, tap } from 'rxjs/operators';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
@@ -46,7 +46,12 @@ export interface AppUser {
     bookmarks?: string[];
     subscriptionStatus?: string;
   };
-  isAdmin: boolean;
+  isPremium?: boolean;
+  features?: {
+    emotionalDuaSearch?: boolean;
+    aiTafsirChat?: boolean;
+    duaInsights?: boolean;
+  };
 }
 
 interface PricingTier {
@@ -63,9 +68,11 @@ interface PricingTier {
 export class AuthService {
   private userSubject = new BehaviorSubject<AppUser | null>(null);
   private authStateSubject = new BehaviorSubject<boolean>(false);
+  private _currentUser = new BehaviorSubject<AppUser | null>(null);
   
   user$ = this.userSubject.asObservable();
   isLoggedIn$ = this.authStateSubject.asObservable();
+  currentUser$ = this._currentUser.asObservable();
   
   // Firebase app and auth instances
   private firebaseApp = initializeApp(environment.firebase);
@@ -106,102 +113,40 @@ export class AuthService {
       createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
       lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
       preferences: {},
-      isAdmin: false // Set this based on your admin logic, e.g., from a database check
+      isPremium: false, // Set this based on your premium logic, e.g., from a database check
+      features: {}
     };
   }
 
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
-    // Map the Firebase user to our AppUser model
-    const user = this.mapFirebaseUser(firebaseUser);
-    
     try {
-      // Fetch user preferences from your backend
-      const preferences = await this.fetchUserPreferences(user.id);
-      user.preferences = preferences;
+      const appUser = this.mapFirebaseUser(firebaseUser);
       
-      // Check if user is an admin (optional)
-      const isAdmin = await this.checkIfUserIsAdmin(user.id);
-      user.isAdmin = isAdmin;
+      // Get user preferences and subscription status
+      const userPrefs = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/users/${firebaseUser.uid}/preferences`));
+      if (userPrefs) {
+        appUser.preferences = userPrefs.preferences || {};
+        appUser.isPremium = userPrefs.isPremium || false;
+        appUser.features = userPrefs.features || {
+          emotionalDuaSearch: false,
+          aiTafsirChat: false,
+          duaInsights: false
+        };
+      }
+
+      // Update the BehaviorSubject with the new user data
+      this.userSubject.next(appUser);
       
-      // Update the user subject
-      this.userSubject.next(user);
-      this.authStateSubject.next(true);
+      // Store the user data in localStorage
+      localStorage.setItem('user', JSON.stringify(appUser));
+      
+      console.log('User signed in successfully:', appUser);
     } catch (error) {
       console.error('Error handling user sign in:', error);
-      // Still set the user with basic data even if we couldn't fetch preferences
-      this.userSubject.next(user);
-      this.authStateSubject.next(true);
-    }
-  }
-
-  private async fetchUserPreferences(userId: string): Promise<any> {
-    try {
-      const token = await this.auth.currentUser?.getIdToken();
-      if (!token) {
-        console.warn('No auth token available for fetching preferences');
-        return {};
-      }
-
-      const response = await this.http.get<any>(
-        `${environment.apiUrl}/api/users/${userId}/preferences`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
-      ).toPromise();
-      return response || {};
-    } catch (error) {
-      console.error('Error fetching user preferences:', error);
-      return {};
-    }
-  }
-
-  private async checkIfUserIsAdmin(userId: string): Promise<boolean> {
-    try {
-      // First try to check from localStorage to avoid unnecessary API calls
-      const cachedAdminStatus = localStorage.getItem(`admin_status_${userId}`);
-      if (cachedAdminStatus) {
-        return cachedAdminStatus === 'true';
-      }
-      
-      // If no cached value, try the API
-      try {
-        const token = await this.auth.currentUser?.getIdToken();
-        if (!token) {
-          console.warn('No auth token available for checking admin status');
-          return false;
-        }
-
-        const response = await this.http.get<{isAdmin: boolean}>(
-          `${environment.apiUrl}/api/users/${userId}/admin-status`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
-        ).toPromise();
-        
-        // Cache the result for 24 hours
-        if (response) {
-          localStorage.setItem(`admin_status_${userId}`, response.isAdmin ? 'true' : 'false');
-        }
-        
-        return response?.isAdmin || false;
-      } catch (apiError) {
-        console.warn('Admin status API error, using fallback', apiError);
-        
-        // Use admin list from environment.ts
-        const isAdmin = environment.adminUsers.includes(userId);
-        
-        // Cache the result
-        localStorage.setItem(`admin_status_${userId}`, isAdmin ? 'true' : 'false');
-        
-        return isAdmin;
-      }
-    } catch (error) {
-      console.error('Error checking admin status:', error);
-      return false;
+      // If there's an error, we'll still create a basic user object
+      const basicUser = this.mapFirebaseUser(firebaseUser);
+      this.userSubject.next(basicUser);
+      localStorage.setItem('user', JSON.stringify(basicUser));
     }
   }
 

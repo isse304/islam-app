@@ -1,37 +1,34 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { FirebaseAuthService } from './firebase-auth.service';
+import { map } from 'rxjs/operators';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthStateService {
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
-  private isPremiumSubject = new BehaviorSubject<boolean>(false);
+  private readonly PREMIUM_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
-  isPremiumUser$ = this.isPremiumSubject.asObservable();
 
-  constructor(private authService: FirebaseAuthService) {
+  constructor(private firebaseAuthService: FirebaseAuthService) {
     // Check for cached user first for immediate UI response
     this.checkCachedUser();
     
     // Then check formal auth status
     this.checkAuthStatus();
-    this.checkPremiumStatus();
     
     // Update auth state periodically
     setInterval(() => {
       this.updateAuthState();
-      this.checkPremiumStatus();
     }, 60000); // Check every minute
 
     // Subscribe to auth changes to recheck premium status
-    this.authService.user$.subscribe(user => {
+    this.firebaseAuthService.user$.subscribe(user => {
       // Update auth state when user state changes
       const isAuthenticated = !!user;
       this.setAuthenticated(isAuthenticated);
-      this.checkPremiumStatus();
     });
   }
 
@@ -52,20 +49,6 @@ export class AuthStateService {
   setAuthenticated(value: boolean) {
     this.isAuthenticatedSubject.next(value);
     localStorage.setItem('isAuthenticated', value.toString());
-    if (!value) {
-      // If user is not authenticated, they can't be premium
-      this.setPremiumStatus(false);
-    }
-  }
-
-  setPremiumStatus(value: boolean) {
-    this.isPremiumSubject.next(value);
-    localStorage.setItem('isPremiumUser', value.toString());
-  }
-
-  async isPremiumUser(): Promise<boolean> {
-    const isPremium = localStorage.getItem('isPremiumUser') === 'true';
-    return isPremium;
   }
 
   private checkAuthStatus() {
@@ -73,54 +56,37 @@ export class AuthStateService {
     this.setAuthenticated(isAuthenticated);
   }
 
-  private async checkPremiumStatus() {
-    try {
-      // First check if user is authenticated
-      const isAuthenticated = await this.authService.isAuthenticated();
-      if (!isAuthenticated) {
-        // Don't log this to reduce console noise
-        this.setPremiumStatus(false);
-        return;
-      }
-
-      // Then check premium status
-      const hasPremium = await this.authService.isPremiumUser();
-      this.setPremiumStatus(hasPremium);
-    } catch (error) {
-      // Reduce console noise for expected errors
-      this.setPremiumStatus(false);
-    }
-  }
-
   private async updateAuthState() {
     try {
-      const token = await this.authService.getToken();
+      const token = await this.firebaseAuthService.getToken();
       const isAuthenticated = !!token;
       this.setAuthenticated(isAuthenticated);
-      
-      if (!isAuthenticated) {
-        this.setPremiumStatus(false);
-      }
     } catch (error) {
       // Reduce console noise
       console.log('Auth state update: User not authenticated');
       this.setAuthenticated(false);
-      this.setPremiumStatus(false);
     }
   }
 
-  async refreshPremiumStatus() {
-    await this.checkPremiumStatus();
-  }
+  get isPremiumUser$(): Observable<boolean> {
+    return this.firebaseAuthService.user$.pipe(
+      map(user => {
+        if (!user) return false;
 
-  // Helper method to check if authenticated
-  isAuthenticated(): Observable<boolean> {
-    return this.isAuthenticated$;
-  }
+        // Check cached premium status first
+        const premiumStatus = localStorage.getItem('premium_status');
+        const premiumTimestamp = localStorage.getItem('premium_status_timestamp');
+        
+        if (premiumStatus && premiumTimestamp) {
+          const isPremiumValid = (Date.now() - parseInt(premiumTimestamp)) < this.PREMIUM_CACHE_DURATION;
+          if (isPremiumValid) {
+            return premiumStatus === 'true' || user.isPremium === true;
+          }
+        }
 
-  // Force reset premium status (for testing/debugging)
-  resetPremiumStatus() {
-    this.setPremiumStatus(false);
-    localStorage.removeItem('isPremiumUser');
+        // If cache is invalid or missing, use user object's premium status
+        return user.isPremium === true;
+      })
+    );
   }
 } 

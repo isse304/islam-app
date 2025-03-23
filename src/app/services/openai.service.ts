@@ -36,7 +36,7 @@ interface AIGenerateResponse {
   providedIn: 'root'
 })
 export class OpenAIService {
-  private readonly apiUrl = `${environment.apiUrl}/ai/generate`;
+  private readonly apiUrl = `${environment.apiUrl}/api/ai/generate`;
   
   // Temperature settings for different types of content
   private readonly TEMPERATURES = {
@@ -114,8 +114,8 @@ export class OpenAIService {
       maxTokens: 2000
     };
 
-    return this.apiService.generateAIResponse(prompt).pipe(
-      map(response => {
+    return from(this.apiService.generateAIResponse(prompt)).pipe(
+      map((response: { content?: string }) => {
         if (!response?.content) {
           throw new Error('Invalid response format from server');
         }
@@ -367,7 +367,12 @@ export class OpenAIService {
       maxTokens: 1500
     };
 
-    return this.apiService.generateAIResponse(prompt);
+    return from(this.apiService.generateAIResponse(prompt)).pipe(
+      map(response => ({
+        ...response,
+        content: response.content || ''
+      }))
+    );
   }
 
   private async getCombinedCompletion(corePrompt: AIRequestPrompt, dynamicPrompt: AIRequestPrompt): Promise<AIResponse> {

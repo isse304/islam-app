@@ -194,7 +194,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Add these properties
   private audioElement: HTMLAudioElement | null = null;
   private currentlyPlayingVerse: number | null = null;
-  currentPreferences: any = { reciterId: 7 };
+  currentPreferences: any = { reciterId: 1 };
   navigationTimeout: any;
   // Add these properties at the top of the class
   private audioLoadingTimeout: any;

@@ -1,7 +1,7 @@
 import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Dua } from '../../services/dua.service';
-import { OpenAIService, AIResponse } from '../../services/openai.service';
+import { AIResponse } from '../../services/openai.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
@@ -12,6 +12,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatListModule } from '@angular/material/list';
+import { ApiService } from '../../services/api.service';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-dua-insights',
@@ -40,18 +42,16 @@ export class DuaInsightsComponent implements OnInit {
   isPremium: boolean = false;
 
   constructor(
-    private openAIService: OpenAIService,
+    private apiService: ApiService,
     private subscriptionService: SubscriptionService,
     private authStateService: AuthStateService,
+    private sanitizer: DomSanitizer,
     public router: Router
   ) {}
 
   async ngOnInit() {
-    if (!this.dua) return;
-
-    // Check premium status first
-    this.isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
-    if (!this.isPremium) {
+    if (!this.dua) {
+      this.error = 'No dua provided';
       return;
     }
 
@@ -59,24 +59,37 @@ export class DuaInsightsComponent implements OnInit {
     this.error = '';
 
     try {
-      this.insights = await firstValueFrom(this.openAIService.generateDuaInsights(this.dua));
+      // Check premium status first
+      const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+      if (!isPremium) {
+        this.error = 'Premium subscription required';
+        this.subscriptionService.showSubscriptionPage('Dua Insights');
+        return;
+      }
+
+      const response = await this.apiService.generateDuaInsights(this.dua);
+      if (response && response.content) {
+        this.insights = {
+          content: response.content,
+          virtues: response.virtues || '',
+          application: response.application || '',
+          context: response.context || '',
+          related: response.related || '',
+          impact: response.impact || '',
+          explanation: response.explanation || '',
+          relatedVerses: response.relatedVerses || [],
+          historicalContext: response.historicalContext || '',
+          reflectionPoints: response.reflectionPoints || [],
+          modernApplication: response.modernApplication || ''
+        };
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error: any) {
-      this.error = error.message || 'Failed to generate insights';
       console.error('Error generating insights:', error);
+      this.error = error.message || 'Failed to generate insights. Please try again.';
     } finally {
       this.isLoading = false;
-    }
-
-    if (this.isPremium) {
-      this.openAIService.generateReflectionPrompts(this.dua)
-        .subscribe({
-          next: (response) => {
-            this.reflections = response;
-          },
-          error: (error) => {
-            console.error('Error loading reflections:', error);
-          }
-        });
     }
   }
 
@@ -99,62 +112,34 @@ export class DuaInsightsComponent implements OnInit {
     return this.insights.impact.split('\n').filter(i => i.trim());
   }
 
-  getRelatedReferences(): string[] {
-    if (!this.insights) return [];
-
-    // Try to extract verses from the content
-    const content = this.insights.content || '';
-    const sections = content.split('\n\n');
-    const versesSection = sections.find(section => 
-      section.toLowerCase().includes('related verses') || 
-      section.toLowerCase().includes('quranic references') ||
-      section.toLowerCase().includes('hadith')
-    );
-
-    if (versesSection) {
-      const lines = versesSection.split('\n');
-      // Remove the header and empty lines
-      return lines
-        .slice(1)
-        .filter(line => line.trim() && !line.toLowerCase().includes('related verses'))
-        .map(line => {
-          // Clean up bullet points and extra spaces
-          return line.replace(/^[•\-\*]\s*/, '').trim();
-        })
-        .filter(line => line);
-    }
-
-    // Fallback to relatedVerses if available
-    if (this.insights.relatedVerses && Array.isArray(this.insights.relatedVerses)) {
-      return this.insights.relatedVerses
-        .map(verse => {
-          if (typeof verse === 'string') return verse;
-          if (typeof verse === 'object' && verse !== null) {
-            const { reference, translation, arabic } = verse as any;
-            const parts = [];
-            if (reference) parts.push(`Reference: ${reference}`);
-            if (arabic) parts.push(`Arabic: ${arabic}`);
-            if (translation) parts.push(`Translation: ${translation}`);
-            return parts.join('\n');
-          }
-          return '';
-        })
-        .filter(v => v);
-    }
-
-    // Final fallback to related field
-    if (typeof this.insights.related === 'string') {
-      return this.insights.related
-        .split('\n')
-        .filter(line => line.trim())
-        .map(line => line.replace(/^[•\-\*]\s*/, '').trim());
-    }
-
-    return [];
+  getReflectionPoints(): string[] {
+    if (!this.insights?.reflectionPoints) return [];
+    return this.insights.reflectionPoints.filter(p => p.trim());
   }
 
-  formatWithLineBreaks(text: string): string {
-    if (!text) return '';
-    return text.replace(/\n/g, '<br>');
+  getHistoricalContext(): string {
+    return this.insights?.historicalContext || '';
+  }
+
+  getModernApplication(): string {
+    return this.insights?.modernApplication || '';
+  }
+
+  hasRelatedContent(): boolean {
+    return !!this.insights?.related;
+  }
+
+  getFormattedRelatedContent(): SafeHtml {
+    if (!this.insights?.related) return this.sanitizer.bypassSecurityTrustHtml('');
+    
+    // Convert markdown-style formatting to HTML
+    const content = this.insights.related
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+      .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic
+      .replace(/\n\n/g, '</p><p>') // Paragraphs
+      .replace(/\n•/g, '<br>•') // Bullet points
+      .replace(/\n/g, '<br>'); // Line breaks
+    
+    return this.sanitizer.bypassSecurityTrustHtml(`<div class="space-y-4">${content}</div>`);
   }
 } 

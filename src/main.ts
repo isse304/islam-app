@@ -3,7 +3,7 @@ import { AppComponent } from './app/app.component';
 import { provideRouter } from '@angular/router';
 import { routes } from './app/app.routes';
 import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { importProvidersFrom } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -28,12 +28,13 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { provideFirebaseApp } from '@angular/fire/app';
 import { provideAuth, getAuth as getAngularAuth } from '@angular/fire/auth';
 import { provideFirestore, getFirestore as getAngularFirestore } from '@angular/fire/firestore';
+import { firebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
 
 bootstrapApplication(AppComponent, {
   providers: [
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(),
+    provideHttpClient(withInterceptors([firebaseAuthInterceptor])),
     provideFirebaseApp(() => initializeApp(environment.firebase)),
     provideAuth(() => getAngularAuth()),
     provideFirestore(() => getAngularFirestore()),

@@ -13,12 +13,20 @@ import subscriptionRouter from './routes/subscription';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
-import * as admin from 'firebase-admin';
-import { connectDatabase } from './config/database';
 import winston from 'winston';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
+import { getApps } from 'firebase-admin/app';
+import { auth } from './config/firebase';
+import { connectDatabase } from './config/database';
 
-// Set NODE_ENV if not already set (development by default)
-process.env.NODE_ENV = process.env.NODE_ENV || 'development';
+// ES Module path resolution
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load environment variables first
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Initialize logger
 const logger = winston.createLogger({
@@ -33,12 +41,37 @@ const logger = winston.createLogger({
                 winston.format.colorize(),
                 winston.format.simple()
             )
+        }),
+        new winston.transports.File({ 
+            filename: path.join(__dirname, '../logs/error.log'), 
+            level: 'error' 
+        }),
+        new winston.transports.File({ 
+            filename: path.join(__dirname, '../logs/combined.log')
         })
     ]
 });
 
 // Initialize Express app
 const app = express();
+
+// Configure CORS
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
+// Add request logging middleware
+app.use((req: Request, res: Response, next: NextFunction) => {
+    logger.info(`${req.method} ${req.url}`, {
+        body: req.body,
+        query: req.query,
+        params: req.params
+    });
+    next();
+});
 
 // Apply security middleware
 app.use(helmet());
@@ -47,6 +80,10 @@ app.use(cors({
     origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
     credentials: true
 }));
+
+// Configure express to handle raw body for Stripe webhooks
+app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
+// Use JSON parsing for all other routes
 app.use(express.json());
 
 // Rate limiting
@@ -55,26 +92,6 @@ const limiter = rateLimit({
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100')
 });
 app.use(limiter);
-
-// Connect to MongoDB
-connectDatabase(logger).then(async () => {
-    try {
-        // Drop the problematic index if it exists
-        const ReadingHistory = mongoose.model('ReadingHistory');
-        await ReadingHistory.collection.dropIndex('userId_1_surah_1').catch(() => {
-            // Ignore error if index doesn't exist
-            console.log('No problematic index found or already dropped');
-        });
-        
-        // Start server
-        const PORT = process.env.PORT || 3000;
-        app.listen(PORT, () => {
-            logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-        });
-    } catch (error) {
-        logger.error('Error during server startup:', error);
-    }
-});
 
 // Session configuration
 const sessionConfig = {
@@ -122,4 +139,36 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
     logger.error('Unhandled error:', err);
     res.status(500).json({ error: 'Internal server error' });
-}); 
+});
+
+// Start server function
+const startServer = async () => {
+    try {
+        // Verify Firebase Admin is initialized
+        if (!getApps().length) {
+            throw new Error('Firebase Admin SDK not initialized');
+        }
+        
+        // Verify auth is available
+        if (!auth) {
+            throw new Error('Firebase Auth not initialized');
+        }
+        logger.info('Firebase Admin SDK initialized');
+
+        // Connect to MongoDB
+        await connectDatabase(logger);
+        logger.info('MongoDB connected');
+
+        // Start server
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, () => {
+            logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+        });
+    } catch (error) {
+        logger.error('Failed to start server:', error);
+        process.exit(1);
+    }
+};
+
+// Start the server
+startServer(); 

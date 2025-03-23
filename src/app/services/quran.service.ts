@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, forkJoin, catchError, of, firstValueFrom, from } from 'rxjs';
+import { Observable, map, forkJoin, catchError, of, firstValueFrom, from, mergeMap } from 'rxjs';
 import { OpenAI } from 'openai';
 import { environment } from '../../environments/environment';
 import { ApiService } from './api.service';
@@ -316,7 +316,7 @@ export class QuranService {
           text: arabic.text,
           translation: translation.text.replace(/<[^>]*>.*?<\/[^>]*>/g, ''), // Remove HTML tags and content
           transliteration: arabic.text, // Keep original Arabic for transliteration
-          audio: this.getVerseAudioUrl(7, `${surahNumber}:${verseNumber}`),
+          audio: this.getVerseAudioUrl(1, `${surahNumber}:${verseNumber}`), // Use default reciter ID 1
           words: arabic.text.split(' ').map((word: string) => ({
             text: word,
             translation: ''
@@ -396,51 +396,55 @@ export class QuranService {
 
   getVerseAudioUrl(reciterId: string | number, verseKey: string): string {
     try {
-      // Get reciter information
-      const reciter = typeof reciterId === 'number' 
-        ? this.reciters.find(r => r.id === reciterId)
-        : this.reciters.find(r => r.identifier === reciterId);
+        // Ensure reciterId is a number for comparison
+        const reciterIdNum = typeof reciterId === 'string' ? parseInt(reciterId, 10) : reciterId;
         
-      if (!reciter) {
-        console.error('Reciter not found:', reciterId);
-        return '';
-      }
+        // Get reciter information
+        let reciter = this.reciters.find(r => r.id === reciterIdNum);
+        
+        if (!reciter) {
+            console.warn(`Reciter not found: ${reciterId}, using default reciter (1)`);
+            // Use default reciter (Mishary Alafasy)
+            reciter = this.reciters[0];
+        }
 
-      // Format surah and verse for the URL
-      const [surah, verse] = verseKey.split(':').map(part => part.trim());
-      
-      // Validate the numbers
-      const surahNum = parseInt(surah, 10);
-      const verseNum = parseInt(verse, 10);
-      
-      if (isNaN(surahNum) || isNaN(verseNum) || surahNum < 1 || surahNum > 114 || verseNum < 1) {
-        console.error('Invalid surah or verse number:', { surah, verse });
-        return '';
-      }
+        // Format surah and verse for the URL
+        const [surah, verse] = verseKey.split(':').map(part => part.trim());
+        
+        // Validate the numbers
+        const surahNum = parseInt(surah, 10);
+        const verseNum = parseInt(verse, 10);
+        
+        if (isNaN(surahNum) || isNaN(verseNum) || surahNum < 1 || surahNum > 114 || verseNum < 1) {
+            console.error('Invalid surah or verse number:', { surah, verse });
+            return '';
+        }
 
-      // Calculate global ayah number for the Islamic Network CDN
-      const ayahNumber = this.calculateGlobalAyahNumber(surahNum, verseNum);
-      
-      // Get the correct bitrate for the reciter
-      let bitrate = '128';
-      switch (reciter.identifier) {
-        case 'ar.abdulbasitmurattal':
-          bitrate = '192';
-          break;
-        case 'ar.saoodshuraym':
-          bitrate = '64';
-          break;
-        default:
-          bitrate = '128';
-      }
-      
-      // Use Islamic Network CDN with the correct bitrate
-      const url = `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter.identifier}/${ayahNumber}.mp3`;
-      //console.log('Generated audio URL:', url);
-      return url;
+        // Calculate global ayah number for the Islamic Network CDN
+        const ayahNumber = this.calculateGlobalAyahNumber(surahNum, verseNum);
+        
+        // Get the correct bitrate for the reciter
+        let bitrate = '128';
+        switch (reciter.identifier) {
+            case 'ar.abdulbasitmurattal':
+                bitrate = '192';
+                break;
+            case 'ar.saoodshuraym':
+                bitrate = '64';
+                break;
+            default:
+                bitrate = '128';
+        }
+        
+        // Use Islamic Network CDN with the correct bitrate
+        return `https://cdn.islamic.network/quran/audio/${bitrate}/${reciter.identifier}/${ayahNumber}.mp3`;
     } catch (error) {
-      console.error('Error generating verse audio URL:', error);
-      return '';
+        console.error('Error generating verse audio URL:', error);
+        // Return default reciter URL as fallback
+        const defaultReciter = this.reciters[0];
+        const [surah, verse] = verseKey.split(':');
+        const ayahNumber = this.calculateGlobalAyahNumber(parseInt(surah, 10), parseInt(verse, 10));
+        return `https://cdn.islamic.network/quran/audio/128/${defaultReciter.identifier}/${ayahNumber}.mp3`;
     }
   }
 
@@ -716,27 +720,27 @@ export class QuranService {
       return of(this.cache.tafsirExplanations[cacheKey]);
     }
 
-    return from((async () => {
-      const verseData = await firstValueFrom(this.getVerse(surah, verse));
-      
-      const prompt = {
-        systemMessage: "You are a knowledgeable Islamic scholar specializing in tafsir.",
-        userMessage: `Question about Surah ${surah}, Verse ${verse}: ${question}\n
-                    Verse Text: ${verseData?.text || 'Not available'}\n
-                    Translation: ${verseData?.translation || 'Not available'}`,
-        temperature: 0,
-        maxTokens: 1000
-      };
+    return from(this.getVerse(surah, verse).pipe(
+      mergeMap(async verseData => {
+        const prompt = {
+          systemMessage: "You are a knowledgeable Islamic scholar specializing in tafsir.",
+          userMessage: `Question about Surah ${surah}, Verse ${verse}: ${question}\n
+                      Verse Text: ${verseData?.text || 'Not available'}\n
+                      Translation: ${verseData?.translation || 'Not available'}`,
+          temperature: 0,
+          maxTokens: 1000
+        };
 
-      const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-      const explanation = response.content || 'No explanation available';
-      
-      // Cache the result
-      this.cache.tafsirExplanations[cacheKey] = explanation;
-      this.saveCache();
-      
-      return explanation;
-    })());
+        const response = await this.apiService.generateAIResponse(prompt);
+        const explanation = response.content || 'No explanation available';
+        
+        // Cache the result
+        this.cache.tafsirExplanations[cacheKey] = explanation;
+        this.saveCache();
+        
+        return explanation;
+      })
+    ));
   }
 
   getVerseCount(surahNumber: number): Observable<SurahData> {
@@ -754,24 +758,25 @@ export class QuranService {
       return of(this.cache.verseSummaries[cacheKey]);
     }
 
-    return from((async () => {
-      const verseData = await firstValueFrom(this.getVerse(surah, verse));
-      const prompt = {
-        systemMessage: "Provide a bulleted, clear summary of this Quranic verse.",
-        userMessage: `Summarize this verse:\n${verseData?.text}\nTranslation: ${verseData?.translation}`,
-        temperature: 0,
-        maxTokens: 200
-      };
-      
-      const response = await firstValueFrom(this.apiService.generateAIResponse(prompt));
-      const summary = response.content || 'No summary available';
-      
-      // Cache the result
-      this.cache.verseSummaries[cacheKey] = summary;
-      this.saveCache();
-      
-      return summary;
-    })());
+    return from(this.getVerse(surah, verse).pipe(
+      mergeMap(async verseData => {
+        const prompt = {
+          systemMessage: "Provide a bulleted, clear summary of this Quranic verse.",
+          userMessage: `Summarize this verse:\n${verseData?.text}\nTranslation: ${verseData?.translation}`,
+          temperature: 0,
+          maxTokens: 200
+        };
+        
+        const response = await this.apiService.generateAIResponse(prompt);
+        const summary = response.content || 'Summary not available';
+        
+        // Cache the result
+        this.cache.verseSummaries[cacheKey] = summary;
+        this.saveCache();
+        
+        return summary;
+      })
+    ));
   }
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {

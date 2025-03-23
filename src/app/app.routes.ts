@@ -8,8 +8,15 @@ import { UsageComponent } from './components/usage/usage.component';
 import { SubscriptionComponent } from './components/subscription/subscription.component';
 import { ContactComponent } from './components/contact/contact.component';
 import { authRoutes } from './auth/auth.module';
+import { LandingComponent } from './components/landing/landing.component';
+import { ThankYouComponent } from './components/thank-you/thank-you.component';
+
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
+  { path: '', component: LandingComponent },
+  { path: 'thank-you', component: ThankYouComponent },
+  // Temporarily disabled routes during early access
+  /* 
+  { path: 'home', component: HomeComponent },
   { path: 'quran', component: QuranReaderComponent },
   { path: 'learn', component: LearnComponent },
   { path: 'dua', component: DuaComponent },
@@ -21,5 +28,6 @@ export const routes: Routes = [
   { path: 'usage', component: UsageComponent },
   { path: 'subscription', component: SubscriptionComponent },
   { path: 'contact', component: ContactComponent },
-  { path: '**', redirectTo: '' } // Redirect any unknown paths to home
+  */
+  { path: '**', redirectTo: '' } // Redirect any unknown paths to landing
 ]; 

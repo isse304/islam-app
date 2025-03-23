@@ -1,39 +1,44 @@
-import { Component, OnInit } from '@angular/core';
-import { StripeService } from '../../services/stripe.service';
+import { Component, OnInit, OnDestroy } from '@angular/core';
+import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { firstValueFrom } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
-import { CommonModule } from '@angular/common';
-import { environment } from '../../../environments/environment';
-import { AuthService } from '../../services/auth.service';
-import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-
-declare const Stripe: any;
+import { environment } from '../../../environments/environment';
+import { AuthService } from '../../services/auth.service';
+import { FirebaseAuthService } from '../../services/firebase-auth.service';
+import { StripeService } from '../../services/stripe.service';
+import { ApiService } from '../../services/api.service';
+import { Subscription } from 'rxjs';
+import { AppUser } from '../../services/auth.service';
 
 interface SubscriptionStatus {
-  status: 'trialing' | 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'free';
-  plan: 'free' | 'standard' | 'premium';
+  status: 'active' | 'canceled' | 'inactive';
+  plan: 'free' | 'premium';
   currentPeriodEnd?: Date | null;
   features?: {
-    aiChat: boolean;
-    tafsirAccess: boolean;
-    wordByWord: boolean;
+    emotionalDuaSearch: boolean;
+    aiTafsirChat: boolean;
+    duaInsights: boolean;
   };
 }
 
 interface SubscriptionResponse {
-  status: 'trialing' | 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'unpaid' | 'free';
-  plan: 'free' | 'standard' | 'premium';
+  status: 'active' | 'canceled' | 'inactive';
+  plan: 'free' | 'premium';
   features?: {
-    aiChat: boolean;
-    tafsirAccess: boolean;
-    wordByWord: boolean;
+    emotionalDuaSearch: boolean;
+    aiTafsirChat: boolean;
+    duaInsights: boolean;
   };
+}
+
+interface CheckoutResponse {
+  url: string;
 }
 
 @Component({
@@ -51,12 +56,14 @@ interface SubscriptionResponse {
     MatSnackBarModule
   ]
 })
-export class SubscriptionComponent implements OnInit {
-  private stripe: any;
+export class SubscriptionComponent implements OnInit, OnDestroy {
   subscriptionStatus?: SubscriptionStatus;
   feature?: string;
   isLoading = false;
   loadError: string | null = null;
+  currentPreferences: any = { reciterId: 1 };
+  currentUser: AppUser | null = null;
+  private userSub?: Subscription;
 
   constructor(
     private stripeService: StripeService,
@@ -64,18 +71,11 @@ export class SubscriptionComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private authService: AuthService,
-    private firebaseAuthService: FirebaseAuthService
+    private firebaseAuthService: FirebaseAuthService,
+    private apiService: ApiService
   ) {}
 
   ngOnInit() {
-    // Initialize Stripe immediately
-    try {
-      this.stripe = Stripe(environment.stripeConfig.publishableKey);
-    } catch (error) {
-      console.error('Error initializing Stripe:', error);
-      this.loadError = 'Failed to initialize payment system';
-    }
-
     // Load subscription status with timeout
     this.loadSubscriptionStatus();
     
@@ -83,6 +83,19 @@ export class SubscriptionComponent implements OnInit {
     this.route.queryParams.subscribe(params => {
       this.feature = params['feature'];
     });
+
+    this.userSub = this.authService.currentUser$.subscribe(user => {
+      this.currentUser = user;
+      if (user?.isPremium) {
+        this.router.navigate(['/home']);
+      }
+    });
+  }
+
+  ngOnDestroy() {
+    if (this.userSub) {
+      this.userSub.unsubscribe();
+    }
   }
 
   private async loadSubscriptionStatus() {
@@ -104,8 +117,7 @@ export class SubscriptionComponent implements OnInit {
 
       this.subscriptionStatus = {
         status: response.status === 'canceled' ? 'canceled' : 
-               response.status === 'trialing' ? 'trialing' : 
-               response.status as SubscriptionStatus['status'],
+               response.status === 'active' ? 'active' : 'inactive',
         plan: response.plan,
         features: response.features
       };
@@ -138,71 +150,48 @@ export class SubscriptionComponent implements OnInit {
   }
 
   async startSubscription() {
-    if (this.isLoading) return;
     this.isLoading = true;
-    
-    try {
-      // Show immediate user feedback
-      this.snackBar.open('Starting subscription process...', '', { duration: 1500 });
+    this.loadError = null;
 
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout')), 10000)
+    try {
+      if (!this.currentUser) {
+        // Save the current URL for redirect back after sign-in
+        localStorage.setItem('returnUrl', window.location.pathname);
+        // Redirect to sign-in page
+        this.router.navigate(['/auth/login'], { 
+          queryParams: { 
+            returnUrl: window.location.pathname,
+            feature: 'premium'
+          }
+        });
+        return;
+      }
+
+      localStorage.setItem('returnUrl', window.location.pathname);
+
+      if (window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
+        console.warn('Warning: Stripe requires HTTPS in production.');
+      }
+
+      const timeout = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timed out')), 10000)
       );
-      
-      // Race between actual request and timeout
-      const response = await Promise.race([
-        firstValueFrom(this.stripeService.createCheckoutSession(environment.stripeConfig.priceId)),
-        timeoutPromise
-      ]) as { url: string };
-      
+
+      const response = (await Promise.race([
+        this.apiService.createCheckoutSession(this.currentUser.id),
+        timeout
+      ])) as { url: string };
+
       if (response?.url) {
-        // Handle development mode
-        if (response.url.includes('mock-success') || response.url.includes('dev=true')) {
-          await this.handleDevModeSuccess();
-          return;
-        }
-        
-        await this.stripeService.redirectToCheckout(response.url);
+        window.location.href = response.url;
       } else {
         throw new Error('No checkout URL received');
       }
-    } catch (error) {
-      this.handleSubscriptionError(error);
+    } catch (error: any) {
+      console.error('Subscription error:', error);
+      this.loadError = error.message || 'Failed to start subscription process';
     } finally {
       this.isLoading = false;
     }
-  }
-
-  private async handleDevModeSuccess() {
-    console.log('Development mode detected, simulating successful subscription');
-    
-    const authService = this.authService || this.firebaseAuthService;
-    if (authService) {
-      try {
-        await authService.updateUserPreferences({
-          subscriptionStatus: 'trial'
-        });
-        this.snackBar.open('Trial activated in development mode!', 'Close', { duration: 3000 });
-        
-        setTimeout(() => {
-          this.router.navigate(['/dashboard']);
-        }, 1000);
-      } catch (err) {
-        console.error('Error updating local subscription status:', err);
-        this.handleSubscriptionError(err);
-      }
-    }
-  }
-
-  private handleSubscriptionError(error: any) {
-    console.error('Error in subscription process:', error);
-    
-    let errorMessage = 'Failed to start subscription process. Please try again later.';
-    if (error instanceof Error && error.message === 'Request timeout') {
-      errorMessage = 'Request timed out. Please try again or contact support.';
-    }
-    
-    this.snackBar.open(errorMessage, 'Close', { duration: 5000 });
   }
 } 

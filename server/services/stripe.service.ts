@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { UserUsage } from '../models/UserUsage';
 import { Request } from 'express';
+import { auth } from '../config/firebase';
 
 export class StripeService {
     private stripe: Stripe;
@@ -46,19 +47,48 @@ export class StripeService {
     }
 
     async createCheckoutSession(userId: string): Promise<Stripe.Checkout.Session> {
-        return await this.stripe.checkout.sessions.create({
-            payment_method_types: ['card'],
-            line_items: [
-                {
-                    price: this.priceId,
-                    quantity: 1,
-                },
-            ],
-            mode: 'subscription',
-            success_url: `${process.env.CLIENT_URL}/subscription/success`,
-            cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
-            client_reference_id: userId,
-        });
+        try {
+            // Get user from Firebase
+            const userRecord = await auth.getUser(userId);
+            if (!userRecord) {
+                throw new Error('User not found');
+            }
+
+            // Create or get customer
+            let customer;
+            const customers = await this.stripe.customers.search({
+                query: `metadata['userId']:'${userId}'`,
+            });
+
+            if (customers.data.length > 0) {
+                customer = customers.data[0];
+            } else {
+                // Create new customer
+                customer = await this.stripe.customers.create({
+                    email: userRecord.email || undefined,
+                    metadata: { userId }
+                });
+            }
+
+            // Create checkout session
+            return await this.stripe.checkout.sessions.create({
+                customer: customer.id,
+                payment_method_types: ['card'],
+                line_items: [
+                    {
+                        price: this.priceId,
+                        quantity: 1,
+                    },
+                ],
+                mode: 'subscription',
+                success_url: `${process.env.CLIENT_URL}/subscription/success`,
+                cancel_url: `${process.env.CLIENT_URL}/subscription/cancel`,
+                client_reference_id: userId,
+            });
+        } catch (error) {
+            console.error('Error creating checkout session:', error);
+            throw error;
+        }
     }
 
     async constructWebhookEvent(req: Request): Promise<Stripe.Event> {
@@ -71,15 +101,24 @@ export class StripeService {
     }
 
     async handleWebhookEvent(event: Stripe.Event): Promise<void> {
-        switch (event.type) {
-            case 'checkout.session.completed':
-                const session = event.data.object as Stripe.Checkout.Session;
-                await this.handleSuccessfulSubscription(session);
-                break;
-            case 'customer.subscription.deleted':
-                const subscription = event.data.object as Stripe.Subscription;
-                await this.handleCancelledSubscription(subscription);
-                break;
+        try {
+            switch (event.type) {
+                case 'checkout.session.completed':
+                    const session = event.data.object as Stripe.Checkout.Session;
+                    await this.handleSuccessfulSubscription(session);
+                    break;
+                case 'customer.subscription.deleted':
+                    const subscription = event.data.object as Stripe.Subscription;
+                    await this.handleCancelledSubscription(subscription);
+                    break;
+                case 'customer.subscription.updated':
+                    const updatedSubscription = event.data.object as Stripe.Subscription;
+                    await this.handleUpdatedSubscription(updatedSubscription);
+                    break;
+            }
+        } catch (error) {
+            console.error('Error handling webhook event:', error);
+            throw error;
         }
     }
 
@@ -98,7 +137,12 @@ export class StripeService {
                 status: 'active',
             });
 
-            return subscriptions.data.length > 0 ? 'active' : 'inactive';
+            if (subscriptions.data.length === 0) {
+                return 'inactive';
+            }
+
+            const subscription = subscriptions.data[0];
+            return subscription.status;
         } catch (error) {
             console.error('Error getting subscription status:', error);
             return 'inactive';
@@ -106,15 +150,105 @@ export class StripeService {
     }
 
     private async handleSuccessfulSubscription(session: Stripe.Checkout.Session): Promise<void> {
-        if (session.client_reference_id) {
-            // Update user's subscription status in your database
-            // This is where you would update the user's role/permissions
+        if (!session.client_reference_id) {
+            console.error('No client_reference_id in session');
+            return;
+        }
+
+        const userId = session.client_reference_id;
+        
+        try {
+            // Update Firebase custom claims with correct premium features
+            await auth.setCustomUserClaims(userId, {
+                premium: true,
+                subscriptionStatus: 'active',
+                subscriptionEnd: null,
+                features: {
+                    emotionalDuaSearch: true,
+                    aiTafsirChat: true,
+                    duaInsights: true
+                }
+            });
+
+            // Update usage record
+            const usage = await this.getOrCreateUsageRecord(userId);
+            usage.status = 'active';
+            usage.currentPeriodEnd = null;
+            await usage.save();
+
+            // Force token refresh by revoking refresh tokens
+            await auth.revokeRefreshTokens(userId);
+
+            console.log(`Successfully updated subscription for user ${userId}`);
+        } catch (error) {
+            console.error('Error updating user subscription status:', error);
+            throw error;
         }
     }
 
     private async handleCancelledSubscription(subscription: Stripe.Subscription): Promise<void> {
-        const customer = subscription.customer as string;
-        // Update user's subscription status in your database
-        // This is where you would remove the user's premium access
+        try {
+            const customerResponse = await this.stripe.customers.retrieve(subscription.customer as string);
+            if (customerResponse.deleted) {
+                throw new Error('Customer has been deleted');
+            }
+
+            const customer = customerResponse as Stripe.Customer;
+            const userId = customer.metadata?.userId;
+            if (!userId) {
+                throw new Error('No userId found in customer metadata');
+            }
+
+            // Update Firebase custom claims
+            await auth.setCustomUserClaims(userId, {
+                premium: false,
+                subscriptionStatus: 'canceled',
+                subscriptionEnd: subscription.current_period_end
+            });
+
+            // Update usage record
+            const usage = await this.getOrCreateUsageRecord(userId);
+            usage.status = 'canceled';
+            usage.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+            await usage.save();
+
+            console.log(`Successfully cancelled subscription for user ${userId}`);
+        } catch (error) {
+            console.error('Error handling subscription cancellation:', error);
+            throw error;
+        }
+    }
+
+    private async handleUpdatedSubscription(subscription: Stripe.Subscription): Promise<void> {
+        try {
+            const customerResponse = await this.stripe.customers.retrieve(subscription.customer as string);
+            if (customerResponse.deleted) {
+                throw new Error('Customer has been deleted');
+            }
+
+            const customer = customerResponse as Stripe.Customer;
+            const userId = customer.metadata?.userId;
+            if (!userId) {
+                throw new Error('No userId found in customer metadata');
+            }
+
+            // Update Firebase custom claims based on subscription status
+            await auth.setCustomUserClaims(userId, {
+                premium: subscription.status === 'active',
+                subscriptionStatus: subscription.status,
+                subscriptionEnd: subscription.current_period_end
+            });
+
+            // Update usage record
+            const usage = await this.getOrCreateUsageRecord(userId);
+            usage.status = subscription.status;
+            usage.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+            await usage.save();
+
+            console.log(`Successfully updated subscription status for user ${userId}`);
+        } catch (error) {
+            console.error('Error handling subscription update:', error);
+            throw error;
+        }
     }
 } 

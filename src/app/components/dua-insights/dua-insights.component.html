@@ -35,27 +35,8 @@
       </div>
     </div>
 
-    <!-- Premium Upgrade Message -->
-    <div *ngIf="error.includes('premium')" class="mt-4">
-      <div class="bg-[#B7A57A]/10 rounded-lg p-6 text-center">
-        <i class="fas fa-crown text-[#B7A57A] text-3xl mb-4"></i>
-        <h3 class="text-lg font-semibold text-gray-800 mb-2">Unlock AI-Powered Dua Insights</h3>
-        <p class="text-gray-600 mb-4">Get deep insights, reflections, and contextual understanding of duas with our AI-powered analysis.</p>
-        <button 
-          (click)="router.navigate(['/premium'], { 
-            queryParams: { 
-              feature: 'AI Insights',
-              returnUrl: router.url
-            }
-          })" 
-          class="bg-[#B7A57A] text-white px-6 py-2 rounded-full hover:bg-[#A69469] transition-colors">
-          Upgrade to Premium
-        </button>
-      </div>
-    </div>
-
     <!-- Main Content Area -->
-    <div premiumRequired>
+    <div *ngIf="insights">
       <!-- Tabs -->
       <div class="flex space-x-4 border-b border-gray-200">
         <button 
@@ -136,7 +117,7 @@
             <h3 class="text-lg font-semibold text-gray-800">Personal Reflection Points</h3>
           </div>
           <div class="space-y-4">
-            <div *ngFor="let point of insights?.reflectionPoints" class="flex items-start bg-[#B7A57A]/5 p-4 rounded-lg">
+            <div *ngFor="let point of getReflectionPoints()" class="flex items-start bg-[#B7A57A]/5 p-4 rounded-lg">
               <i class="fas fa-chevron-right text-[#B7A57A] mt-1 mr-3"></i>
               <p class="text-gray-700">{{ point }}</p>
             </div>
@@ -166,47 +147,16 @@
             <i class="fas fa-history text-[#B7A57A] text-xl mr-3"></i>
             <h3 class="text-lg font-semibold text-gray-800">Historical Context</h3>
           </div>
-          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="insights?.context || 'No historical context available'"></div>
+          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="getHistoricalContext()"></div>
         </div>
 
         <!-- Related Verses & Hadith -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100" *ngIf="getRelatedReferences().length > 0">
+        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100" *ngIf="hasRelatedContent()">
           <div class="flex items-center mb-4">
             <i class="fas fa-book text-[#B7A57A] text-xl mr-3"></i>
             <h3 class="text-lg font-semibold text-gray-800">Related Verses & Hadith</h3>
           </div>
-          <div class="space-y-4">
-            <div *ngFor="let reference of getRelatedReferences()" class="bg-[#B7A57A]/5 p-4 rounded-lg">
-              <div class="verse-content">
-                <ng-container *ngFor="let line of reference.split('\n')">
-                  <!-- Reference line -->
-                  <p *ngIf="line.startsWith('Reference:')" class="reference">
-                    {{line}}
-                  </p>
-                  <!-- Arabic text -->
-                  <p *ngIf="line.startsWith('Arabic:')" class="arabic-text">
-                    {{line.replace('Arabic:', '').trim()}}
-                  </p>
-                  <!-- Translation -->
-                  <p *ngIf="line.startsWith('Translation:')" class="translation">
-                    {{line.replace('Translation:', '').trim()}}
-                  </p>
-                  <!-- Hadith text -->
-                  <p *ngIf="line.startsWith('Text:')" class="hadith-text">
-                    {{line.replace('Text:', '').trim()}}
-                  </p>
-                  <!-- Relevance -->
-                  <p *ngIf="line.startsWith('Relevance:')" class="relevance">
-                    {{line.replace('Relevance:', '').trim()}}
-                  </p>
-                  <!-- Any other lines -->
-                  <p *ngIf="!line.startsWith('Reference:') && !line.startsWith('Arabic:') && !line.startsWith('Translation:') && !line.startsWith('Text:') && !line.startsWith('Relevance:')" class="text-gray-700">
-                    {{line}}
-                  </p>
-                </ng-container>
-              </div>
-            </div>
-          </div>
+          <div class="space-y-4" [innerHTML]="getFormattedRelatedContent()"></div>
         </div>
       </div>
     </div>

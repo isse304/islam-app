@@ -1,3 +1,10 @@
+// Variables
+$primary-color: #b7a57a;  // Islamic gold
+$accent-color: #2c3e50;   // Dark blue
+$text-color: #2c3e50;
+$light-bg: #f8f9fa;
+$card-shadow: 0 8px 32px rgba(183, 165, 122, 0.15);
+
 .pattern-bg {
   background-image: url('/islamic-pattern-1.png');
   background-repeat: repeat;
@@ -23,4 +30,178 @@
   background: linear-gradient(to bottom right, rgba(183, 165, 122, 0.15), rgba(183, 165, 122, 0.05));
   box-shadow: 0 4px 6px -1px rgba(183, 165, 122, 0.1), 0 2px 4px -1px rgba(183, 165, 122, 0.06);
   transform: translateY(-2px);
+}
+
+.subscription-container {
+  position: relative;
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 2rem 1rem;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(252, 250, 245,0.98) 100%);
+  border-radius: 16px;
+  box-shadow: $card-shadow;
+
+  .pattern-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('/islamic-pattern-1.png');
+    background-repeat: repeat;
+    background-size: 300px;
+    opacity: 0.05;
+    z-index: -1;
+    pointer-events: none;
+    transform: rotate(30deg) scale(1.5);
+    mix-blend-mode: multiply;
+    filter: sepia(0.3) contrast(150%);
+  }
+
+  .loading-spinner {
+    margin: 2rem auto;
+  }
+
+  .error-message {
+    text-align: center;
+    color: #f44336;
+    margin: 2rem 0;
+    padding: 1rem;
+    border-radius: 4px;
+    background-color: rgba(244, 67, 54, 0.1);
+  }
+
+  .title {
+    text-align: center;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    color: $text-color;
+    font-weight: 600;
+    background: linear-gradient(45deg, $primary-color, darken($primary-color, 10%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    text-align: center;
+    color: rgba(0, 0, 0, 0.6);
+    margin-bottom: 2rem;
+  }
+
+  .subscription-cards {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 2rem;
+
+    .subscription-card {
+      flex: 1;
+      min-width: 280px;
+      max-width: 400px;
+      transition: transform 0.3s ease;
+
+      &.highlighted {
+        transform: scale(1.05);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      }
+
+      &.premium-tier {
+        border: 2px solid $primary-color;
+        background: linear-gradient(135deg, rgba(255,255,255,1) 0%, rgba(252, 250, 245,1) 100%);
+      }
+
+      .mat-card-header {
+        margin-bottom: 1rem;
+      }
+
+      .price {
+        font-size: 2.5rem;
+        text-align: center;
+        margin: 1rem 0;
+        color: $primary-color;
+
+        span {
+          font-size: 1rem;
+          color: rgba(0, 0, 0, 0.6);
+        }
+      }
+
+      .features-list {
+        list-style: none;
+        padding: 0;
+        margin: 1rem 0;
+
+        li {
+          display: flex;
+          align-items: center;
+          margin: 0.5rem 0;
+          padding: 0.5rem;
+          border-radius: 4px;
+
+          &.highlighted {
+            background-color: rgba(63, 81, 181, 0.1);
+          }
+
+          mat-icon {
+            margin-right: 0.5rem;
+            color: $primary-color;
+          }
+        }
+      }
+
+      .mat-card-actions {
+        display: flex;
+        justify-content: center;
+        padding: 1rem;
+      }
+
+      .card-ribbon {
+        &.premium {
+          background: linear-gradient(45deg, $primary-color, darken($primary-color, 10%));
+        }
+      }
+
+      .subscribe-button {
+        background: linear-gradient(45deg, $primary-color, darken($primary-color, 10%));
+        
+        &:hover {
+          box-shadow: 0 4px 12px rgba($primary-color, 0.3);
+        }
+      }
+    }
+  }
+
+  .current-subscription {
+    text-align: center;
+    margin-top: 2rem;
+    padding: 1rem;
+    background: linear-gradient(135deg, rgba($primary-color, 0.05) 0%, rgba($primary-color, 0.1) 100%);
+    border-radius: 4px;
+    border: 1px solid rgba($primary-color, 0.1);
+
+    h2 {
+      margin-bottom: 1rem;
+      color: $accent-color;
+    }
+
+    p:last-child {
+      color: $primary-color;
+    }
+  }
+}
+
+// Responsive styles
+@media (max-width: 768px) {
+  .subscription-container {
+    .subscription-cards {
+      flex-direction: column;
+      align-items: center;
+
+      .subscription-card {
+        width: 100%;
+      }
+    }
+  }
 } 

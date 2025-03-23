@@ -4,20 +4,17 @@ import { StripeService } from '../services/stripe.service';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
 
 const router = express.Router();
-const stripeService = new StripeService(
-    process.env.STRIPE_SECRET_KEY!,
-    process.env.STRIPE_PRICE_ID!
-);
+const stripeService = new StripeService();
 const usageService = new UsageService(stripeService);
 
 // Get user's current usage and subscription status
 router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (!req.authData) {
+        if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
-        const stats = await usageService.getUserUsageStats(req.authData.userId);
+        const stats = await usageService.getUserUsageStats(req.auth.userId);
         res.json(stats);
     } catch (error) {
         console.error('Error getting usage stats:', error);

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DuaService, Dua, DuaCategory } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
@@ -45,7 +45,8 @@ interface EmotionalDuaResponse {
         MatTooltipModule,
         DuaInsightsComponent,
         DuaTafsirComponent
-    ]
+    ],
+    changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DuaComponent implements OnInit, OnDestroy {
   selectedCategory: DuaCategory | null = null;
@@ -65,7 +66,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     'guidance',
     'sadness'
   ];
-  isLoading: boolean = false;
+  isLoading = false;
   error: string = '';
   private prayerTimesSubscription: Subscription | null = null;
   private duaSubscription: Subscription | null = null;
@@ -75,6 +76,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   emotionSuggestions: string[] = [];
   aiInsights: string = '';
   fontSize: number = 32; // Default font size for Arabic text
+  private subscriptions = new Subscription();
 
   constructor(
     private duaService: DuaService,
@@ -82,8 +84,18 @@ export class DuaComponent implements OnInit, OnDestroy {
     public authStateService: AuthStateService,
     //private prayerTimesService: PrayerTimesService,
     private route: ActivatedRoute,
-    private router: Router
-  ) {}
+    private router: Router,
+    private cd: ChangeDetectorRef
+  ) {
+    this.subscriptions.add(
+      this.duaService.isLoading$.subscribe(
+        loading => {
+          this.isLoading = loading;
+          this.cd.markForCheck();
+        }
+      )
+    );
+  }
 
   ngOnInit() {
     // First check route params
@@ -106,6 +118,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     this.prayerTimesSubscription?.unsubscribe();
     this.duaSubscription?.unsubscribe();
+    this.subscriptions.unsubscribe();
   }
 
   loadDuasByCategory(category: DuaCategory) {
@@ -180,16 +193,47 @@ export class DuaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isLoading = true;
-    this.error = '';
-    this.selectedEmotion = feeling.trim();
-    
     try {
-      const response = await this.duaService.getEmotionalDuasWithAI(this.selectedEmotion);
-      this.filteredDuas = response.duas;
-      this.aiInsights = response.insights;
+      console.log('Starting emotional dua search for:', feeling);
+      const response = await this.duaService.getEmotionalDuasWithAI(feeling);
+      console.log('Received response:', response);
+      
+      this.cd.markForCheck();
+      
+      if (response.duas && Array.isArray(response.duas)) {
+        this.filteredDuas = response.duas;
+      } else {
+        console.warn('No duas found in response:', response);
+        this.filteredDuas = [];
+      }
+      
+      // Try to parse the insights if it's a string
+      if (response.insights) {
+        try {
+          if (typeof response.insights === 'string') {
+            try {
+              // Try to parse as JSON first
+              const parsed = JSON.parse(response.insights);
+              this.aiInsights = JSON.stringify(parsed); // Store as string to preserve JSON structure
+            } catch {
+              // If not JSON, store as is
+              this.aiInsights = response.insights;
+            }
+          } else {
+            // If already an object, stringify to preserve structure
+            this.aiInsights = JSON.stringify(response.insights);
+          }
+        } catch (error) {
+          console.warn('Error parsing insights:', error);
+          this.aiInsights = typeof response.insights === 'string' ? response.insights : '';
+        }
+      } else {
+        console.warn('No insights found in response');
+        this.aiInsights = '';
+      }
 
-      const emotions = await firstValueFrom<string[]>(this.duaService.extractEmotionsFromText(this.selectedEmotion));
+      // Get related emotions
+      const emotions = await firstValueFrom<string[]>(this.duaService.extractEmotionsFromText(feeling));
       this.emotionSuggestions = [];
       
       for (const emotion of emotions) {
@@ -200,12 +244,17 @@ export class DuaComponent implements OnInit, OnDestroy {
       this.emotionSuggestions = [...new Set(this.emotionSuggestions)]
         .filter(emotion => !emotions.includes(emotion))
         .slice(0, 5);
+
+      this.selectedEmotion = feeling;
+
     } catch (error) {
       console.error('Error searching duas:', error);
       this.error = 'An error occurred while searching for duas. Please try again.';
-    } finally {
-      this.isLoading = false;
+      this.filteredDuas = [];
+      this.aiInsights = '';
     }
+
+    this.cd.markForCheck();
   }
 
   clearEmotionSearch() {
@@ -246,38 +295,65 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   getSpiritualAdviceParagraphs(): string[] {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const advice = sections.find(section => 
-        section.toLowerCase().includes('spiritual advice')
-      );
-      if (!advice) return [];
-      const lines = advice.split('\n');
-      // Skip the header line and filter out empty lines
-      return lines.slice(1).filter(line => line.trim()).map(line => line.trim());
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          // Get spiritual advice from recommended_duas and quranic_guidance
+          const advice = [];
+          if (parsed.quranic_guidance && Array.isArray(parsed.quranic_guidance)) {
+            advice.push(...parsed.quranic_guidance);
+          }
+          if (parsed.recommended_duas && Array.isArray(parsed.recommended_duas)) {
+            advice.push(...parsed.recommended_duas.map((dua: { translation: string; virtue: string; source: string }) => 
+              `${dua.translation}\nVirtue: ${dua.virtue}\nSource: ${dua.source}`
+            ));
+          }
+          return advice.filter(a => a.trim());
+        } catch {
+          // If not JSON, try to parse as text
+          const sections = this.aiInsights.split('\n\n');
+          const advice = sections.find(section => 
+            section.toLowerCase().includes('spiritual advice')
+          );
+          if (!advice) return [];
+          const lines = advice.split('\n');
+          return lines.slice(1).filter(line => line.trim());
+        }
+      }
+      return [];
     } catch (error) {
-      console.error('Error parsing spiritual advice:', error);
+      console.warn('Error parsing spiritual advice:', error);
       return [];
     }
   }
 
   getPracticalSteps(): string[] {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const practicalSection = sections.find(section => 
-        section.toLowerCase().includes('practical steps')
-      );
-      if (!practicalSection) return [];
-      const lines = practicalSection.split('\n');
-      // Skip the header line and filter bullet points
-      return lines
-        .slice(1)
-        .filter(line => line.trim().startsWith('•'))
-        .map(line => line.replace('•', '').trim());
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          if (parsed.practical_steps && Array.isArray(parsed.practical_steps)) {
+            return parsed.practical_steps.filter((step: string) => step.trim());
+          }
+          return [];
+        } catch {
+          // If not JSON, try to parse as text
+          const sections = this.aiInsights.split('\n\n');
+          const practicalSection = sections.find(section => 
+            section.toLowerCase().includes('practical steps')
+          );
+          if (!practicalSection) return [];
+          const lines = practicalSection.split('\n');
+          return lines
+            .slice(1)
+            .filter(line => line.trim().startsWith('•'))
+            .map(line => line.replace('•', '').trim());
+        }
+      }
+      return [];
     } catch (error) {
-      console.error('Error parsing practical steps:', error);
+      console.warn('Error parsing practical steps:', error);
       return [];
     }
   }
@@ -300,75 +376,101 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   getUnderstandingSection(): string {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const understandingSection = sections.find(section => 
-        section.toLowerCase().includes('understanding your emotion')
-      );
-      if (!understandingSection) return '';
-      const lines = understandingSection.split('\n');
-      // Skip the header line and return the rest
-      return lines.slice(1).join('\n').trim();
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        // Try to parse as JSON first
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          return parsed.understanding || this.aiInsights;
+        } catch {
+          // If not JSON, return as is
+          return this.aiInsights;
+        }
+      }
+      return '';
     } catch (error) {
-      console.error('Error parsing understanding section:', error);
+      console.warn('Error getting understanding section:', error);
       return '';
     }
   }
 
   getHistoricalExample(): string {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const historicalExample = sections.find(section => 
-        section.toLowerCase().includes('example from quran') || 
-        section.toLowerCase().includes('historical example')
-      );
-      if (!historicalExample) return '';
-      const lines = historicalExample.split('\n');
-      // Skip the header line if it exists
-      return lines[0].toLowerCase().includes('example') ? lines.slice(1).join('\n').trim() : historicalExample;
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          return parsed.prophetic_example || '';
+        } catch {
+          return '';
+        }
+      }
+      return '';
     } catch (error) {
-      console.error('Error parsing historical example:', error);
+      console.warn('Error getting historical example:', error);
       return '';
     }
   }
 
   getLearningPoints(): string {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return '';
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const learningSection = sections.find(section => 
-        section.toLowerCase().includes('this example teaches') ||
-        section.toLowerCase().includes('learning from')
-      );
-      if (!learningSection) return '';
-      const lines = learningSection.split('\n');
-      // Skip the header line if it exists
-      return lines[0].toLowerCase().includes('learning') ? lines.slice(1).join('\n').trim() : learningSection;
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          if (Array.isArray(parsed.practical_steps)) {
+            return parsed.practical_steps.join('\n');
+          }
+          return parsed.practical_steps || '';
+        } catch {
+          return '';
+        }
+      }
+      return '';
     } catch (error) {
-      console.error('Error parsing learning points:', error);
+      console.warn('Error getting learning points:', error);
       return '';
     }
   }
 
   getRelatedVerses(): string[] {
-    if (!this.aiInsights || typeof this.aiInsights !== 'string') return [];
     try {
-      const sections = this.aiInsights.split('\n\n');
-      const versesSection = sections.find(section => 
-        section.toLowerCase().includes('related verses') ||
-        section.toLowerCase().includes('quranic references')
-      );
-      if (!versesSection) return [];
-      const lines = versesSection.split('\n');
-      // Skip the header line and filter bullet points
-      return lines
-        .slice(1)
-        .filter(line => line.trim().startsWith('•'))
-        .map(line => line.replace('•', '').trim());
+      if (this.aiInsights && typeof this.aiInsights === 'string') {
+        try {
+          const parsed = JSON.parse(this.aiInsights);
+          const verses = [];
+          
+          // Get verses from related_verses_hadith
+          if (parsed.related_verses_hadith?.verses) {
+            verses.push(...parsed.related_verses_hadith.verses.map((v: { reference: string; translation: string; relevance?: string }) => 
+              `${v.reference}: ${v.translation}${v.relevance ? `\nRelevance: ${v.relevance}` : ''}`
+            ));
+          }
+          
+          // Get hadith from related_verses_hadith
+          if (parsed.related_verses_hadith?.hadith) {
+            verses.push(...parsed.related_verses_hadith.hadith.map((h: { text: string; source: string; grade?: string }) => 
+              `${h.text}\nSource: ${h.source}${h.grade ? ` (${h.grade})` : ''}`
+            ));
+          }
+          
+          return verses.filter(v => v.trim());
+        } catch {
+          // If not JSON, try to parse as text
+          const sections = this.aiInsights.split('\n\n');
+          const versesSection = sections.find(section => 
+            section.toLowerCase().includes('related verses') ||
+            section.toLowerCase().includes('quranic references')
+          );
+          if (!versesSection) return [];
+          const lines = versesSection.split('\n');
+          return lines
+            .slice(1)
+            .filter(line => line.trim().startsWith('•'))
+            .map(line => line.replace('•', '').trim());
+        }
+      }
+      return [];
     } catch (error) {
-      console.error('Error parsing related verses:', error);
+      console.warn('Error parsing related verses:', error);
       return [];
     }
   }

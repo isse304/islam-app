@@ -1,1 +1,112 @@
- 
+<!-- Subscription Page Container -->
+<div class="min-h-screen bg-[#FAF3E0] py-8 relative overflow-hidden">
+  <!-- Islamic Pattern Background -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-10 bg-repeat"></div>
+
+  <div class="container mx-auto px-4 relative z-10">
+    <!-- Header -->
+    <div class="text-center mb-12">
+      <h1 class="text-4xl font-bold text-[#1A365D] mb-4">Enhance Your Spiritual Journey</h1>
+      <p class="text-lg text-gray-600 max-w-2xl mx-auto">Access powerful AI features to deepen your understanding of the Quran and duas</p>
+    </div>
+
+    <!-- Subscription Cards Container -->
+    <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+      <!-- Free Tier -->
+      <div class="bg-white rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
+        <div class="text-center">
+          <h2 class="text-2xl font-bold text-[#1A365D] mb-2">Free Access</h2>
+          <p class="text-gray-500 mb-6">Essential Features</p>
+          <div class="text-4xl font-bold text-[#1A365D] mb-8">$0<span class="text-lg font-normal">/forever</span></div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="font-semibold text-lg text-[#1A365D] mb-4">Included Features:</h3>
+          <ul class="space-y-3">
+            <li class="flex items-center">
+              <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
+              <span>Complete Quran Text</span>
+            </li>
+            <li class="flex items-center">
+              <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
+              <span>Multiple Translations</span>
+            </li>
+            <li class="flex items-center">
+              <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
+              <span>Word by Word Translation</span>
+            </li>
+            <li class="flex items-center">
+              <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
+              <span>Multiple Reciters</span>
+            </li>
+            <li class="flex items-center">
+              <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
+              <span>Basic Bookmarking</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-8 text-center">
+          <button mat-button disabled class="w-full py-3 px-6 rounded-lg bg-gray-100 text-gray-500">Current Plan</button>
+        </div>
+      </div>
+
+      <!-- Premium Tier -->
+      <div class="bg-gradient-to-br from-[#1A365D] to-[#2A4365] rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
+        <div class="text-center text-white">
+          <h2 class="text-2xl font-bold mb-2">Premium Access</h2>
+          <p class="text-gray-300 mb-6">AI-Powered Features</p>
+          <div class="text-4xl font-bold mb-8">$9.99<span class="text-lg font-normal">/month</span></div>
+        </div>
+
+        <div class="space-y-4">
+          <h3 class="font-semibold text-lg text-white mb-4">Everything in Free, plus:</h3>
+          <ul class="space-y-3 text-white">
+            <li class="flex items-center" [class.highlight-feature]="feature === 'Emotional Dua Search'">
+              <mat-icon class="text-yellow-400 mr-2">auto_awesome</mat-icon>
+              <span>Emotional Dua Search</span>
+            </li>
+            <li class="flex items-center" [class.highlight-feature]="feature === 'AI Tafsir Chat'">
+              <mat-icon class="text-yellow-400 mr-2">psychology</mat-icon>
+              <span>AI Tafsir Chat</span>
+            </li>
+            <li class="flex items-center" [class.highlight-feature]="feature === 'Dua Insights'">
+              <mat-icon class="text-yellow-400 mr-2">lightbulb</mat-icon>
+              <span>Dua Insights & Analysis</span>
+            </li>
+          </ul>
+        </div>
+
+        <div class="mt-8 text-center">
+          <button 
+            mat-raised-button 
+            [disabled]="isLoading"
+            (click)="startSubscription()"
+            class="w-full py-3 px-6 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-[#1A365D] font-semibold transition-colors duration-300 flex items-center justify-center"
+          >
+            <span>Subscribe Now</span>
+            <mat-icon class="ml-2">arrow_forward</mat-icon>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Current Subscription Status -->
+    <div *ngIf="subscriptionStatus" class="mt-12 text-center">
+      <div class="bg-white rounded-lg shadow-sm p-6 max-w-md mx-auto">
+        <h2 class="text-xl font-semibold text-[#1A365D] mb-4">Your Subscription</h2>
+        <p class="text-gray-600">Status: {{ subscriptionStatus.status | titlecase }}</p>
+        <p class="text-gray-600">Plan: {{ subscriptionStatus.plan | titlecase }}</p>
+        <p *ngIf="subscriptionStatus.currentPeriodEnd" class="text-gray-600">
+          Next billing date: {{ subscriptionStatus.currentPeriodEnd | date }}
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+.highlight-feature {
+  @apply bg-yellow-400/20 -mx-2 px-2 py-1 rounded-lg;
+}
+</style> 

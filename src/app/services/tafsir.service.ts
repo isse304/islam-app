@@ -1,7 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
 import { ApiService } from './api.service';
+import { map } from 'rxjs/operators';
 
 interface TafsirResponse {
   explanation: string;
@@ -48,6 +49,13 @@ export class TafsirService {
       maxTokens: 1000
     };
 
-    return this.apiService.generateAIResponse(prompt);
+    return from(this.apiService.generateAIResponse(prompt)).pipe(
+      map(response => ({
+        explanation: response.content || '',
+        context: '',
+        modernApplication: '',
+        relatedHadith: []
+      }))
+    );
   }
 } 

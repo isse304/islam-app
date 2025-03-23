@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { AuthStateService } from '../../services/auth-state.service';
@@ -24,6 +24,10 @@ interface SurahData {
   numberOfAyahs: number;
 }
 
+interface AIResponse {
+  response: string;
+}
+
 @Component({
   selector: 'app-learn',
   templateUrl: './learn.component.html',
@@ -42,7 +46,7 @@ interface SurahData {
     MatIconModule
   ]
 })
-export class LearnComponent implements OnInit {
+export class LearnComponent implements OnInit, OnDestroy {
   selectedSurah: number = 1;
   selectedVerse: number = 1;
   isLoading: boolean = false;
@@ -54,6 +58,9 @@ export class LearnComponent implements OnInit {
   surahs: any[] = [];
   verseCounts: number = 1;
   aiSummary: string = '';
+  private readonly LEARN_STATE_KEY = 'learn_quran_state';
+  private readonly AUTH_CHECK_INTERVAL = 30000; // 30 seconds
+  private authCheckInterval: any;
 
   constructor(
     private quranService: QuranService,
@@ -63,12 +70,63 @@ export class LearnComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
+    // Restore state from localStorage
+    this.restoreState();
+    
+    // Setup auth check interval to ensure premium status is maintained
+    this.setupAuthCheck();
+    
+    await this.checkPremiumStatus();
+    this.loadSurahs();
+  }
+
+  ngOnDestroy() {
+    // Save state before leaving
+    this.saveState();
+    
+    // Clear interval
+    if (this.authCheckInterval) {
+      clearInterval(this.authCheckInterval);
+    }
+  }
+
+  private setupAuthCheck() {
+    // Check premium status periodically
+    this.authCheckInterval = setInterval(() => {
+      this.checkPremiumStatus();
+    }, this.AUTH_CHECK_INTERVAL);
+  }
+
+  private async checkPremiumStatus() {
     const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
     if (!isPremium) {
       this.subscriptionService.showSubscriptionPage('Learn Feature');
-      return;
+      return false;
     }
-    this.loadSurahs();
+    return true;
+  }
+
+  private saveState() {
+    const state = {
+      selectedSurah: this.selectedSurah,
+      selectedVerse: this.selectedVerse,
+      selectedTafsir: this.selectedTafsir
+    };
+    localStorage.setItem(this.LEARN_STATE_KEY, JSON.stringify(state));
+  }
+
+  private restoreState() {
+    try {
+      const savedState = localStorage.getItem(this.LEARN_STATE_KEY);
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        this.selectedSurah = state.selectedSurah || 1;
+        this.selectedVerse = state.selectedVerse || 1;
+        this.selectedTafsir = state.selectedTafsir || 'ibn-kathir';
+      }
+    } catch (error) {
+      console.error('Error restoring Learn state:', error);
+    }
   }
 
   async loadSurahs() {
@@ -79,7 +137,16 @@ export class LearnComponent implements OnInit {
   async updateVerseCount() {
     const surahData = await firstValueFrom(this.quranService.getVerseCount(this.selectedSurah)) as SurahData;
     this.verseCounts = surahData.numberOfAyahs;
+    
+    // Make sure selectedVerse is not greater than verse count
+    if (this.selectedVerse > this.verseCounts) {
+      this.selectedVerse = 1;
+    }
+    
     this.loadVerse();
+    
+    // Save state after update
+    this.saveState();
   }
 
   async loadVerse() {
@@ -89,6 +156,9 @@ export class LearnComponent implements OnInit {
       this.currentVerse = verseData.text;
       this.translation = verseData.translation;
       await this.getAISummary();
+      
+      // Save state after loading new verse
+      this.saveState();
     } catch (error) {
       console.error('Error loading verse:', error);
     }
@@ -96,20 +166,42 @@ export class LearnComponent implements OnInit {
   }
 
   async getAISummary() {
+    if (!await this.checkPremiumStatus()) {
+      this.aiSummary = 'Premium feature unavailable. Please subscribe to access.';
+      return;
+    }
+    
     try {
-      const summary = await firstValueFrom(this.quranService.getVerseSummary(
+      this.aiSummary = 'Generating summary...';
+      const response = await firstValueFrom(this.quranService.getVerseSummary(
         this.selectedSurah,
         this.selectedVerse
-      )) as string;
-      this.aiSummary = summary;
+      ));
+      
+      if (response && typeof response === 'object' && 'response' in response) {
+        this.aiSummary = (response as AIResponse).response;
+      } else if (typeof response === 'string') {
+        this.aiSummary = response;
+      } else {
+        throw new Error('Invalid response format');
+      }
     } catch (error) {
       console.error('Error getting AI summary:', error);
-      this.aiSummary = 'Failed to generate summary. Please try again.';
+      this.aiSummary = 'Failed to generate summary. Please try refreshing the page.';
     }
   }
 
   async sendQuestion() {
     if (!this.userQuestion.trim()) return;
+    
+    if (!await this.checkPremiumStatus()) {
+      this.messages.push({
+        role: 'assistant',
+        content: 'Premium feature unavailable. Please subscribe to access AI Tafsir Chat.',
+        timestamp: new Date()
+      });
+      return;
+    }
 
     // Add user message
     this.messages.push({
@@ -133,7 +225,7 @@ export class LearnComponent implements OnInit {
 
       this.messages.push({
         role: 'assistant',
-        content: response,
+        content: response || 'I apologize, but I am unable to generate a response at this time. Please try again later.',
         timestamp: new Date()
       });
     } catch (error) {
