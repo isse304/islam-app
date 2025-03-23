@@ -1,3 +1,5 @@
+@use "sass:color";
+
 /* Profile Page Container */
 .profile-page-container {
   max-width: 1000px;
@@ -136,7 +138,7 @@
     background-color: #B7A57A;
     
     &:hover {
-      background-color: darken(#B7A57A, 10%);
+      background-color: color.adjust(#B7A57A, $lightness: -10%);
     }
   }
 }

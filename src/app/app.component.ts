@@ -1,7 +1,6 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
-import { HeaderComponent } from './components/header/header.component';
+import { RouterOutlet } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -10,8 +9,7 @@ import { HeaderComponent } from './components/header/header.component';
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
-    HeaderComponent
+    RouterOutlet
   ]
 })
 export class AppComponent {

@@ -34,7 +34,19 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 export class DuaInsightsComponent implements OnInit {
   @Input() dua!: Dua;
   
-  insights: AIResponse | null = null;
+  insights: AIResponse = {
+    content: '',
+    virtues: '',
+    application: '',
+    context: '',
+    related: '',
+    impact: '',
+    explanation: '',
+    relatedVerses: [],
+    historicalContext: '',
+    reflectionPoints: [],
+    modernApplication: ''
+  };
   reflections: AIResponse | null = null;
   isLoading: boolean = false;
   error: string = '';
@@ -98,39 +110,39 @@ export class DuaInsightsComponent implements OnInit {
   }
 
   getVirtuesList(): string[] {
-    if (!this.insights?.virtues) return [];
+    if (!this.insights.virtues) return [];
     return this.insights.virtues.split('\n').filter(v => v.trim());
   }
 
   getApplicationSteps(): string[] {
-    if (!this.insights?.application) return [];
+    if (!this.insights.application) return [];
     return this.insights.application.split('\n').filter(s => s.trim());
   }
 
   getSpiritualImpacts(): string[] {
-    if (!this.insights?.impact) return [];
+    if (!this.insights.impact) return [];
     return this.insights.impact.split('\n').filter(i => i.trim());
   }
 
   getReflectionPoints(): string[] {
-    if (!this.insights?.reflectionPoints) return [];
+    if (!this.insights.reflectionPoints) return [];
     return this.insights.reflectionPoints.filter(p => p.trim());
   }
 
   getHistoricalContext(): string {
-    return this.insights?.historicalContext || '';
+    return this.insights.historicalContext || '';
   }
 
   getModernApplication(): string {
-    return this.insights?.modernApplication || '';
+    return this.insights.modernApplication || '';
   }
 
   hasRelatedContent(): boolean {
-    return !!this.insights?.related;
+    return !!this.insights.related;
   }
 
   getFormattedRelatedContent(): SafeHtml {
-    if (!this.insights?.related) return this.sanitizer.bypassSecurityTrustHtml('');
+    if (!this.insights.related) return this.sanitizer.bypassSecurityTrustHtml('');
     
     // Convert markdown-style formatting to HTML
     const content = this.insights.related
