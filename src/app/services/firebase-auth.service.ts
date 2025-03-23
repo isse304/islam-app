@@ -215,7 +215,7 @@ export class FirebaseAuthService {
         
         // First, try to load cached preferences
         const cachedPrefsJson = localStorage.getItem(`user_preferences_${firebaseUser.uid}`);
-        let cachedPrefs = null;
+        let cachedPrefs: { preferences?: any } | null = null;
         if (cachedPrefsJson) {
             try {
                 cachedPrefs = JSON.parse(cachedPrefsJson);

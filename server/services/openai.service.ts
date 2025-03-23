@@ -1,5 +1,9 @@
 import OpenAI from 'openai';
-import { ChatCompletionMessageParam } from 'openai/resources/chat';
+
+export interface ChatCompletionMessageParam {
+    role: 'system' | 'user' | 'assistant';
+    content: string;
+}
 
 export class OpenAIService {
     private openai: OpenAI;

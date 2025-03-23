@@ -2,16 +2,13 @@ import { initializeApp, cert, getApps, applicationDefault } from 'firebase-admin
 import { getAuth } from 'firebase-admin/auth';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 // Load environment variables from the root .env file
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 try {
     // Get Firebase config from environment variable
-    const firebaseConfig = process.env.FIREBASE_CONFIG;
+    const firebaseConfig = process.env['FIREBASE_CONFIG'];
     
     if (!firebaseConfig) {
         throw new Error('FIREBASE_CONFIG environment variable is missing');
@@ -31,7 +28,7 @@ try {
     }
 } catch (error) {
     console.error('Error initializing Firebase Admin:', error);
-    console.error('FIREBASE_CONFIG value:', process.env.FIREBASE_CONFIG ? '[PRESENT]' : '[MISSING]');
+    console.error('FIREBASE_CONFIG value:', process.env['FIREBASE_CONFIG'] ? '[PRESENT]' : '[MISSING]');
     process.exit(1);
 }
 

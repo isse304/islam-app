@@ -1,16 +1,17 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
+import { appConfig } from './app/app.config';
+import { environment } from './environments/environment';
+import { importProvidersFrom } from '@angular/core';
+import { initializeApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 import { provideRouter } from '@angular/router';
-import { routes } from './app/app.routes';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { importProvidersFrom } from '@angular/core';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { environment } from './environments/environment';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
@@ -26,19 +27,35 @@ import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTabsModule } from '@angular/material/tabs';
 import { provideFirebaseApp } from '@angular/fire/app';
-import { provideAuth, getAuth as getAngularAuth } from '@angular/fire/auth';
-import { provideFirestore, getFirestore as getAngularFirestore } from '@angular/fire/firestore';
+import { provideAuth } from '@angular/fire/auth';
+import { provideFirestore } from '@angular/fire/firestore';
 import { firebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
+import { routes } from './app/app.routes';
+
+// Initialize Firebase
+const app = initializeApp(environment.firebase);
+const auth = getAuth(app);
+const firestore = getFirestore(app);
+
+// Function to get Angular Firebase instances
+function getAngularAuth() {
+  return auth;
+}
+
+function getAngularFirestore() {
+  return firestore;
+}
 
 bootstrapApplication(AppComponent, {
   providers: [
+    ...appConfig.providers,
     provideRouter(routes),
     provideAnimations(),
     provideHttpClient(withInterceptors([firebaseAuthInterceptor])),
-    provideFirebaseApp(() => initializeApp(environment.firebase)),
-    provideAuth(() => getAngularAuth()),
-    provideFirestore(() => getAngularFirestore()),
     importProvidersFrom(
+      provideFirebaseApp(() => initializeApp(environment.firebase)),
+      provideAuth(() => getAngularAuth()),
+      provideFirestore(() => getAngularFirestore()),
       MatDialogModule,
       MatButtonModule,
       MatSnackBarModule,
@@ -59,4 +76,4 @@ bootstrapApplication(AppComponent, {
       ReactiveFormsModule
     )
   ]
-}).catch(err => console.error(err));
+}).catch((err) => console.error(err));

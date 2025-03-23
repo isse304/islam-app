@@ -5,11 +5,8 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import * as admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import path from 'path';
-import { fileURLToPath } from 'url';
 
 // Load environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 // Global variable to track initialization status
@@ -43,11 +40,7 @@ initializeFirebase();
 declare global {
   namespace Express {
     interface Request {
-      auth?: {
-        userId: string;
-        email?: string | null;
-        decodedToken?: DecodedIdToken;
-      };
+      auth?: DecodedIdToken;
     }
   }
 }
@@ -60,11 +53,7 @@ export interface AuthData {
 
 // Extend Request with our custom auth property
 export interface AuthenticatedRequest extends Request {
-    auth?: {
-        userId: string;
-        email?: string | null;
-        decodedToken?: DecodedIdToken;
-    };
+    auth?: DecodedIdToken;
 }
 
 // Verify Firebase token and attach user data to request
@@ -83,8 +72,8 @@ const verifyToken = async (token: string): Promise<DecodedIdToken> => {
 };
 
 // Single auth middleware that can be used both as middleware and HOC
-export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response) => Promise<void | Response>) => {
-  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+export const withAuth = (handler?: (req: Request, res: Response) => Promise<void | Response>) => {
+  return async (req: Request, res: Response, next: NextFunction) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) {
@@ -95,11 +84,7 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response) =>
       
       try {
         const decodedToken = await verifyToken(token);
-        req.auth = {
-          userId: decodedToken.uid,
-          email: decodedToken.email,
-          decodedToken
-        };
+        req.auth = decodedToken;
 
         return handler ? handler(req, res) : next();
       } catch (error: any) {

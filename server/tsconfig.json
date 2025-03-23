@@ -1,12 +1,12 @@
 {
     "compilerOptions": {
       "target": "es2018",
-      "module": "commonjs",
+      "module": "node16",
       "lib": ["es2018", "esnext.asynciterable"],
       "skipLibCheck": true,
       "sourceMap": true,
       "outDir": "./dist",
-      "moduleResolution": "node",
+      "moduleResolution": "node16",
       "removeComments": true,
       "noImplicitAny": false,
       "strictNullChecks": true,
@@ -14,7 +14,7 @@
       "noImplicitThis": true,
       "noUnusedLocals": false,
       "noUnusedParameters": false,
-      "noImplicitReturns": true,
+      "noImplicitReturns": false,
       "noFallthroughCasesInSwitch": true,
       "allowSyntheticDefaultImports": true,
       "esModuleInterop": true,
