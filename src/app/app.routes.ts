@@ -15,19 +15,19 @@ export const routes: Routes = [
   { path: '', component: LandingComponent },
   { path: 'thank-you', component: ThankYouComponent },
   // Temporarily disabled routes during early access
-  /* 
-  { path: 'home', component: HomeComponent },
-  { path: 'quran', component: QuranReaderComponent },
-  { path: 'learn', component: LearnComponent },
-  { path: 'dua', component: DuaComponent },
-  { 
-    path: 'auth',
-    children: authRoutes
-  },
-  { path: 'profile', component: ProfileComponent },
-  { path: 'usage', component: UsageComponent },
-  { path: 'subscription', component: SubscriptionComponent },
-  { path: 'contact', component: ContactComponent },
-  */
+  
+  // { path: '', component: HomeComponent },
+  // { path: 'quran', component: QuranReaderComponent },
+  // { path: 'learn', component: LearnComponent },
+  // { path: 'dua', component: DuaComponent },
+  // { 
+  //   path: 'auth',
+  //   children: authRoutes
+  // },
+  // { path: 'profile', component: ProfileComponent },
+  // { path: 'usage', component: UsageComponent },
+  // { path: 'subscription', component: SubscriptionComponent },
+  // { path: 'contact', component: ContactComponent },
+  
   { path: '**', redirectTo: '' } // Redirect any unknown paths to landing
 ]; 

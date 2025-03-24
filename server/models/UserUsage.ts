@@ -28,8 +28,8 @@ const userUsageSchema = new Schema<IUserUsage>({
     status: {
         type: String,
         required: true,
-        enum: ['trial', 'active', 'canceled', 'free'],
-        default: 'trial'
+        enum: ['premium', 'free'],
+        default: 'free'
     },
     currentPeriodEnd: Date,
     trialEnd: Date,

@@ -29,7 +29,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { provideFirebaseApp } from '@angular/fire/app';
 import { provideAuth } from '@angular/fire/auth';
 import { provideFirestore } from '@angular/fire/firestore';
-import { firebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
+import { FirebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
 import { routes } from './app/app.routes';
 
 // Initialize Firebase
@@ -51,7 +51,7 @@ bootstrapApplication(AppComponent, {
     ...appConfig.providers,
     provideRouter(routes),
     provideAnimations(),
-    provideHttpClient(withInterceptors([firebaseAuthInterceptor])),
+    provideHttpClient(withInterceptors([FirebaseAuthInterceptor])),
     importProvidersFrom(
       provideFirebaseApp(() => initializeApp(environment.firebase)),
       provideAuth(() => getAngularAuth()),

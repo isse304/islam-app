@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { Request, Response, NextFunction } from 'express';
 
+const isDevelopment = process.env.NODE_ENV === 'development';
+
 // Rate limiting configuration
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
@@ -12,8 +14,10 @@ const limiter = rateLimit({
 
 // Custom security headers
 const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
-    // HSTS
-    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    // Only apply HSTS in production
+    if (!isDevelopment) {
+        res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    }
     
     // Prevent clickjacking
     res.setHeader('X-Frame-Options', 'DENY');
@@ -39,7 +43,7 @@ const securityConfig = {
                 scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
                 styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
                 imgSrc: ["'self'", "data:", "https:"],
-                connectSrc: ["'self'", "https://api.openai.com", "https://api.elevenlabs.io"],
+                connectSrc: ["'self'", "http://localhost:3000", "https://api.openai.com", "https://api.elevenlabs.io"],
                 fontSrc: ["'self'", "https:", "data:"],
                 objectSrc: ["'none'"],
                 mediaSrc: ["'self'"],
@@ -47,7 +51,9 @@ const securityConfig = {
             },
         },
         crossOriginEmbedderPolicy: false,
-        crossOriginResourcePolicy: { policy: "cross-origin" }
+        crossOriginResourcePolicy: { policy: "cross-origin" },
+        // Disable HSTS in development
+        hsts: !isDevelopment
     }),
     compression: compression(),
     rateLimiter: limiter,

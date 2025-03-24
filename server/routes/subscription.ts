@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import { StripeService } from '../services/stripe.service';
 import { withAuth, AuthenticatedRequest } from '../middleware/auth';
+import { auth } from '../config/firebase';
 
 const router = express.Router();
 const stripeService = new StripeService();
@@ -13,7 +14,12 @@ router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: 
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.auth.userId;
+    const userId = req.auth.uid;
+    if (!userId) {
+      console.error('No user ID in auth data');
+      return res.status(401).json({ error: 'Invalid user ID' });
+    }
+    
     console.log('Creating checkout session for user:', userId);
     
     const session = await stripeService.createCheckoutSession(userId);
@@ -47,11 +53,19 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) 
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    const userId = req.auth.userId;
+    const userId = req.auth.uid;
+    if (!userId) {
+      console.error('No user ID in auth data');
+      return res.status(401).json({ error: 'Invalid user ID' });
+    }
+    
     console.log('Getting subscription status for user:', userId);
     
     const status = await stripeService.getSubscriptionStatus(userId);
     console.log('Subscription status retrieved:', status);
+
+    // Force a token refresh to ensure latest claims are available
+    await auth.revokeRefreshTokens(userId);
 
     res.json({
       success: true,
@@ -60,7 +74,10 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) 
       features: {
         aiChat: status === 'active',
         tafsirAccess: status === 'active',
-        wordByWord: status === 'active'
+        wordByWord: status === 'active',
+        emotionalDuaSearch: status === 'active',
+        aiTafsirChat: status === 'active',
+        duaInsights: status === 'active'
       }
     });
   } catch (error) {

@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, from, throwError, firstValueFrom, retry } from 'rxjs';
+import { Observable, from, throwError, firstValueFrom, retry, mergeMap } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
@@ -58,56 +58,106 @@ export class ApiService {
   // Premium features
   async generateAIResponse(prompt: AIPrompt | string): Promise<AIResponse> {
     try {
+        console.log('Starting AI response generation...');
+        
         // Check if user is authenticated
         const isAuth = await this.authService.isAuthenticated();
         if (!isAuth) {
+            console.log('User not authenticated');
             this.notificationService.warning('Please sign in to use AI features');
             throw new Error('Authentication required');
         }
 
-        // Get auth token
-        const token = await this.authService.getToken();
+        // Get fresh token first
+        console.log('Getting fresh auth token...');
+        const token = await this.authService.getToken(true);
         if (!token) {
+            console.log('No auth token available');
             this.notificationService.error('Please sign in again');
             throw new Error('No auth token available');
         }
 
-        // Prepare request body with optimized parameters for GPT-4
+        // Force refresh subscription status to get latest claims
+        console.log('Refreshing subscription status...');
+        await this.authService.refreshSubscriptionStatus();
+
+        // Check premium status with retries
+        let isPremium = false;
+        let retryCount = 0;
+        const maxRetries = 3;
+
+        while (!isPremium && retryCount < maxRetries) {
+            isPremium = await this.authService.isPremiumUser();
+            if (!isPremium) {
+                console.log(`Premium check attempt ${retryCount + 1} failed, retrying...`);
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
+                retryCount++;
+            }
+        }
+
+        if (!isPremium) {
+            console.log('User is not premium after retries');
+            this.notificationService.warning('Premium subscription required to use AI features');
+            throw new Error('Premium subscription required');
+        }
+
+        // Prepare request body
         const requestBody = {
             prompt: typeof prompt === 'string' ? prompt : prompt.userMessage,
             context: typeof prompt === 'string' ? undefined : prompt.systemMessage,
-            temperature: typeof prompt === 'string' ? 0.7 : (prompt.temperature ?? 0.4), // Lower default temperature for more focused responses
-            maxTokens: typeof prompt === 'string' ? 1000 : (prompt.maxTokens ?? 2000) // Higher default token limit for GPT-4
+            temperature: typeof prompt === 'string' ? 0.7 : (prompt.temperature ?? 0.4),
+            maxTokens: typeof prompt === 'string' ? 1000 : (prompt.maxTokens ?? 2000)
         };
 
-        // Make API request
-        const response = await firstValueFrom(
+        console.log('Making API request...');
+        return await firstValueFrom(
             this.http.post<AIResponse>(`${this.baseUrl}/api/ai/generate`, requestBody, {
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Content-Type': 'application/json'
                 }
             }).pipe(
-                map((response: AIResponse) => {
-                    if (!response.success) {
-                        throw new Error(response.message || 'AI request failed');
-                    }
-                    return response;
+                retry({
+                    count: 2,
+                    delay: 1000,
+                    resetOnSuccess: true
                 }),
-                catchError((error: HttpErrorResponse) => {
+                catchError(async (error: HttpErrorResponse) => {
+                    console.error('API request error:', error);
                     let errorMessage = 'An error occurred while processing your request';
                     
                     if (error.status === 401) {
-                        errorMessage = 'Please sign in to use AI features';
-                    } else if (error.status === 403) {
+                        console.log('Received 401, attempting token refresh...');
+                        // Force token refresh and retry
+                        const newToken = await this.authService.getToken(true);
+                        if (!newToken) {
+                            throw new Error('Failed to refresh token');
+                        }
+                        
+                        console.log('Retrying request with new token...');
+                        return firstValueFrom(
+                            this.http.post<AIResponse>(
+                                `${this.baseUrl}/api/ai/generate`, 
+                                requestBody,
+                                {
+                                    headers: {
+                                        'Content-Type': 'application/json'
+                                    }
+                                }
+                            )
+                        );
+                    }
+                    
+                    if (error.status === 403) {
                         if (error.error?.message?.includes('Premium')) {
                             errorMessage = 'Premium subscription required to use AI features';
+                            // Refresh subscription status on 403
+                            await this.authService.refreshSubscriptionStatus();
                         } else if (error.error?.message?.includes('limit')) {
                             errorMessage = 'You have reached your AI request limit';
                         }
                     } else if (error.status === 429) {
                         errorMessage = 'Too many requests. Please try again later.';
                     } else if (error.status === 500 && error.error?.message?.includes('OpenAI')) {
-                        // Add specific handling for GPT-4 quota or capacity errors
                         if (error.error.message.includes('capacity')) {
                             errorMessage = 'GPT-4 is currently at capacity. Please try again in a few minutes.';
                         } else if (error.error.message.includes('quota')) {
@@ -124,10 +174,12 @@ export class ApiService {
                 })
             )
         );
-
-        return response;
     } catch (error) {
         console.error('API Request Error:', error);
+        if (error instanceof HttpErrorResponse && error.status === 401) {
+            // Clear auth state and redirect to login on persistent 401
+            await this.authService.signOut();
+        }
         throw error;
     }
   }
@@ -164,7 +216,6 @@ export class ApiService {
       const response = await firstValueFrom(
         this.http.post<AIResponse>(`${this.baseUrl}/api/ai/dua/insights`, { dua }, {
           headers: {
-            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
         }).pipe(
@@ -385,6 +436,14 @@ export class ApiService {
 
   private async makeRequest(method: 'get' | 'post', endpoint: string, body?: any): Promise<any> {
     try {
+      // Wait for auth state to be fully initialized
+      const isAuthenticated = await this.authService.isAuthenticated();
+      if (!isAuthenticated) {
+        this.notificationService.warning('Please sign in to access this feature');
+        await this.authService.login();
+        throw new Error('Authentication required');
+      }
+
       // Get Firebase auth token for all requests
       const token = await this.authService.getToken();
       if (!token) {
@@ -394,8 +453,7 @@ export class ApiService {
       }
 
       const headers = new HttpHeaders({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Content-Type': 'application/json'
       });
 
       const options = { headers, withCredentials: true };
@@ -529,9 +587,61 @@ export class ApiService {
   }
 
   async createCheckoutSession(userId: string): Promise<CheckoutResponse> {
-    const response = await firstValueFrom(
-      this.http.post<CheckoutResponse>(`${this.baseUrl}/api/stripe/create-checkout-session`, { userId })
-    );
-    return response;
+    try {
+        console.log('Starting checkout session creation for user:', userId);
+        
+        // Get auth token first
+        const token = await this.authService.getToken(true); // Force token refresh
+        if (!token) {
+            console.error('No auth token available');
+            this.notificationService.warning('Please sign in to access subscription features');
+            throw new Error('Authentication required');
+        }
+
+        console.log('Got auth token, creating checkout session...');
+
+        const headers = new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        });
+
+        const response = await firstValueFrom(
+            this.http.post<CheckoutResponse>(
+                `${this.baseUrl}/api/subscription/create-checkout`,
+                { userId },
+                { headers }
+            ).pipe(
+                catchError((error: HttpErrorResponse) => {
+                    console.error('Checkout session error:', error);
+                    let errorMessage = 'Failed to create checkout session';
+                    
+                    if (error.status === 401) {
+                        errorMessage = 'Please sign in to continue';
+                        this.notificationService.warning(errorMessage);
+                    } else if (error.error?.message) {
+                        errorMessage = error.error.message;
+                        this.notificationService.error(errorMessage);
+                    } else {
+                        this.notificationService.error(errorMessage);
+                    }
+                    
+                    throw new Error(errorMessage);
+                })
+            )
+        );
+
+        console.log('Checkout session response:', response);
+
+        if (!response?.url) {
+            console.error('No checkout URL in response');
+            throw new Error('No checkout URL received from server');
+        }
+
+        console.log('Redirecting to checkout URL:', response.url);
+        return response;
+    } catch (error) {
+        console.error('Error creating checkout session:', error);
+        throw error;
+    }
   }
 } 

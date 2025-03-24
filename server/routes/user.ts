@@ -74,8 +74,15 @@ const UserPreferences = mongoose.model('UserPreferences', userPreferencesSchema)
 
 // Helper function to verify user access
 const verifyUserAccess = (req: AuthenticatedRequest, userId: string): boolean => {
+    console.log('Verifying user access:', {
+        requestUserId: req.auth?.uid,
+        targetUserId: userId,
+        hasAuth: !!req.auth
+    });
     if (!req.auth) return false;
-    return req.auth.userId === userId;
+    const hasAccess = req.auth.uid === userId;
+    console.log('Access verification result:', hasAccess);
+    return hasAccess;
 };
 
 // Helper function to get default preferences
@@ -172,12 +179,18 @@ router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
 // For backward compatibility - redirect old endpoints to new ones
 router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
+        console.log('Handling preferences request for user:', req.params.userId);
+        console.log('Auth object:', req.auth);
+        
         if (!verifyUserAccess(req, req.params.userId)) {
+            console.log('Access denied for user:', req.params.userId);
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
+        const userId = req.auth!.uid;
+        console.log('Fetching preferences for user:', userId);
         const userPrefs = await UserPreferences.findOne({ userId }) || await UserPreferences.create(getDefaultPreferences(userId));
+        console.log('Found preferences:', userPrefs);
         res.json({
             success: true,
             preferences: userPrefs.preferences

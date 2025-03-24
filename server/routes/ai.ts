@@ -127,20 +127,42 @@ router.post('/chat', withAuth, async (req, res) => {
             return;
         }
         const userId = req.auth.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'User ID not found' });
+            return;
+        }
         
         // Get or create user usage record
-        let userUsage = await UserUsage.findOne({ userId });
-        if (!userUsage) {
-            userUsage = new UserUsage({ userId });
-            await userUsage.save();
-        }
+        let userUsage;
+        try {
+            userUsage = await UserUsage.findOne({ userId });
+            if (!userUsage) {
+                userUsage = await UserUsage.create({
+                    userId,
+                    status: 'free',
+                    aiRequests: {
+                        count: 0,
+                        lastRequest: new Date()
+                    },
+                    aiRequestLimit: parseInt(process.env.DAILY_USER_LIMIT || '50')
+                });
+            }
 
-        // Check if user has exceeded their AI request limit
-        if (!await userUsage.canMakeAIRequest()) {
-            res.status(403).json({ 
-                error: 'AI request limit exceeded',
-                limit: userUsage.aiRequestLimit,
-                used: userUsage.aiRequests.count
+            // Check if user has exceeded their AI request limit
+            if (!await userUsage.canMakeAIRequest()) {
+                res.status(403).json({ 
+                    success: false,
+                    error: 'AI request limit exceeded',
+                    limit: userUsage.aiRequestLimit,
+                    used: userUsage.aiRequests.count
+                });
+                return;
+            }
+        } catch (error) {
+            console.error('Error managing user usage:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to manage user usage'
             });
             return;
         }
@@ -154,10 +176,16 @@ router.post('/chat', withAuth, async (req, res) => {
         // Increment AI request count
         await userUsage.incrementAIRequestCount();
 
-        res.json({ response: response.choices[0].message.content });
+        res.json({ 
+            success: true,
+            response: response.choices[0].message.content 
+        });
     } catch (error) {
         console.error('Error in AI chat:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
+        });
     }
 });
 
@@ -194,12 +222,44 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
         }
 
         const userId = req.auth.userId;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'User ID not found' });
+            return;
+        }
         
         // Get or create user usage record
-        let userUsage = await UserUsage.findOne({ userId });
-        if (!userUsage) {
-            userUsage = new UserUsage({ userId });
-            await userUsage.save();
+        let userUsage;
+        try {
+            userUsage = await UserUsage.findOne({ userId });
+            if (!userUsage) {
+                userUsage = await UserUsage.create({
+                    userId,
+                    status: 'free',
+                    aiRequests: {
+                        count: 0,
+                        lastRequest: new Date()
+                    },
+                    aiRequestLimit: parseInt(process.env.DAILY_USER_LIMIT || '50')
+                });
+            }
+
+            // Check if user has exceeded their AI request limit
+            if (!await userUsage.canMakeAIRequest()) {
+                res.status(403).json({ 
+                    success: false,
+                    error: 'AI request limit exceeded',
+                    limit: userUsage.aiRequestLimit,
+                    used: userUsage.aiRequests.count
+                });
+                return;
+            }
+        } catch (error) {
+            console.error('Error managing user usage:', error);
+            res.status(500).json({
+                success: false,
+                error: 'Failed to manage user usage'
+            });
+            return;
         }
 
         // Increment AI request count

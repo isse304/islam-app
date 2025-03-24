@@ -16,6 +16,9 @@ interface SubscriptionResponse {
     aiChat: boolean;
     tafsirAccess: boolean;
     wordByWord: boolean;
+    emotionalDuaSearch: boolean;
+    aiTafsirChat: boolean;
+    duaInsights: boolean;
   };
 }
 
@@ -94,7 +97,10 @@ export class StripeService {
       features: {
         aiChat: false,
         tafsirAccess: false,
-        wordByWord: false
+        wordByWord: false,
+        emotionalDuaSearch: false,
+        aiTafsirChat: false,
+        duaInsights: false
       }
     };
 
@@ -116,7 +122,10 @@ export class StripeService {
             features: {
               aiChat: response.features?.aiChat || false,
               tafsirAccess: response.features?.tafsirAccess || false,
-              wordByWord: response.features?.wordByWord || false
+              wordByWord: response.features?.wordByWord || false,
+              emotionalDuaSearch: response.features?.emotionalDuaSearch || false,
+              aiTafsirChat: response.features?.aiTafsirChat || false,
+              duaInsights: response.features?.duaInsights || false
             }
           }))
         );

@@ -158,17 +158,29 @@ export class StripeService {
         const userId = session.client_reference_id;
         
         try {
-            // Update Firebase custom claims with correct premium features
+            console.log('Starting subscription activation for user:', userId);
+            
+            // Define features object for clarity
+            const premiumFeatures = {
+                emotionalDuaSearch: true,
+                aiTafsirChat: true,
+                duaInsights: true,
+                aiChat: true,
+                tafsirAccess: true,
+                wordByWord: true
+            };
+
+            console.log('Setting custom claims with features:', premiumFeatures);
+            
+            // Update Firebase custom claims with premium features
             await auth.setCustomUserClaims(userId, {
                 premium: true,
                 subscriptionStatus: 'active',
                 subscriptionEnd: null,
-                features: {
-                    emotionalDuaSearch: true,
-                    aiTafsirChat: true,
-                    duaInsights: true
-                }
+                features: premiumFeatures
             });
+
+            console.log('Custom claims set successfully');
 
             // Update usage record
             const usage = await this.getOrCreateUsageRecord(userId);
@@ -176,12 +188,25 @@ export class StripeService {
             usage.currentPeriodEnd = null;
             await usage.save();
 
-            // Force token refresh by revoking refresh tokens
-            await auth.revokeRefreshTokens(userId);
+            console.log('Usage record updated');
 
-            console.log(`Successfully updated subscription for user ${userId}`);
+            // Force token refresh
+            await auth.revokeRefreshTokens(userId);
+            console.log('Refresh tokens revoked to force update');
+
+            // Verify the claims were set correctly
+            const userRecord = await auth.getUser(userId);
+            const customClaims = userRecord.customClaims || {};
+            console.log('Verified custom claims:', customClaims);
+
+            if (!customClaims.premium || !customClaims.features) {
+                console.error('Custom claims verification failed:', customClaims);
+                throw new Error('Failed to set custom claims properly');
+            }
+
+            console.log(`Successfully activated premium subscription for user ${userId}`);
         } catch (error) {
-            console.error('Error updating user subscription status:', error);
+            console.error('Error in handleSuccessfulSubscription:', error);
             throw error;
         }
     }

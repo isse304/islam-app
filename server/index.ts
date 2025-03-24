@@ -50,12 +50,19 @@ const logger = winston.createLogger({
 // Initialize Express app
 const app = express();
 
-// Configure CORS
+// Configure CORS with development settings
+const isDevelopment = process.env.NODE_ENV === 'development';
+const allowedOrigins = isDevelopment 
+    ? ['http://localhost:4200', 'http://localhost:3000']
+    : process.env.CORS_ORIGIN?.split(',') || [];
+
+logger.info(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    origin: allowedOrigins,
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
 // Add request logging middleware
@@ -71,10 +78,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 // Apply security middleware
 app.use(helmet());
 app.use(compression());
-app.use(cors({
-    origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:4200'],
-    credentials: true
-}));
 
 // Configure express to handle raw body for Stripe webhooks
 app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
@@ -87,6 +90,9 @@ const limiter = rateLimit({
     max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100')
 });
 app.use(limiter);
+
+// Apply security headers
+app.use(securityConfig.securityHeaders);
 
 // Session configuration
 const sessionConfig = {
@@ -108,7 +114,6 @@ app.use(session(sessionConfig));
 app.use(securityConfig.helmet);
 app.use(securityConfig.compression);
 app.use(securityConfig.rateLimiter);
-app.use(securityConfig.securityHeaders);
 
 // API Routes
 app.use('/api/ai', aiRouter.default || aiRouter);

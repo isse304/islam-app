@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, of, from, throwError, switchMap, firstValueFrom, timeout, retry, catchError, map } from 'rxjs';
 import { take, tap } from 'rxjs/operators';
@@ -27,6 +27,7 @@ import {
   sendEmailVerification,
   signInWithPopup,
   getRedirectResult,
+  reauthenticateWithPopup,
 } from 'firebase/auth';
 
 import { UserInfo } from '@angular/fire/auth';
@@ -121,7 +122,8 @@ export class FirebaseAuthService {
 
   constructor(
     private router: Router,
-    private http: HttpClient
+    private http: HttpClient,
+    private ngZone: NgZone
   ) {
     // Initialize user state from localStorage immediately for faster UI response
     this.initFromCache();
@@ -211,173 +213,425 @@ export class FirebaseAuthService {
 
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<void> {
     try {
-        console.log('Starting user sign in process...');
-        
-        // First, try to load cached preferences
-        const cachedPrefsJson = localStorage.getItem(`user_preferences_${firebaseUser.uid}`);
-        let cachedPrefs: { preferences?: any } | null = null;
-        if (cachedPrefsJson) {
-            try {
-                cachedPrefs = JSON.parse(cachedPrefsJson);
-                console.log('Loaded cached preferences:', cachedPrefs);
-            } catch (error) {
-                console.warn('Error parsing cached preferences:', error);
+      console.log('Starting user sign in process...');
+      
+      // Initialize user state first with basic info
+      const initialUser: AppUser = {
+        id: firebaseUser.uid,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        firstName: firebaseUser.displayName?.split(' ')[0] || '',
+        lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+        imageUrl: firebaseUser.photoURL || '',
+        emailVerified: firebaseUser.emailVerified,
+        createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
+        lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
+        preferences: this.getDefaultPreferences(),
+        isAdmin: false,
+        isPremium: false,
+        features: {}
+      };
+
+      // Set initial state immediately
+      this._user.next(initialUser);
+      localStorage.setItem('isAuthenticated', 'true');
+      
+      // Force token refresh
+      console.log('Refreshing token...');
+      const token = await firebaseUser.getIdToken(true);
+      const idTokenResult = await firebaseUser.getIdTokenResult(true);
+      
+      if (!token) {
+        console.error('Failed to get auth token');
+        this.clearAuthData();
+        throw new Error('Authentication failed - no token');
+      }
+
+      // Update user with token
+      initialUser.token = token;
+      this._user.next(initialUser);
+      
+      // Store token in localStorage
+      localStorage.setItem('auth_token', token);
+      localStorage.setItem('auth_token_timestamp', Date.now().toString());
+      
+      // Check premium status from claims
+      const isPremium = idTokenResult.claims['premium'] === true || 
+                     idTokenResult.claims['subscriptionStatus'] === 'active';
+
+      const features = idTokenResult.claims['features'] || {
+        emotionalDuaSearch: isPremium,
+        aiTafsirChat: isPremium,
+        duaInsights: isPremium
+      };
+
+      // Update user with premium status and features
+      initialUser.isPremium = isPremium;
+      initialUser.features = features;
+      
+      // Store updated user info and premium status
+      localStorage.setItem('currentUser', JSON.stringify(initialUser));
+      localStorage.setItem('premium_status', isPremium.toString());
+      localStorage.setItem('premium_status_timestamp', Date.now().toString());
+      
+      // Update the user subject with complete data
+      this._user.next(initialUser);
+
+      // Ensure token is refreshed periodically
+      this.startTokenRefreshTimer();
+
+      // Try to get user preferences from server
+      try {
+        const response = await firstValueFrom(this.http.get<any>(
+          `${environment.apiUrl}/api/users/${initialUser.id}/preferences`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
             }
+          }
+        ));
+        
+        if (response?.preferences) {
+          initialUser.preferences = response.preferences;
+          this._user.next({ ...initialUser });
+          localStorage.setItem('currentUser', JSON.stringify(initialUser));
         }
+      } catch (error) {
+        console.warn('Error fetching user preferences:', error);
+      }
+
+      console.log('User sign in completed successfully:', {
+        uid: initialUser.id,
+        isPremium: initialUser.isPremium,
+        hasToken: !!initialUser.token
+      });
+
+    } catch (error) {
+      console.error('Error handling user sign in:', error);
+      // Clear any stale data
+      this.clearAuthData();
+      throw error;
+    }
+  }
+
+  private clearAuthData() {
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('auth_token_timestamp');
+    localStorage.removeItem('premium_status');
+    localStorage.removeItem('premium_status_timestamp');
+    // Don't remove email/password as we might need them for re-auth
+    this._user.next(null);
+  }
+
+  private startTokenRefreshTimer() {
+    // Refresh token every 45 minutes instead of 30
+    const REFRESH_INTERVAL = 45 * 60 * 1000; // 45 minutes
+    
+    // Initial refresh
+    this.refreshToken(true).catch(error => 
+      console.error('Initial token refresh failed:', error)
+    );
+    
+    setInterval(async () => {
+      try {
+        const user = this.auth.currentUser;
+        if (user) {
+          const token = await user.getIdToken(true);
+          localStorage.setItem('auth_token', token);
+          localStorage.setItem('auth_token_timestamp', Date.now().toString());
+          
+          // Update user object with new token
+          const currentUser = this._user.getValue();
+          if (currentUser) {
+            currentUser.token = token;
+            this._user.next(currentUser);
+          }
+        }
+      } catch (error) {
+        console.error('Error in token refresh timer:', error);
+      }
+    }, REFRESH_INTERVAL);
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.refreshToken(true).catch(error => 
+          console.error('Visibility change token refresh failed:', error)
+        );
+      }
+    });
+  }
+
+  // Token management
+  private async refreshToken(force: boolean = false): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+      if (!user) {
+        console.error('No current user for token refresh');
+        return null;
+      }
+
+      // Check if we have a cached token that's still valid
+      const cachedToken = localStorage.getItem('auth_token');
+      const tokenTimestamp = localStorage.getItem('auth_token_timestamp');
+      const tokenAge = tokenTimestamp ? Date.now() - parseInt(tokenTimestamp) : Infinity;
+
+      // Force refresh if requested or if token is older than 45 minutes
+      if (force || !cachedToken || tokenAge > 45 * 60 * 1000) {
+        console.log('Forcing token refresh...');
         
-        // Force token refresh and get latest claims
-        console.log('Refreshing token...');
-        const token = await firebaseUser.getIdToken(true);
-        const idTokenResult = await firebaseUser.getIdTokenResult(true);
-        
-        if (!token) {
-            console.error('Failed to get auth token');
-            this._user.next(null);
-            return;
+        // Get fresh token with force refresh
+        const newToken = await user.getIdToken(true);
+        const idTokenResult = await user.getIdTokenResult(true);
+
+        // Verify token hasn't expired
+        const now = Date.now() / 1000; // Convert to seconds
+        if (idTokenResult.expirationTime && parseInt(idTokenResult.expirationTime) < now) {
+          console.warn('Token is expired, attempting re-authentication');
+          await this.refreshAuth();
+          return this.refreshToken(true);
         }
 
-        console.log('Token received successfully');
-        
-        // Store token in localStorage immediately
-        localStorage.setItem('auth_token', token);
-
-        // Check premium status from claims
+        // Update premium status and features from claims
         const isPremium = idTokenResult.claims['premium'] === true || 
-                       idTokenResult.claims['subscriptionStatus'] === 'active';
-
+                         idTokenResult.claims['subscriptionStatus'] === 'active';
+        
         const features = idTokenResult.claims['features'] || {
+          emotionalDuaSearch: isPremium,
+          aiTafsirChat: isPremium,
+          duaInsights: isPremium
+        };
+
+        // Update user state with new premium status and features
+        const currentUserState = this._user.value;
+        if (currentUserState) {
+          this._user.next({
+            ...currentUserState,
+            isPremium,
+            features,
+            token: newToken // Add token to user state
+          });
+        }
+
+        // Cache the new token
+        localStorage.setItem('auth_token', newToken);
+        localStorage.setItem('auth_token_timestamp', Date.now().toString());
+        localStorage.setItem('premium_status', isPremium.toString());
+        localStorage.setItem('premium_status_timestamp', Date.now().toString());
+
+        console.log('Token refreshed with premium status:', isPremium);
+        return newToken;
+      }
+
+      return cachedToken;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      // If there's an error, try to refresh auth
+      try {
+        await this.refreshAuth();
+        const user = this.auth.currentUser;
+        if (user) {
+          return user.getIdToken(true);
+        }
+      } catch (refreshError) {
+        console.error('Error in refresh auth:', refreshError);
+      }
+      return null;
+    }
+  }
+
+  async getToken(force: boolean = false): Promise<string | null> {
+    try {
+      const user = this.auth.currentUser;
+      if (!user) {
+        console.warn('No current user for token request');
+        return null;
+      }
+
+      // Check cache first unless force refresh is requested
+      if (!force) {
+        const cachedToken = localStorage.getItem('auth_token');
+        const tokenTimestamp = localStorage.getItem('auth_token_timestamp');
+        const tokenAge = tokenTimestamp ? Date.now() - parseInt(tokenTimestamp) : Infinity;
+
+        // Use cached token if it's less than 30 minutes old
+        if (cachedToken && tokenAge < 30 * 60 * 1000) {
+          return cachedToken;
+        }
+      }
+
+      // Get fresh token
+      console.log('Getting fresh token...');
+      
+      try {
+        // First try to get token without force refresh
+        const newToken = await user.getIdToken(force);
+        const idTokenResult = await user.getIdTokenResult(force);
+        
+        // Update user state
+        const currentUser = this._user.value;
+        if (currentUser) {
+          const isPremium = idTokenResult.claims['premium'] === true || 
+                           idTokenResult.claims['subscriptionStatus'] === 'active';
+          
+          const features = idTokenResult.claims['features'] || {
             emotionalDuaSearch: isPremium,
             aiTafsirChat: isPremium,
             duaInsights: isPremium
-        };
+          };
 
-        // Map the Firebase user to our User model with token
-        const user: AppUser = {
-            id: firebaseUser.uid,
-            uid: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            firstName: firebaseUser.displayName?.split(' ')[0] || '',
-            lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-            imageUrl: firebaseUser.photoURL || '',
-            emailVerified: firebaseUser.emailVerified,
-            createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
-            lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
-            preferences: cachedPrefs?.preferences || this.getDefaultPreferences(), // Use cached preferences if available
-            isAdmin: false,
-            token: token,
-            isPremium: isPremium,
-            features: features
-        };
-        
-        // Store user info and premium status in localStorage
-        localStorage.setItem('currentUser', JSON.stringify(user));
-        localStorage.setItem('premium_status', isPremium.toString());
-        localStorage.setItem('premium_status_timestamp', Date.now().toString());
-        
-        // Mark as authenticated in localStorage
-        localStorage.setItem('isAuthenticated', 'true');
-        
-        // Update the user subject with basic data immediately
-        this._user.next(user);
+          this._user.next({
+            ...currentUser,
+            token: newToken,
+            isPremium,
+            features
+          });
 
-        console.log('Waiting for Firebase auth state propagation...');
-        // Wait a short moment to ensure Firebase auth state is fully propagated
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        try {
-            console.log('Fetching user preferences...');
-            // Fetch user preferences with retry logic
-            const preferences = await firstValueFrom(
-                this.http.get<any>(`${environment.apiUrl}/api/users/${user.uid}/preferences`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    withCredentials: true
-                }).pipe(
-                    retry({
-                        count: 3,
-                        delay: 1000,
-                        resetOnSuccess: true
-                    }),
-                    catchError(error => {
-                        console.error('Error fetching preferences:', error);
-                        if (error.status === 401) {
-                            console.log('Unauthorized error, refreshing token and retrying...');
-                            // If unauthorized, try to refresh token and retry once
-                            return from(firebaseUser.getIdToken(true)).pipe(
-                                switchMap(newToken => {
-                                    console.log('Got new token, retrying request...');
-                                    localStorage.setItem('auth_token', newToken);
-                                    return this.http.get<any>(
-                                        `${environment.apiUrl}/api/users/${user.uid}/preferences`,
-                                        {
-                                            headers: {
-                                                'Authorization': `Bearer ${newToken}`,
-                                                'Content-Type': 'application/json'
-                                            },
-                                            withCredentials: true
-                                        }
-                                    );
-                                })
-                            );
-                        }
-                        // If there's an error fetching from server, use cached preferences
-                        if (cachedPrefs?.preferences) {
-                            console.log('Using cached preferences due to server error');
-                            return of(cachedPrefs.preferences);
-                        }
-                        throw error;
-                    })
-                )
-            );
-
-            console.log('Preferences fetched successfully:', preferences);
-
-            if (preferences) {
-                // Merge preferences with defaults to ensure all fields exist
-                const mergedPreferences = {
-                    ...this.getDefaultPreferences(),
-                    ...preferences,
-                    lastState: {
-                        ...this.getDefaultPreferences().lastState,
-                        ...preferences.lastState
-                    }
-                };
-                
-                user.preferences = mergedPreferences;
-                if (preferences?.subscriptionStatus) {
-                    const prefsPremium = preferences.subscriptionStatus === 'active';
-                    user.isPremium = user.isPremium || prefsPremium;
-                    localStorage.setItem('premium_status', user.isPremium.toString());
-                    localStorage.setItem('premium_status_timestamp', Date.now().toString());
-                }
-                this._user.next({ ...user });
-                localStorage.setItem(`user_preferences_${user.id}`, JSON.stringify({ preferences: mergedPreferences }));
-                
-                // Also update the preferences subject
-                this.preferencesSubject.next(mergedPreferences);
-            }
-        } catch (error) {
-            console.warn('Error fetching user preferences:', error);
-            // If server fetch fails, use cached preferences
-            if (cachedPrefs?.preferences) {
-                console.log('Using cached preferences as fallback');
-                user.preferences = cachedPrefs.preferences;
-                this._user.next({ ...user });
-                this.preferencesSubject.next(cachedPrefs.preferences);
-            }
+          // Update cache
+          localStorage.setItem('auth_token', newToken);
+          localStorage.setItem('auth_token_timestamp', Date.now().toString());
+          localStorage.setItem('premium_status', isPremium.toString());
+          localStorage.setItem('premium_status_timestamp', Date.now().toString());
         }
+
+        return newToken;
+      } catch (error: any) {
+        console.error('Error getting fresh token:', error);
+        
+        // Clear auth data on critical errors
+        if (error?.code === 'auth/user-token-expired' || 
+            error?.code === 'auth/user-not-found' ||
+            error?.code === 'auth/invalid-user-token') {
+          this.clearAuthData();
+          this.ngZone.run(() => {
+            this.router.navigate(['/auth/login'], {
+              queryParams: { 
+                returnUrl: this.router.url,
+                error: 'session_expired'
+              }
+            });
+          });
+        }
+        return null;
+      }
     } catch (error) {
-        console.error('Error handling user sign in:', error);
-        // Clear any stale data
-        localStorage.removeItem('currentUser');
-        localStorage.removeItem('isAuthenticated');
-        localStorage.removeItem('auth_token');
-        localStorage.removeItem('premium_status');
-        localStorage.removeItem('premium_status_timestamp');
-        this._user.next(null);
-        throw error;
+      console.error('Error in getToken:', error);
+      return null;
+    }
+  }
+
+  async isAuthenticated(): Promise<boolean> {
+    try {
+      // First check Firebase current user
+      const currentUser = this.auth.currentUser;
+      if (!currentUser) {
+        console.log('No Firebase current user');
+        return false;
+      }
+
+      // Check if token exists and is valid
+      const token = await this.refreshToken(false);
+      if (!token) {
+        console.log('No valid token found');
+        return false;
+      }
+
+      // Verify user state
+      const userState = this._user.value;
+      if (!userState) {
+        console.log('No user state found');
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error checking authentication:', error);
+      return false;
+    }
+  }
+
+  async refreshSubscriptionStatus(): Promise<void> {
+    try {
+      const currentUser = this.auth.currentUser;
+      if (!currentUser) {
+        console.error('No current user for subscription refresh');
+        return;
+      }
+
+      console.log('Starting subscription status refresh...');
+
+      // Force token refresh to get latest claims
+      const newToken = await currentUser.getIdToken(true);
+      const idTokenResult = await currentUser.getIdTokenResult(true);
+      
+      // Check premium status from claims
+      const isPremium = idTokenResult.claims['premium'] === true || 
+                       idTokenResult.claims['subscriptionStatus'] === 'active';
+      
+      // Get features from claims or set defaults if premium
+      const features = idTokenResult.claims['features'] || {
+        emotionalDuaSearch: isPremium,
+        aiTafsirChat: isPremium,
+        duaInsights: isPremium,
+        aiChat: isPremium,
+        tafsirAccess: isPremium,
+        wordByWord: isPremium
+      };
+
+      // Double check with server
+      try {
+        const response = await firstValueFrom(
+          this.http.get<any>(`${environment.apiUrl}/api/subscription/status`, {
+            headers: {
+              'Authorization': `Bearer ${newToken}`
+            }
+          })
+        );
+
+        // Use server response if available, otherwise use claims
+        const finalIsPremium = response?.status === 'active' || response?.plan === 'premium' || isPremium;
+        const finalFeatures = response?.features || features;
+
+        // Update user state
+        const currentUserState = this._user.value;
+        if (currentUserState) {
+          this._user.next({
+            ...currentUserState,
+            isPremium: finalIsPremium,
+            features: finalFeatures
+          });
+
+          // Update cache
+          localStorage.setItem('premium_status', finalIsPremium.toString());
+          localStorage.setItem('premium_status_timestamp', Date.now().toString());
+        }
+
+        console.log('Subscription status refreshed:', { 
+          isPremium: finalIsPremium, 
+          features: finalFeatures 
+        });
+      } catch (error) {
+        console.error('Error checking server subscription status:', error);
+        // Fall back to claims data
+        const currentUserState = this._user.value;
+        if (currentUserState) {
+          this._user.next({
+            ...currentUserState,
+            isPremium,
+            features
+          });
+
+          // Update cache with claims data
+          localStorage.setItem('premium_status', isPremium.toString());
+          localStorage.setItem('premium_status_timestamp', Date.now().toString());
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing subscription status:', error);
+      throw error;
     }
   }
 
@@ -558,6 +812,11 @@ export class FirebaseAuthService {
 
   // Email/Password Sign In
   signInWithEmailAndPassword(email: string, password: string): Promise<UserCredential> {
+    // Store credentials for re-auth
+    localStorage.setItem('user_email', email);
+    // Store password securely (in production, consider using more secure storage)
+    localStorage.setItem('user_password', password);
+    
     return signInWithEmailAndPassword(this.auth, email, password);
   }
 
@@ -578,9 +837,7 @@ export class FirebaseAuthService {
       
       // Configure provider settings
       provider.setCustomParameters({
-        prompt: 'select_account',
-        access_type: 'offline',
-        response_type: 'code'
+        prompt: 'select_account'
       });
       
       // Save current URL for redirect back
@@ -588,20 +845,27 @@ export class FirebaseAuthService {
       if (currentUrl !== '/auth/login') {
         localStorage.setItem('returnUrl', currentUrl);
       }
-      
-      // Initialize Firebase if not already initialized
-      if (!this.auth) {
-        this.firebaseApp = initializeApp(environment.firebase);
-        this.auth = getAuth(this.firebaseApp);
-      }
 
       console.log('Starting Google sign-in process...');
       
       try {
-        // Try popup first as it's more reliable
+        // Try popup first
         console.log('Attempting popup sign-in...');
         const result = await signInWithPopup(this.auth, provider);
-        console.log('Popup sign-in successful');
+        
+        // Force token refresh and handle sign in
+        await this.handleUserSignedIn(result.user);
+        
+        // Navigate inside NgZone
+        this.ngZone.run(() => {
+          const returnUrl = localStorage.getItem('returnUrl');
+          if (returnUrl) {
+            console.log('Navigating to:', returnUrl);
+            localStorage.removeItem('returnUrl');
+            this.router.navigate([returnUrl]);
+          }
+        });
+        
         return result;
       } catch (popupError: any) {
         console.warn('Popup sign-in failed:', popupError);
@@ -609,7 +873,6 @@ export class FirebaseAuthService {
         if (popupError.code === 'auth/popup-blocked' || 
             popupError.code === 'auth/popup-closed-by-user') {
           console.log('Popup blocked or closed, trying redirect...');
-          // If popup fails, try redirect
           await signInWithRedirect(this.auth, provider);
           return {} as UserCredential; // Redirect will refresh the page
         }
@@ -626,13 +889,6 @@ export class FirebaseAuthService {
   async handleRedirectResult(): Promise<UserCredential | null> {
     try {
       console.log('Checking for redirect result...');
-      
-      // Initialize Firebase if not already initialized
-      if (!this.auth) {
-        this.firebaseApp = initializeApp(environment.firebase);
-        this.auth = getAuth(this.firebaseApp);
-      }
-
       const result = await getRedirectResult(this.auth);
       console.log('Got redirect result:', !!result);
       
@@ -641,33 +897,21 @@ export class FirebaseAuthService {
         // Force token refresh and handle sign in
         await this.handleUserSignedIn(result.user);
         
-        // Navigate to saved route if exists
-        const returnUrl = localStorage.getItem('returnUrl');
-        if (returnUrl) {
-          console.log('Navigating to:', returnUrl);
-          localStorage.removeItem('returnUrl');
-          this.router.navigate([returnUrl]);
-        } else {
-          this.router.navigate(['/']);
-        }
+        // Navigate inside NgZone
+        this.ngZone.run(() => {
+          const returnUrl = localStorage.getItem('returnUrl');
+          if (returnUrl) {
+            console.log('Navigating to:', returnUrl);
+            localStorage.removeItem('returnUrl');
+            this.router.navigate([returnUrl]);
+          }
+        });
       }
       
       return result;
     } catch (error: any) {
       console.error('Error handling redirect result:', error);
-      // Clear any stale data
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('isAuthenticated');
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('premium_status');
-      localStorage.removeItem('premium_status_timestamp');
-      this._user.next(null);
-      
-      // Show error to user
-      if (error.code === 'auth/operation-not-supported-in-this-environment') {
-        console.error('Auth operation not supported in this environment');
-      }
-      
+      this.clearAuthData();
       throw error;
     }
   }
@@ -710,16 +954,6 @@ export class FirebaseAuthService {
       return null;
     }
     return this.mapFirebaseUser(firebaseUser);
-  }
-
-  // Check if user is authenticated
-  isAuthenticated(): Promise<boolean> {
-    return new Promise<boolean>((resolve) => {
-      const unsubscribe = onAuthStateChanged(this.auth, (user) => {
-        unsubscribe(); // Stop listening after first response
-        resolve(!!user);
-      });
-    });
   }
 
   // Get user settings (preferences)
@@ -926,91 +1160,98 @@ export class FirebaseAuthService {
     }
   }
 
-  // Get token for authentication
-  async getToken(): Promise<string | null> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return null;
-    }
-    
-    return user.getIdToken();
-  }
-
   // Check if user has premium status
   async isPremiumUser(): Promise<boolean> {
     try {
-      // First check localStorage cache with shorter expiry
-      const cachedStatus = localStorage.getItem('premium_status');
-      const cacheTimestamp = localStorage.getItem('premium_status_timestamp');
-      const currentUser = localStorage.getItem('currentUser');
-      
-      if (cachedStatus && cacheTimestamp && currentUser) {
-        const parsedUser = JSON.parse(currentUser);
-        // Cache is valid for 1 hour
-        if (Date.now() - parseInt(cacheTimestamp) < 60 * 60 * 1000) {
-          return cachedStatus === 'true' || parsedUser.isPremium === true;
-        }
-      }
-
       const user = this.auth.currentUser;
       if (!user) {
         return false;
       }
 
-      // Force token refresh to get latest claims
-      await user.getIdToken(true);
-      const idTokenResult = await user.getIdTokenResult(true);
-      
-      // Simplified premium status check
-      const isPremium = idTokenResult.claims['premium'] === true || 
-          idTokenResult.claims['subscriptionStatus'] === 'active';
-            
-      if (isPremium) {
-        // Cache the result
-        localStorage.setItem('premium_status', 'true');
-        localStorage.setItem('premium_status_timestamp', Date.now().toString());
-        
-        // Update user object in localStorage
-        const currentUser = localStorage.getItem('currentUser');
-        if (currentUser) {
-          const parsedUser = JSON.parse(currentUser);
-          parsedUser.isPremium = true;
-          parsedUser.features = idTokenResult.claims['features'] || {};
-          localStorage.setItem('currentUser', JSON.stringify(parsedUser));
-        }
-        
-        return true;
+      // Check cache first
+      const cachedStatus = localStorage.getItem('premium_status');
+      const cachedTimestamp = localStorage.getItem('premium_status_timestamp');
+      const cacheAge = cachedTimestamp ? Date.now() - parseInt(cachedTimestamp) : Infinity;
+
+      // Use cache if it's less than 5 minutes old
+      if (cachedStatus && cacheAge < 5 * 60 * 1000) {
+        return cachedStatus === 'true';
       }
 
-      // Then check user settings from preferences as fallback
-      const userSettings = await this.getUserSettings();
-      const status = userSettings?.preferences?.subscriptionStatus || '';
-      
-      // Simplified status check
-      const isPremiumFromPrefs = status === 'active';
-      
-      // Cache the final result
-      localStorage.setItem('premium_status', isPremiumFromPrefs.toString());
-      localStorage.setItem('premium_status_timestamp', Date.now().toString());
-      
-      // Update user object in localStorage
-      if (currentUser) {
-        const parsedUser = JSON.parse(currentUser);
-        parsedUser.isPremium = isPremiumFromPrefs;
-        localStorage.setItem('currentUser', JSON.stringify(parsedUser));
+      // Try to refresh token and get latest claims
+      try {
+        await this.refreshAuth();
+        const idTokenResult = await user.getIdTokenResult(true);
+        
+        // Check premium status from claims
+        const isPremium = idTokenResult.claims['premium'] === true || 
+                         idTokenResult.claims['subscriptionStatus'] === 'active';
+
+        if (isPremium) {
+          // Update cache
+          localStorage.setItem('premium_status', 'true');
+          localStorage.setItem('premium_status_timestamp', Date.now().toString());
+          
+          // Update user object
+          const currentUser = this._user.value;
+          if (currentUser) {
+            this._user.next({
+              ...currentUser,
+              isPremium: true,
+              features: idTokenResult.claims['features'] || {}
+            });
+          }
+          
+          return true;
+        }
+      } catch (tokenError) {
+        console.warn('Token refresh failed, checking with server:', tokenError);
       }
-      
-      return isPremiumFromPrefs;
+
+      // If token refresh fails or user is not premium in claims, check with server
+      try {
+        const token = await user.getIdToken();
+        const response = await firstValueFrom(
+          this.http.get<any>(`${environment.apiUrl}/api/subscription/status`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }).pipe(
+            retry({
+              count: 3,
+              delay: 1000,
+              resetOnSuccess: true
+            })
+          )
+        );
+
+        const isServerPremium = response?.status === 'active' || response?.plan === 'premium';
+        
+        // Update cache
+        localStorage.setItem('premium_status', isServerPremium.toString());
+        localStorage.setItem('premium_status_timestamp', Date.now().toString());
+        
+        // Update user object
+        const currentUser = this._user.value;
+        if (currentUser) {
+          this._user.next({
+            ...currentUser,
+            isPremium: isServerPremium,
+            features: response?.features || {}
+          });
+        }
+        
+        return isServerPremium;
+      } catch (serverError) {
+        console.error('Error checking server premium status:', serverError);
+        // If server check fails, use cached status if available
+        return cachedStatus === 'true';
+      }
     } catch (error) {
       console.error('Error checking premium status:', error);
-      // Check cache as fallback even if expired
+      // If all checks fail, use cached status if available
       const cachedStatus = localStorage.getItem('premium_status');
-      const currentUser = localStorage.getItem('currentUser');
-      if (currentUser) {
-        const parsedUser = JSON.parse(currentUser);
-        return cachedStatus === 'true' || parsedUser.isPremium === true;
-      }
-      return false;
+      return cachedStatus === 'true';
     }
   }
 
@@ -1360,50 +1601,121 @@ export class FirebaseAuthService {
     );
   }
 
-  // Add this new method
-  async refreshSubscriptionStatus(): Promise<void> {
+  async refreshAuth(): Promise<void> {
     try {
-        const user = this.auth.currentUser;
-        if (!user) return;
+      const user = this.auth.currentUser;
+      if (!user) {
+        console.error('No current user for auth refresh');
+        this.clearAuthData();
+        this.router.navigate(['/auth/login'], {
+          queryParams: { returnUrl: this.router.url }
+        });
+        return;
+      }
 
-        // Force token refresh
-        await user.getIdToken(true);
+      console.log('Starting auth refresh...');
+
+      try {
+        // Try Google re-authentication first since we know most users use Google Sign-In
+        if (user.providerData[0]?.providerId === 'google.com') {
+          console.log('Attempting Google re-authentication...');
+          const provider = new GoogleAuthProvider();
+          await reauthenticateWithPopup(user, provider);
+          
+          // Get fresh token after re-auth
+          const newToken = await user.getIdToken(true);
+          const idTokenResult = await user.getIdTokenResult(true);
+          
+          // Update user state with new token
+          const currentUser = this._user.value;
+          if (currentUser) {
+            const isPremium = idTokenResult.claims['premium'] === true || 
+                            idTokenResult.claims['subscriptionStatus'] === 'active';
+            
+            const features = idTokenResult.claims['features'] || {
+              emotionalDuaSearch: isPremium,
+              aiTafsirChat: isPremium,
+              duaInsights: isPremium
+            };
+            
+            this._user.next({
+              ...currentUser,
+              token: newToken,
+              isPremium,
+              features
+            });
+            
+            // Update storage
+            localStorage.setItem('auth_token', newToken);
+            localStorage.setItem('auth_token_timestamp', Date.now().toString());
+            localStorage.setItem('premium_status', isPremium.toString());
+            localStorage.setItem('premium_status_timestamp', Date.now().toString());
+          }
+          
+          return;
+        }
+        
+        // Fallback to email/password re-auth if not Google
+        const email = localStorage.getItem('user_email');
+        const password = localStorage.getItem('user_password');
+        
+        if (!email || !password) {
+          throw new Error('No stored credentials for re-authentication');
+        }
+
+        const credential = EmailAuthProvider.credential(email, password);
+        await reauthenticateWithCredential(user, credential);
+        
+        // Get fresh token after re-auth
+        const newToken = await user.getIdToken(true);
         const idTokenResult = await user.getIdTokenResult(true);
         
-        // Check premium status from claims
-        const isPremium = idTokenResult.claims['premium'] === true || 
-                       idTokenResult.claims['subscriptionStatus'] === 'trial' ||
-                       idTokenResult.claims['subscriptionStatus'] === 'active' ||
-                       idTokenResult.claims['subscriptionStatus'] === 'premium';
-
-        // Update local storage
-        localStorage.setItem('premium_status', isPremium.toString());
-        localStorage.setItem('premium_status_timestamp', Date.now().toString());
-
-        // Update user object if it exists
-        const currentUser = this._user.getValue();
+        // Update user state with new token
+        const currentUser = this._user.value;
         if (currentUser) {
-            const updatedUser = {
-                ...currentUser,
-                isPremium,
-                features: idTokenResult.claims['features'] || {}
-            };
-            this._user.next(updatedUser);
-            localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          const isPremium = idTokenResult.claims['premium'] === true || 
+                          idTokenResult.claims['subscriptionStatus'] === 'active';
+          
+          const features = idTokenResult.claims['features'] || {
+            emotionalDuaSearch: isPremium,
+            aiTafsirChat: isPremium,
+            duaInsights: isPremium
+          };
+          
+          this._user.next({
+            ...currentUser,
+            token: newToken,
+            isPremium,
+            features
+          });
+          
+          // Update storage
+          localStorage.setItem('auth_token', newToken);
+          localStorage.setItem('auth_token_timestamp', Date.now().toString());
+          localStorage.setItem('premium_status', isPremium.toString());
+          localStorage.setItem('premium_status_timestamp', Date.now().toString());
         }
-
-        // Fetch latest preferences
-        const preferences = await this.getUserPreferences();
-        if (preferences) {
-            if (currentUser) {
-                currentUser.preferences = preferences;
-                this._user.next({ ...currentUser });
-                localStorage.setItem(`user_preferences_${currentUser.id}`, JSON.stringify(preferences));
-            }
+      } catch (error) {
+        console.error('Error in refreshAuth:', error);
+        
+        // Only clear auth data and redirect if we're not already on the login page
+        if (!this.router.url.includes('/auth/login')) {
+          this.clearAuthData();
+          this.ngZone.run(() => {
+            this.router.navigate(['/auth/login'], {
+              queryParams: {
+                returnUrl: this.router.url,
+                error: 'session_expired'
+              }
+            });
+          });
         }
-    } catch (error) {
-        console.error('Error refreshing subscription status:', error);
+        
         throw error;
+      }
+    } catch (error) {
+      console.error('Error in refreshAuth:', error);
+      throw error;
     }
   }
 } 
