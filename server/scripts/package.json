@@ -1,0 +1,13 @@
+{
+  "name": "dua-insights-generator",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node test-endpoints.js",
+    "generate": "node generate-dua-insights.js"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.0",
+    "firebase": "^10.8.0"
+  }
+} 

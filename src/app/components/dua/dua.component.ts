@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Input } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { DuaService, Dua, DuaCategory } from '../../services/dua.service';
+import { DuaService, Dua, DuaCategory, ResponseType } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SubscriptionService } from '../../services/subscription.service';
 import { DuaInsightsComponent } from '../dua-insights/dua-insights.component';
-import { DuaTafsirComponent } from './dua-tafsir.component';
+//import { DuaTafsirComponent } from './dua-tafsir.component';
 import { AuthStateService } from '../../services/auth-state.service';
 import { firstValueFrom } from 'rxjs';
 import { first } from 'rxjs/operators';
@@ -19,10 +19,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { EmotionalDuaResponse } from '../../types/dua.types';
 
-interface EmotionalDuaResponse {
-  duas: Dua[];
-  insights: string;
+interface Verse {
+  reference: string;
+  translation: string;
 }
 
 @Component({
@@ -44,13 +45,20 @@ interface EmotionalDuaResponse {
         MatSelectModule,
         MatTooltipModule,
         DuaInsightsComponent,
-        DuaTafsirComponent
+        //DuaTafsirComponent
     ],
     changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DuaComponent implements OnInit, OnDestroy {
-  selectedCategory: DuaCategory | null = null;
+  @Input() fontSize: number = 32;
+  private subscriptions = new Subscription();
+  private isPremiumUser: boolean = false;
+  showResults: boolean = false;
+  emotionSuggestions: string[] = [];
+  selectedEmotion: string = '';
+  aiInsights: string = '';
   filteredDuas: Dua[] = [];
+  selectedCategory: DuaCategory | null = null;
   categories: DuaCategory[] = [
     'morning',
     'evening',
@@ -66,31 +74,24 @@ export class DuaComponent implements OnInit, OnDestroy {
     'guidance',
     'sadness'
   ];
-  isLoading = false;
+  isLoadingDuas = false;
+  isLoadingEmotional = false;
+  isLoadingInsights = false;
   error: string = '';
   private prayerTimesSubscription: Subscription | null = null;
-  private duaSubscription: Subscription | null = null;
   feeling: string = '';
   selectedDua: Dua | null = null;
-  selectedEmotion: string | null = null;
-  emotionSuggestions: string[] = [];
-  aiInsights: string = '';
-  fontSize: number = 32; // Default font size for Arabic text
-  private subscriptions = new Subscription();
 
   constructor(
     private duaService: DuaService,
-    public subscriptionService: SubscriptionService,
     public authStateService: AuthStateService,
-    //private prayerTimesService: PrayerTimesService,
-    private route: ActivatedRoute,
-    private router: Router,
+    public subscriptionService: SubscriptionService,
     private cd: ChangeDetectorRef
   ) {
     this.subscriptions.add(
-      this.duaService.isLoading$.subscribe(
-        loading => {
-          this.isLoading = loading;
+      this.authStateService.isPremiumUser$.subscribe(
+        isPremium => {
+          this.isPremiumUser = isPremium;
           this.cd.markForCheck();
         }
       )
@@ -98,42 +99,47 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
-    // First check route params
-    this.route.params.subscribe(params => {
-      const category = params['category'] as DuaCategory;
-      if (category && this.categories.includes(category)) {
-        this.selectedCategory = category;
-        this.loadDuasByCategory(category);
-      } else if (!this.selectedCategory) {
-        // Default to 'morning' if no category is specified
-        this.selectedCategory = 'morning';
-        this.loadDuasByCategory('morning');
-      }
-    });
-    //this.setupPrayerTimeReminders();
-    // Load basic dua data
     this.loadDuas();
   }
 
   ngOnDestroy() {
-    this.prayerTimesSubscription?.unsubscribe();
-    this.duaSubscription?.unsubscribe();
     this.subscriptions.unsubscribe();
   }
 
+  private loadDuas() {
+    this.isLoadingDuas = true;
+    this.cd.markForCheck();
+
+    this.duaService.getDuasByCategory('morning').subscribe({
+      next: (duas: Dua[]) => {
+        this.filteredDuas = duas;
+        this.isLoadingDuas = false;
+        this.cd.markForCheck();
+      },
+      error: (error: Error) => {
+        console.error('Failed to load duas:', error);
+        this.isLoadingDuas = false;
+        this.cd.markForCheck();
+      }
+    });
+  }
+
   loadDuasByCategory(category: DuaCategory) {
-    this.isLoading = true;
+    this.isLoadingDuas = true;
     this.error = '';
+    this.cd.markForCheck();
     
     this.duaService.getDuasByCategory(category)
       .subscribe({
         next: (duas) => {
           this.filteredDuas = duas;
-          this.isLoading = false;
+          this.isLoadingDuas = false;
+          this.cd.markForCheck();
         },
         error: (error) => {
           this.error = 'Failed to load duas. Please try again.';
-          this.isLoading = false;
+          this.isLoadingDuas = false;
+          this.cd.markForCheck();
         }
       });
   }
@@ -142,17 +148,6 @@ export class DuaComponent implements OnInit, OnDestroy {
     this.selectedCategory = category;
     this.loadDuasByCategory(category);
   }
-
-  // private setupPrayerTimeReminders() {
-  //   this.prayerTimesSubscription = this.prayerTimesService
-  //     .getPrayerTimes(51.5074, -0.1278) // London coordinates
-  //     .subscribe(times => {
-  //       if (times?.data?.timings) {
-  //         this.scheduleDuaReminder('morning', times.data.timings.Fajr, 10);
-  //         this.scheduleDuaReminder('evening', times.data.timings.Maghrib, 10);
-  //       }
-  //     });
-  // }
 
   private scheduleDuaReminder(time: string, prayerTime: string, delayMinutes: number) {
     const prayerDateTime = new Date(`${new Date().toDateString()} ${prayerTime}`);
@@ -185,176 +180,198 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async searchByFeeling(feeling: string) {
-    if (!feeling?.trim()) return;
-
-    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
-    if (!isPremium) {
-      this.subscriptionService.showSubscriptionPage('Emotional Dua Search');
+    if (!feeling) {
+      console.log('No feeling provided');
       return;
     }
 
+    // Clear previous results
+    this.aiInsights = '';
+    this.showResults = false;
+    this.emotionSuggestions = [];
+    
+    console.log('Starting emotional dua search for:', feeling);
+    console.log('User is premium:', this.isPremiumUser);
+
+    if (!this.isPremiumUser) {
+      this.showPremiumDialog();
+      return;
+    }
+
+    this.isLoadingEmotional = true;
+    this.cd.markForCheck();
+
     try {
-      console.log('Starting emotional dua search for:', feeling);
       const response = await this.duaService.getEmotionalDuasWithAI(feeling);
       console.log('Received response:', response);
-      
+
+      if (response) {
+        this.aiInsights = JSON.stringify({
+          understanding: response.content || '',
+          quranic_guidance: response.quranic_guidance || [],
+          prophetic_example: response.prophetic_example || '',
+          practical_steps: response.practical_steps || [],
+          related_verses_hadith: response.related_verses_hadith || {
+            verses: [],
+            hadith: []
+          },
+          reflection_points: response.reflection_points || [],
+          spiritual_advice: response.spiritual_advice || {
+            understanding: '',
+            duas: [],
+            dhikr: [],
+            scholarly_guidance: [],
+            spiritual_remedies: []
+          },
+          historical_context: response.prophetic_example || ''
+        });
+
+        const emotions = feeling.toLowerCase().split(/[,\s]+/);
+        const suggestions = emotions
+          .flatMap(emotion => {
+            const related = this.getRelatedEmotions(emotion);
+            return related.filter(e => e !== emotion);
+          })
+          .filter((value, index, self) => self.indexOf(value) === index)
+          .slice(0, 5);
+
+        this.emotionSuggestions = suggestions;
+        this.selectedEmotion = feeling;
+        this.showResults = true;
+      }
+    } catch (error) {
+      console.error('Error searching by feeling:', error);
+      this.error = 'Failed to get response. Please try again.';
+    } finally {
+      this.isLoadingEmotional = false;
       this.cd.markForCheck();
-      
-      if (response.duas && Array.isArray(response.duas)) {
-        this.filteredDuas = response.duas;
-      } else {
-        console.warn('No duas found in response:', response);
-        this.filteredDuas = [];
-      }
-      
-      // Try to parse the insights if it's a string
-      if (response.insights) {
-        try {
-          if (typeof response.insights === 'string') {
-            try {
-              // Try to parse as JSON first
-              const parsed = JSON.parse(response.insights);
-              this.aiInsights = JSON.stringify(parsed); // Store as string to preserve JSON structure
-            } catch {
-              // If not JSON, store as is
-              this.aiInsights = response.insights;
-            }
-          } else {
-            // If already an object, stringify to preserve structure
-            this.aiInsights = JSON.stringify(response.insights);
-          }
-        } catch (error) {
-          console.warn('Error parsing insights:', error);
-          this.aiInsights = typeof response.insights === 'string' ? response.insights : '';
-        }
-      } else {
-        console.warn('No insights found in response');
-        this.aiInsights = '';
-      }
-
-      // Get related emotions
-      const emotions = await firstValueFrom<string[]>(this.duaService.extractEmotionsFromText(feeling));
-      this.emotionSuggestions = [];
-      
-      for (const emotion of emotions) {
-        const related = this.duaService.getRelatedEmotions(emotion);
-        this.emotionSuggestions.push(...related);
-      }
-
-      this.emotionSuggestions = [...new Set(this.emotionSuggestions)]
-        .filter(emotion => !emotions.includes(emotion))
-        .slice(0, 5);
-
-      this.selectedEmotion = feeling;
-
-    } catch (error) {
-      console.error('Error searching duas:', error);
-      this.error = 'An error occurred while searching for duas. Please try again.';
-      this.filteredDuas = [];
-      this.aiInsights = '';
-    }
-
-    this.cd.markForCheck();
-  }
-
-  clearEmotionSearch() {
-    this.feeling = '';
-    this.selectedEmotion = '';
-    this.aiInsights = '';
-    this.emotionSuggestions = [];
-    this.error = '';
-    
-    // Restore duas from the selected category
-    if (this.selectedCategory) {
-      this.loadDuasByCategory(this.selectedCategory);
     }
   }
 
-  selectSuggestedEmotion(emotion: string) {
-    this.feeling = emotion;
-    this.searchByFeeling(emotion);
+  getRelatedEmotions(emotion: string): string[] {
+    const emotionMap: { [key: string]: string[] } = {
+      'anxiety': ['worry', 'fear', 'stress', 'nervousness', 'unease'],
+      'sadness': ['grief', 'sorrow', 'depression', 'melancholy', 'heartbreak'],
+      'anger': ['frustration', 'rage', 'irritation', 'annoyance', 'fury'],
+      'fear': ['anxiety', 'terror', 'panic', 'dread', 'apprehension'],
+      'joy': ['happiness', 'delight', 'elation', 'bliss', 'contentment'],
+      'gratitude': ['thankfulness', 'appreciation', 'gratefulness', 'recognition', 'blessing'],
+      'hope': ['optimism', 'aspiration', 'confidence', 'faith', 'trust'],
+      'love': ['affection', 'devotion', 'adoration', 'attachment', 'fondness'],
+      'peace': ['tranquility', 'serenity', 'calmness', 'harmony', 'stillness'],
+      'guilt': ['remorse', 'regret', 'shame', 'contrition', 'repentance']
+    };
+
+    return emotionMap[emotion.toLowerCase()] || [];
   }
 
-  async onDuaSelect(dua: Dua) {
-    this.selectedDua = dua;
-  }
-
-  private loadDuas() {
-    this.isLoading = true;
-    this.duaService.getDuasByCategory('morning')  // Default to morning category
-      .subscribe({
-        next: (duas: Dua[]) => {
-          this.filteredDuas = duas;
-          this.isLoading = false;
-        },
-        error: (error: Error) => {
-          this.error = 'Failed to load duas. Please try again.';
-          this.isLoading = false;
-        }
-      });
-  }
-
-  getSpiritualAdviceParagraphs(): string[] {
+  getUnderstandingSection(): string {
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          // Get spiritual advice from recommended_duas and quranic_guidance
-          const advice = [];
-          if (parsed.quranic_guidance && Array.isArray(parsed.quranic_guidance)) {
-            advice.push(...parsed.quranic_guidance);
-          }
-          if (parsed.recommended_duas && Array.isArray(parsed.recommended_duas)) {
-            advice.push(...parsed.recommended_duas.map((dua: { translation: string; virtue: string; source: string }) => 
-              `${dua.translation}\nVirtue: ${dua.virtue}\nSource: ${dua.source}`
-            ));
-          }
-          return advice.filter(a => a.trim());
-        } catch {
-          // If not JSON, try to parse as text
-          const sections = this.aiInsights.split('\n\n');
-          const advice = sections.find(section => 
-            section.toLowerCase().includes('spiritual advice')
-          );
-          if (!advice) return [];
-          const lines = advice.split('\n');
-          return lines.slice(1).filter(line => line.trim());
-        }
-      }
+      return JSON.parse(this.aiInsights || '{}').understanding || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  getQuranicGuidance(): string[] {
+    try {
+      const guidance = JSON.parse(this.aiInsights || '{}').quranic_guidance;
+      return Array.isArray(guidance) ? guidance : [];
+    } catch (e) {
       return [];
-    } catch (error) {
-      console.warn('Error parsing spiritual advice:', error);
-      return [];
+    }
+  }
+
+  getPropheticExample(): string {
+    try {
+      return JSON.parse(this.aiInsights || '{}').prophetic_example || '';
+    } catch (e) {
+      return '';
     }
   }
 
   getPracticalSteps(): string[] {
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          if (parsed.practical_steps && Array.isArray(parsed.practical_steps)) {
-            return parsed.practical_steps.filter((step: string) => step.trim());
-          }
-          return [];
-        } catch {
-          // If not JSON, try to parse as text
-          const sections = this.aiInsights.split('\n\n');
-          const practicalSection = sections.find(section => 
-            section.toLowerCase().includes('practical steps')
-          );
-          if (!practicalSection) return [];
-          const lines = practicalSection.split('\n');
-          return lines
-            .slice(1)
-            .filter(line => line.trim().startsWith('•'))
-            .map(line => line.replace('•', '').trim());
-        }
-      }
+      const insights = JSON.parse(this.aiInsights || '{}');
+      return insights.practical_steps || [];
+    } catch (e) {
       return [];
+    }
+  }
+
+  getRelatedVerses(): string[] {
+    try {
+      const insights = JSON.parse(this.aiInsights || '{}');
+      const verses = insights.related_verses_hadith?.verses || [];
+      return verses.map((v: any) => `${v.reference}\n${v.translation}\n${v.relevance}`);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  getReflectionPoints(): string[] {
+    try {
+      const points = JSON.parse(this.aiInsights || '{}').reflection_points;
+      return Array.isArray(points) ? points : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  async showInsights(dua: Dua) {
+    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    if (!isPremium) {
+      this.subscriptionService.showSubscriptionPage('Dua Insights');
+      return;
+    }
+
+    this.selectedDua = dua;
+    this.isLoadingInsights = true;
+    this.error = '';
+    this.cd.markForCheck();
+
+    try {
+      const insights = await firstValueFrom<ResponseType>(this.duaService.getDuaInsights(dua.id.toString()));
+      this.aiInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
+      this.isLoadingInsights = false;
+      this.cd.markForCheck();
     } catch (error) {
-      console.warn('Error parsing practical steps:', error);
+      console.error('Error getting dua insights:', error);
+      this.error = 'Failed to load dua insights. Please try again.';
+      this.isLoadingInsights = false;
+      this.selectedDua = null;
+      this.cd.markForCheck();
+    }
+  }
+
+  getRecommendedDuas(): any[] {
+    try {
+      const insights = JSON.parse(this.aiInsights);
+      return insights.recommended_duas || [];
+    } catch (e) {
       return [];
+    }
+  }
+
+  getRelatedVersesHadith(): { verses: any[], hadith: any[] } {
+    try {
+      const insights = JSON.parse(this.aiInsights);
+      return insights.related_verses_hadith || { verses: [], hadith: [] };
+    } catch (e) {
+      return { verses: [], hadith: [] };
+    }
+  }
+
+  private showPremiumDialog(): void {
+    this.subscriptionService.showSubscriptionPage('Emotional Dua Search');
+  }
+
+  getModernApplication(): string {
+    try {
+      const steps = JSON.parse(this.aiInsights || '{}').practical_steps;
+      return Array.isArray(steps) ? steps.join('\n') : '';
+    } catch (e) {
+      return '';
     }
   }
 
@@ -375,120 +392,115 @@ export class DuaComponent implements OnInit, OnDestroy {
     };
   }
 
-  getUnderstandingSection(): string {
+  async onDuaSelect(dua: Dua) {
+    console.log('Selecting dua:', dua);
+    
+    this.selectedDua = dua;
+    this.isLoadingInsights = true;
+    this.error = '';
+    this.cd.markForCheck();
+
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        // Try to parse as JSON first
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          return parsed.understanding || this.aiInsights;
-        } catch {
-          // If not JSON, return as is
-          return this.aiInsights;
-        }
+      const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+      if (!isPremium) {
+        console.log('User is not premium');
+        this.error = 'Premium subscription required';
+        this.isLoadingInsights = false;
+        this.cd.markForCheck();
+        this.subscriptionService.showSubscriptionPage('Dua Insights');
+        return;
       }
-      return '';
-    } catch (error) {
-      console.warn('Error getting understanding section:', error);
-      return '';
+
+      console.log('Generating insights for dua:', dua.id);
+      const insights = await firstValueFrom<ResponseType>(this.duaService.getDuaInsights(dua.id.toString()));
+      
+      console.log('Received insights:', insights);
+      this.aiInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
+      this.isLoadingInsights = false;
+      this.cd.markForCheck();
+    } catch (error: any) {
+      console.error('Error getting dua insights:', error);
+      this.error = error.message || 'Failed to load dua insights. Please try again.';
+      this.isLoadingInsights = false;
+      this.selectedDua = null;
+      this.cd.markForCheck();
     }
+  }
+
+  clearEmotionSearch() {
+    this.feeling = '';
+    this.selectedEmotion = '';
+    this.emotionSuggestions = [];
+    this.aiInsights = '';
+    this.showResults = false;
+  }
+
+  selectSuggestedEmotion(emotion: string) {
+    this.feeling = emotion;
+    this.searchByFeeling(emotion);
   }
 
   getHistoricalExample(): string {
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          return parsed.prophetic_example || '';
-        } catch {
-          return '';
-        }
-      }
-      return '';
-    } catch (error) {
-      console.warn('Error getting historical example:', error);
+      return JSON.parse(this.aiInsights || '{}').prophetic_example || '';
+    } catch (e) {
       return '';
     }
   }
 
   getLearningPoints(): string {
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          if (Array.isArray(parsed.practical_steps)) {
-            return parsed.practical_steps.join('\n');
-          }
-          return parsed.practical_steps || '';
-        } catch {
-          return '';
-        }
-      }
-      return '';
-    } catch (error) {
-      console.warn('Error getting learning points:', error);
+      return JSON.parse(this.aiInsights || '{}').reflection_points?.[0] || '';
+    } catch (e) {
       return '';
     }
   }
 
-  getRelatedVerses(): string[] {
+  getSpiritualAdviceParagraphs(): string[] {
     try {
-      if (this.aiInsights && typeof this.aiInsights === 'string') {
-        try {
-          const parsed = JSON.parse(this.aiInsights);
-          const verses = [];
-          
-          // Get verses from related_verses_hadith
-          if (parsed.related_verses_hadith?.verses) {
-            verses.push(...parsed.related_verses_hadith.verses.map((v: { reference: string; translation: string; relevance?: string }) => 
-              `${v.reference}: ${v.translation}${v.relevance ? `\nRelevance: ${v.relevance}` : ''}`
-            ));
-          }
-          
-          // Get hadith from related_verses_hadith
-          if (parsed.related_verses_hadith?.hadith) {
-            verses.push(...parsed.related_verses_hadith.hadith.map((h: { text: string; source: string; grade?: string }) => 
-              `${h.text}\nSource: ${h.source}${h.grade ? ` (${h.grade})` : ''}`
-            ));
-          }
-          
-          return verses.filter(v => v.trim());
-        } catch {
-          // If not JSON, try to parse as text
-          const sections = this.aiInsights.split('\n\n');
-          const versesSection = sections.find(section => 
-            section.toLowerCase().includes('related verses') ||
-            section.toLowerCase().includes('quranic references')
-          );
-          if (!versesSection) return [];
-          const lines = versesSection.split('\n');
-          return lines
-            .slice(1)
-            .filter(line => line.trim().startsWith('•'))
-            .map(line => line.replace('•', '').trim());
-        }
+      const insights = JSON.parse(this.aiInsights || '{}');
+      const spiritualAdvice = insights.spiritual_advice || {};
+      
+      const sections = [];
+      
+      // Add Islamic understanding
+      if (spiritualAdvice.understanding) {
+        sections.push('Islamic Perspective:', spiritualAdvice.understanding);
       }
-      return [];
-    } catch (error) {
-      console.warn('Error parsing related verses:', error);
+      
+      // Add recommended duas
+      if (spiritualAdvice.duas?.length) {
+        sections.push('\nRecommended Duas:', ...spiritualAdvice.duas);
+      }
+      
+      // Add dhikr recommendations
+      if (spiritualAdvice.dhikr?.length) {
+        sections.push('\nBeneficial Dhikr:', ...spiritualAdvice.dhikr);
+      }
+      
+      // Add scholarly guidance
+      if (spiritualAdvice.scholarly_guidance?.length) {
+        sections.push('\nScholarly Guidance:', ...spiritualAdvice.scholarly_guidance);
+      }
+      
+      // Add spiritual remedies
+      if (spiritualAdvice.spiritual_remedies?.length) {
+        sections.push('\nSpiritual Remedies:', ...spiritualAdvice.spiritual_remedies);
+      }
+      
+      return sections.filter(section => section);
+    } catch (e) {
       return [];
     }
   }
 
-  async showInsights(dua: Dua) {
-    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
-    if (!isPremium) {
-      this.subscriptionService.showSubscriptionPage('Dua Insights');
-      return;
-    }
-
-    this.selectedDua = dua;
+  getRelatedHadith(): string[] {
     try {
-      const insights = await firstValueFrom<string>(this.duaService.getDuaInsights(dua.id.toString()));
-      this.aiInsights = insights;
-    } catch (error) {
-      console.error('Error getting dua insights:', error);
-      this.error = 'Failed to load dua insights. Please try again.';
+      const insights = JSON.parse(this.aiInsights || '{}');
+      const hadith = insights.related_verses_hadith?.hadith || [];
+      return hadith.map((h: any) => `${h.text}\n${h.source} (${h.grade})\n${h.relevance}`);
+    } catch (e) {
+      return [];
     }
   }
-} 
+}

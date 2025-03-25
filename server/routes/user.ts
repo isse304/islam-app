@@ -207,8 +207,8 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
-        const { preferences: newPreferences } = req.body;
+        const userId = req.auth!.uid;
+        const newPreferences = req.body;
 
         // Get or create user preferences
         let userPrefs = await UserPreferences.findOne({ userId });
@@ -264,7 +264,7 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
+        const userId = req.auth!.uid;
         const { surah, verse } = req.body;
 
         // Enhanced input validation
@@ -313,26 +313,33 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
         }
 
         // Update user preferences with latest reading state
-        const userPrefs = await UserPreferences.findOne({ userId });
-        if (userPrefs && userPrefs.preferences) {
-            if (!userPrefs.preferences.lastState) {
-                userPrefs.preferences.lastState = {
-                    isMushafView: false,
-                    lastSurah: surahNum,
-                    lastVerse: verseNum,
-                    lastPage: 1,
-                    timestamp: new Date()
-                };
-            } else {
-                userPrefs.preferences.lastState = {
-                    ...userPrefs.preferences.lastState,
-                    lastSurah: surahNum,
-                    lastVerse: verseNum,
-                    timestamp: new Date()
-                };
-            }
-            await userPrefs.save();
+        let userPrefs = await UserPreferences.findOne({ userId });
+        if (!userPrefs) {
+            userPrefs = await UserPreferences.create(getDefaultPreferences(userId));
         }
+
+        if (!userPrefs.preferences) {
+            userPrefs.preferences = getDefaultPreferences(userId).preferences;
+        }
+
+        if (!userPrefs.preferences.lastState) {
+            userPrefs.preferences.lastState = {
+                isMushafView: false,
+                lastSurah: surahNum,
+                lastVerse: verseNum,
+                lastPage: 1,
+                timestamp: new Date()
+            };
+        } else {
+            userPrefs.preferences.lastState = {
+                ...userPrefs.preferences.lastState,
+                lastSurah: surahNum,
+                lastVerse: verseNum,
+                timestamp: new Date()
+            };
+        }
+
+        await userPrefs.save();
 
         res.json({ 
             success: true, 
@@ -373,7 +380,7 @@ router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res:
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
+        const userId = req.auth!.uid;
         const userPrefs = await UserPreferences.findOne({ userId }) || await UserPreferences.create(getDefaultPreferences(userId));
         res.json(userPrefs?.preferences?.bookmarks || []);
     } catch (error) {
@@ -389,13 +396,23 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
+        const userId = req.auth!.uid;
         const { verseReference } = req.body;
 
         if (!verseReference) {
             return res.status(400).json({ 
                 success: false, 
                 message: 'Verse reference is required',
+                bookmarks: []
+            });
+        }
+
+        // Validate verse reference format
+        const [surah, verse] = verseReference.split(':').map(Number);
+        if (isNaN(surah) || isNaN(verse) || surah < 1 || surah > 114 || verse < 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid verse reference format. Expected format: surah:verse where surah is 1-114 and verse is positive',
                 bookmarks: []
             });
         }
@@ -430,6 +447,7 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
         res.status(500).json({ 
             success: false, 
             message: 'Failed to add bookmark',
+            details: error instanceof Error ? error.message : 'Unknown error',
             bookmarks: []
         });
     }
@@ -442,8 +460,18 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
             return res.status(403).json({ error: 'Forbidden' });
         }
 
-        const userId = req.auth!.userId;
+        const userId = req.auth!.uid;
         const bookmark = req.params.bookmark;
+
+        // Validate bookmark format
+        const [surah, verse] = bookmark.split(':').map(Number);
+        if (isNaN(surah) || isNaN(verse) || surah < 1 || surah > 114 || verse < 1) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid bookmark format',
+                bookmarks: []
+            });
+        }
 
         // Get or create user preferences with default values
         let userPrefs = await UserPreferences.findOne({ userId });
@@ -473,6 +501,7 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
         res.status(500).json({ 
             success: false, 
             message: 'Failed to remove bookmark',
+            details: error instanceof Error ? error.message : 'Unknown error',
             bookmarks: []
         });
     }

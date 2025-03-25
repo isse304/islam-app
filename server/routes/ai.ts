@@ -13,6 +13,9 @@ import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
 import { withAuth } from '../middleware/auth';
 import * as admin from 'firebase-admin';
+import { SpiritualContentService } from '../services/spiritual-content.service';
+import { promises as fs } from 'fs';
+import { join } from 'path';
 
 // Type definitions
 type AuthRequest = express.Request & {
@@ -41,6 +44,7 @@ const openAIService = new OpenAIService();
 const stripeService = new StripeService();
 const usageService = new UsageService(stripeService);
 const costMonitorService = new CostMonitorService(emailService);
+const spiritualContentService = new SpiritualContentService();
 
 // Set default values for rate limiting in development mode
 if (isDevelopment) {
@@ -74,6 +78,9 @@ router.use(limiter);
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
+
+// Add this after other const declarations
+const DUA_INSIGHTS_PATH = join(__dirname, '../data/dua-insights.json');
 
 /**
  * Helper function to estimate tokens
@@ -139,7 +146,7 @@ router.post('/chat', withAuth, async (req, res) => {
             if (!userUsage) {
                 userUsage = await UserUsage.create({
                     userId,
-                    status: 'free',
+                    status: 'premium',
                     aiRequests: {
                         count: 0,
                         lastRequest: new Date()
@@ -197,6 +204,12 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
             return;
         }
 
+        const userId = req.auth.uid;
+        if (!userId) {
+            res.status(401).json({ success: false, error: 'User ID not found' });
+            return;
+        }
+
         const { prompt, systemMessage, temperature = 0.7, maxTokens = 1000 } = req.body;
 
         // Create messages array
@@ -220,12 +233,6 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
         if (!content) {
             throw new Error('No response from OpenAI');
         }
-
-        const userId = req.auth.userId;
-        if (!userId) {
-            res.status(401).json({ success: false, error: 'User ID not found' });
-            return;
-        }
         
         // Get or create user usage record
         let userUsage;
@@ -234,7 +241,7 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
             if (!userUsage) {
                 userUsage = await UserUsage.create({
                     userId,
-                    status: 'free',
+                    status: 'premium',
                     aiRequests: {
                         count: 0,
                         lastRequest: new Date()
@@ -265,15 +272,15 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
         // Increment AI request count
         await userUsage.incrementAIRequestCount();
 
-        res.json({
+        res.json({ 
             success: true,
-            content: content
+            content 
         });
     } catch (error) {
-        console.error('Error generating AI response:', error);
-        res.status(500).json({
-            success: false,
-            error: 'Failed to generate AI response'
+        console.error('Error in AI generate:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Internal server error' 
         });
     }
 }));
@@ -316,148 +323,106 @@ router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): 
 
 // Dua Insights endpoint
 router.post('/dua/insights', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    // Set up SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+
     try {
-        if (!req.auth?.userId) {
-            res.status(401).json({ error: 'Unauthorized' });
+        if (!req.auth?.uid) {
+            res.write('data: ' + JSON.stringify({ 
+                status: 'error',
+                error: 'Unauthorized',
+                details: 'User not authenticated'
+            }) + '\n\n');
+            res.end();
             return;
         }
 
         const { dua } = req.body;
         if (!dua) {
-            res.status(400).json({ error: 'Dua data is required' });
+            res.write('data: ' + JSON.stringify({ 
+                status: 'error',
+                error: 'Bad Request',
+                details: 'Dua data is required'
+            }) + '\n\n');
+            res.end();
             return;
         }
 
-        const prompt = {
-            systemMessage: `You are a knowledgeable Islamic scholar specializing in duas and their deeper meanings. 
-            Analyze the following dua and provide comprehensive insights in this EXACT JSON format:
-            {
-              "key_insights": "[Detailed explanation of the dua's core meaning and significance]",
-              "virtues_and_benefits": [
-                "[List specific virtues with references]",
-                "[Include both worldly and spiritual benefits]",
-                "[Mention specific situations when this dua is especially beneficial]"
-              ],
-              "practical_application": [
-                "[How to implement this dua in daily life]",
-                "[Best times and situations to recite it]",
-                "[Proper method of recitation]",
-                "[How to maximize its benefits]"
-              ],
-              "historical_context": "[Detailed background about when and why this dua was revealed/taught]",
-              "related_references": {
-                "verses": [{
-                  "reference": "Surah name, number:verse",
-                  "translation": "Full English translation",
-                  "relevance": "How this verse relates to the dua"
-                }],
-                "hadith": [{
-                  "text": "Full hadith text in English",
-                  "source": "Complete source reference",
-                  "grade": "Authenticity grade"
-                }]
-              },
-              "reflection_points": [
-                "[Deep, thought-provoking questions about the dua's meaning]",
-                "[Points for personal introspection]",
-                "[Ways to connect this dua to one's life]"
-              ],
-              "spiritual_impact": [
-                "[How this dua transforms one's relationship with Allah]",
-                "[Emotional and spiritual growth it facilitates]",
-                "[Long-term benefits of regular recitation]"
-              ]
-            }`,
-            userMessage: `Please analyze this dua:
-            
-            Arabic: ${dua.arabic}
-            Translation: ${dua.translation}
-            Reference: ${dua.reference}
-            
-            Provide comprehensive insights following the specified JSON format.`,
-            temperature: 0.4,
-            maxTokens: 2000
-        };
-
-        // Use chat completion instead of generateCompletion
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages: [
-                { role: 'system', content: prompt.systemMessage },
-                { role: 'user', content: prompt.userMessage }
-            ],
-            temperature: prompt.temperature,
-            max_tokens: prompt.maxTokens
-        });
-
-        const openaiResponse = { content: completion.choices[0]?.message?.content || '' };
-        let jsonResponse;
+        // Generate cache key based on dua content
+        const cacheKey = `dua_insights_v2:${dua.id || Buffer.from(dua.arabic).toString('base64')}`;
         
         try {
-            // Clean up the response content
-            const cleanContent = openaiResponse.content
-                .replace(/\n/g, '')
-                .replace(/\s+/g, ' ')
-                .trim();
+            // Try to get from cache first
+            const cachedInsights = !req.query.refresh && await cacheService.get(cacheKey);
+            if (cachedInsights) {
+                console.log('✅ Cache hit for dua insights');
+                
+                // Validate and enrich cached content before sending
+                const parsedContent = JSON.parse(cachedInsights);
+                const enrichedContent = spiritualContentService.enrichContent({
+                    ...parsedContent,
+                    duaId: dua.id
+                }, dua.translation);
+                
+                res.write('data: ' + JSON.stringify({ 
+                    status: 'complete',
+                    data: enrichedContent
+                }) + '\n\n');
+                res.end();
+                return;
+            }
+
+            // Load pre-generated insights
+            const insightsData = await fs.readFile(DUA_INSIGHTS_PATH, 'utf8');
+            const allInsights = JSON.parse(insightsData);
             
-            jsonResponse = JSON.parse(cleanContent);
+            // Find matching insight
+            const insight = allInsights.find((i: any) => 
+                i.duaId === dua.id || 
+                i.duaTitle === dua.title
+            );
+
+            if (insight) {
+                // Cache the insight for future use
+                await cacheService.set(cacheKey, JSON.stringify(insight), 86400);
+
+                // Send the insight
+                res.write('data: ' + JSON.stringify({ 
+                    status: 'complete',
+                    data: insight
+                }) + '\n\n');
+                res.end();
+                return;
+            }
+
+            // If no insight found, send error
+            res.write('data: ' + JSON.stringify({ 
+                status: 'error',
+                error: 'Not Found',
+                details: 'No pre-generated insight found for this dua'
+            }) + '\n\n');
+            res.end();
+
         } catch (error) {
-            console.error('Error parsing OpenAI response:', error);
-            res.status(500).json({ 
-                success: false, 
-                error: 'Failed to parse AI response' 
-            });
-            return;
+            console.error('Error loading insights:', error);
+            res.write('data: ' + JSON.stringify({ 
+                status: 'error',
+                error: 'Internal Server Error',
+                details: error instanceof Error ? error.message : 'Unknown error'
+            }) + '\n\n');
+            res.end();
         }
-
-        const response = {
-            success: true,
-            content: jsonResponse.key_insights || '',
-            virtues: Array.isArray(jsonResponse.virtues_and_benefits)
-                ? jsonResponse.virtues_and_benefits.join('\n')
-                : typeof jsonResponse.virtues_and_benefits === 'string'
-                    ? jsonResponse.virtues_and_benefits
-                    : '',
-            application: Array.isArray(jsonResponse.practical_application)
-                ? jsonResponse.practical_application.join('\n')
-                : typeof jsonResponse.practical_application === 'string'
-                    ? jsonResponse.practical_application
-                    : '',
-            context: jsonResponse.historical_context || '',
-            related: '',
-            impact: Array.isArray(jsonResponse.spiritual_impact)
-                ? jsonResponse.spiritual_impact.join('\n')
-                : typeof jsonResponse.spiritual_impact === 'string'
-                    ? jsonResponse.spiritual_impact
-                    : '',
-            explanation: jsonResponse.key_insights || '',
-            historicalContext: jsonResponse.historical_context || '',
-            reflectionPoints: Array.isArray(jsonResponse.reflection_points)
-                ? jsonResponse.reflection_points
-                : typeof jsonResponse.reflection_points === 'string'
-                    ? [jsonResponse.reflection_points]
-                    : [],
-            modernApplication: Array.isArray(jsonResponse.practical_application)
-                ? jsonResponse.practical_application.join('\n')
-                : typeof jsonResponse.practical_application === 'string'
-                    ? jsonResponse.practical_application
-                    : '',
-            relatedVerses: Array.isArray(jsonResponse.related_references?.verses)
-                ? jsonResponse.related_references.verses
-                    .map((v: { reference: string; translation: string }) => 
-                        `${v.reference}: ${v.translation}`
-                    )
-                : []
-        };
-
-        res.json(response);
     } catch (error) {
-        console.error('Error generating dua insights:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to generate insights',
+        console.error('Error in dua insights endpoint:', error);
+        res.write('data: ' + JSON.stringify({ 
+            status: 'error',
+            error: 'Internal Server Error',
             details: error instanceof Error ? error.message : 'Unknown error'
-        });
+        }) + '\n\n');
+        res.end();
     }
 }));
 
@@ -471,259 +436,133 @@ router.post('/dua/emotional-search', withAuth(async (req: AuthenticatedRequest, 
 
         const { emotion, context } = req.body;
         
-        // Extract and normalize emotions from text
-        const extractEmotions = (text: string): string[] => {
-            const emotionKeywords: { [key: string]: { synonyms: string[], noun: string } } = {
-                'anxious': { synonyms: ['worried', 'nervous', 'stressed', 'uneasy', 'fearful', 'tense', 'restless', 'apprehensive', 'concerned'], noun: 'anxiety' },
-                'sad': { synonyms: ['depressed', 'unhappy', 'down', 'blue', 'sorrowful', 'heartbroken', 'grief', 'melancholy', 'gloomy'], noun: 'sadness' },
-                'angry': { synonyms: ['frustrated', 'mad', 'annoyed', 'irritated', 'furious', 'upset', 'outraged', 'enraged', 'hostile'], noun: 'anger' },
-                'grateful': { synonyms: ['thankful', 'blessed', 'appreciative', 'content', 'satisfied', 'fulfilled', 'indebted', 'humbled'], noun: 'gratitude' },
-                'hopeful': { synonyms: ['optimistic', 'positive', 'confident', 'assured', 'encouraged', 'inspired', 'motivated', 'eager'], noun: 'hope' },
-                'scared': { synonyms: ['afraid', 'frightened', 'terrified', 'fearful', 'anxious', 'panicked', 'threatened', 'intimidated'], noun: 'fear' },
-                'guilty': { synonyms: ['remorseful', 'regretful', 'ashamed', 'sorry', 'repentant', 'apologetic', 'conscience-stricken'], noun: 'guilt' },
-                'confused': { synonyms: ['uncertain', 'unsure', 'lost', 'perplexed', 'doubtful', 'bewildered', 'puzzled', 'disoriented'], noun: 'confusion' },
-                'lonely': { synonyms: ['isolated', 'alone', 'abandoned', 'disconnected', 'solitary', 'neglected', 'rejected'], noun: 'loneliness' },
-                'peaceful': { synonyms: ['calm', 'serene', 'tranquil', 'relaxed', 'composed', 'at ease', 'content', 'harmonious'], noun: 'peace' },
-                'weak': { synonyms: ['powerless', 'helpless', 'vulnerable', 'fragile', 'feeble', 'exhausted', 'drained'], noun: 'weakness' },
-                'sleepy': { synonyms: ['tired', 'drowsy', 'exhausted', 'fatigued', 'weary', 'drained', 'lethargic'], noun: 'tiredness' },
-                'depressed': { synonyms: ['depression', 'despair', 'hopeless', 'miserable', 'despondent', 'dejected'], noun: 'depression' }
-            };
-
-            const words = text.toLowerCase().split(/\W+/);
-            const foundEmotions = new Set<string>();
-
-            words.forEach(word => {
-                // Check direct emotion matches and get noun form
-                if (emotionKeywords[word]) {
-                    foundEmotions.add(emotionKeywords[word].noun);
-                }
-
-                // Check synonyms and get noun form
-                for (const [emotion, data] of Object.entries(emotionKeywords)) {
-                    if (data.synonyms.includes(word)) {
-                        foundEmotions.add(data.noun);
-                    }
-                }
-            });
-
-            // If no emotions found, use the original input as an emotion
-            if (foundEmotions.size === 0 && emotion.trim()) {
-                foundEmotions.add(emotion.trim());
-            }
-
-            return Array.from(foundEmotions);
-        };
-
-        const emotions = extractEmotions(emotion + ' ' + context);
-        
-        const prompt = {
-            systemMessage: `You are a knowledgeable Islamic scholar specializing in emotional well-being and spiritual guidance through duas. 
-            ${emotions.length > 1 ? 'The person is experiencing multiple emotions, so please address each one separately and then provide combined guidance.' : ''}
-            
-            Analyze the emotional state and provide guidance in this EXACT JSON format:
-            {
-                "understanding": "[Detailed explanation validating the emotion from an Islamic perspective]",
-                "quranic_guidance": [
-                    "[Relevant verse about dealing with this emotion]",
-                    "[Include translation]",
-                    "[Explanation of how it applies]"
-                ],
-                "prophetic_example": "[How the Prophet ﷺ dealt with similar emotions]",
-                "recommended_duas": [
-                    {
-                        "translation": "[English translation]",
-                        "virtue": "[Benefits of this dua]",
-                        "source": "[Reference source]"
-                    }
-                ],
-                "practical_steps": [
-                    "[Immediate spiritual actions]",
-                    "[Long-term emotional management]",
-                    "[Ways to strengthen faith through this emotion]"
-                ],
-                "related_verses_hadith": {
-                    "verses": [
-                        {
-                            "reference": "[Surah:Verse]",
-                            "translation": "[English translation]",
-                            "relevance": "[How this verse relates to the emotion]"
-                        }
-                    ],
-                    "hadith": [
-                        {
-                            "text": "[Hadith text]",
-                            "source": "[Source book]",
-                            "grade": "[Authentication grade]",
-                            "relevance": "[How this hadith relates to the emotion]"
-                        }
-                    ]
-                }
-            }`,
-            userMessage: `A person is experiencing: ${emotions.join(' and ')}
-            Context: ${context}
-            
-            Please provide comprehensive guidance addressing ${emotions.length > 1 ? 'each emotion separately and then combined guidance' : 'this emotion'}.
-            
-            Important: Ensure all sections are filled with detailed information, including understanding, quranic guidance, prophetic examples, practical steps, and related verses/hadith.`
-        };
-
         // Get response from OpenAI
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo-16k',
+            model: 'gpt-3.5-turbo',
             messages: [
-                { role: 'system', content: prompt.systemMessage },
-                { role: 'user', content: prompt.userMessage }
+                { 
+                    role: 'system', 
+                    content: `You are a knowledgeable Islamic scholar specializing in emotional and spiritual guidance. 
+                    When analyzing emotions, ensure your response:
+                    1. Covers all appropriate emotions while filtering out inappropriate content
+                    2. Provides detailed, actionable guidance
+                    3. Includes specific references from Quran and authentic hadith
+                    4. Offers practical, modern-day applications
+                    
+                    Respond ONLY with a valid JSON object in this exact format, with ALL fields populated:
+                    {
+                        "content": "Comprehensive explanation (minimum 200 words) of the emotion from Islamic perspective, including its psychological and spiritual dimensions",
+                        "quranic_guidance": [
+                            "At least 3 relevant Quranic verses with complete references and explanations",
+                            "Each verse must include its relevance to the emotion"
+                        ],
+                        "prophetic_example": "Detailed account (minimum 150 words) of how Prophet Muhammad (peace be upon him) dealt with this emotion, with authentic hadith references",
+                        "practical_steps": [
+                            "Minimum 5 specific, actionable steps for managing this emotion",
+                            "Each step should be detailed and implementable",
+                            "Include both spiritual and practical aspects"
+                        ],
+                        "spiritual_advice": {
+                            "understanding": "Detailed Islamic perspective on this emotion (minimum 150 words)",
+                            "duas": [
+                                "At least 3 specific duas with translations and references",
+                                "Include when and how to recite them"
+                            ],
+                            "dhikr": [
+                                "At least 3 specific dhikr recommendations",
+                                "Include counts, timings, and benefits"
+                            ],
+                            "scholarly_guidance": [
+                                "At least 3 quotes or teachings from renowned scholars",
+                                "Include both classical and contemporary perspectives"
+                            ],
+                            "spiritual_remedies": [
+                                "At least 5 specific spiritual practices",
+                                "Include their benefits and implementation"
+                            ]
+                        },
+                        "related_verses_hadith": {
+                            "verses": [
+                                {
+                                    "reference": "Complete Surah:Verse reference",
+                                    "translation": "Full English translation",
+                                    "relevance": "Detailed explanation of relevance to the emotion"
+                                }
+                            ],
+                            "hadith": [
+                                {
+                                    "text": "Complete hadith text in English",
+                                    "source": "Full source reference (e.g., Sahih Bukhari 123)",
+                                    "grade": "Authenticity grade",
+                                    "relevance": "Detailed explanation of relevance to the emotion"
+                                }
+                            ]
+                        },
+                        "reflection_points": [
+                            "At least 5 deep, thought-provoking points for personal reflection",
+                            "Include questions for self-assessment",
+                            "Include action items for personal growth"
+                        ]
+                    }`
+                },
+                { 
+                    role: 'user', 
+                    content: `Provide comprehensive Islamic guidance for someone experiencing: ${emotion}\nContext: ${context || ''}\nRespond ONLY with the JSON object, no other text.` 
+                }
             ],
             temperature: 0.7,
-            max_tokens: 4000
+            max_tokens: 2500
         });
 
-        const content = completion.choices[0]?.message?.content || '';
-        
+        const content = completion.choices[0]?.message?.content;
+        if (!content) {
+            throw new Error('No content in OpenAI response');
+        }
+
         try {
-            // Clean and sanitize the content before parsing
+            // Clean the response to ensure valid JSON
             const cleanedContent = content
-                .replace(/[\n\r]/g, ' ')           // Replace newlines with spaces
-                .replace(/\s+/g, ' ')              // Normalize spaces
-                .replace(/\\\[/g, '[')             // Replace escaped brackets
-                .replace(/\\\]/g, ']')             // Replace escaped brackets
-                .replace(/\\"/g, '"')              // Replace escaped quotes
-                .replace(/\\/g, '')                // Remove remaining backslashes
-                .replace(/,\s*([}\]])/g, '$1')     // Remove trailing commas
-                .replace(/([{\[,])\s*,/g, '$1')    // Remove empty elements
-                .replace(/\]\s*\[/g, '],[')        // Fix array formatting
-                .replace(/\}\s*\{/g, '},{')        // Fix object formatting
+                .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+                .replace(/\n/g, ' ')
+                .replace(/\s+/g, ' ')
+                .replace(/,\s*([}\]])/g, '$1')
                 .trim();
 
-            // Add logging to help debug
-            console.log('Cleaned content:', cleanedContent);
+            // Parse the JSON response from OpenAI
+            const parsedResponse = JSON.parse(cleanedContent);
+            
+            // Validate response structure
+            const requiredSections = [
+                'content',
+                'quranic_guidance',
+                'prophetic_example',
+                'practical_steps',
+                'spiritual_advice',
+                'related_verses_hadith',
+                'reflection_points'
+            ];
 
-            let jsonResponse;
-            try {
-                // Parse the cleaned JSON
-                jsonResponse = JSON.parse(cleanedContent);
-            } catch (parseError) {
-                console.error('JSON Parse Error:', parseError);
-                console.error('Content causing error:', cleanedContent);
-                
-                try {
-                    // Try to extract just the understanding field if full parsing fails
-                    const understandingMatch = content.match(/"understanding"\s*:\s*"([^"]+)"/);
-                    if (understandingMatch && understandingMatch[1]) {
-                        res.json({
-                            success: true,
-                            content: understandingMatch[1],
-                            virtues: '',
-                            application: '',
-                            context: understandingMatch[1],
-                            related: '',
-                            impact: '',
-                            explanation: understandingMatch[1],
-                            relatedVerses: [],
-                            historicalContext: '',
-                            reflectionPoints: [],
-                            modernApplication: ''
-                        });
-                        return;
-                    }
-                } catch (secondError) {
-                    // If still fails, send the raw content
-                    res.json({
-                        success: true,
-                        content: content,
-                        virtues: '',
-                        application: '',
-                        context: content,
-                        related: '',
-                        impact: '',
-                        explanation: content,
-                        relatedVerses: [],
-                        historicalContext: '',
-                        reflectionPoints: [],
-                        modernApplication: ''
-                    });
-                    return;
-                }
+            const missingFields = requiredSections.filter(field => !parsedResponse[field]);
+            if (missingFields.length > 0) {
+                throw new Error(`Incomplete response: Missing ${missingFields.join(', ')}`);
             }
 
-            // Format the response
-            const formatRelatedContent = (refs: any) => {
-                let result = '';
-                
-                // Format verses
-                if (refs?.verses?.length) {
-                    result += '**Quranic Verses:**\n\n';
-                    refs.verses.forEach((verse: any) => {
-                        result += `• **${verse.reference}**\n`;
-                        if (verse.translation) result += `  ${verse.translation}\n`;
-                        if (verse.relevance) result += `  - ${verse.relevance}\n`;
-                        result += '\n';
-                    });
-                }
-                
-                // Format hadith
-                if (refs?.hadith?.length) {
-                    result += '**Related Hadith:**\n\n';
-                    refs.hadith.forEach((h: any) => {
-                        result += `• **${h.source}** ${h.grade ? `(${h.grade})` : ''}\n`;
-                        if (h.text) result += `  ${h.text}\n`;
-                        if (h.relevance) result += `  - ${h.relevance}\n`;
-                        result += '\n';
-                    });
-                }
-                
-                return result.trim();
-            };
-            
-            const formattedResponse = {
-                success: true,
-                content: jsonResponse.understanding || '',
-                virtues: Array.isArray(jsonResponse.recommended_duas) 
-                    ? jsonResponse.recommended_duas.map((d: any) => 
-                        `${d.translation}\nVirtue: ${d.virtue}\nSource: ${d.source}`
-                    ).join('\n\n') 
-                    : '',
-                application: Array.isArray(jsonResponse.practical_steps)
-                    ? jsonResponse.practical_steps.join('\n')
-                    : '',
-                context: jsonResponse.understanding || '',
-                related: formatRelatedContent(jsonResponse.related_verses_hadith),
-                impact: jsonResponse.prophetic_example || '',
-                explanation: jsonResponse.understanding || '',
-                relatedVerses: jsonResponse.related_verses_hadith?.verses?.map((v: any) => 
-                    `${v.reference}: ${v.translation || ''}`
-                ) || [],
-                historicalContext: jsonResponse.prophetic_example || '',
-                reflectionPoints: Array.isArray(jsonResponse.practical_steps) 
-                    ? jsonResponse.practical_steps 
-                    : [],
-                modernApplication: Array.isArray(jsonResponse.practical_steps)
-                    ? jsonResponse.practical_steps.join('\n')
-                    : ''
-            };
-
-            res.json(formattedResponse);
-        } catch (parseError) {
-            console.error('Error parsing JSON response:', parseError);
-            // Fallback response if JSON parsing fails
             res.json({
                 success: true,
-                content: content,
-                virtues: '',
-                application: '',
-                context: content,
-                related: '',
-                impact: '',
-                explanation: content,
-                relatedVerses: [],
-                historicalContext: '',
-                reflectionPoints: [],
-                modernApplication: ''
+                ...parsedResponse
             });
+        } catch (parseError) {
+            console.error('Error parsing OpenAI response:', parseError);
+            console.error('Raw content:', content);
+            throw new Error('Failed to parse AI response');
         }
     } catch (error) {
         console.error('Error in emotional dua search:', error);
-        res.status(500).json({ success: false, error: 'Failed to process emotional dua search' });
+        res.status(500).json({ 
+            success: false, 
+            error: 'Failed to process emotional dua search',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 }));
 
@@ -819,7 +658,7 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
 
         // Use GPT-3.5-turbo-16k for more detailed responses
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo-16k',
+            model: 'gpt-3.5-turbo',
             messages: [
                 { role: 'system', content: prompt.systemMessage },
                 { role: 'user', content: prompt.userMessage }
@@ -835,5 +674,34 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
         res.status(500).json({ success: false, error: 'Failed to generate tafsir response' });
     }
 }));
+
+// Add this before the endpoint handler
+function formatRelatedContent(refs: { verses: any[], hadith: any[] }): string {
+    let result = '';
+    
+    // Format verses
+    if (refs?.verses?.length) {
+        result += '**Quranic Verses:**\n\n';
+        refs.verses.forEach((verse: any) => {
+            result += `• **${verse.reference}**\n`;
+            if (verse.translation) result += `  ${verse.translation}\n`;
+            if (verse.relevance) result += `  - ${verse.relevance}\n`;
+            result += '\n';
+        });
+    }
+    
+    // Format hadith
+    if (refs?.hadith?.length) {
+        result += '**Related Hadith:**\n\n';
+        refs.hadith.forEach((h: any) => {
+            result += `• **${h.source}** ${h.grade ? `(${h.grade})` : ''}\n`;
+            if (h.text) result += `  ${h.text}\n`;
+            if (h.relevance) result += `  - ${h.relevance}\n`;
+            result += '\n';
+        });
+    }
+    
+    return result.trim();
+}
 
 export = router; 

@@ -134,11 +134,34 @@
                   <i class="fas fa-heart text-[#B7A57A] mt-1 mr-3"></i>
                   <div class="space-y-4">
                     <h4 class="font-semibold text-gray-800 mb-2">Spiritual Advice</h4>
-                    <!-- Split paragraphs for better readability -->
                     <div class="space-y-4">
                       <p class="text-gray-700 leading-relaxed" *ngFor="let paragraph of getSpiritualAdviceParagraphs()">
                         {{ paragraph }}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Related Verses and Hadith -->
+              <div class="bg-[#B7A57A]/5 rounded-lg p-6">
+                <div class="flex items-start mb-4">
+                  <i class="fas fa-book text-[#B7A57A] mt-1 mr-3"></i>
+                  <div class="space-y-4">
+                    <h4 class="font-semibold text-gray-800 mb-2">Related Verses & Hadith</h4>
+                    <div class="space-y-6">
+                      <!-- Verses -->
+                      <div *ngFor="let verse of getRelatedVerses()" class="bg-[#B7A57A]/10 rounded-lg p-4">
+                        <div class="text-gray-700 leading-relaxed whitespace-pre-line">
+                          {{ verse }}
+                        </div>
+                      </div>
+                      <!-- Hadith -->
+                      <div *ngFor="let hadith of getRelatedHadith()" class="bg-[#B7A57A]/10 rounded-lg p-4">
+                        <div class="text-gray-700 leading-relaxed whitespace-pre-line">
+                          {{ hadith }}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -156,24 +179,8 @@
                           <i class="fas" [ngClass]="getStepIcon(step)"></i>
                         </span>
                         <div class="step-content">
-                          <span class="font-medium text-[#8B7355] mr-2">Step {{i + 1}}:</span>
                           {{ step }}
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Related Quranic Verses and Hadith -->
-              <div class="bg-[#B7A57A]/5 rounded-lg p-6">
-                <div class="flex items-start mb-4">
-                  <i class="fas fa-book text-[#B7A57A] mt-1 mr-3"></i>
-                  <div class="space-y-4">
-                    <h4 class="font-semibold text-gray-800 mb-2">Related Verses & Hadith</h4>
-                    <div class="space-y-4">
-                      <div *ngFor="let verse of getRelatedVerses()" class="bg-[#B7A57A]/10 rounded-lg p-4">
-                        <p class="text-gray-700 leading-relaxed">{{ verse }}</p>
                       </div>
                     </div>
                   </div>
@@ -199,9 +206,15 @@
         </button>
       </div>
   
-      <!-- Loading State -->
-      <div *ngIf="isLoading" class="flex justify-center py-8">
+      <!-- Loading State for Duas -->
+      <div *ngIf="isLoadingDuas" class="flex justify-center py-8">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
+      </div>
+  
+      <!-- Loading State for Emotional Search -->
+      <div *ngIf="isLoadingEmotional" class="flex justify-center py-8">
+        <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
+        <p class="ml-4 text-[#B7A57A]">Analyzing emotion...</p>
       </div>
   
       <!-- Error State -->
@@ -210,7 +223,7 @@
       </div>
   
       <!-- Duas List -->
-      <div *ngIf="!isLoading && !error" class="space-y-6">
+      <div *ngIf="!isLoadingDuas && !error" class="space-y-6">
         <div *ngFor="let dua of filteredDuas" class="dua-card">
           <div class="flex justify-between items-start mb-4">
             <h3 class="dua-title">{{ dua.title }}</h3>
@@ -260,12 +273,12 @@
           </div>
         </div>
       </div>
-  
+<!--   
       <app-dua-tafsir 
         *ngIf="selectedDua"
         [arabic]="selectedDua.arabic"
         [translation]="selectedDua.translation">
-      </app-dua-tafsir>
+      </app-dua-tafsir> -->
 
       <!-- AI Insights Modal -->
       <div *ngIf="selectedDua" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -278,7 +291,30 @@
           
           <div class="p-6">
             <h2 class="text-2xl font-bold text-[#B7A57A] mb-4">{{ selectedDua.title }}</h2>
-            <app-dua-insights [dua]="selectedDua"></app-dua-insights>
+            
+            <!-- Loading State for Insights -->
+            <div *ngIf="isLoadingInsights" class="flex flex-col items-center justify-center py-8">
+              <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
+              <p class="mt-4 text-gray-600">Generating insights...</p>
+            </div>
+
+            <!-- Error State -->
+            <div *ngIf="error" class="bg-red-50 text-red-700 p-4 rounded-lg mb-4">
+              <div class="flex items-center">
+                <i class="fas fa-exclamation-circle mr-2"></i>
+                <p>{{ error }}</p>
+              </div>
+              <button 
+                (click)="onDuaSelect(selectedDua)"
+                class="mt-2 text-sm text-red-700 hover:text-red-800 underline">
+                Try again
+              </button>
+            </div>
+
+            <!-- Content -->
+            <div *ngIf="!isLoadingInsights && !error">
+              <app-dua-insights [dua]="selectedDua"></app-dua-insights>
+            </div>
           </div>
         </div>
       </div>

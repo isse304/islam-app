@@ -266,7 +266,20 @@ export class StripeService {
 
             // Update usage record
             const usage = await this.getOrCreateUsageRecord(userId);
-            usage.status = subscription.status;
+            // Map Stripe subscription status to our UserUsage status
+            switch (subscription.status) {
+                case 'active':
+                case 'trialing':
+                    usage.status = subscription.status === 'trialing' ? 'trial' : 'active';
+                    break;
+                case 'canceled':
+                case 'unpaid':
+                case 'past_due':
+                    usage.status = 'canceled';
+                    break;
+                default:
+                    usage.status = 'free';
+            }
             usage.currentPeriodEnd = new Date(subscription.current_period_end * 1000);
             await usage.save();
 

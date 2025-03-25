@@ -14,44 +14,45 @@ export const FirebaseAuthInterceptor: HttpInterceptorFn = (
   const router = inject(Router);
   const ngZone = inject(NgZone);
 
-  // Skip if not an API request
-  if (!req.url.includes('/api/')) {
+  // Skip auth header for public routes
+  if (isPublicRoute(req.url)) {
+    console.log('🔓 Public route detected:', req.url);
     return next(req);
   }
 
-  // Skip token for auth verify endpoint
-  if (req.url.includes('/api/auth/verify')) {
-    return next(req);
-  }
+  // Force token refresh for AI endpoints
+  const shouldForceRefresh = req.url.includes('/api/ai/') || req.url.includes('/api/dua/insights');
+  console.log('🔄 Force refresh check:', { url: req.url, shouldForceRefresh });
 
-  // Get token for API request
-  return from(authService.getToken(false)).pipe(
+  // Get token with appropriate refresh setting
+  return from(authService.getToken(shouldForceRefresh)).pipe(
     switchMap(token => {
-      if (!token && !isPublicRoute(req.url)) {
-        console.warn('No token available for protected route');
-        // Navigate inside NgZone
-        ngZone.run(() => {
-          router.navigate(['/auth/login'], {
-            queryParams: { 
-              returnUrl: router.url,
-              error: 'auth_required'
-            }
-          });
-        });
-        return EMPTY;
+      if (!token) {
+        console.error('❌ No token available for request:', req.url);
+        return throwError(() => new Error('No authentication token available'));
       }
 
-      // Clone request with token
-      const authReq = token ? 
-        req.clone({
-          headers: req.headers.set('Authorization', `Bearer ${token}`)
-        }) : req;
+      console.log('🔑 Token validation:', { 
+        hasToken: !!token,
+        length: token.length,
+        format: token.startsWith('Bearer ') ? 'Valid' : 'Invalid',
+        preview: token.substring(0, 20) + '...'
+      });
 
-      // Log the request details
-      console.log('Making authenticated request:', {
+      // Ensure token format is correct - remove any existing 'Bearer ' prefix first
+      const cleanToken = token.replace(/^Bearer\s+/i, '');
+      const finalToken = `Bearer ${cleanToken}`;
+
+      // Clone the request with auth header
+      const authReq = req.clone({
+        headers: req.headers.set('Authorization', finalToken)
+      });
+
+      console.log('📤 Making authenticated request:', {
         url: authReq.url,
         method: authReq.method,
-        hasToken: !!token
+        hasAuthHeader: authReq.headers.has('Authorization'),
+        headerPreview: finalToken.substring(0, 20) + '...'
       });
 
       return next(authReq).pipe(
@@ -59,41 +60,47 @@ export const FirebaseAuthInterceptor: HttpInterceptorFn = (
           errors.pipe(
             concatMap(async (error: HttpErrorResponse, index) => {
               // Only retry on 401 errors and limit retries
-              if (error.status !== 401 || index >= 1) {
+              if (error.status !== 401 || index >= 2) {
                 throw error;
               }
 
-              console.log(`Attempting to refresh token...`);
+              console.log('🔄 Attempting token refresh, attempt:', index + 1);
               
               try {
-                // Get fresh token
-                const newToken = await authService.getToken(true);
-                if (!newToken) {
-                  throw new Error('No token after refresh');
-                }
-
-                // Add small delay before retry
+                // Small delay before refresh
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 
-                return newToken;
+                // Force refresh token for retry
+                await authService.refreshAuth();
+                const newToken = await authService.getToken(true);
+                if (!newToken) {
+                  console.error('❌ No token after refresh');
+                  throw new Error('No token after refresh');
+                }
+                
+                // Clean and format the new token
+                const cleanNewToken = newToken.replace(/^Bearer\s+/i, '');
+                console.log('✅ Token refreshed successfully');
+                return `Bearer ${cleanNewToken}`;
               } catch (refreshError) {
-                console.error('Token refresh failed:', refreshError);
+                console.error('❌ Token refresh failed:', refreshError);
                 throw error;
               }
             })
           )
         ),
         catchError(error => {
-          if (error.status === 401 && !isPublicRoute(router.url)) {
-            console.error('Authentication failed:', {
+          if (error.status === 401) {
+            console.error('❌ Authentication failed:', {
               url: req.url,
-              status: error.status
+              status: error.status,
+              error: error.error
             });
-            // Sign out and navigate inside NgZone
+
             ngZone.run(async () => {
               await authService.signOut();
               router.navigate(['/auth/login'], {
-                queryParams: {
+                queryParams: { 
                   returnUrl: router.url,
                   error: 'session_expired'
                 }
@@ -121,5 +128,13 @@ function isPublicRoute(path: string): boolean {
     '/subscription/cancel',
     '/api/auth/verify'
   ];
+  
+  // Ensure AI endpoints are not considered public
+  if (path.includes('/api/ai/') || 
+      path.includes('/api/dua/insights') || 
+      path.includes('/api/quran/')) {
+    return false;
+  }
+  
   return publicRoutes.some(route => path.includes(route));
 } 

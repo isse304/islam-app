@@ -1,162 +1,192 @@
 <!-- Dua Insights Container -->
-<div class="space-y-6">
-  <!-- Loading State -->
-  <div *ngIf="isLoading" class="flex flex-col items-center justify-center py-8">
-    <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
-    <p class="text-[#B7A57A] mt-4">Generating insights...</p>
-  </div>
+<div class="dua-insights">
+  <div class="insights-container">
+    <!-- Loading State -->
+    <div class="loading-container" *ngIf="isLoading">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
+      <p class="mt-4 text-gray-600">Generating insights...</p>
+      <div class="progress-bar mt-4">
+        <div class="progress" [style.width.%]="loadingProgress"></div>
+      </div>
+    </div>
 
-  <!-- Error State -->
-  <div *ngIf="error" class="bg-red-50 border border-red-200 rounded-lg p-4">
-    <div class="flex items-center text-red-700">
+    <!-- Error State -->
+    <div class="error-message" *ngIf="error">
       <i class="fas fa-exclamation-circle mr-2"></i>
-      <p>{{ error }}</p>
-    </div>
-  </div>
-
-  <!-- Content -->
-  <div *ngIf="!isLoading && !error" class="space-y-6">
-    <!-- Premium Required Message -->
-    <div *ngIf="!insights" class="text-center py-6">
-      <div class="bg-[#B7A57A]/10 rounded-lg p-6">
-        <i class="fas fa-crown text-[#B7A57A] text-3xl mb-4"></i>
-        <h3 class="text-lg font-semibold text-gray-800 mb-2">Unlock AI-Powered Insights</h3>
-        <p class="text-gray-600 mb-4">Get deep insights, reflections, and contextual understanding with our AI analysis.</p>
-        <button 
-          (click)="router.navigate(['/premium'], { 
-            queryParams: { 
-              feature: 'AI Insights',
-              returnUrl: router.url
-            }
-          })" 
-          class="bg-[#B7A57A] text-white px-6 py-2 rounded-full hover:bg-[#A69469] transition-colors">
-          Upgrade to Premium
-        </button>
-      </div>
+      {{ error }}
     </div>
 
-    <!-- Main Content Area -->
-    <div *ngIf="insights">
-      <!-- Tabs -->
-      <div class="flex space-x-4 border-b border-gray-200">
-        <button 
-          (click)="setActiveTab('insights')"
-          class="px-4 py-2 text-sm font-medium transition-colors"
-          [class.text-[#B7A57A]]="activeTab === 'insights'"
-          [class.text-gray-500]="activeTab !== 'insights'"
-          [class.border-b-2]="activeTab === 'insights'"
-          [class.border-[#B7A57A]]="activeTab === 'insights'">
-          <i class="fas fa-lightbulb mr-2"></i>Insights
-        </button>
-        <button 
-          (click)="setActiveTab('reflections')"
-          class="px-4 py-2 text-sm font-medium transition-colors"
-          [class.text-[#B7A57A]]="activeTab === 'reflections'"
-          [class.text-gray-500]="activeTab !== 'reflections'"
-          [class.border-b-2]="activeTab === 'reflections'"
-          [class.border-[#B7A57A]]="activeTab === 'reflections'">
-          <i class="fas fa-brain mr-2"></i>Reflections
-        </button>
-        <button 
-          (click)="setActiveTab('context')"
-          class="px-4 py-2 text-sm font-medium transition-colors"
-          [class.text-[#B7A57A]]="activeTab === 'context'"
-          [class.text-gray-500]="activeTab !== 'context'"
-          [class.border-b-2]="activeTab === 'context'"
-          [class.border-[#B7A57A]]="activeTab === 'context'">
-          <i class="fas fa-book mr-2"></i>Context
-        </button>
-      </div>
-
-      <!-- Insights Tab -->
-      <div *ngIf="activeTab === 'insights'" class="space-y-6">
-        <!-- Key Insights -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-lightbulb text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Key Insights</h3>
+    <!-- Content -->
+    <div class="insights-content" *ngIf="!isLoading && !error">
+      <!-- Tabbed Interface -->
+      <div class="tabs-container">
+        <div class="tabs">
+          <div class="tab" 
+               [class.active]="activeTab === 'insights'"
+               (click)="setActiveTab('insights')">
+            <i class="fas fa-lightbulb"></i>
+            Key Insights
           </div>
-          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="insights.content || 'No insights available'"></div>
-        </div>
-
-        <!-- Virtues & Benefits -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-star text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Virtues & Benefits</h3>
+          <div class="tab" 
+               [class.active]="activeTab === 'reflections'"
+               (click)="setActiveTab('reflections')">
+            <i class="fas fa-book"></i>
+            Reflections
           </div>
-          <div class="space-y-3">
-            <div *ngFor="let virtue of getVirtuesList()" class="flex items-start">
-              <i class="fas fa-check text-[#B7A57A] mt-1 mr-3"></i>
-              <p class="text-gray-700">{{ virtue }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Practical Application -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-hands-helping text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Practical Application</h3>
-          </div>
-          <div class="space-y-3">
-            <div *ngFor="let step of getApplicationSteps()" class="flex items-start">
-              <i class="fas fa-arrow-right text-[#B7A57A] mt-1 mr-3"></i>
-              <p class="text-gray-700">{{ step }}</p>
-            </div>
+          <div class="tab" 
+               [class.active]="activeTab === 'context'"
+               (click)="setActiveTab('context')">
+            <i class="fas fa-history"></i>
+            Context
           </div>
         </div>
       </div>
 
-      <!-- Reflections Tab -->
-      <div *ngIf="activeTab === 'reflections'" class="space-y-6">
-        <!-- Personal Reflection Points -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-brain text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Personal Reflection Points</h3>
-          </div>
-          <div class="space-y-4">
-            <div *ngFor="let point of getReflectionPoints()" class="flex items-start bg-[#B7A57A]/5 p-4 rounded-lg">
-              <i class="fas fa-chevron-right text-[#B7A57A] mt-1 mr-3"></i>
-              <p class="text-gray-700">{{ point }}</p>
+      <!-- Tab Content -->
+      <div [ngSwitch]="activeTab" class="space-y-6">
+        <!-- Insights Tab -->
+        <div *ngSwitchCase="'insights'" class="space-y-6">
+          <!-- Key Insights -->
+          <section>
+            <h3><i class="fas fa-lightbulb"></i> Key Insights</h3>
+            <p>{{ insights?.content }}</p>
+          </section>
+
+          <!-- Virtues -->
+          <section *ngIf="getVirtuesList().length > 0">
+            <h3><i class="fas fa-star"></i> Virtues & Benefits</h3>
+            <ul>
+              <li *ngFor="let virtue of getVirtuesList()" class="virtue">
+                {{ virtue }}
+              </li>
+            </ul>
+          </section>
+
+          <!-- Application -->
+          <section *ngIf="getApplicationSteps().length > 0">
+            <h3><i class="fas fa-tasks"></i> Practical Application</h3>
+            <ul>
+              <li *ngFor="let step of getApplicationSteps()" class="application">
+                {{ step }}
+              </li>
+            </ul>
+          </section>
+        </div>
+
+        <!-- Reflections Tab -->
+        <div *ngSwitchCase="'reflections'" class="space-y-6">
+          <!-- Reflection Points -->
+          <section *ngIf="getReflectionPoints().length > 0">
+            <h3><i class="fas fa-lightbulb"></i> Reflection Points</h3>
+            <ul>
+              <li *ngFor="let point of getReflectionPoints()" class="reflection">
+                {{ point }}
+              </li>
+            </ul>
+          </section>
+
+          <!-- Spiritual Advice -->
+          <section *ngIf="getSpiritualAdvice()">
+            <h3><i class="fas fa-heart"></i> Spiritual Advice</h3>
+            
+            <!-- Understanding -->
+            <div *ngIf="getSpiritualAdvice().understanding" class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">
+                <i class="fas fa-book-reader mr-2"></i>Islamic Perspective
+              </h4>
+              <p class="text-gray-700 leading-relaxed">{{ getSpiritualAdvice().understanding }}</p>
             </div>
-          </div>
-        </div>
 
-        <!-- Spiritual Impact -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-heart text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Spiritual Impact</h3>
-          </div>
-          <div class="space-y-3">
-            <div *ngFor="let impact of getSpiritualImpacts()" class="flex items-start">
-              <i class="fas fa-seedling text-[#B7A57A] mt-1 mr-3"></i>
-              <p class="text-gray-700">{{ impact }}</p>
+            <!-- Duas -->
+            <div *ngIf="getSpiritualAdvice().duas?.length" class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">
+                <i class="fas fa-pray mr-2"></i>Recommended Duas
+              </h4>
+              <ul class="space-y-4">
+                <li *ngFor="let dua of getSpiritualAdvice().duas" class="bg-[#f8f7f1] rounded-lg p-4">
+                  <div *ngIf="dua.arabic" class="text-right mb-2 text-lg font-arabic">{{ dua.arabic }}</div>
+                  <div *ngIf="dua.translation" class="text-gray-700">{{ dua.translation }}</div>
+                  <div *ngIf="dua.reference" class="text-sm text-gray-500 mt-1">{{ dua.reference }}</div>
+                  <div *ngIf="dua.virtue" class="text-[#B7A57A] mt-2 text-sm">
+                    <i class="fas fa-star mr-1"></i>{{ dua.virtue }}
+                  </div>
+                </li>
+              </ul>
             </div>
-          </div>
-        </div>
-      </div>
 
-      <!-- Context Tab -->
-      <div *ngIf="activeTab === 'context'" class="space-y-6">
-        <!-- Historical Context -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-history text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Historical Context</h3>
-          </div>
-          <div class="prose max-w-none text-gray-700 leading-relaxed" [innerHTML]="getHistoricalContext()"></div>
+            <!-- Dhikr -->
+            <div *ngIf="getSpiritualAdvice().dhikr?.length" class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">
+                <i class="fas fa-hand-holding mr-2"></i>Beneficial Dhikr
+              </h4>
+              <ul class="space-y-4">
+                <li *ngFor="let dhikr of getSpiritualAdvice().dhikr" class="bg-[#f8f7f1] rounded-lg p-4">
+                  <div *ngIf="dhikr.phrase" class="text-right mb-2 text-lg font-arabic">{{ dhikr.phrase }}</div>
+                  <div *ngIf="dhikr.translation" class="text-gray-700">{{ dhikr.translation }}</div>
+                  <div *ngIf="dhikr.count" class="text-sm text-[#B7A57A] mt-2">
+                    <i class="fas fa-sync-alt mr-1"></i>Repeat {{ dhikr.count }} times
+                  </div>
+                  <div *ngIf="dhikr.benefit" class="text-gray-600 mt-2">{{ dhikr.benefit }}</div>
+                  <div *ngIf="dhikr.timing" class="text-sm text-gray-500 mt-1">
+                    <i class="far fa-clock mr-1"></i>{{ dhikr.timing }}
+                  </div>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Scholarly Guidance -->
+            <div *ngIf="getSpiritualAdvice().scholarly_guidance?.length" class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">
+                <i class="fas fa-user-graduate mr-2"></i>Scholarly Guidance
+              </h4>
+              <ul class="space-y-4">
+                <li *ngFor="let guidance of getSpiritualAdvice().scholarly_guidance" class="bg-[#f8f7f1] rounded-lg p-4">
+                  <ng-container *ngIf="guidance">
+                    <div *ngIf="guidance.quote" class="text-gray-700 italic">"{{ guidance.quote }}"</div>
+                    <div *ngIf="guidance.scholar" class="text-[#B7A57A] mt-2">
+                      — {{ guidance.scholar }}
+                      <span *ngIf="guidance.source" class="text-gray-500">
+                        ({{ guidance.source }})
+                      </span>
+                    </div>
+                  </ng-container>
+                </li>
+              </ul>
+            </div>
+
+            <!-- Spiritual Remedies -->
+            <div *ngIf="getSpiritualAdvice().spiritual_remedies?.length" class="mb-6">
+              <h4 class="text-lg font-semibold text-gray-700 mb-2">
+                <i class="fas fa-seedling mr-2"></i>Spiritual Remedies
+              </h4>
+              <ul class="space-y-4">
+                <li *ngFor="let remedy of getSpiritualAdvice().spiritual_remedies" class="bg-[#f8f7f1] rounded-lg p-4">
+                  <ng-container *ngIf="remedy">
+                    <div *ngIf="remedy.practice" class="font-semibold text-[#B7A57A]">{{ remedy.practice }}</div>
+                    <div *ngIf="remedy.method" class="text-gray-700 mt-2">{{ remedy.method }}</div>
+                    <div *ngIf="remedy.benefit" class="text-gray-600 mt-2">
+                      <i class="fas fa-heart mr-1"></i>{{ remedy.benefit }}
+                    </div>
+                  </ng-container>
+                </li>
+              </ul>
+            </div>
+          </section>
         </div>
 
-        <!-- Related Verses & Hadith -->
-        <div class="bg-white rounded-lg p-6 shadow-sm border border-gray-100" *ngIf="hasRelatedContent()">
-          <div class="flex items-center mb-4">
-            <i class="fas fa-book text-[#B7A57A] text-xl mr-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800">Related Verses & Hadith</h3>
-          </div>
-          <div class="space-y-4" [innerHTML]="getFormattedRelatedContent()"></div>
+        <!-- Context Tab -->
+        <div *ngSwitchCase="'context'" class="space-y-6">
+          <!-- Historical Context -->
+          <section *ngIf="getHistoricalContext()">
+            <h3><i class="fas fa-history"></i> Historical Context</h3>
+            <p>{{ getHistoricalContext() }}</p>
+          </section>
+
+          <!-- Related Verses -->
+          <section *ngIf="hasRelatedVerses()">
+            <h3><i class="fas fa-book-open"></i> Related Verses</h3>
+            <div class="space-y-4" [innerHTML]="getFormattedRelatedVerses()"></div>
+          </section>
         </div>
       </div>
     </div>

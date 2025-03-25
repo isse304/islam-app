@@ -225,48 +225,54 @@ export class AuthButtonsComponent implements OnInit, OnDestroy {
     // First check if we have a cached user for immediate response
     this.checkCachedUser();
     
-    // Set a timer to ensure loading state is shown for at least minLoadingTime
-    const loadingTimer = timer(this.minLoadingTime).subscribe(() => {
-      // This will allow the loading state to be hidden after minLoadingTime
-      // but only if auth state has been determined
-      this.maybeHideLoading();
-    });
-    this.subscriptions.push(loadingTimer);
-
+    // Set up subscriptions array for cleanup
+    const subscriptions: Subscription[] = [];
+    
     // Subscribe to auth state changes
-    const authSub = this.authService.user$.subscribe(user => {
-      // Once we get a response from the auth service, we can hide loading
-      this.maybeHideLoading();
-    });
-    this.subscriptions.push(authSub);
-
-    // Set a maximum loading time in case auth service is slow
-    const maxLoadingTimer = timer(1500).subscribe(() => {
-      // Force hide loading after maximum time
-      this.isLoading = false;
-    });
-    this.subscriptions.push(maxLoadingTimer);
+    subscriptions.push(
+        this.authService.user$.subscribe(user => {
+            this.zone.run(() => {
+                // Update loading state based on auth response
+                this.isLoading = false;
+                
+                // If we have a user, ensure authenticated state is set
+                if (user) {
+                    localStorage.setItem('isAuthenticated', 'true');
+                }
+            });
+        })
+    );
+    
+    // Set a maximum loading time
+    subscriptions.push(
+        timer(2000).subscribe(() => {
+            this.zone.run(() => {
+                // Force hide loading after maximum time
+                this.isLoading = false;
+            });
+        })
+    );
+    
+    // Store subscriptions for cleanup
+    this.subscriptions = subscriptions;
   }
   
   private checkCachedUser() {
     try {
-      const cachedUser = localStorage.getItem('currentUser');
-      if (cachedUser) {
-        // If we have cached user info, we can hide loading faster
-        timer(300).pipe(take(1)).subscribe(() => {
-          this.isLoading = false;
-        });
-      }
+        const cachedUser = localStorage.getItem('currentUser');
+        const isAuthenticated = localStorage.getItem('isAuthenticated');
+        
+        if (cachedUser && isAuthenticated === 'true') {
+            // If we have valid cached data, hide loading faster
+            this.zone.run(() => {
+                timer(300).pipe(take(1)).subscribe(() => {
+                    this.isLoading = false;
+                });
+            });
+        }
     } catch (error) {
-      // Ignore localStorage errors
-    }
-  }
-
-  private maybeHideLoading() {
-    // This helper checks if auth state is determined and min loading time passed
-    const cachedAuth = localStorage.getItem('isAuthenticated');
-    if (cachedAuth !== null) {
-      this.isLoading = false;
+        // Ignore localStorage errors
+        console.warn('Error checking cached user:', error);
     }
   }
 
@@ -291,25 +297,31 @@ export class AuthButtonsComponent implements OnInit, OnDestroy {
 
   async signOut() {
     try {
-      // Force UI to update immediately
-      this.isLoading = true;
-      
-      // Need a timeout to ensure UI updates
-      setTimeout(async () => {
+        // Show loading state
+        this.isLoading = true;
+        
+        // Need a small delay to ensure loading state is visible
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         await this.authService.signOut();
         
-        // Force UI update again after sign out
+        // Force UI update after sign out
         this.zone.run(() => {
-          // Reset loading
-          this.isLoading = false;
-          
-          // Navigate to home page
-          this.router.navigate(['/']);
+            // Reset loading state
+            this.isLoading = false;
+            
+            // Clear any cached auth state
+            localStorage.removeItem('isAuthenticated');
+            
+            // Navigate to home page
+            this.router.navigate(['/']);
         });
-      }, 0);
     } catch (error) {
-      console.error('Error signing out:', error);
-      this.isLoading = false;
+        console.error('Error signing out:', error);
+        // Ensure loading state is reset even on error
+        this.zone.run(() => {
+            this.isLoading = false;
+        });
     }
   }
 }

@@ -189,8 +189,8 @@ export interface SurahData {
   providedIn: 'root'
 })
 export class QuranService {
-  private baseUrl = 'https://api.alquran.cloud/v1';
-  private quranComUrl = 'https://api.quran.com/api/v4';
+  private baseUrl = '/api/alquran';
+  private quranComUrl = '/api/quran';
   private readonly CACHE_KEY = 'quran_cache';
   private cache: {
     verseSummaries: { [key: string]: string };

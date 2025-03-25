@@ -1,12 +1,14 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of, firstValueFrom, from, BehaviorSubject } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, of, firstValueFrom, from, BehaviorSubject, switchMap, throwError } from 'rxjs';
+import { map, catchError } from 'rxjs/operators';
 import duasData from '../components/dua/duas.json';
 import localforage from 'localforage';
 import Fuse from 'fuse.js';
 import { ApiService } from './api.service';
 import { environment } from '../../environments/environment';
+import { EmotionalDuaResponse } from '../types/dua.types';
+import { FirebaseAuthService } from './firebase-auth.service';
 
 export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness';
 
@@ -25,17 +27,38 @@ export interface Dua {
   tags?: string[];
 }
 
-interface EmotionalDuaResponse {
-  duas: Dua[];
-  insights: string;
-}
-
 interface AIResponse {
   content: string;  // Make content required, not optional
   success?: boolean;
   error?: string;
   message?: string;
 }
+
+export interface DuaInsightsResponse {
+  success: boolean;
+  duaId: number;
+  content: string;
+  virtues: string;
+  application: string;
+  context: string;
+  impact: string;
+  explanation: string;
+  historicalContext: string;
+  reflectionPoints: string[];
+  modernApplication: string;
+  relatedVerses: string[];
+  related?: string; // Optional field for backward compatibility
+}
+
+export interface StreamingResponse {
+  status: 'processing' | 'streaming' | 'complete' | 'error';
+  chunk?: string;
+  partialResponse?: string;
+  data?: DuaInsightsResponse;
+  error?: string;
+}
+
+export type ResponseType = DuaInsightsResponse | StreamingResponse;
 
 @Injectable({
   providedIn: 'root'
@@ -51,8 +74,10 @@ export class DuaService {
   private aiInsightsCache: { [key: string]: string } = {};
   private categoriesCache: { [key: string]: Dua[] } = {};
   private fuseSearch: Fuse<Dua>;
+  private apiUrl = environment.apiUrl;
   private _isLoading = new BehaviorSubject<boolean>(false);
   isLoading$ = this._isLoading.asObservable();
+  private insights: { [key: string]: DuaInsightsResponse } = {};
   
   // Emotion synonyms mapping
   private emotionSynonyms = {
@@ -76,7 +101,8 @@ export class DuaService {
 
   constructor(
     private http: HttpClient,
-    private apiService: ApiService
+    private apiService: ApiService,
+    private authService: FirebaseAuthService
   ) {
     this.localDuas = duasData as { [key in DuaCategory]: Dua[] };
     
@@ -298,8 +324,89 @@ export class DuaService {
     return undefined;
   }
 
-  getDuaInsights(duaId: string): Observable<string> {
-    return this.http.get<string>(`${environment.apiUrl}/api/duas/${duaId}/insights`);
+  getDuaInsights(duaId: string): Observable<ResponseType> {
+    return from(this.authService.getToken()).pipe(
+      switchMap(token => {
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
+
+        return new Observable<ResponseType>(observer => {
+          const xhr = new XMLHttpRequest();
+          let seenBytes = 0;
+          
+          xhr.open('POST', `${this.apiUrl}/api/ai/dua/insights?refresh=true&t=${new Date().getTime()}`);
+          xhr.setRequestHeader('Content-Type', 'application/json');
+          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+          xhr.setRequestHeader('Accept', 'text/event-stream');
+
+          xhr.onreadystatechange = () => {
+            if (xhr.readyState === 3) {  // Loading/Streaming
+              const newData = xhr.responseText.substring(seenBytes);
+              seenBytes = xhr.responseText.length;
+
+              const events = newData.split('\n\n').filter(e => e.trim());
+              events.forEach(event => {
+                if (event.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(event.substring(6)) as ResponseType;
+                    
+                    // Only emit if it's a dua insights response and matches the requested dua ID
+                    if (this.isStreamingResponse(data)) {
+                      if (data.data?.duaId === parseInt(duaId)) {
+                        observer.next(data);
+                      }
+                      if (data.status === 'complete' || data.status === 'error') {
+                        xhr.abort();
+                        observer.complete();
+                      }
+                    } else if ('duaId' in data && data.duaId === parseInt(duaId)) {
+                      observer.next(data);
+                    }
+                  } catch (error) {
+                    console.error('Error parsing SSE message:', error);
+                  }
+                }
+              });
+            }
+          };
+
+          xhr.onerror = (error) => {
+            console.error('XHR error:', error);
+            observer.error(error);
+          };
+
+          // Get the dua details from all categories
+          const allDuas = Object.values(this.localDuas).flat();
+          const dua = allDuas.find((d: Dua) => d.id.toString() === duaId);
+          if (!dua) {
+            observer.error(new Error('Dua not found'));
+            return;
+          }
+
+          // Send the request with complete dua data
+          xhr.send(JSON.stringify({ 
+            dua: {
+              id: parseInt(duaId),
+              title: dua.title,
+              arabic: dua.arabic,
+              translation: dua.translation,
+              reference: dua.reference,
+              category: dua.category,
+              virtue: dua.virtue
+            }
+          }));
+
+          return () => {
+            xhr.abort();
+          };
+        });
+      })
+    );
+  }
+
+  private isStreamingResponse(response: ResponseType): response is StreamingResponse {
+    return 'status' in response;
   }
 
   extractEmotionsFromText(text: string): Observable<string[]> {
@@ -365,84 +472,52 @@ export class DuaService {
     }
   }
 
-  async getEmotionalDuasWithAI(input: string): Promise<{ duas: Dua[], insights: string }> {
+  async getEmotionalDuasWithAI(feeling: string): Promise<EmotionalDuaResponse> {
     try {
-      // Set loading state
-      this._isLoading.next(true);
+      const response = await this.http.post<EmotionalDuaResponse>(
+        `${this.apiUrl}/api/ai/dua/emotional-search`,
+        { emotion: feeling, context: '' }
+      ).toPromise();
 
-      // Extract emotions locally
-      const emotions = this.extractEmotionsLocally(input);
-      
-      // Get duas for all emotions
-      const allDuas: Dua[] = [];
-      for (const emotion of emotions) {
-        const matchedDuas = await firstValueFrom(this.getDuasByEmotion(emotion));
-        allDuas.push(...matchedDuas);
+      if (!response) {
+        throw new Error('No response received');
       }
 
-      // Remove duplicates
-      const uniqueDuas = this.getUniqueDuas(allDuas);
-      
-      try {
-        // Call the emotional dua search API
-        const response = await this.apiService.generateEmotionalDuaResponse(emotions.join(' and '), input);
-        
-        // Try to parse the insights if it's a string
-        let parsedInsights = '';
-        if (typeof response?.content === 'string') {
-          try {
-            // Clean up the string before parsing
-            const cleanContent = response.content
-              .replace(/\n/g, '')
-              .replace(/\s+/g, ' ')
-              .trim();
-            
-            if (cleanContent.startsWith('{')) {
-              const parsed = JSON.parse(cleanContent);
-              parsedInsights = parsed.understanding || 
-                             parsed.content || 
-                             this.getFallbackInsights(emotions.join(' and '));
-            } else {
-              parsedInsights = response.content;
-            }
-          } catch (parseError) {
-            console.warn('Error parsing insights:', parseError);
-            parsedInsights = response.content;
-          }
-        } else {
-          parsedInsights = response?.content || this.getFallbackInsights(emotions.join(' and '));
-        }
-
-        // Sort duas by relevance to the emotions
-        const sortedDuas = uniqueDuas.sort((a, b) => {
-          const aEmotions = emotions.filter(emotion => 
-            a.emotion?.some(e => e.toLowerCase().includes(emotion.toLowerCase()))
-          ).length;
-          const bEmotions = emotions.filter(emotion => 
-            b.emotion?.some(e => e.toLowerCase().includes(emotion.toLowerCase()))
-          ).length;
-          return bEmotions - aEmotions;
-        });
-
-        this._isLoading.next(false);
-        return {
-          duas: sortedDuas,
-          insights: parsedInsights
-        };
-      } catch (error) {
-        console.error('Error generating AI insights:', error);
-        this._isLoading.next(false);
-        return {
-          duas: uniqueDuas,
-          insights: this.getFallbackInsights(emotions.join(' and '))
-        };
-      }
+      return response;
     } catch (error) {
-      console.error('Error getting emotional duas with AI:', error);
-      this._isLoading.next(false);
+      console.error('Error in getEmotionalDuasWithAI:', error);
+      // Return fallback content instead of throwing error
       return {
+        success: true,
+        content: 'Understanding your emotion from an Islamic perspective...',
+        quranic_guidance: [],
+        prophetic_example: '',
+        practical_steps: [],
+        spiritual_advice: {
+          understanding: 'We are experiencing technical difficulties. Please try again in a moment.',
+          duas: [],
+          dhikr: [],
+          scholarly_guidance: [],
+          spiritual_remedies: []
+        },
+        related_verses_hadith: {
+          verses: [],
+          hadith: []
+        },
+        reflection_points: [],
+        virtues: '',
+        application: '',
+        context: '',
+        related: '',
+        impact: '',
+        explanation: '',
+        modernApplication: '',
+        error: error instanceof Error ? error.message : 'Unknown error',
         duas: [],
-        insights: this.getFallbackInsights(input)
+        insights: '',
+        relatedVerses: [],
+        historicalContext: '',
+        reflectionPoints: []
       };
     }
   }
@@ -529,5 +604,25 @@ Related Verses & Hadith:
   private getDefaultDuas(): Dua[] {
     // Return some general purpose duas as fallback
     return this.localDuas['general'] || [];
+  }
+
+  private extractSection(text: string, section: string): string {
+    const sectionPattern = new RegExp(`${section}:\\s*([^\\n]+(?:\\n(?!\\w+:)[^\\n]+)*)`, 'i');
+    const match = text.match(sectionPattern);
+    return match ? match[1].trim() : '';
+  }
+
+  private extractBulletPoints(text: string): string[] {
+    if (!text) return [];
+    return text
+      .split('\n')
+      .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
+      .filter(line => line);
+  }
+
+  private extractVerses(text: string): string[] {
+    if (!text) return [];
+    const verses = text.match(/\[(.*?)\]/g) || [];
+    return verses.map(verse => verse.replace(/[\[\]]/g, '').trim());
   }
 } 

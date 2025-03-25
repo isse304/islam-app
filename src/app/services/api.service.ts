@@ -21,7 +21,7 @@ interface AIPrompt {
   maxTokens?: number;
 }
 
-interface AIResponse {
+export interface AIResponse {
   success: boolean;
   content?: string;
   error?: string;
@@ -37,6 +37,27 @@ interface AIResponse {
   reflectionPoints?: string[];
   modernApplication?: string;
   insights?: string;
+  quranic_guidance?: string[];
+  prophetic_example?: string;
+  practical_steps?: string[];
+  recommended_duas?: Array<{
+    translation: string;
+    virtue: string;
+    source: string;
+  }>;
+  related_verses_hadith?: {
+    verses: Array<{
+      reference: string;
+      translation: string;
+      relevance?: string;
+    }>;
+    hadith: Array<{
+      text: string;
+      source: string;
+      grade?: string;
+      relevance?: string;
+    }>;
+  };
 }
 
 interface CheckoutResponse {
@@ -58,47 +79,32 @@ export class ApiService {
   // Premium features
   async generateAIResponse(prompt: AIPrompt | string): Promise<AIResponse> {
     try {
-        console.log('Starting AI response generation...');
+        console.log('🚀 Starting AI response generation...', {
+            promptType: typeof prompt,
+            isString: typeof prompt === 'string',
+            content: typeof prompt === 'string' ? prompt : prompt.userMessage
+        });
         
         // Check if user is authenticated
         const isAuth = await this.authService.isAuthenticated();
+        console.log('🔒 Authentication check:', { isAuthenticated: isAuth });
+        
         if (!isAuth) {
-            console.log('User not authenticated');
+            console.error('❌ User not authenticated');
             this.notificationService.warning('Please sign in to use AI features');
             throw new Error('Authentication required');
         }
 
-        // Get fresh token first
-        console.log('Getting fresh auth token...');
+        // Get fresh token with force refresh
         const token = await this.authService.getToken(true);
+        console.log('🔑 Token status:', { 
+            hasToken: !!token,
+            tokenPreview: token ? token.substring(0, 10) + '...' : 'no token'
+        });
+        
         if (!token) {
-            console.log('No auth token available');
-            this.notificationService.error('Please sign in again');
-            throw new Error('No auth token available');
-        }
-
-        // Force refresh subscription status to get latest claims
-        console.log('Refreshing subscription status...');
-        await this.authService.refreshSubscriptionStatus();
-
-        // Check premium status with retries
-        let isPremium = false;
-        let retryCount = 0;
-        const maxRetries = 3;
-
-        while (!isPremium && retryCount < maxRetries) {
-            isPremium = await this.authService.isPremiumUser();
-            if (!isPremium) {
-                console.log(`Premium check attempt ${retryCount + 1} failed, retrying...`);
-                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between retries
-                retryCount++;
-            }
-        }
-
-        if (!isPremium) {
-            console.log('User is not premium after retries');
-            this.notificationService.warning('Premium subscription required to use AI features');
-            throw new Error('Premium subscription required');
+            console.error('❌ Failed to get auth token');
+            throw new Error('Failed to get auth token');
         }
 
         // Prepare request body
@@ -109,12 +115,19 @@ export class ApiService {
             maxTokens: typeof prompt === 'string' ? 1000 : (prompt.maxTokens ?? 2000)
         };
 
-        console.log('Making API request...');
-        return await firstValueFrom(
+        console.log('📤 Making API request...', {
+            endpoint: `${this.baseUrl}/api/ai/generate`,
+            hasPrompt: !!requestBody.prompt,
+            hasContext: !!requestBody.context
+        });
+        
+        // Make request with auth header
+        const response = await firstValueFrom(
             this.http.post<AIResponse>(`${this.baseUrl}/api/ai/generate`, requestBody, {
-                headers: {
+                headers: new HttpHeaders({
+                    'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
-                }
+                })
             }).pipe(
                 retry({
                     count: 2,
@@ -122,62 +135,47 @@ export class ApiService {
                     resetOnSuccess: true
                 }),
                 catchError(async (error: HttpErrorResponse) => {
-                    console.error('API request error:', error);
-                    let errorMessage = 'An error occurred while processing your request';
+                    console.error('❌ API request error:', {
+                        status: error.status,
+                        message: error.message,
+                        error: error.error,
+                        headers: error.headers.keys()
+                    });
                     
                     if (error.status === 401) {
-                        console.log('Received 401, attempting token refresh...');
-                        // Force token refresh and retry
+                        console.log('🔄 Attempting token refresh after 401...');
+                        // Try to refresh auth and retry once
+                        await this.authService.refreshAuth();
                         const newToken = await this.authService.getToken(true);
-                        if (!newToken) {
-                            throw new Error('Failed to refresh token');
-                        }
+                        if (!newToken) throw error;
                         
-                        console.log('Retrying request with new token...');
+                        console.log('🔄 Retrying request with new token...');
+                        // Retry with new token
                         return firstValueFrom(
-                            this.http.post<AIResponse>(
-                                `${this.baseUrl}/api/ai/generate`, 
-                                requestBody,
-                                {
-                                    headers: {
-                                        'Content-Type': 'application/json'
-                                    }
-                                }
-                            )
+                            this.http.post<AIResponse>(`${this.baseUrl}/api/ai/generate`, requestBody, {
+                                headers: new HttpHeaders({
+                                    'Authorization': `Bearer ${newToken}`,
+                                    'Content-Type': 'application/json'
+                                })
+                            })
                         );
                     }
                     
-                    if (error.status === 403) {
-                        if (error.error?.message?.includes('Premium')) {
-                            errorMessage = 'Premium subscription required to use AI features';
-                            // Refresh subscription status on 403
-                            await this.authService.refreshSubscriptionStatus();
-                        } else if (error.error?.message?.includes('limit')) {
-                            errorMessage = 'You have reached your AI request limit';
-                        }
-                    } else if (error.status === 429) {
-                        errorMessage = 'Too many requests. Please try again later.';
-                    } else if (error.status === 500 && error.error?.message?.includes('OpenAI')) {
-                        if (error.error.message.includes('capacity')) {
-                            errorMessage = 'GPT-4 is currently at capacity. Please try again in a few minutes.';
-                        } else if (error.error.message.includes('quota')) {
-                            errorMessage = 'AI quota exceeded. Please try again later.';
-                        } else {
-                            errorMessage = 'AI service is temporarily unavailable. Please try again later.';
-                        }
-                    } else if (error.error?.message) {
-                        errorMessage = error.error.message;
-                    }
-                    
-                    this.notificationService.error(errorMessage);
                     throw error;
                 })
             )
         );
+
+        console.log('✅ API request successful:', {
+            hasContent: !!response?.content,
+            hasError: !!response?.error,
+            success: response?.success
+        });
+
+        return response;
     } catch (error) {
-        console.error('API Request Error:', error);
+        console.error('❌ API Request Error:', error);
         if (error instanceof HttpErrorResponse && error.status === 401) {
-            // Clear auth state and redirect to login on persistent 401
             await this.authService.signOut();
         }
         throw error;
@@ -207,93 +205,75 @@ export class ApiService {
   // Specialized AI endpoints
   async generateDuaInsights(dua: any): Promise<AIResponse> {
     try {
-      const token = await this.authService.getToken();
+      console.log('🚀 Generating dua insights...', { duaId: dua.id, title: dua.title });
+      
+      const token = await this.authService.getToken(true);
       if (!token) {
+        console.error('❌ No auth token available');
         this.notificationService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
 
+      console.log('📤 Making insights request...');
       const response = await firstValueFrom(
         this.http.post<AIResponse>(`${this.baseUrl}/api/ai/dua/insights`, { dua }, {
-          headers: {
-            'Content-Type': 'application/json'
-          }
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          })
         }).pipe(
           retry({
-            count: 3,
+            count: 2,
             delay: 1000,
             resetOnSuccess: true
           }),
-          map(response => {
-            if (!response.success) {
-              throw new Error(response.message || 'Failed to generate insights');
-            }
-
-            // Add validation for GPT-4 specific JSON structure
-            if (!response.content || typeof response.content !== 'string') {
-              throw new Error('Invalid response format from AI service');
-            }
-
-            try {
-              // Validate JSON structure if content is JSON string
-              if (response.content.trim().startsWith('{')) {
-                const parsed = JSON.parse(response.content);
-                return {
-                  ...response,
-                  content: parsed.key_insights || parsed.understanding || response.content,
-                  virtues: Array.isArray(parsed.virtues_and_benefits) 
-                    ? parsed.virtues_and_benefits.join('\n') 
-                    : parsed.virtues_and_benefits || '',
-                  application: Array.isArray(parsed.practical_application)
-                    ? parsed.practical_application.join('\n')
-                    : parsed.practical_application || '',
-                  context: parsed.historical_context || '',
-                  impact: Array.isArray(parsed.spiritual_impact)
-                    ? parsed.spiritual_impact.join('\n')
-                    : parsed.spiritual_impact || '',
-                  explanation: parsed.key_insights || parsed.understanding || '',
-                  historicalContext: parsed.historical_context || '',
-                  reflectionPoints: Array.isArray(parsed.reflection_points)
-                    ? parsed.reflection_points
-                    : [],
-                  modernApplication: Array.isArray(parsed.practical_application)
-                    ? parsed.practical_application.join('\n')
-                    : parsed.practical_application || '',
-                  relatedVerses: parsed.related_references?.verses?.map((v: any) => 
-                    `${v.reference}: ${v.translation}`
-                  ) || []
-                };
-              }
-            } catch (e) {
-              console.warn('Error parsing JSON response:', e);
-              // Fall back to text response if JSON parsing fails
-              return {
-                ...response,
-                content: response.content
-              };
-            }
-
-            return response;
-          }),
-          catchError(error => {
-            console.error('Error in dua insights request:', error);
+          catchError(async (error: HttpErrorResponse) => {
+            console.error('❌ Insights request failed:', error);
             if (error.status === 401) {
-              this.notificationService.error('Please sign in again to continue');
-              this.authService.signOut();
+              console.log('🔄 Attempting token refresh...');
+              await this.authService.refreshAuth();
+              const newToken = await this.authService.getToken(true);
+              if (!newToken) throw error;
+              
+              return firstValueFrom(
+                this.http.post<AIResponse>(`${this.baseUrl}/api/ai/dua/insights`, { dua }, {
+                  headers: new HttpHeaders({
+                    'Authorization': `Bearer ${newToken}`,
+                    'Content-Type': 'application/json'
+                  })
+                })
+              );
             }
             throw error;
           })
         )
       );
 
+      console.log('✅ Insights response received:', {
+        success: response.success,
+        hasContent: !!response.content,
+        sections: Object.keys(response).filter(key => 
+          key in response && 
+          response[key as keyof AIResponse] !== undefined && 
+          response[key as keyof AIResponse] !== null
+        )
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Failed to generate insights');
+      }
+
       return response;
-    } catch (error) {
-      console.error('Error generating dua insights:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to generate insights:', error);
+      if (error instanceof HttpErrorResponse && error.status === 401) {
+        await this.authService.signOut();
+      }
       throw error;
     }
   }
 
-  async generateEmotionalDuaResponse(emotion: string, context: string): Promise<AIResponse> {
+  async generateEmotionalDuaResponse(emotion: string, context: string): Promise<any> {
     try {
       const token = await this.authService.getToken();
       if (!token) {
@@ -311,64 +291,6 @@ export class ApiService {
             if (!response.success) {
               throw new Error(response.message || 'Failed to process emotional dua search');
             }
-
-            // If response is already in the correct format, return it
-            if (response.content && typeof response.content === 'string') {
-              try {
-                // Try to parse the content as JSON first
-                const cleanedContent = response.content
-                  .replace(/\n/g, ' ')
-                  .replace(/\s+/g, ' ')
-                  .trim();
-                
-                if (cleanedContent.startsWith('{')) {
-                  const parsedContent = JSON.parse(cleanedContent);
-                  return {
-                    success: true,
-                    content: parsedContent.understanding || '',
-                    virtues: Array.isArray(parsedContent.recommended_duas) 
-                      ? parsedContent.recommended_duas.map((d: any) => 
-                          `${d.translation}\nVirtue: ${d.virtue}\nSource: ${d.source}`
-                      ).join('\n\n')
-                      : '',
-                    application: Array.isArray(parsedContent.practical_steps)
-                      ? parsedContent.practical_steps.join('\n')
-                      : typeof parsedContent.practical_steps === 'string'
-                        ? parsedContent.practical_steps
-                        : '',
-                    context: parsedContent.understanding || '',
-                    related: this.formatRelatedContent(parsedContent.related_verses_hadith),
-                    impact: parsedContent.prophetic_example || '',
-                    explanation: parsedContent.understanding || '',
-                    relatedVerses: parsedContent.related_verses_hadith?.verses?.map((v: any) => 
-                      `${v.reference}: ${v.translation}`
-                    ) || [],
-                    historicalContext: parsedContent.prophetic_example || '',
-                    reflectionPoints: response.reflectionPoints || [],
-                    modernApplication: response.modernApplication || ''
-                  };
-                }
-              } catch (e) {
-                console.warn('Error parsing JSON response:', e);
-                // Fall back to using the content as is
-                return {
-                  success: true,
-                  content: response.content,
-                  virtues: response.virtues || '',
-                  application: response.application || '',
-                  context: response.context || response.content || '',
-                  related: response.related || '',
-                  impact: response.impact || '',
-                  explanation: response.explanation || response.content || '',
-                  relatedVerses: response.relatedVerses || [],
-                  historicalContext: response.historicalContext || '',
-                  reflectionPoints: response.reflectionPoints || [],
-                  modernApplication: response.modernApplication || ''
-                };
-              }
-            }
-
-            // Return the response as is if it's already in the correct format
             return response;
           })
         )
@@ -379,6 +301,15 @@ export class ApiService {
       console.error('Error in emotional dua search:', error);
       throw error;
     }
+  }
+
+  // Helper method to extract related verses
+  private extractRelatedVerses(content: any): string[] {
+    if (!content?.related_verses_hadith?.verses) return [];
+    
+    return content.related_verses_hadith.verses.map((v: any) => 
+      `${v.reference}: ${v.translation}`
+    );
   }
 
   // Helper method to format related content

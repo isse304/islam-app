@@ -12,10 +12,13 @@
   },
   "private": true,
   "dependencies": {
+    "@angular-devkit/build-angular": "^16.2.0",
     "@angular/animations": "^16.2.0",
     "@angular/cdk": "^16.2.0",
+    "@angular/cli": "^16.2.0",
     "@angular/common": "^16.2.0",
     "@angular/compiler": "^16.2.0",
+    "@angular/compiler-cli": "^16.2.0",
     "@angular/core": "^16.2.0",
     "@angular/fire": "^16.0.0",
     "@angular/forms": "^16.2.0",
@@ -23,24 +26,22 @@
     "@angular/platform-browser": "^16.2.0",
     "@angular/platform-browser-dynamic": "^16.2.0",
     "@angular/router": "^16.2.0",
-    "@angular-devkit/build-angular": "^16.2.0",
-    "@angular/cli": "^16.2.0",
-    "@angular/compiler-cli": "^16.2.0",
     "@stripe/stripe-js": "^3.0.0",
     "@types/fuse": "2.6.2",
-    "firebase": "^10.7.0",
+    "autoprefixer": "^10.4.16",
+    "firebase": "10.14.1",
     "fuse.js": "7.1.0",
     "localforage": "1.10.0",
     "ngx-stripe": "^16.4.0",
+    "node-fetch": "3.3.2",
     "openai": "4.89.0",
+    "postcss": "^8.4.32",
     "rxjs": "~7.8.0",
     "serve": "^14.0.0",
+    "tailwindcss": "^3.4.0",
     "tslib": "^2.3.0",
     "typescript": "~5.1.6",
-    "zone.js": "~0.13.0",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0"
+    "zone.js": "~0.13.0"
   },
   "devDependencies": {
     "@types/jasmine": "~4.3.0",
@@ -54,5 +55,6 @@
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=9.0.0"
-  }
+  },
+  "type": "module"
 }

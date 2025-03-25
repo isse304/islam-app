@@ -4,5 +4,21 @@
     "secure": true,
     "changeOrigin": true,
     "logLevel": "debug"
+  },
+  "/api/alquran/*": {
+    "target": "https://api.alquran.cloud/v1",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/alquran": ""
+    }
+  },
+  "/api/quran/*": {
+    "target": "https://api.quran.com/api/v4",
+    "secure": true,
+    "changeOrigin": true,
+    "pathRewrite": {
+      "^/api/quran": ""
+    }
   }
 } 
