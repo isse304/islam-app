@@ -57,247 +57,155 @@ async function getAuthToken() {
     }
 }
 
-async function testDuaInsights(token) {
-    console.log('\nTesting dua insights endpoint...');
-    try {
-        const response = await fetch('http://localhost:3000/api/ai/dua/insights', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                dua: {
-                    id: 1,
-                    arabic: "اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ",
-                    translation: "Allah - there is no deity except Him, the Ever-Living, the Self-Sustaining. Neither drowsiness overtakes Him nor sleep. To Him belongs whatever is in the heavens and whatever is on the earth.",
-                    reference: "Quran 2:255 (Ayatul Kursi)",
-                    title: "Ayatul Kursi",
-                    virtue: "One of the greatest verses in the Quran, offering protection and blessings"
-                }
-            })
-        });
+async function testTafsirDatabase() {
+    console.log('\n🔍 Testing Tafsir Database Endpoints...');
 
-        console.log('Response status:', response.status);
+    const testCases = [
+        { source: 'ibn-kathir', surah: 5, verse: 5 },
+        { source: 'tabari', surah: 5, verse: 5 }
+    ];
+
+    for (const testCase of testCases) {
+        console.log(`\nTesting tafsir for ${testCase.source}, Surah ${testCase.surah}, Verse ${testCase.verse}:`);
         
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error('Server error:', errorText);
+        try {
+            const response = await fetch(
+                `http://localhost:3000/api/tafsir/${testCase.source}/${testCase.surah}/${testCase.verse}`
+            );
+
+            console.log('Response status:', response.status);
+            const responseText = await response.text();
+            
+            try {
+                const data = JSON.parse(responseText);
+                console.log('\n🔍 Response Analysis:');
+                console.log('1. Response Structure:');
+                console.log('- Has Text:', !!data.text);
+                console.log('- Text Length:', data.text ? data.text.length : 0);
+                console.log('- Has Metadata:', !!data.metadata);
+                
+                if (data.metadata) {
+                    console.log('\n2. Metadata Check:');
+                    console.log('- Source:', data.metadata.source);
+                    console.log('- Language:', data.metadata.language);
+                    console.log('- Reference:', data.metadata.reference);
+                }
+
+                if (data.text) {
+                    console.log('\n3. Content Preview:');
+                    console.log(data.text.substring(0, 200) + '...');
+                    
+                    // Quality checks
+                    console.log('\n4. Quality Checks:');
+                    console.log('- Contains HTML tags:', /<[^>]+>/g.test(data.text) ? '❌ Failed' : '✅ Passed');
+                    console.log('- Has content:', data.text.length > 100 ? '✅ Passed' : '❌ Failed');
+                    console.log('- Proper formatting:', /\n\n/.test(data.text) ? '✅ Passed' : '❌ Failed');
+                }
+
+                if (data.error) {
+                    console.log('\n⚠️ Error Response:');
+                    console.log('- Error:', data.error);
+                    console.log('- Text:', data.text);
+                }
+                
+            } catch (e) {
+                console.error('Error parsing response:', e);
+                console.error('Raw response:', responseText);
+            }
+        } catch (error) {
+            console.error('Error testing tafsir endpoint:', error);
+            console.error('Error details:', error.message);
+        }
+    }
+}
+
+async function testTafsirChat() {
+    console.log('\n🔍 Testing AI Tafsir Chat Endpoint...');
+    
+    try {
+        // Get auth token first
+        const token = await getAuthToken();
+        if (!token) {
+            console.error('Failed to get auth token');
             return;
         }
 
-        // Get the raw text response
-        const text = await response.text();
-        console.log('\nRaw response:', text);
+        const testCase = {
+            surah: 17,
+            verse: 5,
+            question: "Is this verse referring to the present or future?"
+        };
 
-        // Process each SSE message
-        const messages = text.split('\n\n').filter(msg => msg.trim());
+        console.log(`\nTesting AI Tafsir chat for Surah ${testCase.surah}, Verse ${testCase.verse}`);
         
-        for (const message of messages) {
-            if (message.startsWith('data: ')) {
-                try {
-                    const data = JSON.parse(message.slice(6));
-                    console.log('\nProcessed SSE message:', {
-                        status: data.status,
-                        hasData: !!data.data,
-                        hasError: !!data.error,
-                        details: data.details || null
-                    });
-
-                    if (data.status === 'error') {
-                        console.error('Server error:', {
-                            error: data.error,
-                            details: data.details
-                        });
-                        return;
-                    }
-
-                    if (data.status === 'complete' && data.data) {
-                        console.log('\n🔍 Analyzing complete response:');
-                        const insights = data.data;
-                        
-                        console.log('1. Basic Response Structure:');
-                        console.log('- Success:', insights.success);
-                        console.log('- Has Content:', !!insights.content);
-                        
-                        console.log('\n2. Spiritual Advice Section Check:');
-                        const spiritualAdvice = insights.spiritual_advice || {};
-                        console.log('Understanding:', spiritualAdvice.understanding ? '✅ Present' : '❌ Missing');
-                        console.log('Duas:', spiritualAdvice.duas?.length ? `✅ Present (${spiritualAdvice.duas.length} items)` : '❌ Missing');
-                        console.log('Dhikr:', spiritualAdvice.dhikr?.length ? `✅ Present (${spiritualAdvice.dhikr.length} items)` : '❌ Missing');
-                        console.log('Scholarly Guidance:', spiritualAdvice.scholarly_guidance?.length ? `✅ Present (${spiritualAdvice.scholarly_guidance.length} items)` : '❌ Missing');
-                        console.log('Spiritual Remedies:', spiritualAdvice.spiritual_remedies?.length ? `✅ Present (${spiritualAdvice.spiritual_remedies.length} items)` : '❌ Missing');
-
-                        console.log('\n3. Sample Content Check:');
-                        if (spiritualAdvice.duas?.[0]) {
-                            console.log('\nFirst Dua:');
-                            console.log(JSON.stringify(spiritualAdvice.duas[0], null, 2));
-                        }
-                        if (spiritualAdvice.dhikr?.[0]) {
-                            console.log('\nFirst Dhikr:');
-                            console.log(JSON.stringify(spiritualAdvice.dhikr[0], null, 2));
-                        }
-                        if (spiritualAdvice.scholarly_guidance?.[0]) {
-                            console.log('\nFirst Scholar Quote:');
-                            console.log(JSON.stringify(spiritualAdvice.scholarly_guidance[0], null, 2));
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error parsing SSE message:', e);
-                    console.error('Raw message:', message);
-                }
+        const response = await fetch(
+            'http://localhost:3000/api/tafsir/chat',
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(testCase)
             }
-        }
-    } catch (error) {
-        console.error('Error testing dua insights:', error);
-        console.error('Error details:', error.message);
-    }
-}
-
-async function testEmotionalDuas(token) {
-    console.log('\nTesting emotional dua search endpoint...');
-    try {
-        const response = await fetch('http://localhost:3000/api/ai/dua/emotional-search', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                emotion: 'angry',
-                context: 'feeling upset and struggling to control anger'
-            })
-        });
+        );
 
         console.log('Response status:', response.status);
         const responseText = await response.text();
         
         try {
             const data = JSON.parse(responseText);
-            console.log('\n🔍 Detailed Response Analysis:');
-            console.log('1. Basic Response Structure:');
-            console.log('- Success:', data.success);
-            console.log('- Has Content:', !!data.content);
-            console.log('- Content Preview:', data.content ? data.content.substring(0, 100) + '...' : 'No content');
-            
-            console.log('\n2. Required Sections Check:');
-            const requiredSections = {
-                'Spiritual Advice': data.spiritual_advice?.understanding?.length > 0,
-                'Related Verses': data.related_verses_hadith?.verses?.length > 0,
-                'Related Hadith': data.related_verses_hadith?.hadith?.length > 0,
-                'Historical Context': !!data.prophetic_example,
-                'Practical Steps': data.practical_steps?.length > 0,
-                'Quranic Guidance': data.quranic_guidance?.length > 0,
-                'Reflection Points': data.reflection_points?.length > 0
-            };
-
-            console.log('Section Status:');
-            Object.entries(requiredSections).forEach(([section, exists]) => {
-                console.log(`- ${section}: ${exists ? '✅ Present' : '❌ Missing'}`);
-            });
-
-            const missingRequiredSections = Object.entries(requiredSections)
-                .filter(([_, exists]) => !exists)
-                .map(([section]) => section);
-
-            if (missingRequiredSections.length > 0) {
-                console.warn('\n⚠️ Warning: Missing Required Sections:', missingRequiredSections.join(', '));
-            } else {
-                console.log('\n✅ All required sections are present');
-            }
-            
-            console.log('\n3. Sample Content:');
-            if (data.spiritual_advice?.duas?.[0]) {
-                console.log('\nFirst Recommended Dua:');
-                console.log(JSON.stringify(data.spiritual_advice.duas[0], null, 2));
-            }
-            if (data.spiritual_advice?.dhikr?.[0]) {
-                console.log('\nFirst Dhikr Recommendation:');
-                console.log(JSON.stringify(data.spiritual_advice.dhikr[0], null, 2));
-            }
-            if (data.related_verses_hadith?.verses?.[0]) {
-                console.log('\nFirst Related Verse:');
-                console.log(JSON.stringify(data.related_verses_hadith.verses[0], null, 2));
-            }
-            
-        } catch (e) {
-            console.error('Error parsing response:', e);
-            console.error('Raw response:', responseText);
-            console.error('Parse error:', e.message);
-        }
-    } catch (error) {
-        console.error('Error testing emotional dua search:', error);
-        console.error('Error details:', error.message);
-    }
-}
-
-async function testAITafsirChat(token) {
-    console.log('\nTesting AI tafsir chat endpoint...');
-    try {
-        const response = await fetch('http://localhost:3000/api/ai/tafsir/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
-                surah: 1,
-                verse: 1,
-                question: "What is the deeper meaning of 'Al-Rahman Al-Raheem' in this verse?"
-            })
-        });
-
-        console.log('Response status:', response.status);
-        const responseText = await response.text();
-        
-        try {
-            const data = JSON.parse(responseText);
-            console.log('\n🔍 Tafsir Response Analysis:');
-            console.log('1. Basic Response Structure:');
+            console.log('\n🔍 Response Analysis:');
+            console.log('1. Response Structure:');
             console.log('- Success:', data.success);
             console.log('- Has Content:', !!data.content);
             console.log('- Content Length:', data.content ? data.content.length : 0);
+            console.log('- Source Type:', data.source || 'tafsir');
             
-            console.log('\n2. Content Preview:');
+            if (data.sources) {
+                console.log('\n2. Sources Used:');
+                data.sources.forEach(source => {
+                    console.log(`- ${source.name} (${source.language})`);
+                });
+            }
+
             if (data.content) {
-                console.log(data.content.substring(0, 200) + '...');
+                console.log('\n3. Content Preview:');
+                console.log(data.content.substring(0, 500) + '...');
+                
+                // Quality checks
+                console.log('\n4. Quality Checks:');
+                console.log('- Contains source citations:', data.content.includes('Ibn Kathir') || data.content.includes('Tabari') ? '✅ Passed' : '❌ Failed');
+                console.log('- Has substantial content:', data.content.length > 200 ? '✅ Passed' : '❌ Failed');
+                console.log('- Mentions tafsir sources:', data.sources && data.sources.length > 0 ? '✅ Passed' : '❌ Failed');
+            }
+
+            if (data.error) {
+                console.log('\n⚠️ Error Response:');
+                console.log('- Error:', data.error);
             }
             
         } catch (e) {
             console.error('Error parsing response:', e);
             console.error('Raw response:', responseText);
-            console.error('Parse error:', e.message);
         }
     } catch (error) {
-        console.error('Error testing AI tafsir chat:', error);
+        console.error('Error testing tafsir chat endpoint:', error);
         console.error('Error details:', error.message);
     }
 }
 
 async function testEndpoints() {
     try {
-        console.log('Getting auth token...');
-        const token = await getAuthToken();
-        if (!token) {
-            console.error('Failed to get auth token');
-            return;
-        }
-        console.log('Got token:', token.substring(0, 20) + '...');
-
-        // Test all endpoints
-        console.log('\n🔍 Testing all endpoints...');
+        console.log('Testing Tafsir Database Implementation...');
         
-        // 1. Test dua insights (pre-generated)
-        console.log('\n1️⃣ Testing Dua Insights (Pre-generated):');
-        await testDuaInsights(token);
+        // Test raw tafsir database endpoints
+        console.log('\n1️⃣ Testing Raw Tafsir Database:');
+        await testTafsirDatabase();
 
-        // 2. Test emotional dua search (GPT-4)
-        console.log('\n2️⃣ Testing Emotional Dua Search (GPT-4):');
-        await testEmotionalDuas(token);
-
-        // 3. Test AI tafsir chat (GPT-4)
-        console.log('\n3️⃣ Testing AI Tafsir Chat (GPT-4):');
-        await testAITafsirChat(token);
+        // Test AI tafsir chat endpoint
+        console.log('\n2️⃣ Testing AI Tafsir Chat:');
+        await testTafsirChat();
 
     } catch (error) {
         console.error('Error testing endpoints:', error);

@@ -10,6 +10,7 @@ import userRouter from './routes/user';
 import usageRouter from './routes/usage';
 import quranRouter from './routes/quran';
 import subscriptionRouter from './routes/subscription';
+import tafsirRoutes from './routes/tafsir';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -121,6 +122,7 @@ app.use('/api/users', userRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);
 app.use('/api/subscription', subscriptionRouter);
+app.use('/api/tafsir', tafsirRoutes);
 
 // Basic session check endpoint
 app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {

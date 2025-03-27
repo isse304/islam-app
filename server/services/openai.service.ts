@@ -27,15 +27,17 @@ export class OpenAIService {
                 messages: [
                     {
                         role: "system",
-                        content: "You are a knowledgeable Islamic scholar who provides accurate and respectful information about Islam."
+                        content: "You are a knowledgeable Islamic scholar who provides accurate and respectful information about Islam, always citing sources directly."
                     },
                     {
                         role: "user",
                         content: prompt
                     }
                 ],
-                temperature: 0.7,
-                max_tokens: 500
+                temperature: 0.2,
+                max_tokens: 1000,
+                frequency_penalty: 1.0,
+                presence_penalty: 1.0
             });
 
             console.log('2. Response generated successfully');

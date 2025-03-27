@@ -1,92 +1,137 @@
 import { Injectable } from '@angular/core';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, from } from 'rxjs';
 import { FirebaseAuthService } from './firebase-auth.service';
-import { map } from 'rxjs/operators';
+import { map, switchMap } from 'rxjs/operators';
+import { User } from 'firebase/auth';
+import { getAuth, onAuthStateChanged } from 'firebase/auth';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthStateService {
   private isAuthenticatedSubject = new BehaviorSubject<boolean>(false);
+  private isPremiumSubject = new BehaviorSubject<boolean>(false);
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
   private readonly PREMIUM_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+  private auth = getAuth();
 
   isAuthenticated$ = this.isAuthenticatedSubject.asObservable();
+  isPremiumUser$ = this.isPremiumSubject.asObservable();
+  currentUser$ = this.currentUserSubject.asObservable();
 
   constructor(private firebaseAuthService: FirebaseAuthService) {
-    // Check for cached user first for immediate UI response
-    this.checkCachedUser();
+    // Initialize with cached state for immediate UI response
+    this.checkCachedState();
     
-    // Then check formal auth status
-    this.checkAuthStatus();
-    
-    // Update auth state periodically
-    setInterval(() => {
-      this.updateAuthState();
-    }, 60000); // Check every minute
-
-    // Subscribe to auth changes to recheck premium status
-    this.firebaseAuthService.user$.subscribe(user => {
-      // Update auth state when user state changes
-      const isAuthenticated = !!user;
-      this.setAuthenticated(isAuthenticated);
+    // Set up real-time auth state monitoring
+    onAuthStateChanged(this.auth, async (user) => {
+      console.log('Auth state changed:', { isAuthenticated: !!user, userId: user?.uid });
+      
+      // Update current user subject
+      this.currentUserSubject.next(user);
+      
+      // Update authentication state
+      this.isAuthenticatedSubject.next(!!user);
+      
+      if (user) {
+        // User is signed in
+        localStorage.setItem('currentUser', JSON.stringify({
+          uid: user.uid,
+          email: user.email,
+          timestamp: Date.now()
+        }));
+        localStorage.setItem('isAuthenticated', 'true');
+        
+        // Check premium status
+        await this.checkPremiumStatus(user);
+      } else {
+        // User is signed out
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('isAuthenticated');
+        localStorage.removeItem('premium_status');
+        localStorage.removeItem('premium_status_timestamp');
+        this.isPremiumSubject.next(false);
+      }
     });
+
+    // Periodic token refresh and state verification
+    setInterval(async () => {
+      const user = this.auth.currentUser;
+      if (user) {
+        try {
+          await user.getIdToken(true); // Force token refresh
+          await this.checkPremiumStatus(user);
+        } catch (error) {
+          console.error('Error refreshing token:', error);
+          this.handleAuthError();
+        }
+      }
+    }, 5 * 60 * 1000); // Check every 5 minutes
   }
 
-  // Check localStorage for cached user data (for immediate UI response)
-  private checkCachedUser() {
+  private async checkPremiumStatus(user: User) {
+    try {
+      console.log('Checking premium status for user:', user.uid);
+      const tokenResult = await user.getIdTokenResult(true);
+      const claims = tokenResult.claims as Record<string, any>;
+      
+      console.log('Token claims:', {
+        premium: claims['premium'],
+        features: claims['features'],
+        exp: tokenResult.expirationTime
+      });
+
+      const isPremium = claims['premium'] === true;
+      console.log('Premium status determined:', isPremium);
+      
+      this.isPremiumSubject.next(isPremium);
+      localStorage.setItem('premium_status', String(isPremium));
+      localStorage.setItem('premium_status_timestamp', String(Date.now()));
+    } catch (error) {
+      console.error('Error checking premium status:', error);
+      this.isPremiumSubject.next(false);
+    }
+  }
+
+  private checkCachedState() {
     try {
       const cachedUser = localStorage.getItem('currentUser');
-      if (cachedUser) {
-        // We have a cached user, so we can assume authenticated state
-        // This gives us immediate UI feedback before Firebase auth completes
-        this.setAuthenticated(true);
+      const cachedAuth = localStorage.getItem('isAuthenticated') === 'true';
+      const cachedPremium = localStorage.getItem('premium_status') === 'true';
+      
+      if (cachedUser && cachedAuth) {
+        this.isAuthenticatedSubject.next(true);
+        this.isPremiumSubject.next(cachedPremium);
+      } else {
+        this.handleAuthError();
       }
     } catch (error) {
-      // Ignore errors when checking cache
+      this.handleAuthError();
     }
   }
 
-  setAuthenticated(value: boolean) {
-    this.isAuthenticatedSubject.next(value);
-    localStorage.setItem('isAuthenticated', value.toString());
+  private handleAuthError() {
+    this.isAuthenticatedSubject.next(false);
+    this.isPremiumSubject.next(false);
+    this.currentUserSubject.next(null);
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('premium_status');
+    localStorage.removeItem('premium_status_timestamp');
   }
 
-  private checkAuthStatus() {
-    const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
-    this.setAuthenticated(isAuthenticated);
-  }
-
-  private async updateAuthState() {
-    try {
-      const token = await this.firebaseAuthService.getToken();
-      const isAuthenticated = !!token;
-      this.setAuthenticated(isAuthenticated);
-    } catch (error) {
-      // Reduce console noise
-      console.log('Auth state update: User not authenticated');
-      this.setAuthenticated(false);
+  async refreshAuthState() {
+    const user = this.auth.currentUser;
+    if (user) {
+      try {
+        await user.getIdToken(true);
+        await this.checkPremiumStatus(user);
+      } catch (error) {
+        console.error('Error refreshing auth state:', error);
+        this.handleAuthError();
+      }
+    } else {
+      this.handleAuthError();
     }
-  }
-
-  get isPremiumUser$(): Observable<boolean> {
-    return this.firebaseAuthService.user$.pipe(
-      map(user => {
-        if (!user) return false;
-
-        // Check cached premium status first
-        const premiumStatus = localStorage.getItem('premium_status');
-        const premiumTimestamp = localStorage.getItem('premium_status_timestamp');
-        
-        if (premiumStatus && premiumTimestamp) {
-          const isPremiumValid = (Date.now() - parseInt(premiumTimestamp)) < this.PREMIUM_CACHE_DURATION;
-          if (isPremiumValid) {
-            return premiumStatus === 'true' || user.isPremium === true;
-          }
-        }
-
-        // If cache is invalid or missing, use user object's premium status
-        return user.isPremium === true;
-      })
-    );
   }
 } 

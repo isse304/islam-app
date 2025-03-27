@@ -8,10 +8,11 @@ import { NotificationService } from './notification.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 interface TafsirResponse {
-  explanation: string;
-  context: string;
-  modernApplication: string;
-  relatedHadith?: string[];
+  success: boolean;
+  content: string;
+  sources?: Array<{ name: string; language: string }>;
+  source?: 'tafsir_sources' | 'ai_fallback';
+  error?: string;
 }
 
 interface AIPrompt {
@@ -23,9 +24,10 @@ interface AIPrompt {
 
 export interface AIResponse {
   success: boolean;
-  content?: string;
+  content: string;
+  sources?: Array<{ name: string; language: string }>;
+  source?: 'ai_fallback' | 'tafsir_sources' | 'tafsir';
   error?: string;
-  message?: string;
   virtues?: string;
   application?: string;
   context?: string;
@@ -36,28 +38,6 @@ export interface AIResponse {
   historicalContext?: string;
   reflectionPoints?: string[];
   modernApplication?: string;
-  insights?: string;
-  quranic_guidance?: string[];
-  prophetic_example?: string;
-  practical_steps?: string[];
-  recommended_duas?: Array<{
-    translation: string;
-    virtue: string;
-    source: string;
-  }>;
-  related_verses_hadith?: {
-    verses: Array<{
-      reference: string;
-      translation: string;
-      relevance?: string;
-    }>;
-    hadith: Array<{
-      text: string;
-      source: string;
-      grade?: string;
-      relevance?: string;
-    }>;
-  };
 }
 
 interface CheckoutResponse {
@@ -77,109 +57,39 @@ export class ApiService {
   ) {}
 
   // Premium features
-  async generateAIResponse(prompt: AIPrompt | string): Promise<AIResponse> {
-    try {
-        console.log('🚀 Starting AI response generation...', {
-            promptType: typeof prompt,
-            isString: typeof prompt === 'string',
-            content: typeof prompt === 'string' ? prompt : prompt.userMessage
-        });
-        
-        // Check if user is authenticated
-        const isAuth = await this.authService.isAuthenticated();
-        console.log('🔒 Authentication check:', { isAuthenticated: isAuth });
-        
-        if (!isAuth) {
-            console.error('❌ User not authenticated');
-            this.notificationService.warning('Please sign in to use AI features');
-            throw new Error('Authentication required');
-        }
-
-        // Get fresh token with force refresh
-        const token = await this.authService.getToken(true);
-        console.log('🔑 Token status:', { 
-            hasToken: !!token,
-            tokenPreview: token ? token.substring(0, 10) + '...' : 'no token'
-        });
-        
-        if (!token) {
-            console.error('❌ Failed to get auth token');
-            throw new Error('Failed to get auth token');
-        }
-
-        // Prepare request body
-        const requestBody = {
-            prompt: typeof prompt === 'string' ? prompt : prompt.userMessage,
-            context: typeof prompt === 'string' ? undefined : prompt.systemMessage,
-            temperature: typeof prompt === 'string' ? 0.7 : (prompt.temperature ?? 0.4),
-            maxTokens: typeof prompt === 'string' ? 1000 : (prompt.maxTokens ?? 2000)
-        };
-
-        console.log('📤 Making API request...', {
-            endpoint: `${this.baseUrl}/api/ai/generate`,
-            hasPrompt: !!requestBody.prompt,
-            hasContext: !!requestBody.context
-        });
-        
-        // Make request with auth header
-        const response = await firstValueFrom(
-            this.http.post<AIResponse>(`${this.baseUrl}/api/ai/generate`, requestBody, {
-                headers: new HttpHeaders({
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                })
-            }).pipe(
-                retry({
-                    count: 2,
-                    delay: 1000,
-                    resetOnSuccess: true
-                }),
-                catchError(async (error: HttpErrorResponse) => {
-                    console.error('❌ API request error:', {
-                        status: error.status,
-                        message: error.message,
-                        error: error.error,
-                        headers: error.headers.keys()
-                    });
-                    
-                    if (error.status === 401) {
-                        console.log('🔄 Attempting token refresh after 401...');
-                        // Try to refresh auth and retry once
-                        await this.authService.refreshAuth();
-                        const newToken = await this.authService.getToken(true);
-                        if (!newToken) throw error;
-                        
-                        console.log('🔄 Retrying request with new token...');
-                        // Retry with new token
-                        return firstValueFrom(
-                            this.http.post<AIResponse>(`${this.baseUrl}/api/ai/generate`, requestBody, {
-                                headers: new HttpHeaders({
-                                    'Authorization': `Bearer ${newToken}`,
-                                    'Content-Type': 'application/json'
-                                })
-                            })
-                        );
-                    }
-                    
-                    throw error;
-                })
-            )
-        );
-
-        console.log('✅ API request successful:', {
-            hasContent: !!response?.content,
-            hasError: !!response?.error,
-            success: response?.success
-        });
-
-        return response;
-    } catch (error) {
-        console.error('❌ API Request Error:', error);
-        if (error instanceof HttpErrorResponse && error.status === 401) {
-            await this.authService.signOut();
-        }
-        throw error;
+  async generateAIResponse(prompt: {
+    systemMessage: string;
+    userMessage: string;
+    temperature?: number;
+    maxTokens?: number;
+  }): Promise<{ content: string }> {
+    const token = await this.authService.getToken();
+    if (!token) {
+      throw new Error('Not authenticated');
     }
+
+    const response = await fetch(`${this.baseUrl}/api/ai/generate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        prompt: prompt.userMessage,
+        systemMessage: prompt.systemMessage,
+        temperature: prompt.temperature,
+        maxTokens: prompt.maxTokens
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('AI generation error:', error);
+      throw new Error(`Failed to generate AI response: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return { content: data.content || data.response };
   }
 
   // Free features
@@ -342,26 +252,65 @@ export class ApiService {
     return result.trim();
   }
 
-  async generateTafsirResponse(surah: number, verse: number, question: string): Promise<AIResponse> {
+  async generateTafsirResponse(
+    surah: number, 
+    verse: number, 
+    question: string, 
+    selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir',
+    isFirstResponse: boolean = false
+  ): Promise<AIResponse> {
     try {
-        const token = await this.authService.getToken();
-        if (!token) {
-            this.notificationService.warning('Please sign in to use AI features');
-            throw new Error('Authentication required');
-        }
+      const token = await this.authService.getToken();
+      if (!token) {
+        this.notificationService.warning('Please sign in to use AI features');
+        throw new Error('Authentication required');
+      }
 
-        const response = await firstValueFrom(
-            this.http.post<AIResponse>(`${this.baseUrl}/api/ai/tafsir/chat`, { surah, verse, question }, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            })
-        );
+      const response = await firstValueFrom(
+        this.http.post<TafsirResponse>(
+          `${this.baseUrl}/api/tafsir/chat`,
+          { surah, verse, question, selectedTafsir, isFirstResponse },
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        ).pipe(
+          map(response => {
+            if (!response.success) {
+              throw new Error(response.error || 'Failed to generate tafsir response');
+            }
 
-        return response;
+            // Format the response based on the source
+            let formattedContent = response.content;
+
+            // Add source information if available
+            if (response.sources && response.sources.length > 0) {
+              formattedContent += '\n\nSources Referenced:';
+              response.sources.forEach(source => {
+                formattedContent += `\n- ${source.name}`;
+              });
+            }
+
+            // Add fallback notice if no tafsir sources were available
+            if (response.source === 'ai_fallback') {
+              formattedContent = 'Note: This explanation is based on general Islamic knowledge as no direct tafsir sources were available for this verse.\n\n' + formattedContent;
+            }
+
+            return {
+              success: true,
+              content: formattedContent,
+              sources: response.sources || [],
+              source: response.source
+            };
+          })
+        )
+      );
+
+      return response;
     } catch (error) {
-        console.error('Error in tafsir chat:', error);
-        throw error;
+      console.error('Error in tafsir chat:', error);
+      throw error;
     }
   }
 

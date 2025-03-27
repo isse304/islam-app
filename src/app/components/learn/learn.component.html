@@ -1,85 +1,108 @@
 <div class="min-h-screen bg-[#FAF3E0] py-8">
     <div class="container mx-auto px-4">
-      <div class="grid lg:grid-cols-3 gap-8">
-        <!-- Verse Selection Panel -->
-        <div class="bg-white rounded-xl shadow-lg p-6">
-          <h2 class="text-2xl font-semibold text-[#B7A57A] mb-6">Select Verse</h2>
-          <div class="space-y-4">
-            <div>
-              <label class="block text-gray-700 mb-2">Surah</label>
-              <select [(ngModel)]="selectedSurah" 
-                      (change)="updateVerseCount()"
-                      class="w-full p-2 border rounded-lg">
-                <option *ngFor="let surah of surahs" [value]="surah.number">
-                  {{surah.number}}. {{surah.englishName}}
-                </option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-gray-700 mb-2">Verse</label>
+      <div class="grid lg:grid-cols-2 gap-8">
+        <!-- Current Verse Section with Selection Controls -->
+        <div class="bg-white rounded-xl shadow-lg p-6 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+          <div class="flex items-center gap-4 mb-6">
+            <select [(ngModel)]="selectedSurah" 
+                    (change)="updateVerseCount()"
+                    class="flex-1 p-2 border rounded-lg">
+              <option *ngFor="let surah of surahs" [value]="surah.number">
+                {{surah.number}}. {{surah.englishName}}
+              </option>
+            </select>
+            
+            <div class="flex items-center gap-2">
+              <button (click)="previousVerse()" 
+                      class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
+                      [disabled]="selectedVerse <= 1"
+                      matTooltip="Previous verse (←)">
+                <mat-icon>arrow_back</mat-icon>
+              </button>
+              
               <select [(ngModel)]="selectedVerse" 
                       (change)="loadVerse()"
-                      class="w-full p-2 border rounded-lg">
-                <option *ngFor="let i of [].constructor(verseCounts); let idx = index" 
-                        [value]="idx + 1">
-                  Verse {{idx + 1}}
+                      class="p-2 border rounded-lg w-24"
+                      [attr.aria-label]="'Select verse'">
+                <option *ngFor="let verse of verseNumbers" [value]="verse">
+                  {{verse}}
                 </option>
               </select>
-            </div>
-            <div>
-              <label class="block text-gray-700 mb-2">Tafsir Source</label>
-              <select [(ngModel)]="selectedTafsir" 
-                      (change)="onTafsirChange()"
-                      class="w-full p-2 border rounded-lg">
-                <option value="ibn-kathir">Tafsir Ibn Kathir</option>
-                <option value="tabari">Tafsir Al-Tabari</option>
-                <option value="maududi">Tafsir Maududi</option>
-              </select>
+              
+              <button (click)="nextVerse()"
+                      class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
+                      [disabled]="selectedVerse >= verseCounts"
+                      matTooltip="Next verse (→)">
+                <mat-icon>arrow_forward</mat-icon>
+              </button>
             </div>
           </div>
-        </div>
-  
-        <!-- Current Verse Display -->
-        <div class="bg-white rounded-xl shadow-lg p-6">
-          <h2 class="text-2xl font-semibold text-[#B7A57A] mb-6">Current Verse</h2>
-          <div class="space-y-2">
-            <div class="verse-meaning space-y-3 mb-6">
-              <p class="arabic-text text-right" dir="rtl">
+
+          <div class="verse-meaning space-y-6">
+            <div class="arabic-verse">
+              <p class="text-right text-4xl leading-[2] font-uthmanic" dir="rtl">
                 {{ currentVerse }}
               </p>
-              <p class="translation text-gray-800 text-lg leading-relaxed">
+            </div>
+            <div class="translation">
+              <p class="text-gray-800 text-lg leading-relaxed">
                 {{ translation }}
               </p>
             </div>
-            <div class="mt-6 border-t pt-4" *ngIf="authStateService.isPremiumUser$ | async">
-              <div class="flex justify-between items-center mb-3">
-                <h3 class="text-lg font-medium text-[#B7A57A]">AI Summary</h3>
+          </div>
+
+          <div class="mt-6 border-t pt-4" *ngIf="authStateService.isPremiumUser$ | async">
+            <div class="flex justify-between items-center mb-3">
+              <h3 class="text-lg font-medium text-[#B7A57A]">
+                <mat-icon class="align-middle mr-2">auto_stories</mat-icon>
+                AI Enhanced Explanation
+              </h3>
+              <div class="flex items-center gap-2">
+                <select [(ngModel)]="selectedTafsir" 
+                        (change)="onTafsirChange()"
+                        class="p-2 border rounded-lg">
+                  <option value="ibn-kathir">Ibn Kathir</option>
+                  <option value="tabari">Al-Tabari</option>
+                </select>
+                <button (click)="clearCache()" 
+                        class="text-gray-500 hover:text-[#B7A57A] transition-colors"
+                        matTooltip="Clear AI cache">
+                  <mat-icon>cached</mat-icon>
+                </button>
               </div>
-              <p class="text-gray-600">{{ aiSummary }}</p>
             </div>
+            <div class="prose max-w-none" [innerHTML]="aiSummary | markdown"></div>
           </div>
         </div>
   
         <!-- Chat Interface -->
         <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" *ngIf="authStateService.isPremiumUser$ | async">
-          <!-- Chat Interface Header -->
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold text-[#B7A57A]">AI Tafsir Chat</h2>
+            <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
+              <mat-icon class="mr-2">chat</mat-icon>
+              AI Tafsir Chat
+            </h2>
+            <button (click)="clearChat()" 
+                    class="text-gray-500 hover:text-red-500 transition-colors"
+                    matTooltip="Clear chat history">
+              <mat-icon>delete_outline</mat-icon>
+            </button>
           </div>
           
-          <!-- Messages Container -->
-          <div class="flex-1 overflow-y-auto mb-4 space-y-4">
-            <div *ngFor="let message of messages" 
-                 [class.text-right]="message.role === 'user'"
-                 class="mb-4">
-              <div [class.bg-[#B7A57A15]]="message.role === 'user'"
-                   [class.bg-gray-100]="message.role === 'assistant'"
-                   class="inline-block rounded-lg px-4 py-2 max-w-[80%] relative">
-                <p class="text-gray-800">{{ message.content }}</p>
-                <div class="flex justify-end mt-2 gap-2">
-                  <span class="text-xs text-gray-500">
-                    {{ message.timestamp | date:'shortTime' }}
-                  </span>
+          <div class="flex-1 overflow-y-auto p-4 space-y-4" #chatContainer>
+            <div *ngFor="let message of messages" class="flex flex-col">
+              <div [ngClass]="message.role === 'user' ? 
+                             'ml-auto bg-[#B7A57A] text-white' : 
+                             'mr-auto bg-gradient-to-br from-[#FAF3E0] to-white'" 
+                   class="rounded-2xl p-6 max-w-[85%] break-words shadow-lg hover:shadow-xl transition-all border border-[#B7A57A15]">
+                <div class="prose prose-lg max-w-none" 
+                     [ngClass]="{'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant'}"
+                     [innerHTML]="message.content | markdown">
+                </div>
+                <div [ngClass]="message.role === 'user' ? 'text-white/70' : 'text-gray-500'"
+                     class="text-xs mt-4 font-medium flex items-center gap-2">
+                  <mat-icon class="text-sm">schedule</mat-icon>
+                  {{ message.timestamp | date:'shortTime' }}
                 </div>
               </div>
             </div>
@@ -89,17 +112,17 @@
             </div>
           </div>
   
-          <!-- Input Area -->
-          <div class="flex gap-2">
+          <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
             <input type="text" 
                    [(ngModel)]="userQuestion"
                    (keyup.enter)="sendQuestion()"
                    placeholder="Ask about this verse..."
-                   class="flex-1 p-2 border rounded-lg focus:outline-none focus:border-[#B7A57A]">
+                   class="flex-1 p-3 border rounded-xl focus:outline-none focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A15] transition-all">
             <button (click)="sendQuestion()"
                     [disabled]="isLoading || !userQuestion.trim()"
-                    class="bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65] transition-colors disabled:opacity-50">
-              Send
+                    class="bg-[#B7A57A] text-white px-6 py-3 rounded-xl hover:bg-[#9b8a65] transition-colors disabled:opacity-50 disabled:hover:bg-[#B7A57A] flex items-center gap-2">
+              <span class="hidden sm:inline">Send</span>
+              <mat-icon>send</mat-icon>
             </button>
           </div>
         </div>
@@ -115,5 +138,138 @@
 }
 .premium-overlay {
   backdrop-filter: blur(4px);
+}
+
+.prose :where(h1, h2, h3, h4) {
+  color: #B7A57A;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: -0.025em;
+}
+
+.prose :where(ul, ol) {
+  padding-left: 1.5em;
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+}
+
+.prose :where(li) {
+  margin-top: 0.375em;
+  margin-bottom: 0.375em;
+  position: relative;
+  padding-left: 0.5em;
+}
+
+.prose :where(p) {
+  margin-top: 0.75em;
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+  font-family: 'Poppins', sans-serif;
+}
+
+.prose :where(blockquote) {
+  border-left: 3px solid #B7A57A;
+  padding: 1em 1.5em;
+  background: #FAF3E0;
+  border-radius: 0.5em;
+  margin: 1.5em 0;
+  font-style: italic;
+  color: #4a5568;
+}
+
+.prose :where(strong) {
+  color: #B7A57A;
+  font-weight: 600;
+}
+
+.prose :where(a) {
+  color: #B7A57A;
+  text-decoration: none;
+  border-bottom: 1px dashed #B7A57A;
+  transition: all 0.2s;
+}
+
+.prose :where(a):hover {
+  border-bottom: 1px solid #B7A57A;
+}
+
+.prose :where(code) {
+  background: #FAF3E0;
+  padding: 0.2em 0.4em;
+  border-radius: 0.3em;
+  font-size: 0.9em;
+  color: #B7A57A;
+}
+
+/* Special styling for source citations */
+.prose p:first-of-type {
+  font-size: 1.1em;
+  color: #B7A57A;
+  font-weight: 500;
+  padding: 0.5em 1em;
+  background: #FAF3E015;
+  border-radius: 0.5em;
+  border-left: 3px solid #B7A57A;
+}
+
+/* Icons in headers */
+.prose h2:before {
+  content: '📖';
+  margin-right: 0.5em;
+}
+
+.prose h3:before {
+  content: '🔍';
+  margin-right: 0.5em;
+}
+
+/* Beautiful list styling */
+.prose ul {
+  list-style: none;
+}
+
+.prose ul li:before {
+  content: '•';
+  color: #B7A57A;
+  font-weight: bold;
+  display: inline-block;
+  width: 1em;
+  margin-left: -1em;
+}
+
+.verse-header {
+  font-family: 'Poppins', sans-serif;
+  letter-spacing: 0.025em;
+}
+
+.chat-message-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.chat-message-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #B7A57A #F3F4F6;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #B7A57A;
+  border-radius: 8px;
 }
 </style> 

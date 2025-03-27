@@ -47,6 +47,21 @@ userUsageSchema.methods.incrementAIRequestCount = async function(): Promise<void
 };
 
 userUsageSchema.methods.canMakeAIRequest = async function(): Promise<boolean> {
+    // Check if last request was on a different day
+    const now = new Date();
+    const lastRequest = this.aiRequests.lastRequest;
+    
+    if (lastRequest) {
+        const lastRequestDate = new Date(lastRequest);
+        if (lastRequestDate.getDate() !== now.getDate() || 
+            lastRequestDate.getMonth() !== now.getMonth() || 
+            lastRequestDate.getFullYear() !== now.getFullYear()) {
+            // Reset count if it's a new day
+            this.aiRequests.count = 0;
+            await this.save();
+        }
+    }
+    
     return this.aiRequests.count < this.aiRequestLimit;
 };
 

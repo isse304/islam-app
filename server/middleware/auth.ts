@@ -103,8 +103,13 @@ export const withAuth = (handler?: (req: Request, res: Response) => Promise<void
         // Additional validation for AI endpoints
         if (req.path.includes('/api/ai/')) {
           console.log('AI endpoint detected, validating premium status');
-          const isPremium = decodedToken.premium === true || 
-                          (decodedToken.features && Object.values(decodedToken.features).some(v => v === true));
+          const isPremium = decodedToken.premium === true;
+          
+          console.log('Premium validation:', {
+            premium: decodedToken.premium,
+            features: decodedToken.features,
+            isPremium: isPremium
+          });
           
           if (!isPremium) {
             console.error('Premium access required for AI endpoint');

@@ -72,6 +72,13 @@ export interface UserPreferences {
     bookmarks: string[];
 }
 
+interface ReadingHistoryEntry {
+  surah: number;
+  verse: number;
+  timestamp: string;
+  [key: string]: any;  // Allow additional properties
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -124,12 +131,19 @@ export class FirebaseAuthService {
   // Add a flag to track if refresh timer is started
   private refreshTimerStarted = false;
 
+  private readonly TOKEN_CACHE_KEY = 'firebase_auth_token';
+  private readonly TOKEN_CACHE_DURATION = 55 * 60 * 1000; // 55 minutes
+  private cachedToken: { token: string; timestamp: number } | null = null;
+
   constructor(
     private router: Router,
     private http: HttpClient,
     private ngZone: NgZone,
     //private auth: Auth
   ) {
+    // Initialize token from cache
+    this.initTokenFromCache();
+    
     // Initialize user state from localStorage immediately for faster UI response
     this.initFromCache();
     
@@ -443,38 +457,35 @@ export class FirebaseAuthService {
   }
 
   async getToken(forceRefresh = false): Promise<string | null> {
+    // Check cache first unless force refresh is requested
+    if (!forceRefresh && this.cachedToken) {
+      const age = Date.now() - this.cachedToken.timestamp;
+      if (age < this.TOKEN_CACHE_DURATION) {
+        return this.cachedToken.token;
+      }
+    }
+
     try {
-      console.log('🔑 Getting token:', { forceRefresh });
-      
+      await this.waitForAuthReady();
       const user = this.auth.currentUser;
       if (!user) {
-        console.warn('❌ No user found when getting token');
+        console.debug('No user found when getting token');
         return null;
       }
 
-      // Get raw token without Bearer prefix
       const token = await user.getIdToken(forceRefresh);
-      
-      if (!token) {
-        console.error('❌ Failed to get ID token');
-        return null;
+      if (token) {
+        // Cache the token
+        this.cachedToken = {
+          token,
+          timestamp: Date.now()
+        };
+        // Also store in localStorage for persistence
+        localStorage.setItem(this.TOKEN_CACHE_KEY, JSON.stringify(this.cachedToken));
       }
-
-      // Log token details for debugging
-      console.log('🎫 Token obtained:', { 
-        hasToken: !!token,
-        length: token.length,
-        format: 'Raw Firebase JWT',
-        preview: token.substring(0, 20) + '...'
-      });
-
-      // Store raw token in localStorage
-      localStorage.setItem('auth_token', token);
-      localStorage.setItem('auth_token_timestamp', Date.now().toString());
-
       return token;
     } catch (error) {
-      console.error('❌ Error getting token:', error);
+      console.error('Error getting token:', error);
       return null;
     }
   }
@@ -967,50 +978,113 @@ export class FirebaseAuthService {
   }
 
   // Save reading history entry
-  async saveReadingHistory(entry: any): Promise<void> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      throw new Error('No user logged in');
-    }
-
-    // Save to localStorage first
+  async saveReadingHistory(entry: ReadingHistoryEntry): Promise<void> {
     try {
-      const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-      if (!Array.isArray(prefs.readingHistory)) {
-        prefs.readingHistory = [];
-      }
-      
-      // Add new entry at the beginning
-      prefs.readingHistory.unshift({
+      // Add timestamp to entry
+      const historyEntry: ReadingHistoryEntry = {
         ...entry,
         timestamp: new Date().toISOString()
-      });
-      
-      // Keep only last 100 entries
-      prefs.readingHistory = prefs.readingHistory.slice(0, 100);
-      
-      // Save back to localStorage
-      localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-    } catch (error) {
-      console.warn('Error saving history to localStorage:', error);
-    }
+      };
 
-    // Then save to server
-    try {
-      const token = await user.getIdToken(true);
-      await this.http.post<any>(
-        `${environment.apiUrl}/api/users/${user.uid}/reading-history`,
-        entry,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+      // Save to localStorage first for immediate feedback and state persistence
+      try {
+        const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+        if (!Array.isArray(prefs.readingHistory)) {
+          prefs.readingHistory = [];
         }
-      ).toPromise();
+        
+        // Remove any existing entries for the same surah/verse to avoid duplicates
+        prefs.readingHistory = prefs.readingHistory.filter((h: ReadingHistoryEntry) => 
+          !(h.surah === entry.surah && h.verse === entry.verse)
+        );
+        
+        // Add new entry at the beginning
+        prefs.readingHistory.unshift(historyEntry);
+        
+        // Keep only last 100 entries
+        prefs.readingHistory = prefs.readingHistory.slice(0, 100);
+        
+        // Save back to localStorage
+        localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
+        
+        // Also save as last read position
+        localStorage.setItem('last_quran_position', JSON.stringify({
+          surah: entry.surah,
+          verse: entry.verse,
+          timestamp: new Date().toISOString()
+        }));
+      } catch (error) {
+        console.warn('Error saving history to localStorage:', error);
+      }
+
+      // Try to get user from BehaviorSubject first as it's faster
+      const currentUser = this._user.getValue();
+      if (currentUser?.id) {
+        await this.saveReadingHistoryToServer(currentUser.id, historyEntry);
+        return;
+      }
+
+      // If no user in BehaviorSubject, check Firebase
+      const user = this.auth.currentUser;
+      if (!user) {
+        // Don't throw error, just log warning as this is non-critical functionality
+        console.warn('No user logged in, reading history saved only locally');
+        return;
+      }
+
+      await this.saveReadingHistoryToServer(user.uid, historyEntry);
     } catch (error) {
-      console.error('Error saving reading history to server:', error);
-      throw error;
+      console.warn('Error saving reading history:', error);
+      // Don't throw error as this is non-critical functionality
+    }
+  }
+
+  // Helper method to save reading history to server with retries
+  private async saveReadingHistoryToServer(userId: string, entry: any): Promise<void> {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        const token = await this.getToken();
+        if (!token) {
+          console.warn('No auth token available, skipping server save');
+          return;
+        }
+
+        await this.http.post<any>(
+          `${environment.apiUrl}/api/users/${userId}/reading-history`,
+          entry,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          }
+        ).toPromise();
+        
+        return; // Success, exit
+      } catch (error) {
+        retries--;
+        if (retries === 0) {
+          console.warn('Failed to save reading history to server after retries');
+          return;
+        }
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  // Get last read position
+  getLastReadPosition(): { surah: number; verse: number; timestamp: string } | null {
+    try {
+      const lastPosition = localStorage.getItem('last_quran_position');
+      if (lastPosition) {
+        return JSON.parse(lastPosition);
+      }
+      return null;
+    } catch (error) {
+      console.warn('Error getting last read position:', error);
+      return null;
     }
   }
 
@@ -1683,5 +1757,32 @@ export class FirebaseAuthService {
     }
     // ... rest of the method ...
     return throwError(errorMessage);
+  }
+
+  public async waitForAuthReady(): Promise<void> {
+    // Implement the logic to wait for auth to be ready
+    // This is a placeholder and should be replaced with the actual implementation
+    // based on your Firebase setup and AngularFireAuth service
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Placeholder wait
+  }
+
+  private initTokenFromCache() {
+    try {
+      const cached = localStorage.getItem(this.TOKEN_CACHE_KEY);
+      if (!cached) return;
+
+      const parsedToken = JSON.parse(cached);
+      if (!parsedToken?.timestamp) return;
+
+      const age = Date.now() - parsedToken.timestamp;
+      if (age < this.TOKEN_CACHE_DURATION) {
+        this.cachedToken = parsedToken;
+      } else {
+        localStorage.removeItem(this.TOKEN_CACHE_KEY);
+      }
+    } catch (error) {
+      console.warn('Error initializing token from cache:', error);
+      this.cachedToken = null;
+    }
   }
 } 

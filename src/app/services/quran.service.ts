@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, map, forkJoin, catchError, of, firstValueFrom, from, mergeMap } from 'rxjs';
+import { Observable, map, forkJoin, catchError, of, firstValueFrom, from, mergeMap, retry } from 'rxjs';
 import { OpenAI } from 'openai';
 import { environment } from '../../environments/environment';
 import { ApiService } from './api.service';
+import { FirebaseAuthService } from './firebase-auth.service';
 
 export interface QuranVerse {
   number: number;
@@ -192,14 +193,37 @@ export class QuranService {
   private baseUrl = '/api/alquran';
   private quranComUrl = '/api/quran';
   private readonly CACHE_KEY = 'quran_cache';
+  private readonly SURAH_CACHE_KEY = 'surah_cache';
+  private selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir';
   private cache: {
     verseSummaries: { [key: string]: string };
     tafsirExplanations: { [key: string]: string };
-  } = {
-    verseSummaries: {},
-    tafsirExplanations: {}
-  };
-  
+    surahs: { [key: string]: QuranVerse[] };
+  } = this.initializeCache();
+
+  private initializeCache() {
+    const defaultCache = {
+      verseSummaries: {},
+      tafsirExplanations: {},
+      surahs: {}
+    };
+
+    try {
+      const savedCache = localStorage.getItem(this.CACHE_KEY);
+      if (!savedCache) return defaultCache;
+
+      const parsedCache = JSON.parse(savedCache);
+      return {
+        verseSummaries: parsedCache.verseSummaries || {},
+        tafsirExplanations: parsedCache.tafsirExplanations || {},
+        surahs: parsedCache.surahs || {}
+      };
+    } catch (error) {
+      console.error('Error loading cache:', error);
+      return defaultCache;
+    }
+  }
+
   readonly reciters = [
     { id: 1, name: 'Mishary Alafasy', identifier: 'ar.alafasy', surahIdentifier: 'ar.alafasy', style: 'Murattal' },
     { id: 2, name: 'Abdul Basit', identifier: 'ar.abdulbasitmurattal', surahIdentifier: 'ar.abdulbasitmurattal', style: 'Murattal' },
@@ -226,22 +250,14 @@ export class QuranService {
 
   private chatHistory: Map<string, ChatHistory> = new Map();
 
-  constructor(private http: HttpClient, private apiService: ApiService) {
+  constructor(
+    private http: HttpClient, 
+    private apiService: ApiService,
+    private authService: FirebaseAuthService
+  ) {
     this.getSurahList().subscribe(
       surahs => this._surahs = surahs
     );
-    this.loadCache();
-  }
-
-  private loadCache() {
-    try {
-      const savedCache = localStorage.getItem(this.CACHE_KEY);
-      if (savedCache) {
-        this.cache = JSON.parse(savedCache);
-      }
-    } catch (error) {
-      console.error('Error loading Quran cache:', error);
-    }
   }
 
   private saveCache() {
@@ -253,13 +269,18 @@ export class QuranService {
   }
 
   getSurah(surahNumber: number, translationId: string = '131', reciterId: number = 1): Observable<QuranVerse[]> {
+    // Check cache first
+    const cacheKey = `${surahNumber}_${translationId}`;
+    if (this.cache.surahs[cacheKey]) {
+      console.log('Returning cached surah data for:', cacheKey);
+      return of(this.cache.surahs[cacheKey]);
+    }
+
     // Ensure the translationId is a string
     const safeTranslationId = String(translationId);
     console.log(`QuranService: Getting surah ${surahNumber} with translation ID: "${safeTranslationId}" and reciter ID: ${reciterId}`);
     
     const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,translation,transliteration&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
-    
-    console.log(`QuranService: API URL: ${quranComUrl}`);
     
     return this.http.get(quranComUrl).pipe(
       map((response: any) => {
@@ -268,22 +289,7 @@ export class QuranService {
           throw new Error('Invalid response format');
         }
         
-        console.log(`QuranService: Received ${response.verses.length} verses from API`);
-        
-        if (response.verses.length > 0) {
-          const firstVerse = response.verses[0];
-          console.log(`QuranService: First verse translations array:`, firstVerse.translations);
-          
-          if (!firstVerse.translations || firstVerse.translations.length === 0) {
-            console.error('QuranService: No translations received in response');
-          }
-        }
-        
-        return response.verses.map((verse: any) => {
-          if (!verse.translations?.[0]?.text) {
-            console.error(`QuranService: Missing translation for verse ${verse.verse_number}`);
-          }
-          
+        const verses = response.verses.map((verse: any) => {
           const mappedVerse = {
             number: verse.verse_number,
             text: verse.text_uthmani,
@@ -296,32 +302,63 @@ export class QuranService {
               transliteration: word.transliteration?.text || ''
             })) || []
           };
-          
           return mappedVerse;
         });
+
+        // Cache the result
+        this.cache.surahs[cacheKey] = verses;
+        this.saveCache();
+        
+        return verses;
       }),
       catchError(error => {
         console.error('QuranService: Error fetching surah:', error);
+        // If we have cached data, return it as fallback
+        if (this.cache.surahs[cacheKey]) {
+          console.log('Returning cached data as fallback after error');
+          return of(this.cache.surahs[cacheKey]);
+        }
         throw error;
+      }),
+      retry({
+        count: 3,
+        delay: 1000,
+        resetOnSuccess: true
       })
     );
   }
 
   getVerse(surahNumber: number, verseNumber: number): Observable<QuranVerse> {
-    return this.http.get(`${this.baseUrl}/ayah/${surahNumber}:${verseNumber}/editions/quran-uthmani,en.asad`).pipe(
-      map((response: any) => {
-        const [arabic, translation] = response.data;
+    const url = `https://api.qurancdn.com/api/qdc/verses/by_key/${surahNumber}:${verseNumber}?words=true&translation_fields=text&translations=131&fields=text_uthmani,chapter_id,verse_number,verse_key`;
+    
+    return this.http.get<any>(url).pipe(
+      map(response => {
+        if (!response?.verse) {
+          throw new Error('Invalid verse response format');
+        }
+        
+        const verse = response.verse;
         return {
-          number: arabic.numberInSurah,
-          text: arabic.text,
-          translation: translation.text.replace(/<[^>]*>.*?<\/[^>]*>/g, ''), // Remove HTML tags and content
-          transliteration: arabic.text, // Keep original Arabic for transliteration
-          audio: this.getVerseAudioUrl(1, `${surahNumber}:${verseNumber}`), // Use default reciter ID 1
-          words: arabic.text.split(' ').map((word: string) => ({
-            text: word,
-            translation: ''
-          }))
+          number: verse.verse_number,
+          text: verse.text_uthmani,
+          translation: verse.translations?.[0]?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || 'Translation not available',
+          transliteration: verse.words?.map((word: any) => word.transliteration?.text || '').join(' ') || '',
+          audio: this.getVerseAudioUrl(1, `${surahNumber}:${verseNumber}`),
+          words: verse.words?.map((word: any) => ({
+            text: word.text_uthmani || '',
+            translation: word.translation?.text || '',
+            transliteration: word.transliteration?.text || ''
+          })) || []
         };
+      }),
+      catchError(error => {
+        console.error('Error fetching verse:', error);
+        throw error;
+      }),
+      retry({
+        count: 3,
+        delay: 1000,
+        resetOnSuccess: true
       })
     );
   }
@@ -367,29 +404,24 @@ export class QuranService {
     console.log('Fetching tafsir from:', url);
     
     return this.http.get(url).pipe(
-      map((response: any) => {
-        console.log('Raw Tafsir response:', response);
-        if (!response?.tafsir?.text) {
-          throw new Error('Tafsir structure not found in response');
+      map(response => {
+        if (!response || !(response as any).tafsir?.text) {
+          throw new Error('Tafsir not found');
         }
-        
-        // Clean up the HTML and format the text
-        const cleanText = response.tafsir.text
-          .replace(/<h2>/g, '\n\n') // Add newlines before headers
-          .replace(/<\/h2>/g, '\n') // Add newline after headers
-          .replace(/<p>/g, '\n') // Add newline for paragraphs
-          .replace(/<\/p>/g, '') // Remove closing paragraph tags
-          .replace(/<[^>]+>/g, '') // Remove any remaining HTML tags
-          .replace(/\n\s*\n/g, '\n\n') // Remove extra blank lines
-          .trim(); // Remove extra whitespace
-        
         return {
-          text: cleanText
+          text: (response as any).tafsir.text
+            .replace(/<h2>/g, '\n\n')
+            .replace(/<\/h2>/g, '\n')
+            .replace(/<p>/g, '\n')
+            .replace(/<\/p>/g, '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\n\s*\n/g, '\n\n')
+            .trim()
         };
       }),
       catchError(error => {
         console.error('Tafsir error:', error);
-        return of({ text: `${tafsirId.startsWith('en.') ? 'English' : 'Arabic'} Tafsir not available` });
+        return of({ text: 'Tafsir not available' });
       })
     );
   }
@@ -711,27 +743,18 @@ export class QuranService {
     surah: number, 
     verse: number, 
     question: string, 
-    tafsirSource: string
+    selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir',
+    isFirstResponse: boolean = false
   ): Observable<string> {
-    const cacheKey = `${surah}:${verse}:${question}`;
+    const cacheKey = `${surah}:${verse}:${question}:${selectedTafsir}`;
     
     // Check cache first
     if (this.cache.tafsirExplanations[cacheKey]) {
       return of(this.cache.tafsirExplanations[cacheKey]);
     }
 
-    return from(this.getVerse(surah, verse).pipe(
-      mergeMap(async verseData => {
-        const prompt = {
-          systemMessage: "You are a knowledgeable Islamic scholar specializing in tafsir.",
-          userMessage: `Question about Surah ${surah}, Verse ${verse}: ${question}\n
-                      Verse Text: ${verseData?.text || 'Not available'}\n
-                      Translation: ${verseData?.translation || 'Not available'}`,
-          temperature: 0,
-          maxTokens: 1000
-        };
-
-        const response = await this.apiService.generateAIResponse(prompt);
+    return from(this.apiService.generateTafsirResponse(surah, verse, question, selectedTafsir, isFirstResponse)).pipe(
+      map(response => {
         const explanation = response.content || 'No explanation available';
         
         // Cache the result
@@ -740,7 +763,7 @@ export class QuranService {
         
         return explanation;
       })
-    ));
+    );
   }
 
   getVerseCount(surahNumber: number): Observable<SurahData> {
@@ -753,30 +776,18 @@ export class QuranService {
   getVerseSummary(surah: number, verse: number): Observable<string> {
     const cacheKey = `${surah}:${verse}`;
     
-    // Check cache first
     if (this.cache.verseSummaries[cacheKey]) {
       return of(this.cache.verseSummaries[cacheKey]);
     }
 
-    return from(this.getVerse(surah, verse).pipe(
-      mergeMap(async verseData => {
-        const prompt = {
-          systemMessage: "Provide a bulleted, clear summary of this Quranic verse.",
-          userMessage: `Summarize this verse:\n${verseData?.text}\nTranslation: ${verseData?.translation}`,
-          temperature: 0,
-          maxTokens: 200
-        };
-        
-        const response = await this.apiService.generateAIResponse(prompt);
-        const summary = response.content || 'Summary not available';
-        
-        // Cache the result
+    return from(this.apiService.generateTafsirResponse(surah, verse, 'Provide a comprehensive explanation of this verse based on the tafsir.', this.selectedTafsir, true)).pipe(
+      map(response => {
+        const summary = response.content || 'Explanation not available';
         this.cache.verseSummaries[cacheKey] = summary;
         this.saveCache();
-        
         return summary;
       })
-    ));
+    );
   }
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {
@@ -836,5 +847,22 @@ export class QuranService {
     }
     
     return globalAyah;
+  }
+
+  setSelectedTafsir(tafsir: 'ibn-kathir' | 'tabari') {
+    this.selectedTafsir = tafsir;
+    // Clear the verse summaries cache when tafsir source changes
+    this.cache.verseSummaries = {};
+    this.saveCache();
+  }
+
+  clearCache() {
+    this.cache = {
+      verseSummaries: {},
+      tafsirExplanations: {},
+      surahs: {}
+    };
+    this.saveCache();
+    console.log('QuranService cache cleared');
   }
 }
