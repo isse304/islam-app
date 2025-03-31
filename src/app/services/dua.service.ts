@@ -9,6 +9,7 @@ import { ApiService } from './api.service';
 import { environment } from '../../environments/environment';
 import { EmotionalDuaResponse } from '../types/dua.types';
 import { FirebaseAuthService } from './firebase-auth.service';
+import duaInsightsData from '../../../server/data/dua-insights.json';
 
 export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness';
 
@@ -47,7 +48,33 @@ export interface DuaInsightsResponse {
   reflectionPoints: string[];
   modernApplication: string;
   relatedVerses: string[];
-  related?: string; // Optional field for backward compatibility
+  related?: string;
+  spiritual_advice?: {
+    understanding?: string;
+    duas?: Array<{
+      arabic: string;
+      translation: string;
+      reference: string;
+      virtue: string;
+    }>;
+    dhikr?: Array<{
+      phrase: string;
+      translation: string;
+      count: string;
+      timing: string;
+      benefit: string;
+    }>;
+    scholarly_guidance?: Array<{
+      quote: string;
+      scholar: string;
+      source: string;
+    }>;
+    spiritual_remedies?: Array<{
+      practice: string;
+      method: string;
+      benefit: string;
+    }>;
+  };
 }
 
 export interface StreamingResponse {
@@ -325,96 +352,244 @@ export class DuaService {
   }
 
   getDuaInsights(duaId: string): Observable<ResponseType> {
+    console.log(`Getting insights for dua ${duaId}`);
+    
+    // Check local insights first
+    const localInsights = this.getLocalInsights(duaId);
+    if (localInsights) {
+        console.log('Found local insights, using those');
+        return of(localInsights);
+    }
+
+    // If no local insights, try the API
     return from(this.authService.getToken()).pipe(
-      switchMap(token => {
-        if (!token) {
-          throw new Error('No authentication token available');
-        }
+        switchMap(token => {
+            if (!token) {
+                console.error('No auth token available');
+                return throwError(() => new Error('No authentication token available'));
+            }
 
-        return new Observable<ResponseType>(observer => {
-          const xhr = new XMLHttpRequest();
-          let seenBytes = 0;
-          
-          xhr.open('POST', `${this.apiUrl}/api/ai/dua/insights?refresh=true&t=${new Date().getTime()}`);
-          xhr.setRequestHeader('Content-Type', 'application/json');
-          xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-          xhr.setRequestHeader('Accept', 'text/event-stream');
-
-          xhr.onreadystatechange = () => {
-            if (xhr.readyState === 3) {  // Loading/Streaming
-              const newData = xhr.responseText.substring(seenBytes);
-              seenBytes = xhr.responseText.length;
-
-              const events = newData.split('\n\n').filter(e => e.trim());
-              events.forEach(event => {
-                if (event.startsWith('data: ')) {
-                  try {
-                    const data = JSON.parse(event.substring(6)) as ResponseType;
-                    
-                    // Only emit if it's a dua insights response and matches the requested dua ID
-                    if (this.isStreamingResponse(data)) {
-                      if (data.data?.duaId === parseInt(duaId)) {
-                        observer.next(data);
-                      }
-                      if (data.status === 'complete' || data.status === 'error') {
-                        xhr.abort();
-                        observer.complete();
-                      }
-                    } else if ('duaId' in data && data.duaId === parseInt(duaId)) {
-                      observer.next(data);
+            return new Observable<ResponseType>(observer => {
+                const xhr = new XMLHttpRequest();
+                let seenBytes = 0;
+                let hasEmittedData = false;
+                let timeoutId: any;
+                
+                // Set a timeout of 30 seconds
+                timeoutId = setTimeout(() => {
+                    if (!hasEmittedData) {
+                        console.log('Request timed out, checking cache...');
+                        const cachedInsights = this.aiInsightsCache[duaId];
+                        if (cachedInsights) {
+                            try {
+                                const parsedInsights = JSON.parse(cachedInsights);
+                                observer.next(parsedInsights);
+                                hasEmittedData = true;
+                                observer.complete();
+                            } catch (error) {
+                                observer.error(new Error('Failed to parse cached insights'));
+                            }
+                        } else {
+                            observer.error(new Error('Request timed out and no cached data available'));
+                        }
                     }
-                  } catch (error) {
-                    console.error('Error parsing SSE message:', error);
-                  }
+                    xhr.abort();
+                }, 30000);
+                
+                xhr.open('POST', `${this.apiUrl}/api/ai/dua/insights?refresh=true&t=${new Date().getTime()}`);
+                xhr.setRequestHeader('Content-Type', 'application/json');
+                xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+                xhr.setRequestHeader('Accept', 'text/event-stream');
+
+                xhr.onreadystatechange = () => {
+                    console.log(`ReadyState changed to: ${xhr.readyState}`);
+                    
+                    if (xhr.readyState === 3 || xhr.readyState === 4) {  // Loading/Streaming or Complete
+                        const newData = xhr.responseText.substring(seenBytes);
+                        seenBytes = xhr.responseText.length;
+
+                        if (xhr.readyState === 4) {
+                            console.log('Request completed. Status:', xhr.status);
+                            console.log('Final response:', xhr.responseText);
+                        }
+
+                        if (!newData && xhr.readyState === 4 && !hasEmittedData) {
+                            console.log('No new data received, checking alternatives...');
+                            // Try to get insights from local data first
+                            const localInsights = this.getLocalInsights(duaId);
+                            if (localInsights) {
+                                console.log('Found local insights, using those');
+                                observer.next(localInsights);
+                                hasEmittedData = true;
+                            } else {
+                                // If no local insights, try cache
+                                const cachedInsights = this.aiInsightsCache[duaId];
+                                if (cachedInsights) {
+                                    console.log('Found cached insights, using those');
+                                    try {
+                                        const parsedInsights = JSON.parse(cachedInsights);
+                                        observer.next(parsedInsights);
+                                        hasEmittedData = true;
+                                    } catch (error) {
+                                        console.error('Failed to parse cached insights:', error);
+                                        observer.error(new Error('Failed to parse cached insights'));
+                                    }
+                                } else if (!hasEmittedData) {
+                                    console.error('No insights available from any source');
+                                    observer.error(new Error('No insights available'));
+                                }
+                            }
+                            observer.complete();
+                            return;
+                        }
+
+                        const events = newData.split('\n\n').filter(e => e.trim());
+                        events.forEach(event => {
+                            if (event.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(event.substring(6)) as ResponseType;
+                                    console.log('Received data:', data);
+                                    
+                                    if (this.isStreamingResponse(data)) {
+                                        if (data.data?.duaId === parseInt(duaId)) {
+                                            observer.next(data);
+                                            hasEmittedData = true;
+                                        }
+                                        if (data.status === 'complete' || data.status === 'error') {
+                                            if (data.status === 'complete' && data.data) {
+                                                this.aiInsightsCache[duaId] = JSON.stringify(data.data);
+                                                hasEmittedData = true;
+                                            }
+                                            clearTimeout(timeoutId);
+                                            observer.complete();
+                                        }
+                                    } else if ('duaId' in data && data.duaId === parseInt(duaId)) {
+                                        observer.next(data);
+                                        hasEmittedData = true;
+                                        this.aiInsightsCache[duaId] = JSON.stringify(data);
+                                    }
+                                } catch (error) {
+                                    console.error('Error parsing SSE message:', error);
+                                    if (!hasEmittedData) {
+                                        // Try local insights before giving up
+                                        const localInsights = this.getLocalInsights(duaId);
+                                        if (localInsights) {
+                                            observer.next(localInsights);
+                                            hasEmittedData = true;
+                                            observer.complete();
+                                        } else {
+                                            observer.error(error);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                };
+
+                xhr.onerror = (error) => {
+                    console.error('XHR error:', error);
+                    clearTimeout(timeoutId);
+                    if (!hasEmittedData) {
+                        const localInsights = this.getLocalInsights(duaId);
+                        if (localInsights) {
+                            observer.next(localInsights);
+                            hasEmittedData = true;
+                            observer.complete();
+                        } else {
+                            observer.error(error);
+                        }
+                    }
+                };
+
+                // Get the dua details from all categories
+                const allDuas = Object.values(this.localDuas).flat();
+                const dua = allDuas.find((d: Dua) => d.id.toString() === duaId);
+                if (!dua) {
+                    clearTimeout(timeoutId);
+                    observer.error(new Error('Dua not found'));
+                    return;
                 }
-              });
-            }
-          };
 
-          xhr.onerror = (error) => {
-            console.error('XHR error:', error);
-            observer.error(error);
-          };
+                // Send the request with complete dua data
+                try {
+                    xhr.send(JSON.stringify({ 
+                        dua: {
+                            id: parseInt(duaId),
+                            title: dua.title,
+                            arabic: dua.arabic,
+                            translation: dua.translation,
+                            reference: dua.reference,
+                            category: dua.category,
+                            virtue: dua.virtue
+                        }
+                    }));
+                } catch (error) {
+                    console.error('Error sending request:', error);
+                    clearTimeout(timeoutId);
+                    // Try local insights before giving up
+                    const localInsights = this.getLocalInsights(duaId);
+                    if (localInsights) {
+                        observer.next(localInsights);
+                        hasEmittedData = true;
+                        observer.complete();
+                    } else {
+                        observer.error(error);
+                    }
+                }
 
-          // Get the dua details from all categories
-          const allDuas = Object.values(this.localDuas).flat();
-          const dua = allDuas.find((d: Dua) => d.id.toString() === duaId);
-          if (!dua) {
-            observer.error(new Error('Dua not found'));
-            return;
-          }
-
-          // Send the request with complete dua data
-          xhr.send(JSON.stringify({ 
-            dua: {
-              id: parseInt(duaId),
-              title: dua.title,
-              arabic: dua.arabic,
-              translation: dua.translation,
-              reference: dua.reference,
-              category: dua.category,
-              virtue: dua.virtue
-            }
-          }));
-
-          return () => {
-            xhr.abort();
-          };
-        });
-      })
+                return () => {
+                    clearTimeout(timeoutId);
+                    xhr.abort();
+                };
+            });
+        })
     );
-  }
+}
 
-  private isStreamingResponse(response: ResponseType): response is StreamingResponse {
+private getLocalInsights(duaId: string): ResponseType | null {
+    try {
+        console.log('Looking for local insights in duaInsightsData');
+        const duaInsight = duaInsightsData.find((insight: any) => insight.duaId === parseInt(duaId));
+        if (duaInsight) {
+            console.log('Found local insights for dua:', duaId);
+            
+            // Return the insights directly since they're already in the correct format
+            return {
+                success: true,
+                duaId: parseInt(duaId),
+                content: duaInsight.content || '',
+                virtues: Array.isArray(duaInsight.virtues) ? duaInsight.virtues.join('\n• ') : (duaInsight.virtues || ''),
+                application: Array.isArray(duaInsight.application) ? duaInsight.application.join('\n• ') : (duaInsight.application || ''),
+                context: duaInsight.historical_context || '',
+                impact: '',
+                explanation: '',
+                historicalContext: duaInsight.historical_context || '',
+                reflectionPoints: duaInsight.reflection_points || [],
+                modernApplication: '',
+                relatedVerses: [],
+                related: '',
+                spiritual_advice: duaInsight.spiritual_advice || {}
+            };
+        }
+        console.log('No local insights found for dua:', duaId);
+        return null;
+    } catch (error) {
+        console.error('Error loading local insights:', error);
+        return null;
+    }
+}
+
+private isStreamingResponse(response: ResponseType): response is StreamingResponse {
     return 'status' in response;
-  }
+}
 
-  extractEmotionsFromText(text: string): Observable<string[]> {
+extractEmotionsFromText(text: string): Observable<string[]> {
     // Use local emotion extraction instead of API call
     return of(this.extractEmotionsLocally(text));
-  }
+}
 
-  private extractEmotionsLocally(text: string): string[] {
+private extractEmotionsLocally(text: string): string[] {
     const emotionKeywords = {
       'anxious': ['worried', 'nervous', 'stressed', 'uneasy', 'fearful', 'tense', 'restless', 'apprehensive', 'concerned'],
       'sad': ['depressed', 'unhappy', 'down', 'blue', 'sorrowful', 'heartbroken', 'grief', 'melancholy', 'gloomy'],
@@ -443,9 +618,9 @@ export class DuaService {
     }
 
     return foundEmotions;
-  }
+}
 
-  private getFromCache(key: string): any {
+private getFromCache(key: string): any {
     try {
       const cached = localStorage.getItem(key);
       if (!cached) return null;

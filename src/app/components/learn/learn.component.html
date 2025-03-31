@@ -96,7 +96,10 @@
                              'mr-auto bg-gradient-to-br from-[#FAF3E0] to-white'" 
                    class="rounded-2xl p-6 max-w-[85%] break-words shadow-lg hover:shadow-xl transition-all border border-[#B7A57A15]">
                 <div class="prose prose-lg max-w-none" 
-                     [ngClass]="{'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant'}"
+                     [ngClass]="{
+                       'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant',
+                       'prose-headings:text-white prose-a:text-white prose-strong:text-white': message.role === 'user'
+                     }"
                      [innerHTML]="message.content | markdown">
                 </div>
                 <div [ngClass]="message.role === 'user' ? 'text-white/70' : 'text-gray-500'"
@@ -271,5 +274,72 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background-color: #B7A57A;
   border-radius: 8px;
+}
+
+/* Enhanced Markdown Styling */
+.prose h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #B7A57A15;
+}
+
+.prose h2:first-child {
+  margin-top: 0;
+}
+
+.prose p {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.8;
+}
+
+.prose p:first-of-type {
+  margin-top: 1rem;
+}
+
+.prose blockquote {
+  margin: 1rem 0;
+  padding: 0.5rem 1rem;
+  border-left: 3px solid #B7A57A;
+  background: #B7A57A15;
+  border-radius: 0.25rem;
+}
+
+.prose ul {
+  margin: 1rem 0;
+  padding-left: 1.5rem;
+}
+
+.prose li {
+  margin: 0.5rem 0;
+}
+
+.prose strong {
+  font-weight: 600;
+}
+
+/* Special styling for source citations */
+.prose p:first-of-type {
+  font-size: 1.1em;
+  font-weight: 500;
+  padding: 0.75rem 1rem;
+  background: #B7A57A15;
+  border-radius: 0.5rem;
+  border-left: 3px solid #B7A57A;
+  margin-bottom: 1.5rem;
+}
+
+/* User message specific styling */
+.prose.user-message {
+  color: white;
+}
+
+.prose.user-message h2,
+.prose.user-message strong,
+.prose.user-message blockquote {
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
 }
 </style> 

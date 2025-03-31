@@ -56,7 +56,8 @@ export class DuaComponent implements OnInit, OnDestroy {
   showResults: boolean = false;
   emotionSuggestions: string[] = [];
   selectedEmotion: string = '';
-  aiInsights: string = '';
+  emotionalInsights: string = '';
+  duaInsights: string = '';
   filteredDuas: Dua[] = [];
   selectedCategory: DuaCategory | null = null;
   categories: DuaCategory[] = [
@@ -186,7 +187,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     }
 
     // Clear previous results
-    this.aiInsights = '';
+    this.emotionalInsights = '';
     this.showResults = false;
     this.emotionSuggestions = [];
     
@@ -206,7 +207,7 @@ export class DuaComponent implements OnInit, OnDestroy {
       console.log('Received response:', response);
 
       if (response) {
-        this.aiInsights = JSON.stringify({
+        this.emotionalInsights = JSON.stringify({
           understanding: response.content || '',
           quranic_guidance: response.quranic_guidance || [],
           prophetic_example: response.prophetic_example || '',
@@ -267,7 +268,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getUnderstandingSection(): string {
     try {
-      return JSON.parse(this.aiInsights || '{}').understanding || '';
+      return JSON.parse(this.emotionalInsights || '{}').understanding || '';
     } catch (e) {
       return '';
     }
@@ -275,7 +276,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getQuranicGuidance(): string[] {
     try {
-      const guidance = JSON.parse(this.aiInsights || '{}').quranic_guidance;
+      const guidance = JSON.parse(this.emotionalInsights || '{}').quranic_guidance;
       return Array.isArray(guidance) ? guidance : [];
     } catch (e) {
       return [];
@@ -284,7 +285,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getPropheticExample(): string {
     try {
-      return JSON.parse(this.aiInsights || '{}').prophetic_example || '';
+      return JSON.parse(this.emotionalInsights || '{}').prophetic_example || '';
     } catch (e) {
       return '';
     }
@@ -292,7 +293,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getPracticalSteps(): string[] {
     try {
-      const insights = JSON.parse(this.aiInsights || '{}');
+      const insights = JSON.parse(this.emotionalInsights || '{}');
       return insights.practical_steps || [];
     } catch (e) {
       return [];
@@ -301,7 +302,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getRelatedVerses(): string[] {
     try {
-      const insights = JSON.parse(this.aiInsights || '{}');
+      const insights = JSON.parse(this.emotionalInsights || '{}');
       const verses = insights.related_verses_hadith?.verses || [];
       return verses.map((v: any) => `${v.reference}\n${v.translation}\n${v.relevance}`);
     } catch (e) {
@@ -311,7 +312,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getReflectionPoints(): string[] {
     try {
-      const points = JSON.parse(this.aiInsights || '{}').reflection_points;
+      const points = JSON.parse(this.emotionalInsights || '{}').reflection_points;
       return Array.isArray(points) ? points : [];
     } catch (e) {
       return [];
@@ -332,7 +333,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
     try {
       const insights = await firstValueFrom<ResponseType>(this.duaService.getDuaInsights(dua.id.toString()));
-      this.aiInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
+      this.duaInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
       this.isLoadingInsights = false;
       this.cd.markForCheck();
     } catch (error) {
@@ -346,7 +347,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getRecommendedDuas(): any[] {
     try {
-      const insights = JSON.parse(this.aiInsights);
+      const insights = JSON.parse(this.duaInsights);
       return insights.recommended_duas || [];
     } catch (e) {
       return [];
@@ -355,7 +356,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getRelatedVersesHadith(): { verses: any[], hadith: any[] } {
     try {
-      const insights = JSON.parse(this.aiInsights);
+      const insights = JSON.parse(this.duaInsights);
       return insights.related_verses_hadith || { verses: [], hadith: [] };
     } catch (e) {
       return { verses: [], hadith: [] };
@@ -368,7 +369,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getModernApplication(): string {
     try {
-      const steps = JSON.parse(this.aiInsights || '{}').practical_steps;
+      const steps = JSON.parse(this.duaInsights || '{}').practical_steps;
       return Array.isArray(steps) ? steps.join('\n') : '';
     } catch (e) {
       return '';
@@ -415,7 +416,7 @@ export class DuaComponent implements OnInit, OnDestroy {
       const insights = await firstValueFrom<ResponseType>(this.duaService.getDuaInsights(dua.id.toString()));
       
       console.log('Received insights:', insights);
-      this.aiInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
+      this.duaInsights = typeof insights === 'string' ? insights : JSON.stringify(insights);
       this.isLoadingInsights = false;
       this.cd.markForCheck();
     } catch (error: any) {
@@ -431,7 +432,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     this.feeling = '';
     this.selectedEmotion = '';
     this.emotionSuggestions = [];
-    this.aiInsights = '';
+    this.emotionalInsights = '';
     this.showResults = false;
   }
 
@@ -442,7 +443,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getHistoricalExample(): string {
     try {
-      return JSON.parse(this.aiInsights || '{}').prophetic_example || '';
+      return JSON.parse(this.emotionalInsights || '{}').prophetic_example || '';
     } catch (e) {
       return '';
     }
@@ -450,7 +451,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getLearningPoints(): string {
     try {
-      return JSON.parse(this.aiInsights || '{}').reflection_points?.[0] || '';
+      return JSON.parse(this.emotionalInsights || '{}').reflection_points?.[0] || '';
     } catch (e) {
       return '';
     }
@@ -458,7 +459,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   getSpiritualAdviceParagraphs(): string[] {
     try {
-      const insights = JSON.parse(this.aiInsights || '{}');
+      const insights = JSON.parse(this.emotionalInsights || '{}');
       const spiritualAdvice = insights.spiritual_advice || {};
       
       const sections = [];
@@ -470,17 +471,49 @@ export class DuaComponent implements OnInit, OnDestroy {
       
       // Add recommended duas
       if (spiritualAdvice.duas?.length) {
-        sections.push('\nRecommended Duas:', ...spiritualAdvice.duas);
+        sections.push('\nRecommended Duas:');
+        spiritualAdvice.duas.forEach((dua: any) => {
+          if (typeof dua === 'string') {
+            sections.push(dua);
+          } else {
+            if (dua.arabic) sections.push(`\n${dua.arabic}`);
+            if (dua.translation) sections.push(`Translation: ${dua.translation}`);
+            if (dua.reference) sections.push(`Reference: ${dua.reference}`);
+            if (dua.virtue) sections.push(`Virtue: ${dua.virtue}\n`);
+          }
+        });
       }
       
       // Add dhikr recommendations
       if (spiritualAdvice.dhikr?.length) {
-        sections.push('\nBeneficial Dhikr:', ...spiritualAdvice.dhikr);
+        sections.push('\nBeneficial Dhikr:');
+        spiritualAdvice.dhikr.forEach((dhikr: any) => {
+          if (typeof dhikr === 'string') {
+            sections.push(dhikr);
+          } else {
+            if (dhikr.phrase) sections.push(`\n${dhikr.phrase}`);
+            if (dhikr.translation) sections.push(`Translation: ${dhikr.translation}`);
+            if (dhikr.count) sections.push(`Repeat ${dhikr.count} times`);
+            if (dhikr.benefit) sections.push(`Benefit: ${dhikr.benefit}`);
+            if (dhikr.timing) sections.push(`Timing: ${dhikr.timing}\n`);
+          }
+        });
       }
       
       // Add scholarly guidance
       if (spiritualAdvice.scholarly_guidance?.length) {
-        sections.push('\nScholarly Guidance:', ...spiritualAdvice.scholarly_guidance);
+        sections.push('\nScholarly Guidance:');
+        spiritualAdvice.scholarly_guidance.forEach((guidance: any) => {
+          if (typeof guidance === 'string') {
+            sections.push(guidance);
+          } else if (guidance.quote) {
+            sections.push(`\n${guidance.quote}`);
+            if (guidance.scholar) sections.push(`- ${guidance.scholar}`);
+          } else if (guidance.content) {
+            sections.push(`\n${guidance.content}`);
+            if (guidance.source) sections.push(`- ${guidance.source}`);
+          }
+        });
       }
       
       // Add spiritual remedies
@@ -490,13 +523,14 @@ export class DuaComponent implements OnInit, OnDestroy {
       
       return sections.filter(section => section);
     } catch (e) {
+      console.error('Error parsing spiritual advice:', e);
       return [];
     }
   }
 
   getRelatedHadith(): string[] {
     try {
-      const insights = JSON.parse(this.aiInsights || '{}');
+      const insights = JSON.parse(this.emotionalInsights || '{}');
       const hadith = insights.related_verses_hadith?.hadith || [];
       return hadith.map((h: any) => `${h.text}\n${h.source} (${h.grade})\n${h.relevance}`);
     } catch (e) {

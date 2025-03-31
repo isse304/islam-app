@@ -75,6 +75,8 @@ export class DuaInsightsComponent implements OnInit, OnDestroy {
     this.streamedContent = '';
     this.insights = null;
 
+    console.log('Loading insights for dua:', this.dua.id);
+
     this.subscription = this.duaService.getDuaInsights(this.dua.id.toString())
       .subscribe({
         next: (response: ResponseType) => {
@@ -94,7 +96,12 @@ export class DuaInsightsComponent implements OnInit, OnDestroy {
                 break;
               case 'complete':
                 this.loadingProgress = 100;
-                this.insights = response.data || null;
+                if (response.data?.duaId === this.dua.id) {
+                  this.insights = response.data;
+                } else {
+                  console.error('Received insights for wrong dua ID:', response.data?.duaId);
+                  this.error = 'Received incorrect insights. Please try again.';
+                }
                 this.isLoading = false;
                 break;
               case 'error':
@@ -102,10 +109,14 @@ export class DuaInsightsComponent implements OnInit, OnDestroy {
                 this.isLoading = false;
                 break;
             }
-          } else {
+          } else if (response.duaId === this.dua.id) {
             this.insights = response;
             this.isLoading = false;
             this.loadingProgress = 100;
+          } else {
+            console.error('Received insights for wrong dua ID:', response.duaId);
+            this.error = 'Received incorrect insights. Please try again.';
+            this.isLoading = false;
           }
           this.cdr.detectChanges();
         },

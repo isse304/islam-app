@@ -16,11 +16,18 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { TafsirDatabaseService, TafsirEntry } from '../../services/tafsir-database.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
+import { ApiService } from '../../services/api.service';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp: Date;
+  type?: 'tafsir' | 'conversation' | 'greeting' | 'error' | 'warning';
+  context?: {
+    surah?: number;
+    verse?: number;
+    topic?: string;
+  };
 }
 
 interface SurahData {
@@ -74,6 +81,16 @@ export class LearnComponent implements OnInit, OnDestroy {
   private lastSurahVerse: string = '';
   private isFirstResponse: boolean = true;
 
+  private conversationContext: {
+    lastTopic?: string;
+    lastMessageType?: string;
+    consecutiveGreetings: number;
+    isDiscussingVerse: boolean;
+  } = {
+    consecutiveGreetings: 0,
+    isDiscussingVerse: false
+  };
+
   // Add a getter for verse numbers array
   get verseNumbers(): number[] {
     return Array.from({ length: this.verseCounts }, (_, i) => i + 1);
@@ -84,6 +101,7 @@ export class LearnComponent implements OnInit, OnDestroy {
     private subscriptionService: SubscriptionService,
     public authStateService: AuthStateService,
     private tafsirDatabaseService: TafsirDatabaseService,
+    private apiService: ApiService,
     public router: Router
   ) {}
 
@@ -306,17 +324,19 @@ export class LearnComponent implements OnInit, OnDestroy {
       this.messages.push({
         role: 'assistant',
         content: 'Premium feature unavailable. Please subscribe to access AI Tafsir Chat.',
-        timestamp: new Date()
+        timestamp: new Date(),
+        type: 'error'
       });
       return;
     }
 
     // Add user message
-    this.messages.push({
+    const userMessage: Message = {
       role: 'user',
       content: this.userQuestion,
       timestamp: new Date()
-    });
+    };
+    this.messages.push(userMessage);
     this.scrollToBottom();
 
     const question = this.userQuestion;
@@ -324,85 +344,109 @@ export class LearnComponent implements OnInit, OnDestroy {
     this.isLoading = true;
 
     try {
-      // Check if it's just a pleasantry
-      const pleasantries = ['thank you', 'thanks', 'ok', 'okay', 'got it', 'understood', 'jazakallah', 'jazak allah', 'mashallah', 'masha allah', 'alhamdulillah'];
-      if (pleasantries.some(p => question.toLowerCase().includes(p))) {
-        this.messages.push({
-          role: 'assistant',
-          content: '🌟 Alhamdulillah! You\'re welcome, dear seeker of knowledge. Feel free to ask any other questions about this verse. May Allah increase us in beneficial knowledge.',
-          timestamp: new Date()
-        });
-        this.isLoading = false;
-        this.saveState();
-        return;
-      }
-
-      // Get tafsir entries first to ensure we have the context
-      const tafsirEntries = await firstValueFrom(
-        this.tafsirDatabaseService.getTafsirEntries(this.selectedSurah, this.selectedVerse)
-      );
-      this.tafsirEntries = tafsirEntries;
-
-      // Check if we've switched to a new verse
-      const currentVerse = `${this.selectedSurah}:${this.selectedVerse}`;
-      if (this.lastSurahVerse !== currentVerse) {
-        this.isFirstResponse = true;
-        this.lastSurahVerse = currentVerse;
-      }
-
-      // Get AI response based on tafsir database content
-      const response = await firstValueFrom(this.quranService.getTafsirExplanation(
-        this.selectedSurah,
-        this.selectedVerse,
-        question,
-        this.selectedTafsir,
-        this.isFirstResponse
-      ));
-
-      // Add surah and verse information to the response
+      // Get current verse context
       const surahName = this.surahs.find(s => s.number === this.selectedSurah)?.englishName || '';
-      const verseInfo = `<div class="verse-header bg-[#B7A57A15] p-3 rounded-lg mb-4 border-l-4 border-[#B7A57A]">
-        <span class="text-[#B7A57A] font-semibold">📖 Surah ${this.selectedSurah}. ${surahName}</span>
-        <span class="text-gray-500"> • </span>
-        <span class="text-[#B7A57A] font-semibold">Verse ${this.selectedVerse}</span>
-      </div>\n\n`;
       
-      // Check if the question is unrelated to Quran or inappropriate
-      const unrelatedKeywords = ['music', 'movies', 'games', 'sports', 'politics', 'celebrities'];
-      const inappropriateKeywords = ['dating', 'boyfriend', 'girlfriend', 'party', 'dance'];
+      // Detect message type with more specific patterns
+      const isIslamicGreeting = /^(salam|assalamualaikum)/i.test(question.trim());
+      const isGeneralGreeting = /^(hi|hello|hey)/i.test(question.trim());
+      const isAboutCapabilities = /what.*(can|do).*you.*(do|help)|tell.*me.*(about|your).*(capabilities|features|help)/i.test(question.toLowerCase());
+      const isPleasantry = /^(thanks?|thank you|that'?s? all|goodbye|bye|jazak|barak)/i.test(question.trim());
       
-      if (unrelatedKeywords.some(keyword => question.toLowerCase().includes(keyword))) {
-        this.messages.push({
-          role: 'assistant',
-          content: verseInfo + '🤲 Dear seeker of knowledge, I am a dedicated Quran learning assistant. I can only answer questions related to the Quran, its verses, and Islamic teachings. Please ask me about this verse or other Quranic topics, and I will be happy to help you understand them better.',
-          timestamp: new Date()
-        });
-      } else if (inappropriateKeywords.some(keyword => question.toLowerCase().includes(keyword))) {
-        this.messages.push({
-          role: 'assistant',
-          content: verseInfo + '🤲 As your Muslim scholar assistant, I must remind you to maintain appropriate Islamic etiquette in our discussions. Let\'s focus on understanding the Quran and its teachings. How may I help you understand this verse better?',
-          timestamp: new Date()
-        });
+      // More specific Quranic question detection
+      const isQuranQuestion = 
+        question.toLowerCase().includes('verse') || 
+        question.toLowerCase().includes('surah') || 
+        question.toLowerCase().includes('ayah') ||
+        question.toLowerCase().includes('quran') ||
+        question.toLowerCase().includes('tafsir') ||
+        /what.*(mean|about|refer|say|tell|explain|understand)/i.test(question) ||
+        /meaning|interpretation|explanation|context|reason|why|how|when/i.test(question) ||
+        /dream|story|event|people|prophet|revelation|theme|linguistic|arabic|word/i.test(question);
+
+      let response: string;
+
+      if (isIslamicGreeting || isGeneralGreeting || isAboutCapabilities || isPleasantry) {
+        // Use general AI endpoint for greetings and pleasantries
+        const prompt = {
+          systemMessage: `You are a knowledgeable Islamic AI assistant focused on helping users understand the Quran through authentic tafsir. Follow these guidelines:
+
+1. For greetings and pleasantries: 
+   - For "salam" or "assalamualaikum": Respond with "🌟 Wa alaikum assalam wa rahmatullahi wa barakatuh! Would you like to learn more about this verse?"
+   - For "hi", "hello", "hey": Respond with "🌟 As-salaam-alaikum! I can help you understand this verse better."
+   - For "thanks" or "thank you": Respond with "You're welcome! Would you like to explore more about this verse or surah?"
+   - For "goodbye" or "that's all": Respond with "May Allah increase us in knowledge. Feel free to return when you want to learn more about the Quran."
+
+2. For questions about capabilities:
+   Explain: "I can help you understand the Quran by:
+   • Explaining verses using authentic tafsir from Ibn Kathir and Al-Tabari
+   • Analyzing the linguistic aspects and context of verses
+   • Discussing themes and lessons from surahs
+   • Explaining the historical context and circumstances of revelation
+   • Connecting verses with related ones in the Quran
+
+   I'm currently focused on Surah ${this.selectedSurah}, Verse ${this.selectedVerse}. What would you like to know about it?"
+
+3. For off-topic questions:
+   Politely redirect to Quranic discussion: "Let me guide our discussion back to Surah ${this.selectedSurah}. Would you like to understand this verse better or learn about the themes of this surah?"`,
+          userMessage: question,
+          temperature: 0.7
+        };
+
+        const aiResponse = await this.apiService.generateAIResponse(prompt);
+        response = aiResponse.content;
       } else {
-        this.messages.push({
-          role: 'assistant',
-          content: verseInfo + (response || 'Astaghfirullah, I am unable to generate a response at this time. Please try again later.'),
-          timestamp: new Date()
-        });
+        // Use tafsir endpoint for everything else - assume it's a Quranic question
+        const verseContext = `CURRENT VERSE CONTEXT:
+• You are discussing Surah ${this.selectedSurah}, Verse ${this.selectedVerse}
+• This is the specific verse being discussed, not any other verse
+• Do not mix this verse with other verses unless explicitly comparing them
+• If asked about linguistics, themes, or interpretation, focus only on THIS verse
+• If you need to reference other verses, clearly mark them as references
+
+VERSE TEXT:
+${this.currentVerse}
+
+TRANSLATION:
+${this.translation}`;
+
+        const tafsirResponse = await firstValueFrom(this.quranService.getTafsirExplanation(
+          this.selectedSurah,
+          this.selectedVerse,
+          `${verseContext}\n\nUser Question: ${question}`,
+          this.selectedTafsir,
+          false
+        ));
+        
+        // Format the tafsir response with proper markdown
+        const formattedTafsirResponse = `## Surah ${this.selectedSurah}. ${surahName} • Verse ${this.selectedVerse}
+
+${tafsirResponse}`;
+
+        response = formattedTafsirResponse;
       }
 
-      // Set first response flag to false after responding
-      if (this.isFirstResponse) {
-        this.isFirstResponse = false;
-      }
+      // Format response based on type
+      let formattedResponse = response || 'Astaghfirullah, I am unable to generate a response at this time. Please try again later.';
+
+      // Add response message
+      this.messages.push({
+        role: 'assistant',
+        content: formattedResponse,
+        timestamp: new Date(),
+        type: isIslamicGreeting || isGeneralGreeting ? 'greeting' : isAboutCapabilities ? 'conversation' : isQuranQuestion ? 'tafsir' : 'conversation'
+      });
+
     } catch (error) {
-      console.error('Error getting AI response:', error);
+      console.error('Error in chat:', error);
       this.messages.push({
         role: 'assistant',
         content: 'Astaghfirullah, I encountered an error. Please try asking your question again.',
-        timestamp: new Date()
+        timestamp: new Date(),
+        type: 'error'
       });
     }
+
     this.isLoading = false;
     this.saveState();
   }
