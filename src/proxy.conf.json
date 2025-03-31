@@ -1,9 +1,13 @@
 {
+  "/api": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "logLevel": "debug"
+  },
   "/content/api": {
     "target": "https://apis-prelive.quran.foundation",
     "secure": true,
-    "changeOrigin": true,
-    "logLevel": "debug"
+    "changeOrigin": true
   },
   "/api/alquran/*": {
     "target": "https://api.alquran.cloud/v1",

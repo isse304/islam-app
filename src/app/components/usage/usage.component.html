@@ -1,80 +1,59 @@
 <div class="usage-container p-4">
   <div class="mb-4">
-    <h2 class="text-2xl font-bold mb-2">Your Usage</h2>
+    <h2 class="text-2xl font-bold mb-2">AI Usage</h2>
     <div class="status-banner p-4 rounded-lg mb-4" 
          [ngClass]="{
-           'bg-blue-100 text-blue-800': usageLimits?.status === 'trial',
            'bg-green-100 text-green-800': usageLimits?.status === 'active',
-           'bg-red-100 text-red-800': usageLimits?.status === 'cancelled'
+           'bg-gray-100 text-gray-800': usageLimits?.status === 'free'
          }">
       <div class="font-semibold">
         {{ getStatusMessage() }}
       </div>
-      <div class="text-sm mt-1" *ngIf="usageLimits?.status === 'trial'">
-        {{ getTrialMessage() }}
-      </div>
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-    <!-- AI Requests -->
-    <div class="feature-card p-4 border rounded-lg">
-      <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
-      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-        <div class="bg-blue-500 h-2 rounded-full" 
-             [style.width]="getProgressWidth('aiRequests') + '%'">
-        </div>
+  <!-- AI Requests -->
+  <div class="feature-card p-4 border rounded-lg">
+    <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
+    <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
+      <div class="bg-blue-500 h-2 rounded-full" 
+           [style.width]="getProgressWidth() + '%'">
       </div>
-      <p class="text-sm text-gray-600">
-        {{ getCurrentValue('aiRequests') }} / {{ getLimitValue('aiRequests') }} daily requests
-      </p>
     </div>
-
-    <!-- Bookmarks -->
-    <div class="feature-card p-4 border rounded-lg">
-      <h3 class="text-lg font-semibold mb-2">Bookmarks</h3>
-      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-        <div class="bg-green-500 h-2 rounded-full" 
-             [style.width]="getProgressWidth('bookmarks') + '%'">
-        </div>
-      </div>
-      <p class="text-sm text-gray-600">
-        {{ getCurrentValue('bookmarks') }} / {{ getLimitValue('bookmarks') }} bookmarks
-      </p>
-    </div>
-
-    <!-- Notes -->
-    <div class="feature-card p-4 border rounded-lg">
-      <h3 class="text-lg font-semibold mb-2">Notes</h3>
-      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-        <div class="bg-yellow-500 h-2 rounded-full" 
-             [style.width]="getProgressWidth('notes') + '%'">
-        </div>
-      </div>
-      <p class="text-sm text-gray-600">
-        {{ getCurrentValue('notes') }} / {{ getLimitValue('notes') }} notes
-      </p>
-    </div>
-
-    <!-- Voice Minutes -->
-    <div class="feature-card p-4 border rounded-lg">
-      <h3 class="text-lg font-semibold mb-2">Voice Minutes</h3>
-      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-        <div class="bg-purple-500 h-2 rounded-full" 
-             [style.width]="getProgressWidth('voiceMinutes') + '%'">
-        </div>
-      </div>
-      <p class="text-sm text-gray-600">
-        {{ getCurrentValue('voiceMinutes') }} / {{ getLimitValue('voiceMinutes') }} daily minutes
-      </p>
-    </div>
+    <p class="text-sm text-gray-600">
+      {{ getUsedRequests() }} / {{ getTotalRequests() }} daily requests
+    </p>
   </div>
 
-  <div class="mt-6" *ngIf="usageLimits?.status === 'trial' || usageLimits?.status === 'cancelled'">
+  <div class="mt-6" *ngIf="usageLimits?.status === 'free'">
     <button 
       (click)="subscribe()"
       class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-      {{ usageLimits?.status === 'cancelled' ? 'Reactivate Subscription' : 'Subscribe Now' }}
+      Upgrade to Premium
     </button>
   </div>
-</div> 
+</div>
+
+<!-- Loading state -->
+<mat-progress-spinner *ngIf="loading" mode="indeterminate" diameter="40"></mat-progress-spinner>
+
+<!-- Error state -->
+<mat-card *ngIf="error" class="error-card">
+  <mat-card-content>
+    <mat-icon color="warn">error</mat-icon>
+    <p>{{ error }}</p>
+    <div class="actions">
+      <button mat-button color="primary" (click)="fetchUsageLimits()">Try Again</button>
+      <button mat-raised-button color="primary" *ngIf="error.includes('Premium')" (click)="subscribe()">
+        Upgrade to Premium
+      </button>
+    </div>
+  </mat-card-content>
+</mat-card>
+
+<!-- Usage data -->
+<ng-container *ngIf="!loading && !error">
+  <mat-card *ngIf="usageLimits" class="usage-card">
+    <!-- ... existing code ... -->
+  </mat-card>
+</ng-container> 

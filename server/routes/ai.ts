@@ -1,6 +1,6 @@
 // @ts-nocheck
-import express from 'express';
-import OpenAI from 'openai';
+import express, { Response } from 'express';
+import { OpenAI } from 'openai';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -16,6 +16,7 @@ import * as admin from 'firebase-admin';
 import { SpiritualContentService } from '../services/spiritual-content.service';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { AuthenticatedRequest } from '../types/types';
 
 // Type definitions
 type AuthRequest = express.Request & {
@@ -74,7 +75,7 @@ const limiter = rateLimit({
 // Apply rate limiting to all routes
 router.use(limiter);
 
-// Initialize OpenAI with explicit API key
+// Initialize OpenAI with API key from environment variable
 const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
@@ -436,6 +437,16 @@ router.post('/dua/emotional-search', withAuth(async (req: AuthenticatedRequest, 
 
         const { emotion, context } = req.body;
         
+        // Validate AI usage
+        const canMakeRequest = await usageService.validateAIRequest(req.auth.uid, 1000); // Approximate token count
+        if (!canMakeRequest) {
+            res.status(403).json({ 
+                success: false, 
+                error: 'Daily AI request limit reached. Please try again tomorrow or upgrade your plan.' 
+            });
+            return;
+        }
+
         // Get response from OpenAI
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
@@ -531,6 +542,9 @@ router.post('/dua/emotional-search', withAuth(async (req: AuthenticatedRequest, 
             // Parse the JSON response from OpenAI
             const parsedResponse = JSON.parse(cleanedContent);
             
+            // Increment AI usage after successful response
+            await usageService.incrementAIUsage(req.auth.uid);
+
             // Validate response structure
             const requiredSections = [
                 'content',
@@ -634,6 +648,16 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
 
         const { surah, verse, question } = req.body;
 
+        // Validate AI usage
+        const canMakeRequest = await usageService.validateAIRequest(req.auth.uid, 1500); // Approximate token count
+        if (!canMakeRequest) {
+            res.status(403).json({ 
+                success: false, 
+                error: 'Daily AI request limit reached. Please try again tomorrow or upgrade your plan.' 
+            });
+            return;
+        }
+
         const prompt = {
             systemMessage: `You are a knowledgeable Islamic scholar specializing in Quranic tafsir. 
             Provide detailed, comprehensive explanations that include:
@@ -668,6 +692,10 @@ router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Resp
         });
 
         const response = completion.choices[0]?.message?.content || '';
+        
+        // Increment AI usage after successful response
+        await usageService.incrementAIUsage(req.auth.uid);
+        
         res.json({ success: true, content: response });
     } catch (error) {
         console.error('Error in tafsir chat:', error);

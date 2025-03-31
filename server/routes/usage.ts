@@ -3,6 +3,15 @@ import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
 
+interface UsageLimitsResponse {
+    status: 'free' | 'active';
+    aiRequests: {
+        total: number;
+        used: number;
+        remaining: number;
+    };
+}
+
 const router = express.Router();
 const stripeService = new StripeService();
 const usageService = new UsageService(stripeService);
@@ -14,7 +23,7 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) 
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
-        const stats = await usageService.getUserUsageStats(req.auth.userId);
+        const stats = await usageService.getUserUsageStats(req.auth.uid);
         res.json(stats);
     } catch (error) {
         console.error('Error getting usage stats:', error);
@@ -23,67 +32,40 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) 
 }));
 
 // Get usage limits for authenticated user
-router.get('/limits', async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        // In development mode, return mock data
-        const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
-        if (isDevelopment) {
-            console.log('Development mode: Returning mock usage limits');
-            
-            // Return generous mock usage limits for development
-            const mockLimits = {
-                aiChat: {
-                    total: 100,
-                    used: 15,
-                    remaining: 85
-                },
-                tafsirAi: {
-                    total: 50,
-                    used: 5,
-                    remaining: 45
-                },
-                quranSearch: {
-                    total: 200,
-                    used: 30,
-                    remaining: 170
-                }
-            };
-            
-            res.json(mockLimits);
-            return;
-        }
-        
-        // Regular auth check for non-development environments
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
-        // Get usage limits from database or calculate them
-        // For now, return mock data
-        const limits = {
-            aiChat: {
-                total: 10, 
-                used: 3,
-                remaining: 7
-            },
-            tafsirAi: {
-                total: 5,
-                used: 1,
-                remaining: 4
-            },
-            quranSearch: {
-                total: 100,
-                used: 20,
-                remaining: 80
+        // Get subscription status first
+        const status = await stripeService.getSubscriptionStatus(req.auth.uid);
+        
+        // If user is not premium, return error
+        if (status !== 'active') {
+            res.status(403).json({ error: 'Premium subscription required to access usage information' });
+            return;
+        }
+
+        // Get usage limits for premium user
+        const userLimits = await usageService.getUserLimits(req.auth.uid);
+        
+        // Format response
+        const limits: UsageLimitsResponse = {
+            status: status as 'free' | 'active',
+            aiRequests: {
+                total: userLimits.aiRequests.limit,
+                used: userLimits.aiRequests.used,
+                remaining: userLimits.aiRequests.limit - userLimits.aiRequests.used
             }
         };
 
         res.json(limits);
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error getting usage limits:', error);
         res.status(500).json({ error: 'Failed to get usage limits' });
     }
-});
+}));
 
 export default router; 

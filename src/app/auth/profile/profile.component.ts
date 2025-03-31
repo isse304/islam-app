@@ -22,6 +22,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuranService } from '../../services/quran.service';
 import { ReadingHistory, ReadingHistoryResponse } from '../../interfaces/reading-history.interface';
+import { UsageComponent } from '../../components/usage/usage.component';
 
 interface Translation {
   id: string;
@@ -58,7 +59,8 @@ interface UserPreferences {
     MatSliderModule,
     MatSelectModule,
     MatTabsModule,
-    MatTooltipModule
+    MatTooltipModule,
+    UsageComponent
   ]
 })
 export class ProfileComponent implements OnInit, OnDestroy {

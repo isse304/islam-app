@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
 import { firstValueFrom } from 'rxjs';
+import axios from 'axios';
 
 // Firebase config from environment.ts
 const firebaseConfig = {
@@ -158,6 +159,14 @@ class DuaService {
             throw error;
         }
     }
+
+    async signIn() {
+        await this.getToken();
+    }
+
+    async getIdToken() {
+        return await this.getToken();
+    }
 }
 
 // Test user credentials
@@ -210,10 +219,144 @@ async function testDuaInsights() {
     }
 }
 
+async function testEmotionalDuaSearch() {
+    console.log('\n1️⃣ Testing Emotional Dua Search:');
+
+    try {
+        // Sign in and get token
+        console.log('\nAttempting to sign in with test user...');
+        const duaService = new DuaService();
+        await duaService.signIn();
+        console.log('Successfully signed in');
+        const idToken = await duaService.getIdToken();
+        console.log('Successfully got ID token');
+
+        // Test emotional dua search
+        console.log('Testing emotional dua search for: gratitude\n');
+        const response = await axios.post(
+            'http://localhost:3000/api/ai/dua/emotional-search',
+            { emotion: 'gratitude' },
+            { headers: { Authorization: `Bearer ${idToken}` } }
+        );
+
+        const data = response.data;
+        console.log('✅ Response Structure Analysis:');
+        
+        // 1. Basic Structure Validation
+        console.log('\n1. Basic Structure:');
+        console.log(`- Success: ${data.success}`);
+        console.log(`- Has Content: ${!!data.content}`);
+        console.log(`- Has Quranic Guidance: ${Array.isArray(data.quranic_guidance)}`);
+        console.log(`- Has Prophetic Example: ${!!data.prophetic_example}`);
+        console.log(`- Has Practical Steps: ${Array.isArray(data.practical_steps)}`);
+        console.log(`- Has Spiritual Advice: ${!!data.spiritual_advice}`);
+
+        // 2. Spiritual Advice Validation
+        if (data.spiritual_advice) {
+            const advice = data.spiritual_advice;
+            console.log('\n2. Spiritual Advice Structure:');
+            console.log(`- Has Understanding: ${!!advice.understanding}`);
+            
+            // Validate Duas Array
+            if (Array.isArray(advice.duas)) {
+                console.log(`\n3. Duas Validation (${advice.duas.length} items):`);
+                const firstDua = advice.duas[0];
+                if (firstDua) {
+                    console.log('First Dua Structure:');
+                    console.log(`- Arabic: ${!!firstDua.arabic}`);
+                    console.log(`- Transliteration: ${!!firstDua.transliteration}`);
+                    console.log(`- Translation: ${!!firstDua.translation}`);
+                    console.log(`- Reference: ${!!firstDua.reference}`);
+                    console.log(`- Virtue: ${!!firstDua.virtue}`);
+                    
+                    // Log the actual content for review
+                    console.log('\nFirst Dua Content:');
+                    console.log(JSON.stringify(firstDua, null, 2));
+                }
+            }
+
+            // Validate Dhikr Array
+            if (Array.isArray(advice.dhikr)) {
+                console.log(`\n4. Dhikr Validation (${advice.dhikr.length} items):`);
+                const firstDhikr = advice.dhikr[0];
+                if (firstDhikr) {
+                    console.log('First Dhikr Structure:');
+                    console.log(`- Phrase: ${!!firstDhikr.phrase}`);
+                    console.log(`- Translation: ${!!firstDhikr.translation}`);
+                    console.log(`- Count: ${!!firstDhikr.count}`);
+                    console.log(`- Timing: ${!!firstDhikr.timing}`);
+                    console.log(`- Benefit: ${!!firstDhikr.benefit}`);
+                    
+                    console.log('\nFirst Dhikr Content:');
+                    console.log(JSON.stringify(firstDhikr, null, 2));
+                }
+            }
+
+            // Validate Scholarly Guidance Array
+            if (Array.isArray(advice.scholarly_guidance)) {
+                console.log(`\n5. Scholarly Guidance Validation (${advice.scholarly_guidance.length} items):`);
+                const firstGuidance = advice.scholarly_guidance[0];
+                if (firstGuidance) {
+                    console.log('First Guidance Structure:');
+                    console.log(`- Quote: ${!!firstGuidance.quote}`);
+                    console.log(`- Scholar: ${!!firstGuidance.scholar}`);
+                    console.log(`- Source: ${!!firstGuidance.source}`);
+                    
+                    console.log('\nFirst Guidance Content:');
+                    console.log(JSON.stringify(firstGuidance, null, 2));
+                }
+            }
+
+            // Validate Spiritual Remedies Array
+            if (Array.isArray(advice.spiritual_remedies)) {
+                console.log(`\n6. Spiritual Remedies Validation (${advice.spiritual_remedies.length} items):`);
+                const firstRemedy = advice.spiritual_remedies[0];
+                if (firstRemedy) {
+                    console.log('First Remedy Structure:');
+                    console.log(`- Practice: ${!!firstRemedy.practice}`);
+                    console.log(`- Method: ${!!firstRemedy.method}`);
+                    console.log(`- Benefit: ${!!firstRemedy.benefit}`);
+                    
+                    console.log('\nFirst Remedy Content:');
+                    console.log(JSON.stringify(firstRemedy, null, 2));
+                }
+            }
+        }
+
+        // Validate for non-Islamic quotes
+        console.log('\n7. Content Safety Check:');
+        const nonIslamicScholars = ['Dale Carnegie', 'Tony Robbins', 'Eckhart Tolle', 'Wayne Dyer'];
+        let foundNonIslamic = false;
+        
+        if (data.spiritual_advice?.scholarly_guidance) {
+            for (const guidance of data.spiritual_advice.scholarly_guidance) {
+                if (nonIslamicScholars.some(name => guidance.scholar?.includes(name))) {
+                    console.log(`⚠️ Warning: Found non-Islamic scholar: ${guidance.scholar}`);
+                    foundNonIslamic = true;
+                }
+            }
+        }
+        
+        if (!foundNonIslamic) {
+            console.log('✅ No non-Islamic scholars found in scholarly guidance');
+        }
+
+    } catch (error) {
+        console.error('Error testing emotional dua search:', error.message);
+        if (error.response?.data) {
+            console.error('Server response:', error.response.data);
+        }
+    }
+}
+
 async function testEndpoints() {
     try {
+        // Test emotional dua search
+        console.log('\n1️⃣ Testing Emotional Dua Search:');
+        await testEmotionalDuaSearch();
+
         // Test dua insights endpoint for dua 41
-        console.log('\n1️⃣ Testing Dua Insights for Dua 41:');
+        console.log('\n2️⃣ Testing Dua Insights for Dua 41:');
         await testDuaInsights();
     } catch (error) {
         console.error('Error testing endpoints:', error);

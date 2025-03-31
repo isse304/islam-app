@@ -5,24 +5,16 @@ import { CommonModule } from '@angular/common';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
+import { MatIconModule } from '@angular/material/icon';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { firstValueFrom } from 'rxjs';
 
 interface UsageLimits {
-  status: 'trial' | 'active' | 'cancelled';
-  trialInfo?: {
-    daysLeft: number;
-    requestsLeft: number;
-  };
-  limits: {
-    aiRequests: number;
-    bookmarks: number;
-    notes: number;
-    voiceMinutes: number;
-  };
-  current: {
-    aiRequests: number;
-    bookmarks: number;
-    notes: number;
-    voiceMinutes: number;
+  status: 'free' | 'active';
+  aiRequests: {
+    total: number;
+    used: number;
+    remaining: number;
   };
 }
 
@@ -33,106 +25,17 @@ interface UsageLimits {
     CommonModule,
     MatProgressBarModule,
     MatButtonModule,
-    MatCardModule
+    MatCardModule,
+    MatIconModule,
+    MatProgressSpinnerModule
   ],
-  template: `
-    <div class="usage-container p-4">
-      <div class="mb-4">
-        <h2 class="text-2xl font-bold mb-2">Your Usage</h2>
-        <div class="status-banner p-4 rounded-lg mb-4" 
-             [ngClass]="{
-               'bg-blue-100 text-blue-800': usageLimits?.status === 'trial',
-               'bg-green-100 text-green-800': usageLimits?.status === 'active',
-               'bg-red-100 text-red-800': usageLimits?.status === 'cancelled'
-             }">
-          <div class="font-semibold">
-            {{ getStatusMessage() }}
-          </div>
-          <div class="text-sm mt-1" *ngIf="usageLimits?.status === 'trial'">
-            {{ getTrialMessage() }}
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- AI Requests -->
-        <div class="feature-card p-4 border rounded-lg">
-          <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
-          <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-            <div class="bg-blue-500 h-2 rounded-full" 
-                 [style.width]="getProgressWidth('aiRequests') + '%'">
-            </div>
-          </div>
-          <p class="text-sm text-gray-600">
-            {{ getCurrentValue('aiRequests') }} / {{ getLimitValue('aiRequests') }} daily requests
-          </p>
-        </div>
-
-        <!-- Bookmarks -->
-        <div class="feature-card p-4 border rounded-lg">
-          <h3 class="text-lg font-semibold mb-2">Bookmarks</h3>
-          <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-            <div class="bg-green-500 h-2 rounded-full" 
-                 [style.width]="getProgressWidth('bookmarks') + '%'">
-            </div>
-          </div>
-          <p class="text-sm text-gray-600">
-            {{ getCurrentValue('bookmarks') }} / {{ getLimitValue('bookmarks') }} bookmarks
-          </p>
-        </div>
-
-        <!-- Notes -->
-        <div class="feature-card p-4 border rounded-lg">
-          <h3 class="text-lg font-semibold mb-2">Notes</h3>
-          <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-            <div class="bg-yellow-500 h-2 rounded-full" 
-                 [style.width]="getProgressWidth('notes') + '%'">
-            </div>
-          </div>
-          <p class="text-sm text-gray-600">
-            {{ getCurrentValue('notes') }} / {{ getLimitValue('notes') }} notes
-          </p>
-        </div>
-
-        <!-- Voice Minutes -->
-        <div class="feature-card p-4 border rounded-lg">
-          <h3 class="text-lg font-semibold mb-2">Voice Minutes</h3>
-          <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-            <div class="bg-purple-500 h-2 rounded-full" 
-                 [style.width]="getProgressWidth('voiceMinutes') + '%'">
-            </div>
-          </div>
-          <p class="text-sm text-gray-600">
-            {{ getCurrentValue('voiceMinutes') }} / {{ getLimitValue('voiceMinutes') }} daily minutes
-          </p>
-        </div>
-      </div>
-
-      <div class="mt-6" *ngIf="usageLimits?.status === 'trial' || usageLimits?.status === 'cancelled'">
-        <button 
-          (click)="subscribe()"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
-          {{ usageLimits?.status === 'cancelled' ? 'Reactivate Subscription' : 'Subscribe Now' }}
-        </button>
-      </div>
-    </div>
-  `,
-  styles: [`
-    .usage-container {
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-    .feature-card {
-      background: white;
-      transition: transform 0.2s;
-    }
-    .feature-card:hover {
-      transform: translateY(-2px);
-    }
-  `]
+  templateUrl: './usage.component.html',
+  styleUrls: ['./usage.component.scss']
 })
 export class UsageComponent implements OnInit {
   usageLimits: UsageLimits | null = null;
+  loading = false;
+  error: string | null = null;
 
   constructor(private http: HttpClient) {}
 
@@ -140,57 +43,49 @@ export class UsageComponent implements OnInit {
     this.fetchUsageLimits();
   }
 
-  fetchUsageLimits() {
-    this.http.get<UsageLimits>(`${environment.apiUrl}/api/usage/limits`)
-      .subscribe({
-        next: (limits) => {
-          this.usageLimits = limits;
-        },
-        error: (error) => {
-          console.error('Error fetching usage limits:', error);
-        }
-      });
+  async fetchUsageLimits() {
+    try {
+      this.loading = true;
+      this.error = null;
+      const response = await firstValueFrom(this.http.get<UsageLimits>(`${environment.apiUrl}/api/usage/limits`));
+      this.usageLimits = response;
+    } catch (err: any) {
+      console.error('Error fetching usage limits:', err);
+      this.error = err.message || 'Failed to fetch usage limits. Please try again later.';
+      this.usageLimits = null;
+    } finally {
+      this.loading = false;
+    }
   }
 
   getStatusMessage(): string {
     if (!this.usageLimits) return '';
     
     switch (this.usageLimits.status) {
-      case 'trial':
-        return 'Trial Period Active';
       case 'active':
         return 'Active Subscription';
-      case 'cancelled':
-        return 'Subscription Cancelled';
+      case 'free':
+        return 'Free Plan';
       default:
         return '';
     }
   }
 
-  getTrialMessage(): string {
-    if (!this.usageLimits?.trialInfo) return '';
-    
-    const { daysLeft, requestsLeft } = this.usageLimits.trialInfo;
-    return `${daysLeft} days or ${requestsLeft} AI requests remaining in trial`;
+  getUsedRequests(): number {
+    return this.usageLimits?.aiRequests?.used ?? 0;
   }
 
-  getCurrentValue(feature: keyof UsageLimits['current']): number {
-    return this.usageLimits?.current[feature] ?? 0;
+  getTotalRequests(): number {
+    return this.usageLimits?.aiRequests?.total ?? 0;
   }
 
-  getLimitValue(feature: keyof UsageLimits['limits']): number {
-    return this.usageLimits?.limits[feature] ?? 0;
-  }
-
-  getProgressWidth(feature: keyof UsageLimits['current']): number {
-    if (!this.usageLimits) return 0;
-    const current = this.usageLimits.current[feature];
-    const limit = this.usageLimits.limits[feature];
-    return Math.min((current / limit) * 100, 100);
+  getProgressWidth(): number {
+    if (!this.usageLimits?.aiRequests) return 0;
+    const { used, total } = this.usageLimits.aiRequests;
+    return Math.min((used / total) * 100, 100);
   }
 
   subscribe() {
-    // This will be implemented with Stripe
     window.location.href = '/subscription';
   }
 } 

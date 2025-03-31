@@ -14,7 +14,12 @@ export class UsageService {
         if (!usage) {
             usage = await UserUsage.create({ 
                 userId,
-                status: 'trial'
+                status: 'free',
+                aiRequests: {
+                    count: 0,
+                    lastRequest: new Date()
+                },
+                aiRequestLimit: 0 // Free users have no AI access
             });
         }
         
@@ -30,10 +35,10 @@ export class UsageService {
         try {
             // Check subscription status
             const status = await this.stripeService.getSubscriptionStatus(userId);
-            const isActive = status === 'active' || status === 'trialing';
+            const isActive = status === 'active';
             
             if (!isActive) {
-                throw new Error('Active subscription required');
+                throw new Error('Premium subscription required');
             }
 
             await usage.incrementAIRequestCount();
@@ -43,10 +48,21 @@ export class UsageService {
         }
     }
 
+    async validateAIRequest(userId: string, tokenCount: number): Promise<boolean> {
+        const usage = await UserUsage.findOne({ userId });
+        if (!usage) {
+            throw new Error('User usage record not found');
+        }
+
+        const canMakeRequest = await usage.canMakeAIRequest();
+        const isValidTokenCount = usage.validateTokenCount(tokenCount);
+
+        return canMakeRequest && isValidTokenCount;
+    }
+
     async getUserUsageStats(userId: string): Promise<{
         subscription: {
             status: string;
-            trial_end?: Date;
         };
         usage: {
             aiRequests: number;
@@ -63,8 +79,7 @@ export class UsageService {
 
         return {
             subscription: {
-                status,
-                trial_end: status === 'trialing' ? usage.currentPeriodEnd : undefined
+                status
             },
             usage: {
                 aiRequests: usage.aiRequests.count

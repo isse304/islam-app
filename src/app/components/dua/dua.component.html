@@ -67,7 +67,7 @@
         </div>
 
         <!-- AI Insights -->
-        <div class="ai-insights mt-6" *ngIf="emotionalInsights && (authStateService.isPremiumUser$ | async)">
+        <div class="ai-insights mt-6" *ngIf="aiInsights && (authStateService.isPremiumUser$ | async)">
           <div class="bg-white rounded-lg p-6 shadow-md">
             <div class="flex justify-between items-center mb-6">
               <h3 class="text-xl font-semibold text-[#B7A57A] flex items-center">
@@ -130,14 +130,70 @@
 
               <!-- Spiritual Advice -->
               <div class="bg-[#B7A57A]/5 rounded-lg p-6">
-                <div class="flex items-start mb-4">
-                  <i class="fas fa-heart text-[#B7A57A] mt-1 mr-3"></i>
-                  <div class="space-y-4">
-                    <h4 class="font-semibold text-gray-800 mb-2">Spiritual Advice</h4>
-                    <div class="space-y-4">
-                      <p class="text-gray-700 leading-relaxed" *ngFor="let paragraph of getSpiritualAdviceParagraphs()">
-                        {{ paragraph }}
-                      </p>
+                <div class="space-y-6">
+                  <!-- Islamic Understanding -->
+                  <div *ngIf="spiritualAdvice" class="mb-6">
+                    <!-- Understanding -->
+                    <div *ngIf="spiritualAdvice.understanding" class="mb-6">
+                      <h3 class="text-lg font-semibold mb-2">Islamic Understanding</h3>
+                      <p class="text-gray-700">{{ spiritualAdvice.understanding }}</p>
+                    </div>
+
+                    <!-- Recommended Duas -->
+                    <div *ngIf="spiritualAdvice?.duas?.length" class="mb-6">
+                      <h3 class="text-lg font-semibold mb-2">Recommended Duas</h3>
+                      <div class="space-y-4">
+                        <div *ngFor="let dua of spiritualAdvice!.duas!" class="bg-gray-50 p-4 rounded-lg">
+                          <p *ngIf="dua.arabic" class="text-lg mb-2 font-arabic text-right">{{ dua.arabic }}</p>
+                          <p *ngIf="dua.translation" class="text-gray-700 mb-2">{{ dua.translation }}</p>
+                          <div class="text-sm text-gray-600">
+                            <p *ngIf="dua.reference" class="italic">Reference: {{ dua.reference }}</p>
+                            <p *ngIf="dua.virtue" class="mt-1">Virtue: {{ dua.virtue }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Beneficial Dhikr -->
+                    <div *ngIf="spiritualAdvice?.dhikr?.length" class="mb-6">
+                      <h3 class="text-lg font-semibold mb-2">Beneficial Dhikr</h3>
+                      <div class="space-y-4">
+                        <div *ngFor="let dhikr of spiritualAdvice!.dhikr!" class="bg-gray-50 p-4 rounded-lg">
+                          <p *ngIf="dhikr.phrase" class="text-lg mb-2 font-arabic text-right">{{ dhikr.phrase }}</p>
+                          <p *ngIf="dhikr.translation" class="text-gray-700 mb-2">{{ dhikr.translation }}</p>
+                          <div class="text-sm text-gray-600">
+                            <p *ngIf="dhikr.count" class="mb-1">Count: {{ dhikr.count }}</p>
+                            <p *ngIf="dhikr.timing" class="mb-1">Timing: {{ dhikr.timing }}</p>
+                            <p *ngIf="dhikr.benefit" class="italic">Benefit: {{ dhikr.benefit }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Scholarly Guidance -->
+                    <div *ngIf="spiritualAdvice?.scholarly_guidance?.length" class="mb-6">
+                      <h3 class="text-lg font-semibold mb-2">Scholarly Guidance</h3>
+                      <div class="space-y-4">
+                        <div *ngFor="let guidance of spiritualAdvice!.scholarly_guidance!" class="bg-gray-50 p-4 rounded-lg">
+                          <p *ngIf="guidance.quote" class="text-gray-700 mb-2 italic">"{{ guidance.quote }}"</p>
+                          <div class="text-sm text-gray-600">
+                            <p *ngIf="guidance.scholar" class="font-medium">- {{ guidance.scholar }}</p>
+                            <p *ngIf="guidance.source" class="italic">{{ guidance.source }}</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Spiritual Remedies -->
+                    <div *ngIf="spiritualAdvice?.spiritual_remedies?.length" class="mb-6">
+                      <h3 class="text-lg font-semibold mb-2">Spiritual Remedies</h3>
+                      <div class="space-y-4">
+                        <div *ngFor="let remedy of spiritualAdvice!.spiritual_remedies!" class="bg-gray-50 p-4 rounded-lg">
+                          <p *ngIf="remedy.practice" class="font-medium mb-2">{{ remedy.practice }}</p>
+                          <p *ngIf="remedy.method" class="text-gray-700 mb-2">{{ remedy.method }}</p>
+                          <p *ngIf="remedy.benefit" class="text-sm text-gray-600 italic">Benefit: {{ remedy.benefit }}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -291,30 +347,7 @@
           
           <div class="p-6">
             <h2 class="text-2xl font-bold text-[#B7A57A] mb-4">{{ selectedDua.title }}</h2>
-            
-            <!-- Loading State for Insights -->
-            <div *ngIf="isLoadingInsights" class="flex flex-col items-center justify-center py-8">
-              <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
-              <p class="mt-4 text-gray-600">Generating insights...</p>
-            </div>
-
-            <!-- Error State -->
-            <div *ngIf="error" class="bg-red-50 text-red-700 p-4 rounded-lg mb-4">
-              <div class="flex items-center">
-                <i class="fas fa-exclamation-circle mr-2"></i>
-                <p>{{ error }}</p>
-              </div>
-              <button 
-                (click)="onDuaSelect(selectedDua)"
-                class="mt-2 text-sm text-red-700 hover:text-red-800 underline">
-                Try again
-              </button>
-            </div>
-
-            <!-- Content -->
-            <div *ngIf="!isLoadingInsights && !error">
-              <app-dua-insights [dua]="selectedDua"></app-dua-insights>
-            </div>
+            <app-dua-insights [dua]="selectedDua"></app-dua-insights>
           </div>
         </div>
       </div>

@@ -105,6 +105,7 @@
               <ul class="space-y-4">
                 <li *ngFor="let dua of getSpiritualAdvice().duas" class="bg-[#f8f7f1] rounded-lg p-4">
                   <div *ngIf="dua.arabic" class="text-right mb-2 text-lg font-arabic">{{ dua.arabic }}</div>
+                  <div *ngIf="dua.transliteration" class="text-gray-700 italic mb-2">{{ dua.transliteration }}</div>
                   <div *ngIf="dua.translation" class="text-gray-700">{{ dua.translation }}</div>
                   <div *ngIf="dua.reference" class="text-sm text-gray-500 mt-1">{{ dua.reference }}</div>
                   <div *ngIf="dua.virtue" class="text-[#B7A57A] mt-2 text-sm">
@@ -143,11 +144,13 @@
                 <li *ngFor="let guidance of getSpiritualAdvice().scholarly_guidance" class="bg-[#f8f7f1] rounded-lg p-4">
                   <ng-container *ngIf="guidance">
                     <div *ngIf="guidance.quote" class="text-gray-700 italic">"{{ guidance.quote }}"</div>
-                    <div *ngIf="guidance.scholar" class="text-[#B7A57A] mt-2">
-                      — {{ guidance.scholar }}
-                      <span *ngIf="guidance.source" class="text-gray-500">
+                    <div class="flex items-center justify-between mt-2">
+                      <div *ngIf="guidance.scholar" class="text-[#B7A57A]">
+                        — {{ guidance.scholar }}
+                      </div>
+                      <div *ngIf="guidance.source" class="text-gray-500">
                         ({{ guidance.source }})
-                      </span>
+                      </div>
                     </div>
                   </ng-container>
                 </li>
