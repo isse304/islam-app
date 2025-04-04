@@ -22,121 +22,81 @@ export interface AuthenticatedRequest extends Request {
     auth?: DecodedIdToken;
 }
 
-// Verify Firebase token and attach user data to request
+// Helper function to verify the ID token
 const verifyToken = async (token: string): Promise<DecodedIdToken> => {
   try {
-    // Remove 'Bearer ' prefix if present
     const cleanToken = token.startsWith('Bearer ') ? token.slice(7) : token;
-
-    // Log token format details (safely)
-    console.log('Token validation details:', {
-      length: cleanToken.length,
-      format: cleanToken.includes('.') ? 'JWT format' : 'Invalid format',
-      parts: cleanToken.split('.').length,
-      truncatedToken: `${cleanToken.substring(0, 10)}...${cleanToken.substring(cleanToken.length - 10)}`
-    });
-
-    // Verify the token
-    const decodedToken = await auth.verifyIdToken(cleanToken);
-    
-    // Log decoded token details (safely)
-    console.log('Token verification successful:', {
-      uid: decodedToken.uid,
-      premium: decodedToken.premium,
-      features: decodedToken.features,
-      exp: decodedToken.exp,
-      iat: decodedToken.iat,
-      tokenAge: Math.floor((Date.now() / 1000) - decodedToken.iat)
-    });
-
+    console.log('[verifyToken] Verifying token...'); // Simple log
+    const decodedToken = await auth.verifyIdToken(cleanToken, true /** checkRevoked */);
+    console.log(`[verifyToken] Token verified successfully for UID: ${decodedToken.uid}`);
     return decodedToken;
   } catch (error: any) {
-    console.error('Token verification error:', {
-      name: error.name,
-      code: error.code,
-      message: error.message,
-      tokenLength: token?.length,
-      hasBearer: token?.startsWith('Bearer ')
-    });
-
-    if (error.code === 'auth/id-token-expired') {
-      throw new Error('Token expired');
-    } else if (error.code === 'auth/id-token-revoked') {
-      throw new Error('Token revoked');
-    }
-    throw new Error('Invalid token');
+    console.error('[verifyToken] Token verification failed:', error.code || error.message);
+    throw new Error(error.code === 'auth/id-token-expired' ? 'Token expired' : 'Invalid token');
   }
 };
 
-// Single auth middleware that can be used both as middleware and HOC
-export const withAuth = (handler?: (req: Request, res: Response) => Promise<void | Response>) => {
-  return async (req: Request, res: Response, next: NextFunction) => {
+// Middleware function generator using ID Token (Authorization Header)
+// Adjust handler type to allow Response return types
+export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void | Response> | void | Response) => {
+  return async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    console.log(`--- withAuth (Bearer Token) triggered for URL: ${req.originalUrl} at ${new Date().toISOString()} ---`);
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('[withAuth] No or invalid Bearer token header found.');
+      return res.status(401).json({ error: 'Unauthorized', details: 'Bearer token required' });
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    if (!token) {
+        console.log('[withAuth] Empty token after Bearer.');
+        return res.status(401).json({ error: 'Unauthorized', details: 'Empty token' });
+    }
+
     try {
-      // Log request details
-      console.log('Auth request details:', {
-        path: req.path,
-        method: req.method,
-        hasAuthHeader: !!req.headers.authorization,
-        headerKeys: Object.keys(req.headers)
-      });
-
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        console.error('No authorization header present');
-        return res.status(401).json({ error: 'No token provided' });
-      }
-
-      if (!authHeader.startsWith('Bearer ')) {
-        console.error('Invalid authorization header format:', authHeader.substring(0, 10));
-        return res.status(401).json({ error: 'Invalid token format' });
-      }
-
-      const token = authHeader.split('Bearer ')[1];
-      if (!token || token.trim() === '') {
-        console.error('Empty token after Bearer prefix');
-        return res.status(401).json({ error: 'Empty token' });
-      }
-
-      try {
-        const decodedToken = await verifyToken(token);
-        
-        // Additional validation for AI endpoints
-        if (req.path.includes('/api/ai/')) {
-          console.log('AI endpoint detected, validating premium status');
-          const isPremium = decodedToken.premium === true;
-          
-          console.log('Premium validation:', {
-            premium: decodedToken.premium,
-            features: decodedToken.features,
-            isPremium: isPremium
-          });
-          
-          if (!isPremium) {
-            console.error('Premium access required for AI endpoint');
-            return res.status(403).json({ error: 'Premium subscription required' });
-          }
-          
-          console.log('Premium status validated for AI endpoint');
-        }
-
-        req.auth = decodedToken;
-        console.log('Request authenticated successfully');
-
-        return handler ? handler(req, res) : next();
-      } catch (error: any) {
-        console.error('Auth validation error:', {
-          message: error.message,
-          code: error.code,
-          path: req.path
-        });
-        return res.status(401).json({ error: error.message });
+      const decodedToken = await verifyToken(token);
+      req.auth = decodedToken; // Attach decoded token info
+      console.log('[withAuth] Token verified, proceeding...');
+      if (handler) {
+          // Call the handler (e.g., premiumCheckHandler or the final route handler)
+          // No explicit return needed here as the handler manages the response/next()
+          await handler(req, res, next);
+      } else {
+        next(); // Otherwise, just proceed to the route's main handler
       }
     } catch (error: any) {
-      console.error('Unexpected auth error:', {
-        message: error.message,
-        stack: error.stack
+      console.error('[withAuth] Token verification caught error:', error.message);
+      res.status(401).json({ 
+          error: 'Unauthorized', 
+          details: error.message || 'Invalid token',
       });
-      return res.status(500).json({ error: 'Internal server error' });
     }
   };
+};
+
+// Optional: Middleware function generator to check premium status AFTER withAuth
+export const withPremium = (handler: (req: AuthenticatedRequest, res: Response, next: NextFunction) => Promise<void | Response> | void | Response) => {
+  // Define the handler that checks premium status
+  const premiumCheckHandler = async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+      console.log(`--- withPremium check triggered for URL: ${req.originalUrl} at ${new Date().toISOString()} ---`);
+      if (!req.auth) { 
+          console.error('[withPremium] req.auth missing! withAuth should have run first.');
+          return res.status(500).json({ error: 'Server Configuration Error', details: 'Authentication context missing' });
+      }
+      
+      // Ensure req.auth exists before accessing claims
+      if (req.auth?.premium === true) {
+          console.log('[withPremium] Premium status verified.');
+          // User is premium, call the original route handler passed to withPremium
+          // Ensure the final handler is called correctly
+          return handler(req, res, next); 
+      } else {
+          console.log('[withPremium] Premium status check failed.');
+          return res.status(403).json({ error: 'Forbidden', details: 'Premium access required' });
+      }
+  };
+
+  // Return the middleware chain: first run withAuth, then premiumCheckHandler
+  return withAuth(premiumCheckHandler);
 }; 

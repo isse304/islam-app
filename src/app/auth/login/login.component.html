@@ -1,80 +1,247 @@
-<div class="auth-container">
-  <mat-card class="auth-card">
-    <mat-card-header>
-      <mat-card-title>Sign In</mat-card-title>
-    </mat-card-header>
-    
-    <mat-card-content>
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email</mat-label>
-          <input matInput formControlName="email" type="email" placeholder="Email">
-          <mat-error *ngIf="loginForm.get('email')?.hasError('required')">
-            Email is required
-          </mat-error>
-          <mat-error *ngIf="loginForm.get('email')?.hasError('email')">
-            Please enter a valid email address
-          </mat-error>
-        </mat-form-field>
-        
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
-          <input 
-            matInput 
-            formControlName="password" 
-            [type]="hidePassword ? 'password' : 'text'" 
-            placeholder="Password">
-          <button 
-            mat-icon-button 
-            matSuffix 
-            (click)="hidePassword = !hidePassword" 
-            [attr.aria-label]="'Hide password'" 
-            [attr.aria-pressed]="hidePassword"
-            type="button">
-            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-          </button>
-          <mat-error *ngIf="loginForm.get('password')?.hasError('required')">
-            Password is required
-          </mat-error>
-          <mat-error *ngIf="loginForm.get('password')?.hasError('minlength')">
-            Password must be at least 6 characters
-          </mat-error>
-        </mat-form-field>
-        
-        <div class="forgot-password">
-          <a (click)="goToForgotPassword()">Forgot Password?</a>
+<!-- New structure integrating landing page visuals -->
+<div class="min-h-screen bg-gradient-to-b from-[#1A365D] to-[#2A4365] text-white relative overflow-hidden flex items-center justify-center p-4">
+  <!-- Islamic Pattern Background -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-1.png')] opacity-10 bg-repeat"></div>
+
+  <!-- Nura AI Title (Added) -->
+  <div class="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+      <h1 class="text-5xl font-bold text-white tracking-tight opacity-80 font-serif">
+          Nura<span class="text-[#B7A57A]">AI</span>
+      </h1>
+  </div>
+
+  <div class="container mx-auto relative z-10 grid lg:grid-cols-2 gap-12 items-center pt-20"> <!-- Added pt-20 for title space -->
+
+    <!-- Simplified App Preview (from landing page) - Visible on Large Screens -->
+    <div class="relative hidden lg:block">
+      <div class="relative z-10 transform hover:scale-105 transition-transform duration-300">
+        <div class="w-full h-[600px] bg-[#1A365D]/95 rounded-xl shadow-2xl mx-auto max-w-md overflow-hidden">
+          <div class="h-full flex">
+            <!-- Sidebar -->
+            <div class="w-20 bg-[#0A1629] h-full flex flex-col items-center py-6 space-y-8">
+              <!-- Tafsir Chat Icon -->
+              <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('tafsir')">
+                <mat-icon [class.text-[#B7A57A]]="activeFeature === 'tafsir'" 
+                          class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                          [class.text-gray-500]="activeFeature !== 'tafsir'">menu_book</mat-icon>
+                <div class="h-1 w-6 mt-2 rounded-full" 
+                     [class.bg-[#B7A57A]]="activeFeature === 'tafsir'" 
+                     [class.bg-transparent]="activeFeature !== 'tafsir'"></div>
+              </div>
+              <!-- Emotional Dua Search Icon -->
+              <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('dua-search')">
+                <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-search'" 
+                          class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                          [class.text-gray-500]="activeFeature !== 'dua-search'">favorite</mat-icon>
+                <div class="h-1 w-6 mt-2 rounded-full" 
+                     [class.bg-[#B7A57A]]="activeFeature === 'dua-search'" 
+                     [class.bg-transparent]="activeFeature !== 'dua-search'"></div>
+              </div>
+              <!-- Dua Insights Icon -->
+              <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('dua-insights')">
+                <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-insights'" 
+                          class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                          [class.text-gray-500]="activeFeature !== 'dua-insights'">auto_awesome</mat-icon>
+                <div class="h-1 w-6 mt-2 rounded-full" 
+                     [class.bg-[#B7A57A]]="activeFeature === 'dua-insights'" 
+                     [class.bg-transparent]="activeFeature !== 'dua-insights'"></div>
+              </div>
+            </div>
+            <!-- Main Content Area - Use ngSwitch -->
+            <div class="flex-1 p-6 text-white" [ngSwitch]="activeFeature">
+              <!-- Tafsir Chat Interface -->
+              <div *ngSwitchCase="'tafsir'" class="space-y-8 animate-fade-in">
+                  <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">AI Tafsir Chat</h3></div>
+                  <div class="space-y-8">
+                    <p class="text-[#B7A57A] text-2xl text-right leading-loose" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+                    <p class="text-white/80">In the name of Allah, the Entirely Merciful, the Especially Merciful</p>
+                    <div class="bg-white/10 rounded-lg p-4 mt-6">
+                      <div class="flex items-start space-x-3">
+                        <mat-icon class="text-[#B7A57A]">psychology</mat-icon>
+                        <div>
+                          <p class="text-white/90 text-sm">Ask me about this verse...</p>
+                          <p class="text-white/40 text-xs mt-1">AI Tafsir Chat</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+              </div>
+              <!-- Emotional Dua Search Interface -->
+              <div *ngSwitchCase="'dua-search'" class="space-y-8 animate-fade-in">
+                <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">Emotional Dua Search</h3></div>
+                <div class="bg-white/10 rounded-lg p-4">
+                  <div class="flex items-center space-x-3 mb-4">
+                    <mat-icon class="text-[#B7A57A]">favorite</mat-icon>
+                    <input type="text" placeholder="How are you feeling today?" 
+                           class="bg-transparent text-white border-b border-white/20 focus:border-[#B7A57A] outline-none w-full py-2">
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-2">
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Anxious</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Grateful</span>
+                    <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Seeking Guidance</span>
+                  </div>
+                </div>
+                <!-- Updated Example Response Snippet -->
+                <div class="mt-4 bg-white/5 rounded-lg p-4 text-sm text-white/70 animate-fade-in">
+                  <p>"The Prophet Muhammad ﷺ used to feel this way on numerous occasions..." <span class="text-[#B7A57A]">[Read More...]</span></p>
+                </div>
+              </div>
+              <!-- Dua Insights Interface -->
+              <div *ngSwitchCase="'dua-insights'" class="space-y-8 animate-fade-in">
+                 <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">Dua Insights</h3></div>
+                <div class="bg-white/10 rounded-lg p-4">
+                  <!-- Add Example Arabic Dua -->
+                  <p class="text-[#B7A57A] text-xl text-right leading-loose mb-3" dir="rtl">رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ</p>
+                  <h4 class="text-[#B7A57A] mb-3">Understanding the Dua</h4>
+                  <p class="text-white/80 text-sm leading-relaxed">This beautiful dua teaches us to seek both worldly and spiritual well-being...</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        
-        <div class="button-container">
-          <button 
-            mat-raised-button 
-            color="primary" 
-            type="submit" 
-            class="full-width" 
-            [disabled]="loginForm.invalid || isLoading">
-            <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
-            <span *ngIf="!isLoading">Sign In</span>
-          </button>
-        </div>
-      </form>
-      
-      <mat-divider class="divider"></mat-divider>
-      
-      <div class="alternative-signin">
-        <button 
-          mat-stroked-button 
-          class="google-button full-width" 
-          (click)="loginWithGoogle()" 
-          [disabled]="isLoading">
-          <img src="/google-logo.svg" alt="Google" class="google-icon">
-          Sign in with Google
-        </button>
       </div>
-      
-      <div class="signup-prompt">
-        <span>Don't have an account?</span>
-        <a (click)="goToSignup()">Sign up</a>
-      </div>
-    </mat-card-content>
-  </mat-card>
-</div> 
+      <!-- Optional Decorative Blobs -->
+      <div class="absolute -top-8 -right-8 w-64 h-64 bg-[#B7A57A] rounded-full mix-blend-screen filter blur-xl opacity-20 animate-blob"></div>
+      <div class="absolute -bottom-8 -left-8 w-64 h-64 bg-[#FAF3E0] rounded-full mix-blend-screen filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+    </div>
+
+
+    <!-- Login Card Section -->
+    <div class="w-full max-w-md mx-auto lg:mx-0"> <!-- Center on mobile, align left on lg -->
+      <mat-card class="login-card w-full p-8 rounded-xl shadow-2xl bg-white text-gray-800"> <!-- Ensure text color contrasts with white bg -->
+        <mat-card-header class="justify-center mb-6">
+          <mat-card-title class="text-3xl font-bold text-[#1A365D]">Welcome Back</mat-card-title>
+          <mat-card-subtitle class="text-gray-500 mt-1">Sign in to continue</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="space-y-6">
+
+            <!-- Email Field -->
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <div class="relative">
+                <input id="email" type="email" placeholder="Enter your email" formControlName="email"
+                       class="w-full px-4 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <mat-icon class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">email</mat-icon>
+              </div>
+              <div *ngIf="loginForm.get('email')?.invalid && (loginForm.get('email')?.dirty || loginForm.get('email')?.touched)"
+                   class="text-red-600 text-xs mt-1">
+                <div *ngIf="loginForm.get('email')?.hasError('required')">Email is required.</div>
+                <div *ngIf="loginForm.get('email')?.hasError('email')">Please enter a valid email address.</div>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <div class="relative">
+                <input id="password" [type]="hidePassword ? 'password' : 'text'" placeholder="Enter your password" formControlName="password"
+                       class="w-full pl-4 pr-10 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <button type="button" mat-icon-button (click)="hidePassword = !hidePassword"
+                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        [attr.aria-label]="'Toggle password visibility'" [attr.aria-pressed]="hidePassword">
+                  <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+              </div>
+              <div *ngIf="loginForm.get('password')?.invalid && (loginForm.get('password')?.dirty || loginForm.get('password')?.touched)"
+                   class="text-red-600 text-xs mt-1">
+                <div *ngIf="loginForm.get('password')?.hasError('required')">Password is required.</div>
+              </div>
+            </div>
+
+            <!-- Forgot Password Link -->
+            <div class="text-right">
+              <a routerLink="/auth/forgot-password" class="text-sm text-[#B7A57A] hover:text-[#9b8a65] hover:underline transition-colors">
+                Forgot Password?
+              </a>
+            </div>
+
+            <!-- Login Button -->
+            <button mat-raised-button type="submit" [disabled]="isLoading || loginForm.invalid" class="w-full py-3 text-lg bg-[#B7A57A] hover:bg-[#a8966c] text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <mat-spinner diameter="24" *ngIf="isLoading" class="inline-block mr-2"></mat-spinner>
+              {{ isLoading ? 'Signing In...' : 'Sign In' }}
+            </button>
+
+            <!-- Divider -->
+            <div class="relative flex py-4 items-center">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <!-- Google Sign-In Button -->
+            <button type="button" (click)="loginWithGoogle()" [disabled]="isLoading" class="w-full py-3 text-lg flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed group">
+              <!-- Ensure SVG size is constrained and does not shrink -->
+               <svg class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12
+c-0.007-6.633,5.367-12.006,11.994-12.006c3.613,0,6.839,1.556,9.067,4.016l5.657-5.657C34.046,6.053,29.268,4,24,4
+C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" fill="#FFC107"></path>
+                <path d="M43.611,20.083H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571
+c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C39.999,35.66,44,30.478,44,24C44,22.659,43.862,21.35,43.611,20.083z" fill="#FF3D00"></path>
+                <path d="M24,42c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238c-2.008,1.62-4.746,2.572-7.641,2.572
+c-6.08,0-11.303-3.343-13.409-8.169l-5.845,4.554C8.174,37.318,15.43,42,24,42z" fill="#4CAF50"></path>
+                <path d="M11.994,11.994c-2.228,2.458-3.635,5.722-3.635,9.399c0,0.811,0.09,1.603,0.254,2.363l-5.845-4.554
+C4.254,21.189,4.007,19.967,4,18.686c0-3.036,0.924-5.831,2.544-8.202L11.994,11.994z" fill="#1976D2"></path>
+               </svg>
+              <span class="transition-transform duration-200 group-hover:translate-x-1">Sign In with Google</span>
+            </button>
+
+            <!-- Sign Up Link -->
+            <div class="text-center mt-8">
+              <p class="text-gray-600">
+                Need an account? 
+                <a routerLink="/auth/signup" class="font-medium text-[#B7A57A] hover:text-[#9b8a65] hover:underline transition-colors">
+                  Sign Up
+                </a>
+              </p>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div> <!-- End Login Card Section -->
+
+  </div> <!-- End Container Grid -->
+</div> <!-- End Page Wrapper -->
+
+<!-- Remove inline styles - Use Tailwind or move to SCSS -->
+<!-- <style> ... </style> -->
+<!-- Add specific styles for form field focus colors etc. in component SCSS -->
+<style>
+  /* Style Mat Form Fields Outline & Label Color on Focus */
+  ::ng-deep .mat-mdc-form-field-appearance-outline {
+    .mdc-notched-outline > * {
+        border-color: rgba(100, 116, 139, 0.4) !important; /* Lighter gray border */
+    }
+    .mdc-text-field {
+      border-radius: 8px !important; /* Rounded corners */
+      background-color: rgba(241, 245, 249, 0.6) !important; /* Subtle bg */
+    }
+    .mat-mdc-form-field-infix {
+       padding-top: 12px !important; /* Adjust padding */
+       padding-bottom: 12px !important;
+    }
+    .mat-mdc-floating-label {
+        /* Adjust label position slightly if needed */
+        /* top: 18px !important; */
+    }
+  }
+
+  ::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused {
+     .mdc-notched-outline > * {
+        border-color: #B7A57A !important; /* Gold border on focus */
+        border-width: 2px !important;
+     }
+     .mat-mdc-floating-label {
+         color: #B7A57A !important; /* Gold label on focus */
+     }
+     .mdc-text-field {
+        background-color: white !important; /* White background on focus */
+     }
+  }
+
+ /* Ensure mat-spinner color is appropriate */
+ ::ng-deep .mat-mdc-progress-spinner circle, .mat-mdc-progress-spinner svg:not([class*='mdc-circular-progress__indeterminate-circle']) {
+    stroke: #B7A57A !important; /* Gold color for spinner */
+ }
+</style> 

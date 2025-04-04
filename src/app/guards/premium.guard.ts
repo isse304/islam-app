@@ -1,50 +1,39 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
-import { FirebaseAuthService } from '../services/firebase-auth.service';
+import { Injectable, inject } from '@angular/core';
+import { CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, Router, UrlTree } from '@angular/router';
+import { FirebaseAuthService, AppUser } from '../services/firebase-auth.service';
+import { SubscriptionService } from '../services/subscription.service';
+import { Observable, map, take, switchMap, of, from } from 'rxjs';
 
-@Injectable({
-  providedIn: 'root'
-})
-export class PremiumGuard implements CanActivate {
-  constructor(
-    private authService: FirebaseAuthService,
-    private router: Router
-  ) {}
+export const premiumGuard: CanActivateFn =
+  (route: ActivatedRouteSnapshot, state: RouterStateSnapshot):
+  Observable<boolean | UrlTree> => {
 
-  async canActivate(
-    route: ActivatedRouteSnapshot,
-    state: RouterStateSnapshot
-  ): Promise<boolean> {
-    const isAuthenticated = await this.authService.isAuthenticated();
-    
-    if (!isAuthenticated) {
-      // Save current route and redirect to login
-      await this.authService.login();
-      return false;
-    }
-    
-    // Check if user has premium subscription
-    const user = await this.authService.user$.pipe().toPromise();
-    
-    // Enhanced subscription check - handle both formats
-    // 1. Check user preferences.subscriptionStatus (old way)
-    const subscriptionStatus = user?.preferences?.subscriptionStatus || '';
-    
-    // 2. Handle all possible subscription status formats
-    const isPremium = 
-      ['active', 'trial', 'premium'].includes(subscriptionStatus) || 
-      // Check if subscription status might be in API response 
-      await this.authService.isPremiumUser();
-    
-    if (!isPremium) {
-      // Save the attempted URL to redirect back after subscription
-      const returnUrl = state.url;
-      this.router.navigate(['/premium'], { 
-        queryParams: { returnUrl }
-      });
-      return false;
-    }
-    
-    return true;
-  }
-} 
+    const authService = inject(FirebaseAuthService);
+    const router = inject(Router);
+    const subscriptionService = inject(SubscriptionService);
+    const featureName = route.data['feature'] || 'Premium Feature';
+
+    return from(authService.waitForAuthReady()).pipe(
+      // Instead of taking user$, directly call isPremiumUser()
+      switchMap(() => from(authService.isPremiumUser())), // Convert promise to observable
+      map((hasActivePremium: boolean): boolean | UrlTree => {
+        if (hasActivePremium) {
+          // console.log('PremiumGuard: Access granted.');
+          return true;
+        } else {
+          // console.log(`PremiumGuard: Access denied. Redirecting to subscription page for feature: ${featureName}`);
+          // Check if user is actually logged in before redirecting
+          // If not logged in, AuthGuard should handle redirect to login first.
+          if (!authService.getCurrentUser()) { // Use getCurrentUser() for a synchronous check
+             // console.log('PremiumGuard: User not logged in, letting AuthGuard handle redirect.');
+             // Expect AuthGuard to run first/also and handle the login redirect.
+             return false; // Deny access, AuthGuard will redirect.
+          } else {
+             // User is logged in but not premium
+             subscriptionService.showSubscriptionPage(featureName);
+             return false;
+          }
+        }
+      })
+    );
+};

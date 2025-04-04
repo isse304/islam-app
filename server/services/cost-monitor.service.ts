@@ -138,8 +138,8 @@ export class CostMonitorService {
             { upsert: true, new: true }
         );
 
-        if (usage.aiRequests.count >= parseInt(process.env.DAILY_USER_LIMIT || '100')) {
-            await this.emailService.sendUsageAlert(data.userId, usage.aiRequests.count, parseInt(process.env.DAILY_USER_LIMIT || '100'));
+        if (usage && usage.aiRequests.count >= parseInt(process.env['DAILY_USER_LIMIT'] || '100')) {
+            await this.emailService.sendUsageAlert(data.userId, usage.aiRequests.count, parseInt(process.env['DAILY_USER_LIMIT'] || '100'));
         }
     }
 

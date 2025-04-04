@@ -4,9 +4,9 @@ export interface IUserSubscription {
     userId: string;
     stripeCustomerId: string;
     stripeSubscriptionId: string;
-    status: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'trialing' | 'unpaid';
+    status: 'active' | 'canceled' | 'past_due' | 'incomplete' | 'incomplete_expired' | 'trialing' | 'unpaid' | 'paused' | 'inactive';
     plan: 'free' | 'standard' | 'premium';
-    currentPeriodEnd: Date;
+    currentPeriodEnd: Date | null;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -22,13 +22,12 @@ const userSubscriptionSchema = new mongoose.Schema<IUserSubscription>({
         required: true
     },
     stripeSubscriptionId: {
-        type: String,
-        required: true
+        type: String
     },
     status: {
         type: String,
-        enum: ['active', 'canceled', 'past_due', 'incomplete', 'incomplete_expired', 'trialing', 'unpaid'],
-        default: 'incomplete'
+        enum: ['active', 'canceled', 'past_due', 'incomplete', 'incomplete_expired', 'trialing', 'unpaid', 'paused', 'inactive'],
+        default: 'inactive'
     },
     plan: {
         type: String,
@@ -36,8 +35,7 @@ const userSubscriptionSchema = new mongoose.Schema<IUserSubscription>({
         default: 'free'
     },
     currentPeriodEnd: {
-        type: Date,
-        required: true
+        type: Date
     }
 }, {
     timestamps: true

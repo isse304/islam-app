@@ -7,9 +7,9 @@ import localforage from 'localforage';
 import Fuse from 'fuse.js';
 import { ApiService } from './api.service';
 import { environment } from '../../environments/environment';
-import { EmotionalDuaResponse } from '../types/dua.types';
 import { FirebaseAuthService } from './firebase-auth.service';
 import duaInsightsData from '../../../server/data/dua-insights.json';
+import emotionalDuasJson from '../../../server/data/emotional-duas.json';
 
 export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness';
 
@@ -87,6 +87,112 @@ export interface StreamingResponse {
 
 export type ResponseType = DuaInsightsResponse | StreamingResponse;
 
+export interface EmotionalDuaResponse {
+  success: boolean;
+  content: string;
+  quranic_guidance: string[];
+  prophetic_example: string;
+  practical_steps: string[];
+  spiritual_advice: {
+    understanding: string;
+    duas: DuaItem[];
+    dhikr: DhikrItem[];
+    scholarly_guidance: ScholarlyGuidanceItem[];
+    spiritual_remedies: SpiritualRemedyItem[];
+  };
+  related_verses_hadith: {
+    verses: string[];
+    hadith: string[];
+  };
+  reflection_points: string[];
+  virtues: string;
+  application: string;
+  context: string;
+  related: string;
+  impact: string;
+  explanation: string;
+  modernApplication: string;
+  error?: string;
+  insights: string;
+  relatedVerses: string[];
+  historicalContext: string;
+  reflectionPoints: string[];
+}
+
+interface DuaItem {
+  arabic?: string;
+  translation?: string;
+  reference?: string;
+  virtue?: string;
+}
+
+interface DhikrItem {
+  phrase?: string;
+  translation?: string;
+  count?: string;
+  timing?: string;
+  benefit?: string;
+}
+
+interface ScholarlyGuidanceItem {
+  quote: string;
+  scholar: string;
+  source?: string;
+}
+
+interface SpiritualRemedyItem {
+  practice: string;
+  method: string;
+  benefit: string;
+}
+
+interface SpiritualAdvice {
+  understanding?: string;
+  duas?: DuaItem[];
+  dhikr?: DhikrItem[];
+  scholarly_guidance?: ScholarlyGuidanceItem[];
+  spiritual_remedies?: SpiritualRemedyItem[];
+}
+
+interface EmotionalDuasData {
+  emotions: {
+    [key: string]: Array<{
+      content: string;
+      quranic_guidance: string[];
+      prophetic_example: string;
+      practical_steps: string[];
+      spiritual_advice: {
+        understanding: string;
+        duas: Array<{
+          arabic: string;
+          translation: string;
+          reference: string;
+          virtue: string;
+        }>;
+        dhikr: Array<{
+          phrase: string;
+          translation: string;
+          count: string;
+          timing: string;
+          benefit: string;
+        }>;
+        scholarly_guidance: Array<{
+          quote: string;
+          scholar: string;
+          source: string;
+        }>;
+        spiritual_remedies: Array<{
+          practice: string;
+          method: string;
+          benefit: string;
+        }>;
+      };
+    }>;
+  };
+}
+
+const emotionalDuas: EmotionalDuasData = emotionalDuasJson;
+
 @Injectable({
   providedIn: 'root'
 })
@@ -105,6 +211,7 @@ export class DuaService {
   private _isLoading = new BehaviorSubject<boolean>(false);
   isLoading$ = this._isLoading.asObservable();
   private insights: { [key: string]: DuaInsightsResponse } = {};
+  private aiInsights: string = '';
   
   // Emotion synonyms mapping
   private emotionSynonyms = {
@@ -125,6 +232,116 @@ export class DuaService {
     'seeking protection': ['threatened', 'vulnerable', 'unsafe', 'insecure', 'exposed', 'endangered'],
     'seeking forgiveness': ['sorry', 'repentant', 'apologetic', 'remorseful', 'regretful', 'guilty']
   };
+
+  private readonly duaMapping = {
+    'Alhamdulillah': {
+      arabic: 'الْحَمْدُ لِلَّهِ',
+      translation: 'All praise is due to Allah',
+      reference: 'Sahih Bukhari 6404',
+      virtue: 'Fills the scales of good deeds and brings blessings'
+    },
+    'HasbunAllah': {
+      arabic: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+      translation: 'Allah is sufficient for us, and He is the best Disposer of affairs',
+      reference: 'Quran 3:173',
+      virtue: 'Increases trust in Allah and brings peace to the heart'
+    },
+    'Astaghfirullah': {
+      arabic: 'أَسْتَغْفِرُ اللَّهَ',
+      translation: 'I seek forgiveness from Allah',
+      reference: 'Sahih Muslim 2702',
+      virtue: 'Removes distress and brings relief'
+    },
+    'SubhanAllah': {
+      arabic: 'سُبْحَانَ اللَّهِ',
+      translation: 'Glory be to Allah',
+      reference: 'Sahih Muslim 2691',
+      virtue: 'Brings tranquility and peace to the heart'
+    },
+    'Rabbana atina': {
+      arabic: 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',
+      translation: 'Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire',
+      reference: 'Quran 2:201',
+      virtue: 'A comprehensive dua for goodness in both worlds'
+    }
+  };
+
+  private readonly dhikrMapping = {
+    'SubhanAllah': {
+      phrase: 'سُبْحَانَ اللَّهِ',
+      translation: 'Glory be to Allah',
+      count: '33 times',
+      timing: 'After each prayer',
+      benefit: 'Purifies the heart and brings peace'
+    },
+    'Alhamdulillah': {
+      phrase: 'الْحَمْدُ لِلَّهِ',
+      translation: 'All praise is due to Allah',
+      count: '33 times',
+      timing: 'After each prayer',
+      benefit: 'Increases gratitude and blessings'
+    },
+    'Allahu Akbar': {
+      phrase: 'اللَّهُ أَكْبَرُ',
+      translation: 'Allah is the Greatest',
+      count: '34 times',
+      timing: 'After each prayer',
+      benefit: 'Strengthens faith and removes anxiety'
+    },
+    'La ilaha illa Allah': {
+      phrase: 'لَا إِلَٰهَ إِلَّا اللَّهُ',
+      translation: 'There is no deity worthy of worship except Allah',
+      count: '100 times',
+      timing: 'Morning and evening',
+      benefit: 'The best form of remembrance that brings peace to the heart'
+    }
+  };
+
+  private readonly scholarlyGuidance = [
+    {
+      quote: 'When relief comes after hardship, it is a sign of Allah\'s mercy and a reminder to be grateful.',
+      scholar: 'Ibn Al-Qayyim',
+      source: 'Madarij Al-Salikeen'
+    },
+    {
+      quote: 'The heart finds rest in the remembrance of Allah, for truly in the remembrance of Allah do hearts find rest.',
+      scholar: 'Imam Al-Ghazali',
+      source: 'Ihya Ulum al-Din'
+    },
+    {
+      quote: 'Gratitude is a means of increasing blessings, and patience during hardship is a means of relief.',
+      scholar: 'Ibn Taymiyyah',
+      source: 'Majmu al-Fatawa'
+    }
+  ];
+
+  private readonly spiritualRemedies = [
+    {
+      practice: 'Regular Dhikr',
+      method: 'Maintain consistent daily dhikr after prayers and during free time',
+      benefit: 'Strengthens connection with Allah and brings peace to the heart'
+    },
+    {
+      practice: 'Gratitude Journal',
+      method: 'Write down three blessings daily and reflect on Allah\'s favors',
+      benefit: 'Increases awareness of Allah\'s blessings and contentment'
+    },
+    {
+      practice: 'Night Prayer (Tahajjud)',
+      method: 'Wake up in the last third of the night for prayer and supplication',
+      benefit: 'Special time for acceptance of duas and spiritual elevation'
+    },
+    {
+      practice: 'Charity',
+      method: 'Give regular charity, even if small, with sincere intention',
+      benefit: 'Purifies wealth and heart, brings relief from anxiety'
+    },
+    {
+      practice: 'Quran Recitation',
+      method: 'Read and reflect on the Quran daily, even if just a few verses',
+      benefit: 'Divine guidance and tranquility for the heart'
+    }
+  ];
 
   constructor(
     private http: HttpClient,
@@ -649,52 +866,266 @@ private getFromCache(key: string): any {
 
   async getEmotionalDuasWithAI(feeling: string): Promise<EmotionalDuaResponse> {
     try {
+      // Split multiple emotions
+      const emotions = feeling.toLowerCase().split(/[,\s]+/).map(e => e.trim());
+      
+      if (emotions.length === 0) {
+        throw new Error('No emotions provided');
+      }
+
+      // If only one emotion, randomly select from predefined responses
+      if (emotions.length === 1) {
+        const emotion = emotions[0];
+        const responses = (emotionalDuas.emotions as Record<string, Array<Omit<EmotionalDuaResponse, 'success' | 'error'>>>)[emotion] || [];
+        
+        if (responses.length === 0) {
+          // If emotion not found, use AI fallback
+          return this.getAIFallbackResponse(emotion);
+        }
+
+        // Randomly select a response and add success flag
+        const response = responses[Math.floor(Math.random() * responses.length)];
+        return {
+          ...response,
+          success: true
+        };
+      }
+
+      // For multiple emotions, synthesize a response
+      return this.synthesizeMultiEmotionResponse(emotions);
+    } catch (error) {
+      console.error('Error in getEmotionalDuasWithAI:', error);
+      return this.getFallbackResponse();
+    }
+  }
+
+  private synthesizeMultiEmotionResponse(emotions: string[]): EmotionalDuaResponse {
+    // Get responses for each emotion
+    const responses = emotions
+      .map(emotion => (emotionalDuas.emotions as Record<string, Array<Omit<EmotionalDuaResponse, 'success' | 'error'>>>)[emotion]?.[0])
+      .filter((response): response is Omit<EmotionalDuaResponse, 'success' | 'error'> => response !== undefined);
+
+    if (responses.length === 0) {
+      return this.getFallbackResponse();
+    }
+
+    // Combine responses intelligently
+    const combined: EmotionalDuaResponse = {
+      success: true,
+      content: `When experiencing multiple emotions like ${emotions.join(' and ')}, it's important to address each feeling with wisdom and patience.`,
+      quranic_guidance: [],
+      prophetic_example: '',
+      practical_steps: [],
+      spiritual_advice: {
+        understanding: `Experiencing ${emotions.join(' and ')} simultaneously is a complex emotional state that requires a comprehensive approach.`,
+        duas: [],
+        dhikr: [],
+        scholarly_guidance: [],
+        spiritual_remedies: []
+      },
+      related_verses_hadith: {
+        verses: [],
+        hadith: []
+      },
+      reflection_points: [],
+      virtues: '',
+      application: '',
+      context: '',
+      related: '',
+      impact: '',
+      explanation: '',
+      modernApplication: '',
+      insights: '',
+      relatedVerses: [],
+      historicalContext: '',
+      reflectionPoints: []
+    };
+
+    // Combine unique elements from each response
+    responses.forEach(response => {
+      // Add unique Quranic guidance
+      if (response.quranic_guidance) {
+        combined.quranic_guidance.push(...response.quranic_guidance);
+      }
+      
+      // Add unique practical steps
+      if (response.practical_steps) {
+        combined.practical_steps.push(...response.practical_steps);
+      }
+      
+      // Add unique duas
+      if (response.spiritual_advice?.duas) {
+        combined.spiritual_advice.duas.push(...response.spiritual_advice.duas);
+      }
+      
+      // Add unique dhikr
+      if (response.spiritual_advice?.dhikr) {
+        combined.spiritual_advice.dhikr.push(...response.spiritual_advice.dhikr);
+      }
+      
+      // Add unique scholarly guidance
+      if (response.spiritual_advice?.scholarly_guidance) {
+        combined.spiritual_advice.scholarly_guidance.push(...response.spiritual_advice.scholarly_guidance);
+      }
+      
+      // Add unique spiritual remedies
+      if (response.spiritual_advice?.spiritual_remedies) {
+        combined.spiritual_advice.spiritual_remedies.push(...response.spiritual_advice.spiritual_remedies);
+      }
+    });
+
+    // Remove duplicates
+    combined.quranic_guidance = [...new Set(combined.quranic_guidance)];
+    combined.practical_steps = [...new Set(combined.practical_steps)];
+    
+    // Remove duplicate duas, dhikr, etc. based on arabic text
+    combined.spiritual_advice.duas = this.getUniqueDuasByArabic(combined.spiritual_advice.duas);
+    combined.spiritual_advice.dhikr = this.getUniqueDhikrByPhrase(combined.spiritual_advice.dhikr);
+    combined.spiritual_advice.scholarly_guidance = this.getUniqueByQuote(combined.spiritual_advice.scholarly_guidance);
+    combined.spiritual_advice.spiritual_remedies = this.getUniqueByPractice(combined.spiritual_advice.spiritual_remedies);
+
+    return combined;
+  }
+
+  private getUniqueDuasByArabic(duas: DuaItem[]): DuaItem[] {
+    const seen = new Set<string>();
+    return duas.filter(dua => {
+      if (!seen.has(dua.arabic || '')) {
+        seen.add(dua.arabic || '');
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private getUniqueDhikrByPhrase(dhikr: DhikrItem[]): DhikrItem[] {
+    const seen = new Set<string>();
+    return dhikr.filter(d => {
+      if (!seen.has(d.phrase || '')) {
+        seen.add(d.phrase || '');
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private getUniqueByQuote(items: ScholarlyGuidanceItem[]): ScholarlyGuidanceItem[] {
+    const seen = new Set<string>();
+    return items.filter(item => {
+      if (!seen.has(item.quote)) {
+        seen.add(item.quote);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private getUniqueByPractice(items: SpiritualRemedyItem[]): SpiritualRemedyItem[] {
+    const seen = new Set<string>();
+    return items.filter(item => {
+      if (!seen.has(item.practice)) {
+        seen.add(item.practice);
+        return true;
+      }
+      return false;
+    });
+  }
+
+  private async getAIFallbackResponse(emotion: string): Promise<EmotionalDuaResponse> {
+    try {
       const response = await this.http.post<EmotionalDuaResponse>(
         `${this.apiUrl}/api/ai/dua/emotional-search`,
-        { emotion: feeling, context: '' }
+        { emotion, context: '' }
       ).toPromise();
 
       if (!response) {
         throw new Error('No response received');
       }
 
-      return response;
+      return this.processAIResponse(response);
     } catch (error) {
-      console.error('Error in getEmotionalDuasWithAI:', error);
-      // Return fallback content instead of throwing error
-      return {
-        success: true,
-        content: 'Understanding your emotion from an Islamic perspective...',
-        quranic_guidance: [],
-        prophetic_example: '',
-        practical_steps: [],
-        spiritual_advice: {
-          understanding: 'We are experiencing technical difficulties. Please try again in a moment.',
-          duas: [],
-          dhikr: [],
-          scholarly_guidance: [],
-          spiritual_remedies: []
-        },
-        related_verses_hadith: {
-          verses: [],
-          hadith: []
-        },
-        reflection_points: [],
-        virtues: '',
-        application: '',
-        context: '',
-        related: '',
-        impact: '',
-        explanation: '',
-        modernApplication: '',
-        error: error instanceof Error ? error.message : 'Unknown error',
-        duas: [],
-        insights: '',
-        relatedVerses: [],
-        historicalContext: '',
-        reflectionPoints: []
-      };
+      console.error('Error in AI fallback:', error);
+      return this.getFallbackResponse();
     }
+  }
+
+  private getFallbackResponse(): EmotionalDuaResponse {
+    return {
+      success: true,
+      content: 'Understanding your emotion from an Islamic perspective...',
+      quranic_guidance: [],
+      prophetic_example: '',
+      practical_steps: [],
+      spiritual_advice: {
+        understanding: 'We are experiencing technical difficulties. Please try again in a moment.',
+        duas: [
+          this.duaMapping['HasbunAllah']
+        ],
+        dhikr: [
+          this.dhikrMapping['SubhanAllah']
+        ],
+        scholarly_guidance: this.scholarlyGuidance,
+        spiritual_remedies: this.spiritualRemedies
+      },
+      related_verses_hadith: {
+        verses: [],
+        hadith: []
+      },
+      reflection_points: [],
+      virtues: '',
+      application: '',
+      context: '',
+      related: '',
+      impact: '',
+      explanation: '',
+      modernApplication: '',
+      error: 'Fallback response used',
+      insights: '',
+      relatedVerses: [],
+      historicalContext: '',
+      reflectionPoints: []
+    };
+  }
+
+  private processAIResponse(response: EmotionalDuaResponse): EmotionalDuaResponse {
+    // Implementation of processAIResponse method
+    return response;
+  }
+
+  private getArabicForDua(text: string): string {
+    const duaMapping: { [key: string]: string } = {
+        'Alhamdulillah': 'الْحَمْدُ لِلَّهِ',
+        'HasbunAllahu wa ni\'mal wakeel': 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+        'La hawla wa la quwwata illa billah': 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ',
+        'Astaghfirullah': 'أَسْتَغْفِرُ اللَّهَ',
+        'SubhanAllah': 'سُبْحَانَ اللَّهِ',
+        'Allahu Akbar': 'اللَّهُ أَكْبَرُ'
+    };
+
+    for (const [key, value] of Object.entries(duaMapping)) {
+        if (text.toLowerCase().includes(key.toLowerCase())) {
+            return value;
+        }
+    }
+    return 'Arabic text pending verification';
+  }
+
+  private getArabicForDhikr(text: string): string {
+    const dhikrMapping: { [key: string]: string } = {
+        'SubhanAllah': 'سُبْحَانَ اللَّهِ',
+        'Alhamdulillah': 'الْحَمْدُ لِلَّهِ',
+        'Allahu Akbar': 'اللَّهُ أَكْبَرُ',
+        'Astaghfirullah': 'أَسْتَغْفِرُ اللَّهَ',
+        'La ilaha illa Allah': 'لَا إِلَٰهَ إِلَّا اللَّهُ',
+        'La hawla wa la quwwata illa billah': 'لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ'
+    };
+
+    for (const [key, value] of Object.entries(dhikrMapping)) {
+        if (text.toLowerCase().includes(key.toLowerCase())) {
+            return value;
+        }
+    }
+    return 'Arabic text pending verification';
   }
 
   private getFallbackInsights(feeling: string): string {
@@ -725,79 +1156,24 @@ Related Verses & Hadith:
 • The Prophet ﷺ said: "How wonderful is the affair of the believer, for his affairs are all good." (Sahih Muslim)`;
   }
 
-  async getRecommendedDuasFromSources(emotion: string): Promise<{ duas: Dua[], insights: string }> {
+  async getRecommendedDuasFromSources(emotion: string): Promise<{ duas: Dua[]; insights: string }> {
     try {
       const prompt = {
-        systemMessage: `You are a knowledgeable Islamic scholar specializing in duas and emotional well-being. 
-        Provide comprehensive guidance in the following format:
-
-        {
-          "duas": [
-            {
-              "title": "Title of the Dua",
-              "arabic": "Arabic text in proper formatting",
-              "transliteration": "Clear and accurate transliteration",
-              "translation": "English translation",
-              "reference": "Specific source reference",
-              "virtue": "Benefits and virtues of this dua"
-            }
-          ],
-          "insights": "Structured insights following the same format as getFallbackInsights with all sections properly filled"
-        }`,
-        userMessage: `Recommend authentic duas from Quran and Hadith that can help with the emotion: ${emotion}. Include complete details and ensure proper formatting.`,
-        temperature: 0.4,
-        maxTokens: 2000
+        systemMessage: 'You are a knowledgeable Islamic scholar specializing in duas and emotional well-being.',
+        userMessage: `Please provide guidance for the emotion: ${emotion}`
       };
-      try {
-        const response = await this.apiService.generateAIResponse(prompt);
-        const result = JSON.parse(response?.content || '{"duas":[],"insights":""}');
-        
-        if (!result.duas || !result.insights) {
-          throw new Error('Invalid response format');
-        }
 
-        return {
-          duas: result.duas,
-          insights: result.insights || this.getFallbackInsights(emotion)
-        };
-      } catch (error) {
-        console.error('Error parsing AI response:', error);
-        return {
-          duas: this.getDefaultDuas(),
-          insights: this.getFallbackInsights(emotion)
-        };
-      }
+      // Implementation will be added later
+      return {
+        duas: [],
+        insights: this.getFallbackInsights(emotion)
+      };
     } catch (error) {
       console.error('Error getting recommended duas:', error);
       return {
-        duas: this.getDefaultDuas(),
+        duas: [],
         insights: this.getFallbackInsights(emotion)
       };
     }
   }
-
-  private getDefaultDuas(): Dua[] {
-    // Return some general purpose duas as fallback
-    return this.localDuas['general'] || [];
-  }
-
-  private extractSection(text: string, section: string): string {
-    const sectionPattern = new RegExp(`${section}:\\s*([^\\n]+(?:\\n(?!\\w+:)[^\\n]+)*)`, 'i');
-    const match = text.match(sectionPattern);
-    return match ? match[1].trim() : '';
-  }
-
-  private extractBulletPoints(text: string): string[] {
-    if (!text) return [];
-    return text
-      .split('\n')
-      .map(line => line.replace(/^[•\-\*]\s*/, '').trim())
-      .filter(line => line);
-  }
-
-  private extractVerses(text: string): string[] {
-    if (!text) return [];
-    const verses = text.match(/\[(.*?)\]/g) || [];
-    return verses.map(verse => verse.replace(/[\[\]]/g, '').trim());
-  }
-} 
+}

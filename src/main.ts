@@ -2,7 +2,7 @@ import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
 import { environment } from './environments/environment';
-import { importProvidersFrom } from '@angular/core';
+import { importProvidersFrom, APP_INITIALIZER, Injector } from '@angular/core';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -31,6 +31,7 @@ import { provideAuth } from '@angular/fire/auth';
 import { provideFirestore } from '@angular/fire/firestore';
 import { FirebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
 import { routes } from './app/app.routes';
+import { FirebaseAuthService } from './app/services/firebase-auth.service';
 
 // Initialize Firebase
 const app = initializeApp(environment.firebase);
@@ -44,6 +45,11 @@ function getAngularAuth() {
 
 function getAngularFirestore() {
   return firestore;
+}
+
+// Factory function for APP_INITIALIZER
+export function initializeAuthFactory(authService: FirebaseAuthService): () => Promise<void> {
+  return () => authService.waitForAuthReady();
 }
 
 bootstrapApplication(AppComponent, {
@@ -74,6 +80,12 @@ bootstrapApplication(AppComponent, {
       MatTabsModule,
       FormsModule,
       ReactiveFormsModule
-    )
+    ),
+    {
+      provide: APP_INITIALIZER,
+      useFactory: initializeAuthFactory,
+      deps: [FirebaseAuthService],
+      multi: true
+    }
   ]
 }).catch((err) => console.error(err));

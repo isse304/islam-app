@@ -1,9 +1,8 @@
 import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
-import { AuthStateService } from '../../services/auth-state.service';
 import { Router, RouterModule } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { firstValueFrom, Subscription, switchMap, tap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,6 +16,8 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TafsirDatabaseService, TafsirEntry } from '../../services/tafsir-database.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ApiService } from '../../services/api.service';
+import { FirebaseAuthService } from '../../services/firebase-auth.service';
+import { take, from } from 'rxjs';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -73,13 +74,14 @@ export class LearnComponent implements OnInit, OnDestroy {
   selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir';
   surahs: any[] = [];
   verseCounts: number = 1;
-  aiSummary: string = '';
+  aiSummary: string = '';  // AI feature enabled
   tafsirEntries: TafsirEntry[] = [];
   private readonly LEARN_STATE_KEY = 'learn_quran_state';
   private readonly AUTH_CHECK_INTERVAL = 30000; // 30 seconds
   private authCheckInterval: any;
   private lastSurahVerse: string = '';
   private isFirstResponse: boolean = true;
+  private initSubscription: Subscription | null = null; // Subscription for ngOnInit async ops
 
   private conversationContext: {
     lastTopic?: string;
@@ -99,45 +101,54 @@ export class LearnComponent implements OnInit, OnDestroy {
   constructor(
     private quranService: QuranService,
     private subscriptionService: SubscriptionService,
-    public authStateService: AuthStateService,
+    public firebaseAuthService: FirebaseAuthService,
     private tafsirDatabaseService: TafsirDatabaseService,
     private apiService: ApiService,
     public router: Router
   ) {}
 
-  async ngOnInit() {
-    try {
-      // First restore state from localStorage
-      this.restoreState();
-      
-      // Then load surahs
-      await firstValueFrom(this.quranService.getSurahList()).then(surahs => {
-        this.surahs = surahs;
-      });
-      
-      // Setup auth check interval
-      this.setupAuthCheck();
-      
-      // Update verse count without resetting verse number
-      await this.updateVerseCount(false);
-      
-      // Load the verse with current state
-      await this.loadVerse();
-      
-      await this.checkPremiumStatus();
-    } catch (error) {
-      console.error('Error in ngOnInit:', error);
-    }
+  ngOnInit() {
+    // Restore state synchronously first
+    this.restoreState();
+
+    // Use RxJS chain for initialization
+    this.initSubscription = this.quranService.surahs$.pipe(
+      take(1), // Ensure we get the first populated list
+      tap(surahs => {
+        this.surahs = surahs; // Assign the loaded surahs to the component property
+        // console.log('[LearnComponent] Surah list loaded via surahs$.');
+      }),
+      // After surah list is confirmed loaded, proceed
+      switchMap(() => {
+        // console.log('[LearnComponent] Proceeding to updateVerseCount.');
+        // Wrap updateVerseCount in a promise-like structure if needed, or handle its async nature
+        // Since updateVerseCount is async, we convert its promise back to an observable
+        return from(this.updateVerseCount(false));
+      }),
+      // Potentially chain other async operations needed after verse count update
+      // switchMap(() => from(this.loadVerse())), // loadVerse is called within updateVerseCount
+      switchMap(() => from(this.checkPremiumStatus()))
+    ).subscribe({
+      next: () => {
+        // console.log('[LearnComponent] Initialization sequence complete.');
+        // Setup auth check interval after main init is done
+        this.setupAuthCheck();
+      },
+      error: (error) => {
+        console.error('Error during LearnComponent initialization:', error);
+        // Handle initialization error (e.g., show error message)
+        this.isLoading = false; // Ensure loading stops on error
+      }
+    });
   }
 
   ngOnDestroy() {
-    // Save state before leaving
     this.saveState();
-    
-    // Clear interval
     if (this.authCheckInterval) {
       clearInterval(this.authCheckInterval);
     }
+    // Unsubscribe from the initialization subscription
+    this.initSubscription?.unsubscribe();
   }
 
   private setupAuthCheck() {
@@ -148,7 +159,7 @@ export class LearnComponent implements OnInit, OnDestroy {
   }
 
   private async checkPremiumStatus() {
-    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    const isPremium = await this.firebaseAuthService.isPremiumUser();
     if (!isPremium) {
       this.subscriptionService.showSubscriptionPage('Learn Feature');
       return false;
@@ -166,7 +177,12 @@ export class LearnComponent implements OnInit, OnDestroy {
         lastUpdated: new Date().toISOString()
       };
       localStorage.setItem(this.LEARN_STATE_KEY, JSON.stringify(state));
-      console.log('State saved:', state);
+      // Added logging
+      // console.log('[LearnComponent] State saved:', { 
+      //   surah: state.selectedSurah, 
+      //   verse: state.selectedVerse, 
+      //   ts: state.lastUpdated 
+      // });
     } catch (error) {
       console.error('Error saving state:', error);
     }
@@ -189,12 +205,21 @@ export class LearnComponent implements OnInit, OnDestroy {
           }));
         }
 
-        console.log('State restored:', {
-          surah: this.selectedSurah,
-          verse: this.selectedVerse,
-          messageCount: this.messages.length,
-          lastUpdated: state.lastUpdated
-        });
+        // Added logging
+        // console.log('[LearnComponent] State restored:', {
+        //   surah: this.selectedSurah,
+        //   verse: this.selectedVerse,
+        //   messageCount: this.messages.length,
+        //   lastUpdated: state.lastUpdated
+        // });
+      } else {
+         // Added logging for no state found case
+         // console.log('[LearnComponent] No saved state found in localStorage.');
+         // Set defaults if no state found
+         this.selectedSurah = 1;
+         this.selectedVerse = 1;
+         this.selectedTafsir = 'ibn-kathir';
+         this.messages = [];
       }
     } catch (error) {
       console.error('Error restoring state:', error);
@@ -216,37 +241,62 @@ export class LearnComponent implements OnInit, OnDestroy {
   }
 
   async updateVerseCount(resetVerse: boolean = true) {
+    // console.log(`[LearnComponent] updateVerseCount called for Surah ${this.selectedSurah}`);
+    this.isLoading = true; // Set loading true at the start
     try {
+      // getVerseCount now correctly waits for the surahs$ observable
       const surahData = await firstValueFrom(this.quranService.getVerseCount(this.selectedSurah));
+      // console.log(`[LearnComponent] Received verse count: ${surahData.numberOfAyahs} for Surah ${this.selectedSurah}`);
       this.verseCounts = surahData.numberOfAyahs;
-      
-      // Only reset to verse 1 if explicitly requested
+
       if (resetVerse) {
         this.selectedVerse = 1;
       }
-      
-      // Ensure selected verse is within bounds
-      if (this.selectedVerse > this.verseCounts) {
-        this.selectedVerse = this.verseCounts;
+      // Ensure selectedVerse is valid after potential surah change or count update
+      if (this.selectedVerse < 1 || this.selectedVerse > this.verseCounts) {
+        this.selectedVerse = this.verseCounts > 0 ? 1 : 1; // Default to 1 if count changes make it invalid
       }
-      
-      await this.loadVerse();
-      this.saveState();
+
+      // Crucially, call loadVerse AFTER verse count is confirmed and verse number adjusted
+      await this.loadVerse(); 
+      // Save state AFTER verse is potentially adjusted and loaded by loadVerse
+      // saveState() is now called within loadVerse when the verse reference changes
+      // this.saveState(); // Removed from here
     } catch (error) {
-      console.error('Error updating verse count:', error);
+      console.error(`Error updating verse count for Surah ${this.selectedSurah}:`, error);
+      // Handle error appropriately, maybe show a message to the user
+    } finally {
+        this.isLoading = false; // Ensure loading is false
     }
   }
 
   async loadVerse() {
+    // console.log(`[LearnComponent] loadVerse called for ${this.selectedSurah}:${this.selectedVerse}`);
     this.isLoading = true;
     try {
+      // Fetch verse data first
       const verseData = await firstValueFrom(this.quranService.getVerse(this.selectedSurah, this.selectedVerse));
       
-      // Reset isFirstResponse when loading a new verse
-      const currentVerse = `${this.selectedSurah}:${this.selectedVerse}`;
-      if (this.lastSurahVerse !== currentVerse) {
+      // Reset isFirstResponse flag if the verse actually changed
+      const currentVerseRef = `${this.selectedSurah}:${this.selectedVerse}`;
+      if (this.lastSurahVerse !== currentVerseRef) {
         this.isFirstResponse = true;
-        this.lastSurahVerse = currentVerse;
+        this.lastSurahVerse = currentVerseRef;
+        // Save state immediately after confirming a new verse is being processed
+        this.saveState(); // Save to localStorage
+
+        // Save history to backend (async, fire-and-forget for now)
+        this.firebaseAuthService.saveReadingHistory({ 
+          surah: this.selectedSurah, 
+          verse: this.selectedVerse,
+          timestamp: new Date().toISOString() // Add timestamp to satisfy interface
+        }).catch(err => {
+          console.warn('Failed to save reading history to backend:', err);
+          // Optionally inform the user if saving fails consistently
+        });
+
+        // Added logging
+        console.log(`[LearnComponent] Verse changed to ${currentVerseRef}, state saved locally and history save triggered.`);
       }
       
       // Handle Bismillah for first verses
@@ -256,7 +306,7 @@ export class LearnComponent implements OnInit, OnDestroy {
           this.currentVerse = verseData.text;
         } else {
           // For other surahs, remove Bismillah from first verse
-          this.currentVerse = verseData.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ/, '').trim();
+          this.currentVerse = verseData.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ/, '').trim();
         }
       } else {
         // For non-first verses, show as is
@@ -271,12 +321,23 @@ export class LearnComponent implements OnInit, OnDestroy {
       );
       this.tafsirEntries = tafsirEntries;
       
-      await this.getAISummary();
-      this.saveState();
+      // Get AI summary for the verse
+      await this.getAISummary(); // This might modify state indirectly (aiSummary)
+      
+      // Removed saveState() from the end of the try block
+
     } catch (error) {
-      console.error('Error loading verse:', error);
+      console.error(`Error loading verse ${this.selectedSurah}:${this.selectedVerse}:`, error);
+      this.messages.push({
+         role: 'assistant',
+         content: 'Error loading verse data. Please try again or select a different verse.',
+         timestamp: new Date(),
+         type: 'error'
+      });
+    } finally {
+      this.isLoading = false; // Ensure loading is false after completion or error
+      this.scrollToBottom(); // Scroll after potential new messages (like errors)
     }
-    this.isLoading = false;
   }
 
   async getAISummary() {
@@ -470,29 +531,36 @@ ${tafsirResponse}`;
 
   // Add new methods for navigation
   async previousVerse() {
+    // console.log(`[LearnComponent] Navigating to previous verse: ${this.selectedSurah}:${this.selectedVerse}`);
     if (this.selectedVerse > 1) {
       this.selectedVerse--;
       await this.loadVerse();
     } else if (this.selectedSurah > 1) {
+      const targetSurah = this.selectedSurah - 1;
+      // console.log(`[LearnComponent] Navigating to previous surah: ${targetSurah}`);
+      const prevSurahData = await firstValueFrom(this.quranService.getVerseCount(targetSurah));
       this.selectedSurah--;
-      await this.updateVerseCount(false);
-      this.selectedVerse = this.verseCounts;
+      this.selectedVerse = prevSurahData.numberOfAyahs;
       await this.loadVerse();
+    } else {
+      // console.log('[LearnComponent] Already at the first verse of the first surah.');
     }
-    this.saveState();
   }
 
   async nextVerse() {
-    if (this.selectedVerse < this.verseCounts) {
+    // console.log(`[LearnComponent] Navigating to next verse: ${this.selectedSurah}:${this.selectedVerse}`);
+    const currentSurahData = await firstValueFrom(this.quranService.getVerseCount(this.selectedSurah));
+    if (this.selectedVerse < currentSurahData.numberOfAyahs) {
       this.selectedVerse++;
       await this.loadVerse();
     } else if (this.selectedSurah < 114) {
+      // console.log(`[LearnComponent] Navigating to next surah: ${this.selectedSurah}:${this.selectedVerse}`);
       this.selectedSurah++;
-      await this.updateVerseCount(false);
       this.selectedVerse = 1;
       await this.loadVerse();
+    } else {
+      // console.log('[LearnComponent] Already at the last verse of the last surah.');
     }
-    this.saveState();
   }
 
   // Add method to clear chat

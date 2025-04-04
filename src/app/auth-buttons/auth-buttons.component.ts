@@ -5,7 +5,6 @@ import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Subscription, timer } from 'rxjs';
 import { take } from 'rxjs/operators';
-import { AuthStateService } from '../services/auth-state.service';
 
 @Component({
   selector: 'app-auth-buttons',
@@ -217,8 +216,7 @@ export class AuthButtonsComponent implements OnInit, OnDestroy {
   constructor(
     public authService: FirebaseAuthService,
     private router: Router,
-    private zone: NgZone,
-    private authStateService: AuthStateService
+    private zone: NgZone
   ) {}
   
   ngOnInit() {

@@ -37,16 +37,16 @@ const userUsageSchema = new Schema<IUserUsage>({
     aiRequestLimit: { type: Number, default: 0 }
 });
 
-userUsageSchema.methods.incrementAIRequestCount = async function(): Promise<void> {
-    this.aiRequests.count += 1;
-    this.aiRequests.lastRequest = new Date();
-    await this.save();
+userUsageSchema.methods['incrementAIRequestCount'] = async function(): Promise<void> {
+    this['aiRequests'].count += 1;
+    this['aiRequests'].lastRequest = new Date();
+    await this['save']();
 };
 
-userUsageSchema.methods.canMakeAIRequest = async function(): Promise<boolean> {
+userUsageSchema.methods['canMakeAIRequest'] = async function(): Promise<boolean> {
     // Check if last request was on a different day
     const now = new Date();
-    const lastRequest = this.aiRequests.lastRequest;
+    const lastRequest = this['aiRequests'].lastRequest;
     
     if (lastRequest) {
         const lastRequestDate = new Date(lastRequest);
@@ -54,17 +54,17 @@ userUsageSchema.methods.canMakeAIRequest = async function(): Promise<boolean> {
             lastRequestDate.getMonth() !== now.getMonth() || 
             lastRequestDate.getFullYear() !== now.getFullYear()) {
             // Reset count if it's a new day
-            this.aiRequests.count = 0;
-            await this.save();
+            this['aiRequests'].count = 0;
+            await this['save']();
         }
     }
     
     // Check both request count and token limit
-    return this.aiRequests.count < this.aiRequestLimit;
+    return this['aiRequests'].count < this['aiRequestLimit'];
 };
 
 // Add method to check token count
-userUsageSchema.methods.validateTokenCount = function(tokenCount: number): boolean {
+userUsageSchema.methods['validateTokenCount'] = function(tokenCount: number): boolean {
     const MAX_TOKENS = 15000; // Set maximum tokens per request
     return tokenCount <= MAX_TOKENS;
 };

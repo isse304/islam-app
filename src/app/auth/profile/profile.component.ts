@@ -1,10 +1,10 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
+import { FirebaseAuthService, AppUser, UserPreferences } from '../../services/firebase-auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { Subscription, forkJoin, of, take, timeout, catchError, finalize, retry, from } from 'rxjs';
+import { Subscription, forkJoin, of, take, timeout, catchError, finalize, retry, from, filter, tap, switchMap, takeUntil, debounceTime, Subject, firstValueFrom } from 'rxjs';
 import { map } from 'rxjs/operators';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -20,28 +20,38 @@ import { MatSliderModule } from '@angular/material/slider';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { QuranService } from '../../services/quran.service';
+import { QuranService, Reciter } from '../../services/quran.service';
 import { ReadingHistory, ReadingHistoryResponse } from '../../interfaces/reading-history.interface';
 import { UsageComponent } from '../../components/usage/usage.component';
+import { StripeService } from '../../services/stripe.service';
+import { SubscriptionStatus } from '../../interfaces/subscription-status.interface';
+import { ApiService } from '../../services/api.service';
+import { PreferencesService } from '../../services/preferences.service';
+import { MatDialog } from '@angular/material/dialog';
+import { DatePipe } from '@angular/common';
+import { ConfirmDialogComponent } from '../../components/confirm-dialog/confirm-dialog.component';
+import { DeleteConfirmationDialogComponent } from '../../components/dialogs/delete-confirmation-dialog/delete-confirmation-dialog.component';
+import { SubscriptionService } from '../../services/subscription.service';
+import { TimeoutError } from 'rxjs';
+import { Observable } from 'rxjs';
+import { HttpErrorResponse } from '@angular/common/http';
+import { environment } from '../../../environments/environment';
+import { HttpClient } from '@angular/common/http';
 
+// Keep local Translation interface
 interface Translation {
   id: string;
   name: string;
 }
 
-// Create UserPreferences interface if it doesn't exist
-interface UserPreferences {
-  selectedReciter: string | number;
-  selectedTranslation: string;
-  bookmarks?: string[];
-  lastState?: any;
-}
+// Removed local UserPreferences interface
 
 @Component({
   selector: 'app-profile',
   templateUrl: './profile.component.html',
   styleUrls: ['./profile.component.scss'],
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     CommonModule,
     ReactiveFormsModule,
@@ -61,6 +71,9 @@ interface UserPreferences {
     MatTabsModule,
     MatTooltipModule,
     UsageComponent
+  ],
+  providers: [
+    DatePipe
   ]
 })
 export class ProfileComponent implements OnInit, OnDestroy {
@@ -74,9 +87,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
   hideCurrentPassword = true;
   hideNewPassword = true;
   hideConfirmPassword = true;
+  isDeletingAccount = false;
+  isCancellingSubscription = false;
+  subscriptionStatus: { plan: string; status: string; currentPeriodEnd?: Date | null } | null = null;
+  historyLoading: boolean = false;
+  historyLoadingError: string | null = null;
   
   // Quran preferences
-  reciters: any[] = [];
+  reciters: Reciter[] = [];
   translations: Translation[] = [];
   bookmarks: string[] = [];
   readingHistory: ReadingHistory[] = [];
@@ -94,22 +112,40 @@ export class ProfileComponent implements OnInit, OnDestroy {
   // Add preferences property in class
   private preferences: UserPreferences | null = null;
 
+  private userSub?: Subscription;
+  private destroy$ = new Subject<void>();
+  private initialFormValues: any = {}; // Store initial values to check for changes
+  error: string | null = null; // Declare the error property
+
   constructor(
     private fb: FormBuilder,
     private authService: FirebaseAuthService,
     private quranService: QuranService,
     private router: Router,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private stripeService: StripeService,
+    private apiService: ApiService,
+    private preferencesService: PreferencesService,
+    private dialog: MatDialog,
+    private datePipe: DatePipe,
+    private subscriptionService: SubscriptionService,
+    private cdr: ChangeDetectorRef,
+    private http: HttpClient
   ) {
-    // Initialize forms with default values first
     this.initializeForms(null, null, 24);
-    
-    // Load reciters and translations synchronously since they're in memory
-    this.reciters = this.quranService.reciters;
-    this.translations = this.quranService.translations.map(t => ({
-      id: t.id.toString(),
-      name: t.name
-    }));
+
+    // *** Subscribe to history updates ***
+    this.authService.history$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(history => {
+      // Ensure a new array reference is created for OnPush
+      this.readingHistory = [...(history ?? [])];
+      this.historyLoading = false; // Stop loading indicator when history is received
+      this.historyLoadingError = null; // Clear any previous error
+      // *** Force immediate change detection ***
+      this.cdr.markForCheck();
+    });
+    // *** End history subscription ***
   }
 
   private clearMockData() {
@@ -161,7 +197,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
       if (cachedPrefs) {
         const prefs = JSON.parse(cachedPrefs);
-        console.log('Found cached preferences:', prefs);
         
         if (prefs.reciterId && this.quranService.reciters.some(r => r.id === prefs.reciterId)) {
           reciterId = prefs.reciterId;
@@ -178,18 +213,17 @@ export class ProfileComponent implements OnInit, OnDestroy {
       this.initializeForms(reciterId, translationId, fontSize);
       
     } catch (error) {
-      console.warn('Error loading cached preferences:', error);
       // Initialize forms with default values if there's an error
       this.initializeForms(null, null, 24);
     }
   }
 
   private initializeForms(reciterId: number | null, translationId: string | null, fontSize: number) {
-    // Initialize profile and password forms
+    // Initialize profile form
     this.profileForm = this.fb.group({
       firstName: ['', Validators.required],
       lastName: ['', Validators.required],
-      email: ['', [Validators.required, Validators.email]]
+      email: [{ value: '', disabled: true }, [Validators.required, Validators.email]] // Email likely shouldn't be editable here
     });
 
     this.passwordForm = this.fb.group({
@@ -208,126 +242,70 @@ export class ProfileComponent implements OnInit, OnDestroy {
       translationId = this.translations[0].id;
     }
 
-    // Create preferences form with loaded or default values
+    // Create preferences form
     this.preferencesForm = this.fb.group({
-      selectedReciter: [reciterId, [Validators.required, Validators.min(1), Validators.max(3)]],
+      selectedReciter: [reciterId, [Validators.required, Validators.min(1), Validators.max(this.reciters?.length || 1)]],
       selectedTranslation: [translationId, Validators.required],
-      fontSize: [fontSize, [Validators.required, Validators.min(14), Validators.max(36)]]
-    });
-
-    console.log('Forms initialized with values:', {
-      reciter: reciterId,
-      translation: translationId,
-      fontSize: fontSize
+      fontSize: [fontSize, [Validators.required, Validators.min(14), Validators.max(36)]],
+      selectedTafsir: [''],
+      arabicFont: ['uthmani'],
+      showWordByWord: [true],
+      isMushafView: [false],
+      isDoublePageView: [false],
     });
   }
 
   ngOnInit(): void {
-    // Initialize forms with default/cached values immediately
-    this.initializeWithCachedData();
+    this.isLoading = true; // Start main loading
+
+    // Assign reciters and translations here
+    this.reciters = this.quranService.reciters;
+    this.translations = this.quranService.translations.map((t: any) => ({
+      id: t.id.toString(),
+      name: t.name
+    }));
     
-    // Then load from server in background
-    const userSub = this.authService.user$.pipe(
-      take(1)
-    ).subscribe(user => {
+    // Re-initialize forms AFTER reciters/translations are set
+    // This ensures default values are picked correctly if needed
+    this.initializeForms(null, null, 24); 
+
+    // Subscribe to the AppUser observable
+    this.authService.user$.pipe(
+      filter((user): user is AppUser => !!user), // Ensure user is not null
+      take(1), // Take the first emitted AppUser
+      tap(appUser => {
+        this.user = appUser; // Assign the AppUser
+        // Initiate loading of preferences, bookmarks (subscription status is part of AppUser)
+        this.loadOtherUserData(appUser.id);
+      }),
+      catchError(err => {
+        this.isLoading = false; // Stop loading on error fetching user
+        this.error = 'Failed to load user data. Please log in again.';
+        console.error('[Profile] Error getting user from authService.user$:', err);
+        this.cdr.markForCheck();
+        return of(null); // Complete the observable chain
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe();
+
+    // Handle case where user$ might complete without emitting a user (e.g., logged out)
+    // This might be redundant if the filter handles it, but provides a fallback.
+    this.authService.user$.pipe(take(1)).subscribe(user => {
       if (!user) {
-        this.router.navigate(['/login']);
-        return;
-      }
-
-      this.user = user;
-      // Load all data in parallel in background
-      this.loadServerDataInBackground();
-    });
-
-    this.subscriptions.push(userSub);
-  }
-
-  private initializeWithCachedData() {
-    try {
-      // Get cached preferences
-      const cachedPrefs = localStorage.getItem('quran_reader_preferences');
-      const prefs = cachedPrefs ? JSON.parse(cachedPrefs) : {};
-      
-      // Initialize forms with cached or default values
-      this.initializeForms(
-        prefs.selectedReciter || 1,
-        prefs.selectedTranslation || '131',
-        prefs.fontSize || 24
-      );
-
-      // Set cached bookmarks and history
-      this.bookmarks = prefs.bookmarks || [];
-      this.readingHistory = prefs.readingHistory || [];
-      
-      // Mark as loaded to prevent loading indicators
-      this.bookmarksLoaded = true;
-      this.historyLoaded = true;
-      this.preferencesLoaded = true;
-      this.isLoading = false;
-
-    } catch (error) {
-      console.warn('Error loading cached data:', error);
-      // Initialize with defaults if cache fails
-      this.initializeForms(1, '131', 24);
-      this.isLoading = false;
-    }
-  }
-
-  private loadServerDataInBackground() {
-    // Load all data in parallel
-    forkJoin({
-      preferences: from(this.authService.getUserPreferences()).pipe(
-        catchError(error => {
-          console.warn('Error loading preferences:', error);
-          return of(null);
-        })
-      ),
-      bookmarks: this.authService.getBookmarks().pipe(
-        catchError(error => {
-          console.warn('Error loading bookmarks:', error);
-          return of([]);
-        })
-      ),
-      history: this.authService.getReadingHistory().pipe(
-        catchError(error => {
-          console.warn('Error loading history:', error);
-          return of({ success: false, history: [] });
-        })
-      )
-    }).subscribe({
-      next: ({ preferences, bookmarks, history }) => {
-        // Update preferences if received
-        if (preferences) {
-          this.initializeForms(
-            preferences.selectedReciter || this.preferencesForm.get('selectedReciter')?.value,
-            preferences.selectedTranslation || this.preferencesForm.get('selectedTranslation')?.value,
-            preferences.fontSize || this.preferencesForm.get('fontSize')?.value
-          );
-          
-          // Update localStorage
-          localStorage.setItem('quran_reader_preferences', JSON.stringify(preferences));
-        }
-
-        // Update bookmarks if received
-        if (bookmarks?.length > 0) {
-          this.bookmarks = bookmarks;
-        }
-
-        // Update history if received
-        if (history?.success && history.history?.length > 0) {
-          this.readingHistory = history.history;
-        }
-      },
-      error: (error) => {
-        console.warn('Error loading server data:', error);
+         this.isLoading = false;
+         this.error = 'User not found. Please log in again.';
+         this.cdr.markForCheck();
+         // Optionally navigate to login
+         // this.router.navigate(['/auth/login']);
       }
     });
   }
 
   ngOnDestroy(): void {
-    // Clean up subscriptions
     this.subscriptions.forEach(sub => sub.unsubscribe());
+    this.destroy$.next();
+    this.destroy$.complete();
+    this.userSub?.unsubscribe();
   }
 
   // Custom validator to check if passwords match
@@ -355,7 +333,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         verticalPosition: 'bottom'
       });
     } catch (error) {
-      console.error('Error updating profile:', error);
       this.snackBar.open('Failed to update profile. Please try again.', 'Close', {
         duration: 5000,
         horizontalPosition: 'center',
@@ -383,7 +360,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
       });
       this.passwordForm.reset();
     } catch (error: any) {
-      console.error('Error changing password:', error);
       let errorMessage = 'Failed to change password. Please try again.';
       
       if (error.code === 'auth/wrong-password') {
@@ -401,232 +377,80 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
   
   async savePreferences(): Promise<void> {
-    if (this.preferencesForm.invalid) {
+    if (!this.preferencesForm.valid) { 
+        this.snackBar.open('Please correct the errors in the preferences form.', 'Close', { duration: 3000 });
         return;
     }
-    
-    const now = Date.now();
-    if (now - this.lastSaveTime < 5000) {
-        this.snackBar.open('Please wait a moment before saving again', 'Close', { duration: 2000 });
-        return;
-    }
-    
-    this.lastSaveTime = now;
     this.isSavingPrefs = true;
-    const formValues = this.preferencesForm.value;
-    
-    // Ensure reciterId is valid
-    const reciterId = this.validateReciterId(parseInt(formValues.selectedReciter, 10));
-    if (!reciterId) {
-        this.snackBar.open('Invalid reciter selected', 'Close', { duration: 3000 });
-        this.isSavingPrefs = false;
-        return;
-    }
-    
-    // Get current preferences from localStorage
-    let currentPrefs;
-    try {
-        currentPrefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-    } catch (error) {
-        console.warn('Error reading current preferences:', error);
-        currentPrefs = {};
-    }
-    
-    const prefsToSave = {
-        ...currentPrefs,
-        selectedReciter: reciterId,
-        selectedTranslation: formValues.selectedTranslation,
-        fontSize: formValues.fontSize,
-        lastState: currentPrefs.lastState || {
-            lastSurah: 1,
-            lastVerse: 1,
-            isMushafView: false
-        }
-    };
-    
-    // Save to localStorage immediately
-    try {
-        localStorage.setItem('quran_reader_preferences', JSON.stringify(prefsToSave));
-        localStorage.setItem('quranReaderPreferences', JSON.stringify({
-            reciterId: reciterId,
-            translationId: formValues.selectedTranslation,
-            fontSize: formValues.fontSize
-        }));
-    } catch (error) {
-        console.warn('Error saving to localStorage:', error);
-    }
-    
-    try {
-        const isAuthenticated = await this.authService.isAuthenticated();
-        if (!isAuthenticated) {
-            this.snackBar.open('Preferences saved locally', 'Close', { duration: 2000 });
+    const currentValues = this.preferencesForm.value;
+    const changesToSave: Partial<UserPreferences> = {};
+    let hasChanges = false;
+
+    Object.keys(currentValues).forEach(key => {
+      const prefKey = key as keyof UserPreferences; // Cast key
+      if (currentValues[prefKey] !== this.initialFormValues[prefKey]) {
+        changesToSave[prefKey] = currentValues[prefKey]; // Use casted key
+        hasChanges = true;
+      }
+    });
+
+    if (!hasChanges) {
+      this.snackBar.open('No changes to save.', 'Close', { duration: 3000 });
             this.isSavingPrefs = false;
             return;
         }
         
-        // Save to server
-        await this.authService.saveUserPreferences(prefsToSave);
-        this.preferences = prefsToSave;
-        this.preferencesForm.markAsPristine();
-        
-        this.snackBar.open('Preferences saved successfully', 'Close', { duration: 3000 });
-    } catch (error: any) {
-        if (error.status === 429) {
-            this.snackBar.open('Too many requests. Preferences saved locally.', 'Close', { duration: 3000 });
-        } else {
-            console.error('Error saving preferences to server:', error);
-            this.snackBar.open('Preferences saved locally, but could not save to server', 'Close', { duration: 3000 });
-        }
-    } finally {
+    this.authService.saveUserPreferences(changesToSave)
+      .then((savedPrefs: Partial<UserPreferences>) => {
+        this.initialFormValues = this.preferencesForm.value; // Update initial values after successful save
+        this.snackBar.open('Preferences saved successfully!', 'Close', { duration: 3000 });
         this.isSavingPrefs = false;
-    }
+        this.cdr.markForCheck(); // Trigger change detection
+        this.preferencesForm.markAsPristine(); // Mark form as pristine
+      })
+      .catch((error: any) => {
+        this.isSavingPrefs = false;
+        this.snackBar.open(`Error saving preferences: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
+        this.cdr.detectChanges();
+      });
   }
   
   removeBookmark(bookmark: string): void {
-    if (confirm('Are you sure you want to remove this bookmark?')) {
-      const index = this.bookmarks.indexOf(bookmark);
-      if (index !== -1) {
-        this.bookmarks.splice(index, 1);
-        
-        // Update preferences on server
-        const bookmarkSub = this.authService.removeBookmark(bookmark).subscribe(
-          response => {
-            if (response.bookmarks) {
+    this.authService.removeBookmark(bookmark).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success) {
               this.bookmarks = response.bookmarks;
-            }
-            this.snackBar.open('Bookmark removed', 'Close', {
-              duration: 2000
-            });
-          },
-          error => {
-            console.error('Error removing bookmark:', error);
-            // Revert local change if server update fails
-            this.bookmarks.splice(index, 0, bookmark);
-            this.snackBar.open('Failed to remove bookmark', 'Close', {
-              duration: 3000
-            });
-          }
-        );
-        
-        this.subscriptions.push(bookmarkSub);
+          this.snackBar.open('Bookmark removed', 'Close', { duration: 2000 });
+          this.cdr.detectChanges(); // Update UI
+        } else {
+          this.snackBar.open(`Failed to remove bookmark: ${response.message}`, 'Close', { duration: 4000 });
+        }
+      },
+      error: (error) => {
+        this.snackBar.open(`Error removing bookmark: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
       }
-    }
+    });
   }
   
   goToVerse(bookmark: string): void {
-    const [surah, verse] = bookmark.split(':').map(Number);
-    if (!surah || !verse) return;
-    
-    this.router.navigate(['/quran'], {
-      queryParams: { 
-        surah,
-        mode: 'translation'
-      }
-    }).then(() => {
-      // Use the exact working scrollToVerse implementation
-      const attemptScroll = (attempts = 0) => {
-        const verseElement = document.getElementById(`verse-${verse}`);
-        if (verseElement) {
-          // Remove any existing highlights first
-          document.querySelectorAll('.highlight-verse').forEach(el => {
-            el.classList.remove('highlight-verse');
-          });
-
-          // Calculate scroll position with header offset
-          const headerOffset = 80;
-          const elementPosition = verseElement.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.scrollY - headerOffset;
-          
-          // Scroll to verse
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
-          
-          // Add highlight class
-          verseElement.classList.add('highlight-verse');
-          
-          // Remove highlight after animation
-          setTimeout(() => {
-            verseElement.classList.remove('highlight-verse');
-          }, 2000);
-        } else if (attempts < 5) {
-          // Retry up to 5 times with increasing delays
-          setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
-        }
-      };
-
-      // Initial attempt after a short delay
-      setTimeout(() => attemptScroll(), 100);
-    });
+    const [surah, verse] = bookmark.split(':');
+    this.router.navigate(['/read', surah, verse]);
   }
   
   goToHistoryEntry(entry: ReadingHistory): void {
-    if (!entry.surah || !entry.verse) return;
-    
-    this.router.navigate(['/quran'], {
-      queryParams: { 
-        surah: entry.surah,
-        mode: 'translation'
-      }
-    }).then(() => {
-      // Use the exact working scrollToVerse implementation
-      const attemptScroll = (attempts = 0) => {
-        const verseElement = document.getElementById(`verse-${entry.verse}`);
-        if (verseElement) {
-          // Remove any existing highlights first
-          document.querySelectorAll('.highlight-verse').forEach(el => {
-            el.classList.remove('highlight-verse');
-          });
-
-          // Calculate scroll position with header offset
-          const headerOffset = 80;
-          const elementPosition = verseElement.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.scrollY - headerOffset;
-          
-          // Scroll to verse
-          window.scrollTo({
-            top: offsetPosition,
-            behavior: 'smooth'
-          });
-          
-          // Add highlight class
-          verseElement.classList.add('highlight-verse');
-          
-          // Remove highlight after animation
-          setTimeout(() => {
-            verseElement.classList.remove('highlight-verse');
-          }, 2000);
-        } else if (attempts < 5) {
-          // Retry up to 5 times with increasing delays
-          setTimeout(() => attemptScroll(attempts + 1), 500 * (attempts + 1));
-        }
-      };
-
-      // Initial attempt after a short delay
-      setTimeout(() => attemptScroll(), 100);
-    });
+    this.router.navigate(['/read', entry.surah, entry.verse]);
   }
   
-  clearHistory(): void {
-    if (confirm('Are you sure you want to clear your reading history?')) {
-      const clearSub = from(this.authService.clearHistory()).subscribe(
-        () => {
+  async clearHistory(): Promise<void> {
+    this.authService.clearHistory()
+      .then(() => {
           this.readingHistory = [];
-          this.snackBar.open('Reading history cleared', 'Close', {
-            duration: 2000
-          });
-        },
-        (error: Error) => {
-          console.error('Error clearing history:', error);
-          this.snackBar.open('Failed to clear reading history', 'Close', {
-            duration: 3000
-          });
-        }
-      );
-      
-      this.subscriptions.push(clearSub);
-    }
+        this.cdr.detectChanges(); // Update UI
+        this.snackBar.open('Reading history cleared', 'Close', { duration: 3000 });
+      })
+      .catch((error: any) => {
+        this.snackBar.open(`Error clearing history: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
+      });
   }
   
   getSurahName(surahNumber: string | number): string {
@@ -637,9 +461,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   async signOut(): Promise<void> {
     try {
       await this.authService.signOut();
-      this.router.navigate(['/']);
     } catch (error) {
-      console.error('Error signing out:', error);
+      this.snackBar.open(`Sign out failed: ${error}`, 'Close', { duration: 5000 });
     }
   }
 
@@ -668,7 +491,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
           });
         }
       } catch (error) {
-        console.warn('Error loading translation preference:', error);
       }
     }
     
@@ -697,7 +519,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
         this.isLoading = false;
       },
       error: (error) => {
-        console.error('Error loading bookmarks:', error);
         this.bookmarks = [];
         this.bookmarksLoaded = true;
         this.isLoading = false;
@@ -719,7 +540,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     
     // Get reciters from QuranService
     this.reciters = this.quranService.reciters;
-    console.log('Loading reciters:', this.reciters);
     
     // Load current reciter from preferences
     const cachedPrefs = localStorage.getItem('quranReaderPreferences');
@@ -728,13 +548,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
         const prefs = JSON.parse(cachedPrefs);
         if (prefs.reciterId) {
           const reciterId = parseInt(prefs.reciterId, 10);
-          console.log('Setting reciter from cache:', reciterId);
           this.preferencesForm.patchValue({
             selectedReciter: reciterId
           }, { emitEvent: true });
         }
       } catch (error) {
-        console.warn('Error loading reciter preference:', error);
         this.preferencesForm.patchValue({
           selectedReciter: 1
         }, { emitEvent: true });
@@ -768,8 +586,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   // Add compareById function for mat-select comparison
-  compareById(id1: number, id2: number): boolean {
-    return id1 === id2;
+  compareById(item1: any, item2: any): boolean {
+    return item1 && item2 ? item1 === item2 : item1 === item2;
   }
 
   private validateReciterId(reciterId: number | undefined): number | null {
@@ -780,60 +598,61 @@ export class ProfileComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  private loadReadingHistory(): void {
-    if (this.historyLoaded) return;
-    this.isLoading = true;
+  // *** Renamed and wrapped original loadUserData logic ***
+  private loadOtherUserData(userId: string): void {
+    this.isLoading = true; // Ensure loading is true
+    this.cdr.markForCheck();
 
-    // Load from server
-    const historySub = this.authService.getReadingHistory().pipe(
-      // Only try once
-      take(1)
-    ).subscribe({
-      next: (response: ReadingHistoryResponse) => {
-        if (response.success && response.history) {
-          // Filter and sort server history
-          const serverHistory = response.history.filter((entry: ReadingHistory) => {
-            if (!entry || !entry.surah || !entry.verse) return false;
-            const timestamp = new Date(entry.timestamp);
-            return timestamp <= new Date() && // No future dates
-                   entry.surah >= 1 && entry.surah <= 114 && // Valid surah
-                   entry.verse >= 1; // Valid verse
-          }).sort((a: ReadingHistory, b: ReadingHistory) => 
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-          );
+    forkJoin({
+      preferences: this.loadPreferences(userId), // Fetches and initializes form
+      bookmarks: this.loadBookmarks(userId)
+      // Removed subscription: this.loadSubscriptionStatus(userId)
+    })
+    .pipe(
+      takeUntil(this.destroy$),
+      finalize(() => {
+        this.isLoading = false; // Stop main loading AFTER forkJoin completes or errors
+        this.cdr.markForCheck();
+        // console.log('[Profile] Main data loading finalized (isLoading=false).');
+      })
+    )
+    .subscribe({
+      next: (results) => {
+        // Preferences are handled within loadPreferences/form init
+        this.bookmarks = results.bookmarks || [];
+        // Subscription status should be available on this.user if loaded correctly by authService
+        this.subscriptionStatus = this.user?.subscriptionStatus ? {
+            plan: this.user.isPremium ? 'premium' : 'free',
+            status: this.user.subscriptionStatus,
+            currentPeriodEnd: this.user.subscriptionEnd ? new Date(this.user.subscriptionEnd * 1000) : null
+        } : null;
+        // console.log('[Profile] Main data loaded successfully. Subscription Status:', this.subscriptionStatus);
 
-          // Update component state
-          this.readingHistory = serverHistory;
-
-          // Update localStorage
-          try {
-            const localPrefs = localStorage.getItem('quran_reader_preferences');
-            const prefs = localPrefs ? JSON.parse(localPrefs) : {};
-            prefs.readingHistory = serverHistory;
-            localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-          } catch (error) {
-            console.warn('Error updating localStorage with server history:', error);
-          }
-        }
-        this.historyLoaded = true;
-        this.isLoading = false;
+        // *** NOW load history AFTER main data is loaded successfully ***
+        this.loadHistorySeparately();
       },
-      error: (error) => {
-        console.error('Error loading reading history from server:', error);
-        this.historyLoaded = true;
-        this.isLoading = false;
+      error: (err) => {
+        console.error('[Profile] Error loading main user data (forkJoin):', err);
+        this.error = 'Failed to load profile data. Please try refreshing the page.';
+        // isLoading is set to false in finalize
       }
     });
-
-    this.subscriptions.push(historySub);
   }
 
-  private loadUserData() {
-    // This method is no longer needed
-  }
+  // Load Preferences
+  private loadPreferences(userId: string): Observable<UserPreferences | null> {
+    // Check flag
+    if (this.preferencesLoaded) return of(this.preferences);
 
-  private loadBookmarks() {
-    // This method is no longer needed
+    // Convert Promise to Observable using from()
+    return from(this.authService.getUserPreferences()).pipe(
+      timeout(10000),
+      catchError(error => {
+        this.handleDataLoadError(error, 'preferences');
+        return of(null); // Return null on error/timeout
+      }),
+      tap(() => this.preferencesLoaded = true) // Mark as loaded
+    );
   }
 
   // Fix initializeForm method name
@@ -841,4 +660,218 @@ export class ProfileComponent implements OnInit, OnDestroy {
     // Pass default values for reciterId, translationId, and fontSize
     this.initializeForms(1, '131', 24);
   }
+
+  async resetPassword(): Promise<void> {
+    if (this.profileForm.get('email')?.invalid) {
+      this.snackBar.open('Please enter a valid email address', 'Close', {
+        duration: 3000
+      });
+      return;
+    }
+
+      const email = this.profileForm.get('email')?.value;
+    this.authService.sendPasswordResetEmail(email)
+      .then(() => {
+        this.snackBar.open('Password reset email sent. Check your inbox.', 'Close', { duration: 5000 });
+      })
+      .catch(error => {
+        this.snackBar.open(`Error sending reset email: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
+      });
+  }
+
+  // Method to initiate the delete account confirmation dialog
+  openDeleteConfirmationDialog(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      data: {
+        title: 'Delete Account?',
+        message: 'Are you sure you want to permanently delete your account and all associated data (including subscription, if active)? This action cannot be undone.',
+        confirmButtonText: 'Delete Account',
+        confirmButtonColor: 'warn'
+      },
+      disableClose: true // Prevent closing by clicking outside
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result === true) {
+        // User confirmed deletion, proceed
+        await this.performAccountDeletion();
+      }
+    });
+  }
+
+  // Updated method to perform the actual deletion via the backend
+  private async performAccountDeletion(): Promise<void> {
+    if (this.isDeletingAccount) return; // Prevent multiple clicks
+
+    this.isDeletingAccount = true;
+    this.cdr.markForCheck(); // Update view to show spinner
+
+    try {
+      // Call the new backend endpoint using HttpClient
+      const response = await firstValueFrom(this.http.delete<any>(
+        `${environment.apiUrl}/api/users/me`
+        // No body needed for DELETE, interceptor handles token
+      ));
+
+      // Use optional chaining for safer access
+      if (response?.success) {
+        console.log('[Profile] Account deletion successful on backend.');
+        this.snackBar.open('Your account has been deleted successfully.', 'Close', {
+          duration: 5000,
+          panelClass: ['snackbar-success'] // Optional: Add success class
+        });
+
+        // Perform frontend sign-out and redirect AFTER backend confirms
+        await this.authService.signOut(); // Handles cleanup and redirect
+
+      } else {
+        // Backend responded but indicated failure
+        console.error('[Profile] Backend failed to delete account:', response);
+        // Use optional chaining and provide defaults
+        const errorMessage = response?.message ?? response?.error ?? 'Failed to delete account on the server.';
+        this.snackBar.open(`Error: ${errorMessage}`, 'Close', {
+          duration: 7000,
+          panelClass: ['snackbar-error'] // Optional: Add error class
+        });
+      }
+
+    } catch (error: any) {
+      console.error('[Profile] Error calling account deletion endpoint:', error);
+      let errorMessage = 'An unexpected error occurred.';
+      if (error instanceof HttpErrorResponse) {
+        // Use optional chaining and provide defaults
+        errorMessage = error.error?.message ?? error.error?.error ?? error.message ?? 'Server error during deletion.';
+        if (error.status === 401 || error.status === 403) {
+          errorMessage = 'Authentication error. Please try logging out and back in.';
+        }
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      this.snackBar.open(`Account Deletion Failed: ${errorMessage}`, 'Close', {
+        duration: 7000,
+        panelClass: ['snackbar-error'] // Optional: Add error class
+      });
+
+    } finally {
+      this.isDeletingAccount = false;
+      this.cdr.markForCheck(); // Update view to hide spinner
+    }
+  }
+
+  async manageSubscription(): Promise<void> {
+    this.isCancellingSubscription = true;
+    this.cdr.markForCheck();
+    try {
+      const response = await this.apiService.createCustomerPortalSession();
+      // console.log('[Profile] Customer portal session created:', response);
+      if (response?.url) {
+        window.location.href = response.url;
+      } else {
+        throw new Error('No portal URL received from backend.');
+      }
+    } catch (error: any) {
+      // console.error('[Profile] Error creating customer portal session:', error);
+      this.snackBar.open(`Could not open subscription management: ${error?.error?.error || error?.message || 'Please try again.'}`, 'Close', {
+        duration: 7000,
+        panelClass: ['snackbar-error']
+      });
+    } finally {
+      this.isCancellingSubscription = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  // Load Bookmarks
+  private loadBookmarks(userId: string): Observable<string[] | null> {
+    // Check flag
+    if (this.bookmarksLoaded) return of(this.bookmarks);
+
+    return this.authService.getBookmarks().pipe(
+      timeout(10000),
+      catchError(error => {
+        this.handleDataLoadError(error, 'bookmarks');
+        return of(null); // Return null on error/timeout
+      }),
+      tap(() => this.bookmarksLoaded = true) // Mark as loaded
+    );
+  }
+
+  // Centralized Error Handler for Data Loading
+  private handleDataLoadError(error: any, context: string): void {
+    console.error(`Error loading data (${context}):`, error);
+    let message = `Failed to load ${context}.`;
+    if (error instanceof TimeoutError) {
+      message = `Loading ${context} timed out. Please try again later.`;
+    } else if (error?.status === 403 || error?.status === 401) {
+      message = `Authentication error loading ${context}. Please sign in again.`;
+      this.authService.signOut(); // Sign out on auth errors
+    } else if (error?.message) {
+      message = `Error loading ${context}: ${error.message}`;
+    }
+
+    // Specific handling for history errors
+    if (context === 'history') {
+      this.historyLoadingError = message;
+      this.historyLoading = false; // Ensure loading stops on error
+    } else {
+      // General error notification for other contexts
+      this.snackBar.open(message, 'Close', { duration: 5000 });
+    }
+    this.cdr.markForCheck(); // Update UI
+  }
+
+  // Make public so template can call it for retry
+  public loadHistorySeparately() {
+    // console.log('[Profile] loadHistorySeparately initiated.'); // Add log
+    this.historyLoading = true;
+    this.historyLoadingError = null;
+    this.cdr.markForCheck(); // Trigger detection for spinner
+
+    this.authService.getReadingHistory().pipe(
+      takeUntil(this.destroy$),
+      finalize(() => {
+        // Fallback: Ensure loading is stopped regardless of success or error
+        if (this.historyLoading) {
+          this.historyLoading = false;
+          this.cdr.markForCheck(); // Trigger change detection
+          // console.log('[Profile] History loading finalized (fallback).');
+        }
+      })
+    ).subscribe({
+      next: (response) => {
+        // console.log('[Profile] History API response received:', response); // Add log
+        if (response.success) {
+          this.readingHistory = response.history;
+          this.historyLoaded = true; // Mark history as successfully loaded
+          // console.log('[Profile] History loaded successfully (next block):', this.readingHistory);
+        } else {
+          // Use a generic error message if success is false, as 'message' isn't guaranteed
+          this.historyLoadingError = 'Failed to load history (API returned success: false)';
+          // console.warn('[Profile] History API error (next block):', this.historyLoadingError);
+          this.readingHistory = []; // Ensure history is empty on API failure
+          this.historyLoaded = false;
+        }
+        // Explicitly set loading false here
+        this.historyLoading = false;
+        // console.log('[Profile] historyLoading set to false in next block.'); // Add log
+        this.cdr.markForCheck();
+      },
+      error: (error) => {
+        // Handle HTTP errors from the observable chain
+        this.historyLoadingError = error.message || 'Failed to load history (network/request error)';
+        // console.error('[Profile] History loading HTTP error (error block):', error);
+        this.readingHistory = []; // Ensure history is empty on error
+        this.historyLoaded = false;
+        // Explicitly set loading false here
+        this.historyLoading = false;
+        // console.log('[Profile] historyLoading set to false in error block.'); // Add log
+        this.cdr.markForCheck();
+      }
+      // No need for complete handler, finalize handles cleanup
+    });
+  }
+
+  // ... rest of the methods (compareById, resetPassword, manageSubscription, etc.)
 } 

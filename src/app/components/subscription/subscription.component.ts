@@ -2,18 +2,17 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { firstValueFrom, take } from 'rxjs';
+import { firstValueFrom, take, switchMap, catchError, of } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { environment } from '../../../environments/environment';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { StripeService } from '../../services/stripe.service';
 import { ApiService } from '../../services/api.service';
 import { Subscription } from 'rxjs';
-import { AppUser } from '../../services/auth.service';
+import { AppUser } from '../../services/firebase-auth.service';
 
 interface SubscriptionStatus {
   status: 'active' | 'canceled' | 'inactive';
@@ -81,16 +80,16 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit() {
-    console.log('Subscription component initializing...');
+    // console.log('Subscription component initializing...');
     
     // Force check auth state
     this.firebaseAuthService.isAuthenticated().then(isAuth => {
-      console.log('Auth state check result:', isAuth);
+      // console.log('Auth state check result:', isAuth);
       if (!isAuth) {
-        console.log('User not authenticated, checking cached state...');
+        // console.log('User not authenticated, checking cached state...');
         const cachedUser = localStorage.getItem('currentUser');
         if (cachedUser) {
-          console.log('Found cached user, reinitializing from cache...');
+          // console.log('Found cached user, reinitializing from cache...');
           this.firebaseAuthService['initFromCache']();
         }
       }
@@ -113,18 +112,18 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
     // Subscribe to user changes using FirebaseAuthService
     this.userSub = this.firebaseAuthService.user$.subscribe(user => {
-      console.log('Current user updated:', user);
+      // console.log('Current user updated:', user);
       this.currentUser = user;
       
-      // Only redirect to home if user is premium and we're not in a subscription-related route
-      const currentUrl = this.router.url;
-      if (user?.isPremium && 
-          !currentUrl.includes('/subscription') && 
-          !currentUrl.includes('/checkout') &&
-          !currentUrl.includes('/success') &&
-          !currentUrl.includes('/cancel')) {
-        this.router.navigate(['/home']);
-      }
+      // REMOVED REDIRECTION LOGIC HERE
+      // The following block caused users to be redirected from /profile
+      // if (user?.isPremium && 
+      //     !currentUrl.includes('/subscription') && 
+      //     !currentUrl.includes('/checkout') &&
+      //     !currentUrl.includes('/success') &&
+      //     !currentUrl.includes('/cancel')) {
+      //   this.router.navigate(['/home']);
+      // }
     });
   }
 
@@ -161,7 +160,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
         features: response.features
       };
     } catch (error) {
-      console.error('Error loading subscription status:', error);
+      // console.error('Error loading subscription status:', error);
       this.loadError = 'Failed to load subscription status. Please try again.';
       this.snackBar.open(this.loadError, 'Close', { duration: 5000 });
     } finally {
@@ -190,7 +189,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
   async startSubscription() {
     if (this.isLoading) {
-        console.log('Already processing subscription request');
+        // console.log('Already processing subscription request');
         return;
     }
     
@@ -198,17 +197,13 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     this.loadError = null;
 
     try {
-        console.log('Starting subscription process...');
+        // console.log('Starting subscription process...');
         
-        // Wait for current user data from FirebaseAuthService
-        const user = await firstValueFrom(this.firebaseAuthService.user$.pipe(take(1)));
-        console.log('Current user state:', user);
-
-        if (!user) {
-            console.log('No current user, redirecting to login');
-            // Save the current URL for redirect back after sign-in
+        // First check if user is signed in
+        const isSignedIn = await this.firebaseAuthService.isAuthenticated();
+        if (!isSignedIn) {
+            // console.log('User not signed in, redirecting to login');
             localStorage.setItem('returnUrl', window.location.pathname);
-            // Redirect to sign-in page
             this.router.navigate(['/auth/login'], { 
                 queryParams: { 
                     returnUrl: window.location.pathname,
@@ -218,43 +213,75 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Ensure we're using the Firebase UID
-        const userId = user.uid;
-        if (!userId) {
-            throw new Error('Invalid user ID');
-        }
-        console.log('Using Firebase UID:', userId);
-
-        // Clear any existing return URL to prevent unwanted redirects
-        localStorage.removeItem('returnUrl');
-
-        if (window.location.protocol !== 'https:' && !window.location.hostname.includes('localhost')) {
-            console.warn('Warning: Stripe requires HTTPS in production.');
+        // Get current user
+        const user = await firstValueFrom(this.firebaseAuthService.user$.pipe(take(1)));
+        if (!user || !user.uid) {
+            throw new Error('No valid user found');
         }
 
-        // Get fresh token before creating checkout session
-        console.log('Getting fresh auth token...');
-        const token = await this.firebaseAuthService.getToken(true);
-        if (!token) {
-            throw new Error('Unable to get authentication token');
-        }
-
-        console.log('Creating checkout session...');
-        const response = await this.apiService.createCheckoutSession(userId);
-
-        if (response?.url) {
-            console.log('Redirecting to Stripe checkout:', response.url);
-            // Use window.location.assign instead of href for better error handling
-            window.location.assign(response.url);
-        } else {
-            console.error('No checkout URL received');
-            throw new Error('No checkout URL received');
+        try {
+            // Create checkout session - token refresh will be handled automatically
+            // console.log('Creating checkout session...');
+            const response = await this.apiService.createCheckoutSession(user.uid);
+            
+            if (response?.url) {
+                window.location.href = response.url;
+            } else {
+                throw new Error('Invalid checkout session response');
+            }
+        } catch (error: any) {
+            // console.error('Error during subscription process:', error);
+            
+            // Handle specific error cases
+            if (error?.code === 'auth/user-token-expired' || 
+                error?.code === 'auth/requires-recent-login') {
+                
+                this.snackBar.open(
+                    'Please wait while we refresh your session...',
+                    'Close',
+                    { duration: 3000 }
+                );
+                
+                try {
+                    // Attempt silent token refresh first
+                    await this.firebaseAuthService.refreshAuth();
+                    
+                    // Retry checkout session creation
+                    const response = await this.apiService.createCheckoutSession(user.uid);
+                    if (response?.url) {
+                        window.location.href = response.url;
+                        return;
+                    }
+                } catch (refreshError) {
+                    // console.error('Session refresh failed:', refreshError);
+                    this.snackBar.open(
+                        'Please sign in again to continue with your subscription.',
+                        'Close',
+                        { duration: 5000 }
+                    );
+                    this.router.navigate(['/auth/login'], {
+                        queryParams: {
+                            returnUrl: window.location.pathname,
+                            feature: 'premium'
+                        }
+                    });
+                }
+                return;
+            }
+            
+            // Handle other errors
+            this.loadError = 'Failed to start subscription process. Please try again.';
+            this.snackBar.open(
+                'There was an error starting your subscription. Please try again.',
+                'Close',
+                { duration: 5000 }
+            );
         }
     } catch (error: any) {
-        console.error('Subscription error:', error);
-        this.loadError = error.message || 'Failed to start subscription process';
+        // console.error('Error in subscription process:', error);
+        this.loadError = error?.message || 'An unexpected error occurred';
         this.snackBar.open(
-            'Unable to start subscription process. Please try again.',
+            'There was an error processing your request. Please try again.',
             'Close',
             { duration: 5000 }
         );
@@ -264,56 +291,102 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
   }
 
   private async handleSubscriptionSuccess() {
-    try {
-      this.isLoading = true;
-      console.log('Handling subscription success...');
+    console.log('[SubComponent] Handling subscription success redirect...'); // Log: Start
+    this.isLoading = true;
+    const maxRetries = 3;
+    const retryDelay = 3000; // 3 seconds
 
-      // Force a subscription status refresh
-      await this.firebaseAuthService.refreshSubscriptionStatus();
-      
-      // Get latest subscription status
-      const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
-      
-      if (response.status === 'active') {
-        // Update local state with all required feature flags
-        this.subscriptionStatus = {
-          status: 'active',
-          plan: 'premium',
-          features: {
-            emotionalDuaSearch: response.features?.emotionalDuaSearch || true,
-            aiTafsirChat: response.features?.aiTafsirChat || true,
-            duaInsights: response.features?.duaInsights || true,
-            aiChat: response.features?.aiChat || true,
-            tafsirAccess: response.features?.tafsirAccess || true,
-            wordByWord: response.features?.wordByWord || true
-          }
-        };
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[SubComponent] Attempt ${attempt} to check subscription status...`); // Log: Attempt count
+        // Add a delay before checking, giving webhook/server time
+        await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 1500 : retryDelay));
+        console.log(`[SubComponent] Attempt ${attempt}: Delay complete. Calling getSubscriptionStatus...`); // Log: Before status check
 
-        // Show success message
-        this.snackBar.open(
-          'Subscription activated successfully! You now have access to premium features.',
-          'Close',
-          { duration: 5000 }
-        );
+        // Get latest subscription status directly from our backend first
+        // This GET request should trigger the interceptor to add the current token
+        const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
+        console.log(`[SubComponent] Attempt ${attempt}: Received status response:`, response); // Log: Status response
 
-        // Clear success param from URL
-        this.router.navigate([], {
-          relativeTo: this.route,
-          queryParams: { success: null },
-          queryParamsHandling: 'merge'
-        });
-      } else {
-        throw new Error('Subscription not active after payment');
+        if (response.status === 'active' || response.plan === 'premium') { // Check both status and plan
+          console.log(`[SubComponent] Attempt ${attempt}: Subscription confirmed active/premium. Forcing token refresh...`); // Log: Before refresh
+
+          // Explicitly force refresh of the Firebase Auth ID token
+          // This is crucial to pick up the custom claims set by the server webhook
+          await this.firebaseAuthService.refreshAuth();
+          console.log(`[SubComponent] Attempt ${attempt}: Token refresh completed.`); // Log: After refresh
+
+          // *** Add a slightly longer delay AFTER refresh for state propagation ***
+          await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
+          console.log(`[SubComponent] Attempt ${attempt}: Post-refresh delay completed.`); // Log: After delay
+
+          // Update local component state based on the response from getSubscriptionStatus
+          // Note: The authService.user$ should also update due to the token refresh
+          this.subscriptionStatus = {
+            status: 'active',
+            plan: 'premium',
+            features: {
+              emotionalDuaSearch: response.features?.emotionalDuaSearch || true,
+              aiTafsirChat: response.features?.aiTafsirChat || true,
+              duaInsights: response.features?.duaInsights || true,
+              aiChat: response.features?.aiChat || true, // Assuming these exist
+              tafsirAccess: response.features?.tafsirAccess || true, // Assuming these exist
+              wordByWord: response.features?.wordByWord || true // Assuming these exist
+            }
+          };
+          console.log('[SubComponent] Local subscriptionStatus updated:', this.subscriptionStatus); // Log: Local state updated
+
+          // Show success message
+          this.snackBar.open(
+            'Subscription activated successfully! You now have access to premium features.',
+            'Close',
+            { duration: 5000 }
+          );
+
+          // Clear success param from URL
+          this.router.navigate([], {
+            relativeTo: this.route,
+            queryParams: { success: null },
+            queryParamsHandling: 'merge',
+            replaceUrl: true // Prevent back button issues
+          });
+          console.log('[SubComponent] Success flow completed, navigating away.'); // Log: Success exit
+
+          this.isLoading = false;
+          return; // Success, exit the loop and function
+        }
+
+        console.log(`[SubComponent] Attempt ${attempt}: Status not active/premium yet (${response.status}/${response.plan}). Retrying...`); // Log: Retry needed
+
+      } catch (error) {
+        console.error(`[SubComponent] Error during subscription check attempt ${attempt}:`, error); // Log: Error
+        // Don't retry on critical errors, maybe break or handle differently
+        if (attempt === maxRetries) {
+            this.snackBar.open(
+              'There was an issue verifying your subscription status. Please contact support if the problem persists.',
+              'Close',
+              { duration: 7000 }
+            );
+            this.isLoading = false;
+            return;
+        }
       }
-    } catch (error) {
-      console.error('Error handling subscription success:', error);
-      this.snackBar.open(
-        'There was an issue activating your subscription. Please contact support.',
-        'Close',
-        { duration: 5000 }
-      );
-    } finally {
-      this.isLoading = false;
     }
+
+    // If loop finishes without success
+    console.warn('[SubComponent] Subscription status did not become active after retries.'); // Log: Retries exhausted
+    this.snackBar.open(
+        'Subscription successful, but status update is delayed. Please refresh the page or sign out/in shortly.',
+        'Close',
+        { duration: 10000 }
+    );
+    this.isLoading = false;
+    // Clear success param from URL anyway
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { success: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true // Prevent back button issues
+    });
   }
 } 

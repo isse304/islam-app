@@ -8,7 +8,8 @@
     "prebuild": "npm install --legacy-peer-deps",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "compile:scripts": "tsc -p tsconfig.scripts.json && tsc-alias -p tsconfig.scripts.json && powershell -ExecutionPolicy Bypass -File ./rename-scripts.ps1 -DirPath dist/server/scripts"
   },
   "private": true,
   "dependencies": {
@@ -53,7 +54,9 @@
     "karma-chrome-launcher": "~3.2.0",
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
-    "karma-jasmine-html-reporter": "~2.1.0"
+    "karma-jasmine-html-reporter": "~2.1.0",
+    "ts-node": "10.9.2",
+    "tsc-alias": "1.8.13"
   },
   "engines": {
     "node": ">=18.0.0",

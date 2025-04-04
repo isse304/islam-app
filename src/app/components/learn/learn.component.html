@@ -51,6 +51,7 @@
             </div>
           </div>
 
+          <!-- Commented out AI Enhanced Explanation
           <div class="mt-6 border-t pt-4" *ngIf="authStateService.isPremiumUser$ | async">
             <div class="flex justify-between items-center mb-3">
               <h3 class="text-lg font-medium text-[#B7A57A]">
@@ -64,29 +65,40 @@
                   <option value="ibn-kathir">Ibn Kathir</option>
                   <option value="tabari">Al-Tabari</option>
                 </select>
-                <button (click)="clearCache()" 
-                        class="text-gray-500 hover:text-[#B7A57A] transition-colors"
-                        matTooltip="Clear AI cache">
-                  <mat-icon>cached</mat-icon>
-                </button>
               </div>
             </div>
             <div class="prose max-w-none" [innerHTML]="aiSummary | markdown"></div>
           </div>
+          -->
         </div>
   
         <!-- Chat Interface -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" *ngIf="authStateService.isPremiumUser$ | async">
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" *ngIf="(firebaseAuthService.user$ | async)?.isPremium">
           <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
-              <mat-icon class="mr-2">chat</mat-icon>
-              AI Tafsir Chat
-            </h2>
-            <button (click)="clearChat()" 
-                    class="text-gray-500 hover:text-red-500 transition-colors"
-                    matTooltip="Clear chat history">
-              <mat-icon>delete_outline</mat-icon>
-            </button>
+            <div class="flex items-center gap-4">
+              <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
+                <mat-icon class="mr-2">chat</mat-icon>
+                AI Tafsir Chat
+              </h2>
+              <select [(ngModel)]="selectedTafsir" 
+                      (change)="onTafsirChange()"
+                      class="p-2 border rounded-lg text-sm">
+                <option value="ibn-kathir">Ibn Kathir</option>
+                <option value="tabari">Al-Tabari</option>
+              </select>
+            </div>
+            <div class="flex items-center gap-2">
+              <button (click)="clearCache()" 
+                      class="text-gray-500 hover:text-[#B7A57A] transition-colors"
+                      matTooltip="Clear AI cache">
+                <mat-icon>cached</mat-icon>
+              </button>
+              <button (click)="clearChat()" 
+                      class="text-gray-500 hover:text-red-500 transition-colors"
+                      matTooltip="Clear chat history">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
           </div>
           
           <div class="flex-1 overflow-y-auto p-4 space-y-4" #chatContainer>

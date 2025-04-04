@@ -1,21 +1,12 @@
 {
-  "/api": {
-    "target": "http://localhost:3000",
-    "secure": false,
-    "logLevel": "debug"
-  },
-  "/content/api": {
-    "target": "https://apis-prelive.quran.foundation",
-    "secure": true,
-    "changeOrigin": true
-  },
   "/api/alquran/*": {
     "target": "https://api.alquran.cloud/v1",
     "secure": true,
     "changeOrigin": true,
     "pathRewrite": {
       "^/api/alquran": ""
-    }
+    },
+    "logLevel": "debug"
   },
   "/api/quran/*": {
     "target": "https://api.quran.com/api/v4",
@@ -23,6 +14,18 @@
     "changeOrigin": true,
     "pathRewrite": {
       "^/api/quran": ""
-    }
+    },
+    "logLevel": "debug"
+  },
+  "/content/api": {
+    "target": "https://apis-prelive.quran.foundation",
+    "secure": true,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  },
+  "/api": {
+    "target": "http://localhost:3000",
+    "secure": false,
+    "logLevel": "debug"
   }
-} 
+}

@@ -17,7 +17,7 @@
           Sign In
         </button>
         <button (click)="register()" class="px-6 py-2 rounded-lg bg-[#B7A57A] hover:bg-[#9b8a65] transition-colors">
-          Get Started
+          Sign Up
         </button>
       </div> -->
     </div>
@@ -34,17 +34,16 @@
         <p class="text-lg sm:text-xl text-gray-300 max-w-2xl mx-auto lg:mx-0">
           Experience a deeper connection with the Quran through AI-powered insights, emotion based dua recommendations, and interactive Tafsir conversations.
         </p>
-        <form (submit)="getStarted($event)" class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start">
-          <!-- <button type="button" 
-                  class="px-8 py-3 rounded-lg bg-[#B7A57A] hover:bg-[#9b8a65] transition-colors text-lg font-semibold w-full sm:w-auto">
-            Start Your Journey
-          </button>  -->
+        <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center lg:justify-start">
           <button (click)="learnMore()" 
-                  type="button"
-                  class="px-8 py-3 rounded-lg border border-[#B7A57A] hover:bg-[#B7A57A] transition-colors text-lg font-semibold w-full sm:w-auto">
+                  class="px-8 py-3 rounded-lg bg-[#B7A57A] hover:bg-[#9b8a65] transition-colors text-lg font-semibold w-full sm:w-auto">
             Learn More
           </button>
-        </form>
+          <!-- <button (click)="login()" 
+                  class="px-8 py-3 rounded-lg border border-[#B7A57A] hover:bg-[#B7A57A] transition-colors text-lg font-semibold w-full sm:w-auto">
+            Sign In
+          </button> -->
+        </div>
       </div>
 
       <!-- App Preview -->
@@ -56,160 +55,93 @@
             <div class="h-full flex">
               <!-- Enhanced Sidebar -->
               <div class="w-20 bg-[#0A1629] h-full flex flex-col items-center py-6 space-y-8">
-                <!-- Tafsir Chat -->
-                <div class="cursor-pointer group" (click)="showFeature('tafsir')">
-                  <div class="relative flex flex-col items-center">
-                    <mat-icon [class.text-[#B7A57A]]="activeFeature === 'tafsir'" 
-                             class="text-2xl transition-colors group-hover:text-[#B7A57A]">menu_book</mat-icon>
-                    <!-- <div class="absolute left-full ml-2 px-2 py-1 bg-[#1A365D] rounded text-white text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                      AI Tafsir Chat
-                    </div> -->
-                    <div class="h-1 w-6 mt-2 rounded-full" 
-                         [class.bg-[#B7A57A]]="activeFeature === 'tafsir'"
-                         [class.bg-transparent]="activeFeature !== 'tafsir'"></div>
-                  </div>
+                <!-- Tafsir Chat Icon -->
+                <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('tafsir')">
+                  <mat-icon [class.text-[#B7A57A]]="activeFeature === 'tafsir'" 
+                            class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                            [class.text-gray-500]="activeFeature !== 'tafsir'">menu_book</mat-icon>
+                  <div class="h-1 w-6 mt-2 rounded-full" 
+                       [class.bg-[#B7A57A]]="activeFeature === 'tafsir'" 
+                       [class.bg-transparent]="activeFeature !== 'tafsir'"></div>
                 </div>
-
-                <!-- Emotional Dua Search -->
-                <div class="cursor-pointer group" (click)="showFeature('dua-search')">
-                  <div class="relative flex flex-col items-center">
-                    <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-search'" 
-                             class="text-2xl transition-colors group-hover:text-[#B7A57A]">favorite</mat-icon>
-                    <!-- <div class="absolute left-full ml-2 px-2 py-1 bg-[#1A365D] rounded text-white text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                      Emotional Dua Search
-                    </div> -->
-                    <div class="h-1 w-6 mt-2 rounded-full" 
-                         [class.bg-[#B7A57A]]="activeFeature === 'dua-search'"
-                         [class.bg-transparent]="activeFeature !== 'dua-search'"></div>
-                  </div>
+                <!-- Emotional Dua Search Icon -->
+                <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('dua-search')">
+                  <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-search'" 
+                            class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                            [class.text-gray-500]="activeFeature !== 'dua-search'">favorite</mat-icon>
+                  <div class="h-1 w-6 mt-2 rounded-full" 
+                       [class.bg-[#B7A57A]]="activeFeature === 'dua-search'" 
+                       [class.bg-transparent]="activeFeature !== 'dua-search'"></div>
                 </div>
-
-                <!-- Dua Insights -->
-                <div class="cursor-pointer group" (click)="showFeature('dua-insights')">
-                  <div class="relative flex flex-col items-center">
-                    <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-insights'" 
-                             class="text-2xl transition-colors group-hover:text-[#B7A57A]">auto_awesome</mat-icon>
-                    <!-- <div class="absolute left-full ml-2 px-2 py-1 bg-[#1A365D] rounded text-white text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
-                      Dua Insights
-                    </div> -->
-                    <div class="h-1 w-6 mt-2 rounded-full" 
-                         [class.bg-[#B7A57A]]="activeFeature === 'dua-insights'"
-                         [class.bg-transparent]="activeFeature !== 'dua-insights'"></div>
-                  </div>
+                <!-- Dua Insights Icon -->
+                <div class="flex flex-col items-center cursor-pointer group" (click)="showFeature('dua-insights')">
+                  <mat-icon [class.text-[#B7A57A]]="activeFeature === 'dua-insights'" 
+                            class="text-2xl transition-colors group-hover:text-[#B7A57A]" 
+                            [class.text-gray-500]="activeFeature !== 'dua-insights'">auto_awesome</mat-icon>
+                  <div class="h-1 w-6 mt-2 rounded-full" 
+                       [class.bg-[#B7A57A]]="activeFeature === 'dua-insights'" 
+                       [class.bg-transparent]="activeFeature !== 'dua-insights'"></div>
                 </div>
               </div>
 
               <!-- Main Content Area -->
-              <div class="flex-1 p-6">
-                <!-- Tafsir Chat Interface -->
-                <div *ngIf="activeFeature === 'tafsir'" class="space-y-8 animate-fade-in">
-                  <!-- Top Bar -->
-                  <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-white text-xl">AI Tafsir Chat</h3>
-                    <div class="flex space-x-3">
-                      <mat-icon class="text-white/60">volume_up</mat-icon>
-                      <mat-icon class="text-white/60">bookmark_border</mat-icon>
-                    </div>
-                  </div>
-
-                  <!-- Verse Display -->
-                  <div class="space-y-8">
-                    <!-- Arabic Text -->
-                    <p class="text-[#B7A57A] text-2xl text-right leading-loose" dir="rtl">
-                      بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ
-                    </p>
-
-                    <!-- Translation -->
-                    <p class="text-white/80">
-                      In the name of Allah, the Entirely Merciful, the Especially Merciful
-                    </p>
-
-                    <!-- AI Chat Preview -->
-                    <div class="bg-white/10 rounded-lg p-4 mt-6">
-                      <div class="flex items-start space-x-3">
-                        <mat-icon class="text-[#B7A57A]">psychology</mat-icon>
-                        <div>
-                          <p class="text-white/90 text-sm">Ask me about this verse...</p>
-                          <p class="text-white/40 text-xs mt-1">AI Tafsir Chat</p>
+              <div class="flex-1 p-6 text-white" [ngSwitch]="activeFeature">
+                <!-- Feature Content -->
+                  <!-- Tafsir Chat Interface -->
+                  <div *ngSwitchCase="'tafsir'" class="space-y-8 animate-fade-in">
+                      <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">AI Tafsir Chat</h3></div>
+                      <div class="space-y-8">
+                        <p class="text-[#B7A57A] text-2xl text-right leading-loose" dir="rtl">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+                        <p class="text-white/80">In the name of Allah, the Entirely Merciful, the Especially Merciful</p>
+                        <div class="bg-white/10 rounded-lg p-4 mt-6">
+                          <div class="flex items-start space-x-3">
+                            <mat-icon class="text-[#B7A57A]">psychology</mat-icon>
+                            <div>
+                              <p class="text-white/90 text-sm">Ask me about this verse...</p>
+                              <p class="text-white/40 text-xs mt-1">AI Tafsir Chat</p>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
                   </div>
-                </div>
-
-                <!-- Emotional Dua Search Interface -->
-                <div *ngIf="activeFeature === 'dua-search'" class="space-y-8 animate-fade-in">
-                  <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-white text-xl">Emotional Dua Search</h3>
-                  </div>
-
-                  <!-- Search Input -->
-                  <div class="bg-white/10 rounded-lg p-4">
-                    <div class="flex items-center space-x-3 mb-4">
-                      <mat-icon class="text-[#B7A57A]">favorite</mat-icon>
-                      <input type="text" placeholder="How are you feeling today?" class="bg-transparent text-white border-b border-white/20 focus:border-[#B7A57A] outline-none w-full py-2">
-                    </div>
-                    <div class="flex flex-wrap gap-2 mt-2">
-                      <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Anxious</span>
-                      <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Grateful</span>
-                      <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Seeking Guidance</span>
-                    </div>
-                  </div>
-
-                  <!-- Recommended Duas -->
-                  <div class="space-y-4">
-                    <h4 class="text-white/80 text-lg">Recommended Duas</h4>
+                  <!-- Emotional Dua Search Interface -->
+                  <div *ngSwitchCase="'dua-search'" class="space-y-8 animate-fade-in">
+                    <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">Emotional Dua Search</h3></div>
                     <div class="bg-white/10 rounded-lg p-4">
-                      <p class="text-[#B7A57A] text-lg text-right mb-2" dir="rtl">رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ</p>
-                      <p class="text-white/80 text-sm">Our Lord, give us in this world [that which is] good and in the Hereafter [that which is] good and protect us from the punishment of the Fire.</p>
+                      <div class="flex items-center space-x-3 mb-4">
+                        <mat-icon class="text-[#B7A57A]">favorite</mat-icon>
+                        <input type="text" placeholder="How are you feeling today?" 
+                               class="bg-transparent text-white border-b border-white/20 focus:border-[#B7A57A] outline-none w-full py-2">
+                      </div>
+                      <div class="flex flex-wrap gap-2 mt-2">
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Anxious</span>
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Grateful</span>
+                        <span class="px-3 py-1 rounded-full bg-white/10 text-white/80 text-sm">Seeking Guidance</span>
+                      </div>
+                    </div>
+                    <!-- Updated Example Response Snippet -->
+                    <div class="mt-4 bg-white/5 rounded-lg p-4 text-sm text-white/70 animate-fade-in">
+                      <p>"The Prophet Muhammad ﷺ used to feel this way on numerous occasions..." <span class="text-[#B7A57A]">[Read More...]</span></p>
                     </div>
                   </div>
-                </div>
-
-                <!-- Dua Insights Interface -->
-                <div *ngIf="activeFeature === 'dua-insights'" class="space-y-8 animate-fade-in">
-                  <div class="flex justify-between items-center mb-6">
-                    <h3 class="text-white text-xl">Dua Insights</h3>
+                  <!-- Dua Insights Interface -->
+                  <div *ngSwitchCase="'dua-insights'" class="space-y-8 animate-fade-in">
+                     <div class="flex justify-between items-center mb-6"><h3 class="text-white text-xl">Dua Insights</h3></div>
+                    <div class="bg-white/10 rounded-lg p-4">
+                      <!-- Add Example Arabic Dua -->
+                      <p class="text-[#B7A57A] text-xl text-right leading-loose mb-3" dir="rtl">رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ</p>
+                      <h4 class="text-[#B7A57A] mb-3">Understanding the Dua</h4>
+                      <p class="text-white/80 text-sm leading-relaxed">This beautiful dua teaches us to seek both worldly and spiritual well-being...</p>
+                    </div>
                   </div>
-
-                  <!-- Dua Analysis -->
-                  <div class="bg-white/10 rounded-lg p-4">
-                    <h4 class="text-[#B7A57A] mb-3">Understanding the Dua</h4>
-                    <p class="text-white/80 text-sm leading-relaxed">
-                      This beautiful dua teaches us to seek both worldly and spiritual well-being. It encompasses:
-                    </p>
-                    <ul class="mt-3 space-y-2">
-                      <li class="flex items-start space-x-2">
-                        <mat-icon class="text-[#B7A57A] text-sm">check_circle</mat-icon>
-                        <span class="text-white/80 text-sm">Balance between this life and the hereafter</span>
-                      </li>
-                      <li class="flex items-start space-x-2">
-                        <mat-icon class="text-[#B7A57A] text-sm">check_circle</mat-icon>
-                        <span class="text-white/80 text-sm">Comprehensive well-being (hasanah)</span>
-                      </li>
-                      <li class="flex items-start space-x-2">
-                        <mat-icon class="text-[#B7A57A] text-sm">check_circle</mat-icon>
-                        <span class="text-white/80 text-sm">Protection from hardship</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <!-- Historical Context -->
-                  <div class="bg-white/10 rounded-lg p-4">
-                    <h4 class="text-[#B7A57A] mb-2">Historical Context</h4>
-                    <p class="text-white/80 text-sm">
-                      This was one of the most frequent duas made by the Prophet ﷺ, especially during Hajj...
-                    </p>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         </div>
         
         <!-- Decorative Elements -->
-        <div class="absolute -top-8 -right-8 w-64 h-64 bg-[#B7A57A] rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob"></div>
-        <div class="absolute -bottom-8 -left-8 w-64 h-64 bg-[#1A365D] rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
+        <div class="absolute -top-8 -right-8 w-64 h-64 bg-[#B7A57A] rounded-full mix-blend-screen filter blur-xl opacity-20 animate-blob"></div>
+        <div class="absolute -bottom-8 -left-8 w-64 h-64 bg-[#FAF3E0] rounded-full mix-blend-screen filter blur-xl opacity-20 animate-blob animation-delay-2000"></div>
       </div>
     </div>
   </div>
@@ -382,30 +314,45 @@
   </div>
 </div>
 
-<!-- Early Access Form -->
-<div class="fixed bottom-0 left-0 right-0 bg-[#1A365D] text-white py-4 z-50">
-  <div class="container mx-auto px-6 flex flex-col md:flex-row items-center justify-between">
-    <p class="text-lg mb-4 md:mb-0">
-      Join the waitlist for exclusive early access!
+<!-- Early Access Section (Replaces Contact) -->
+<div id="early-access" class="py-20 bg-[#2A4365] relative">
+  <!-- Optional subtle pattern -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-1.png')] opacity-5 bg-repeat"></div>
+
+  <div class="container mx-auto px-6 relative z-10">
+    <h2 class="text-4xl font-bold text-white text-center mb-10">Get Early Access</h2>
+    <p class="text-lg text-gray-300 text-center mb-10 max-w-2xl mx-auto">
+      Be the first to know when NuraAI launches. Enter your email below.
     </p>
-    <form action="https://formspree.io/f/xeoagdgz" method="POST" (submit)="handleFormSubmit($event)" class="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+
+    <form (ngSubmit)="onEarlyAccessSubmit()" class="max-w-xl mx-auto flex flex-col sm:flex-row items-stretch gap-4">
+      <label for="early-access-email" class="sr-only">Email address</label>
       <input 
         type="email" 
-        name="email" 
-        placeholder="Enter your email" 
-        required
-        class="px-4 py-2 rounded-lg bg-white text-[#1A365D] w-full md:w-64"
+        id="early-access-email" 
+        name="earlyAccessEmail" 
+        [(ngModel)]="earlyAccessEmail" 
+        #emailInput="ngModel"
+        required 
+        email
+        placeholder="Enter your email address"
+        class="flex-grow px-4 py-3 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:border-[#B7A57A] focus:ring-[#B7A57A] focus:outline-none transition-colors placeholder-gray-400"
       >
-      <input type="hidden" name="_subject" value="New Nura AI Early Access Sign-up!">
-      <input type="hidden" name="_next" value="https://nura-ai.app/thank-you">
       <button 
-        type="submit"
-        class="px-6 py-2 rounded-lg bg-[#B7A57A] hover:bg-[#9b8a65] transition-colors"
+        type="submit" 
+        [disabled]="!emailInput.valid"
+        class="px-8 py-3 rounded-md bg-[#B7A57A] hover:bg-[#a8966c] text-white transition-colors text-lg font-semibold shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        Get Early Access
+        Notify Me
       </button>
     </form>
+    <div *ngIf="emailInput.invalid && (emailInput.dirty || emailInput.touched)" class="text-center mt-2 text-red-400 text-sm">
+      Please enter a valid email address.
+    </div>
   </div>
 </div>
 
-<!-- Remove or comment out the entire footer section --> 
+<!-- Footer -->
+<footer class="bg-[#1A365D] text-gray-300 py-10">
+  <!-- ... existing code ... -->
+</footer> 

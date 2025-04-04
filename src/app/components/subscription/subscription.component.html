@@ -63,29 +63,28 @@
           <h3 class="font-semibold text-lg text-white mb-4">Everything in Free, plus:</h3>
           <ul class="space-y-3 text-white">
             <li class="flex items-center" [class.highlight-feature]="feature === 'Emotional Dua Search'">
-              <mat-icon class="text-yellow-400 mr-2">auto_awesome</mat-icon>
+              <mat-icon class="text-[#B7A57A] mr-2">auto_awesome</mat-icon>
               <span>Emotional Dua Search</span>
             </li>
             <li class="flex items-center" [class.highlight-feature]="feature === 'AI Tafsir Chat'">
-              <mat-icon class="text-yellow-400 mr-2">psychology</mat-icon>
+              <mat-icon class="text-[#B7A57A] mr-2">psychology</mat-icon>
               <span>AI Tafsir Chat</span>
             </li>
             <li class="flex items-center" [class.highlight-feature]="feature === 'Dua Insights'">
-              <mat-icon class="text-yellow-400 mr-2">lightbulb</mat-icon>
+              <mat-icon class="text-[#B7A57A] mr-2">lightbulb</mat-icon>
               <span>Dua Insights & Analysis</span>
             </li>
           </ul>
         </div>
 
         <div class="mt-8 text-center">
-          <button 
-            mat-raised-button 
-            [disabled]="isLoading"
-            (click)="startSubscription()"
-            class="w-full py-3 px-6 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-[#1A365D] font-semibold transition-colors duration-300 flex items-center justify-center"
-          >
-            <span>Subscribe Now</span>
-            <mat-icon class="ml-2">arrow_forward</mat-icon>
+          <button mat-raised-button color="primary"
+                  (click)="startSubscription()"
+                  [disabled]="isLoading"
+                  class="w-full py-3 text-lg font-semibold transition-colors duration-200 bg-[#1A365D] text-[#B7A57A] hover:bg-[#B7A57A] hover:text-[#FAF3E0]">
+            <!-- Show spinner when loading, otherwise show text -->
+            <mat-spinner *ngIf="isLoading" diameter="24" class="mx-auto"></mat-spinner>
+            <span *ngIf="!isLoading">Subscribe Now</span>
           </button>
         </div>
       </div>

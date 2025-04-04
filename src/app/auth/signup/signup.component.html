@@ -1,128 +1,232 @@
-<div class="auth-container">
-  <mat-card class="auth-card">
-    <mat-card-header>
-      <mat-card-title>Create an Account</mat-card-title>
-    </mat-card-header>
-    
-    <mat-card-content>
-      <form [formGroup]="signupForm" (ngSubmit)="onSubmit()">
-        <div class="name-fields">
-          <mat-form-field appearance="outline" class="half-width">
-            <mat-label>First Name</mat-label>
-            <input matInput formControlName="firstName" placeholder="First Name">
-            <mat-error *ngIf="signupForm.get('firstName')?.hasError('required')">
-              First name is required
-            </mat-error>
-          </mat-form-field>
-          
-          <mat-form-field appearance="outline" class="half-width">
-            <mat-label>Last Name</mat-label>
-            <input matInput formControlName="lastName" placeholder="Last Name">
-            <mat-error *ngIf="signupForm.get('lastName')?.hasError('required')">
-              Last name is required
-            </mat-error>
-          </mat-form-field>
-        </div>
-        
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Email</mat-label>
-          <input matInput formControlName="email" type="email" placeholder="Email">
-          <mat-error *ngIf="signupForm.get('email')?.hasError('required')">
-            Email is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('email')?.hasError('email')">
-            Please enter a valid email address
-          </mat-error>
-        </mat-form-field>
-        
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Password</mat-label>
-          <input 
-            matInput 
-            formControlName="password" 
-            [type]="hidePassword ? 'password' : 'text'" 
-            placeholder="Password">
-          <button 
-            mat-icon-button 
-            matSuffix 
-            (click)="hidePassword = !hidePassword" 
-            [attr.aria-label]="'Hide password'" 
-            [attr.aria-pressed]="hidePassword"
-            type="button">
-            <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-          </button>
-          <mat-error *ngIf="signupForm.get('password')?.hasError('required')">
-            Password is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('password')?.hasError('minlength')">
-            Password must be at least 6 characters
-          </mat-error>
-        </mat-form-field>
-        
-        <mat-form-field appearance="outline" class="full-width">
-          <mat-label>Confirm Password</mat-label>
-          <input 
-            matInput 
-            formControlName="confirmPassword" 
-            [type]="hideConfirmPassword ? 'password' : 'text'" 
-            placeholder="Confirm Password">
-          <button 
-            mat-icon-button 
-            matSuffix 
-            (click)="hideConfirmPassword = !hideConfirmPassword" 
-            [attr.aria-label]="'Hide confirm password'" 
-            [attr.aria-pressed]="hideConfirmPassword"
-            type="button">
-            <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
-          </button>
-          <mat-error *ngIf="signupForm.get('confirmPassword')?.hasError('required')">
-            Confirm password is required
-          </mat-error>
-          <mat-error *ngIf="signupForm.get('confirmPassword')?.hasError('mustMatch')">
-            Passwords must match
-          </mat-error>
-        </mat-form-field>
-        
-        <div class="terms-checkbox">
-          <mat-checkbox formControlName="termsAccepted">
-            I agree to the <a (click)="openTermsAndConditions()">Terms and Conditions</a>
-          </mat-checkbox>
-          <mat-error *ngIf="signupForm.get('termsAccepted')?.hasError('required') && 
-              signupForm.get('termsAccepted')?.touched">
-            You must accept the terms and conditions
-          </mat-error>
-        </div>
-        
-        <div class="button-container">
-          <button 
-            mat-raised-button 
-            color="primary" 
-            type="submit" 
-            class="full-width" 
-            [disabled]="signupForm.invalid || isLoading">
-            <mat-spinner diameter="20" *ngIf="isLoading"></mat-spinner>
-            <span *ngIf="!isLoading">Create Account</span>
-          </button>
-        </div>
-      </form>
-      
-      <mat-divider class="divider"></mat-divider>
-      
-      <div class="alternative-signin">
-        <button 
-          mat-stroked-button 
-          class="google-button full-width" 
-          (click)="signupWithGoogle()" 
-          [disabled]="isLoading">
-          <img src="/google-logo.svg" alt="Google" class="google-icon">
-          Sign up with Google
-        </button>
-      </div>
-      
-      <div class="login-prompt">
-        <span>Already have an account?</span>
-        <a (click)="goToLogin()">Sign in</a>
-      </div>
-    </mat-card-content>
-  </mat-card>
-</div> 
+<!-- New structure integrating landing page visuals -->
+<div class="min-h-screen bg-gradient-to-b from-[#1A365D] to-[#2A4365] text-white relative overflow-hidden flex items-center justify-center p-4">
+  <!-- Islamic Pattern Background -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-1.png')] opacity-10 bg-repeat"></div>
+
+  <!-- Nura AI Title -->
+  <div class="absolute top-8 left-1/2 transform -translate-x-1/2 z-20">
+      <h1 class="text-5xl font-bold text-white tracking-tight opacity-80 font-serif">
+          Nura<span class="text-[#B7A57A]">AI</span>
+      </h1>
+  </div>
+
+  <div class="container mx-auto relative z-10 pt-20">
+    <!-- Signup Card Section -->
+    <div class="w-full max-w-lg mx-auto">
+      <mat-card class="signup-card w-full p-8 rounded-xl shadow-2xl bg-white text-gray-800">
+        <mat-card-header class="justify-center mb-6">
+          <mat-card-title class="text-3xl font-bold text-[#1A365D]">Create Account</mat-card-title>
+          <mat-card-subtitle class="text-gray-500 mt-1">Join the Nura AI community</mat-card-subtitle>
+        </mat-card-header>
+
+        <mat-card-content>
+          <form [formGroup]="signupForm" (ngSubmit)="onSubmit()" class="space-y-6">
+
+            <!-- Name Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label for="firstName" class="block text-sm font-medium text-gray-700 mb-1.5">First Name</label>
+                <input id="firstName" type="text" placeholder="Enter first name" formControlName="firstName"
+                       class="w-full px-4 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <div *ngIf="signupForm.get('firstName')?.invalid && (signupForm.get('firstName')?.dirty || signupForm.get('firstName')?.touched)"
+                     class="text-red-600 text-xs mt-1">
+                  <div *ngIf="signupForm.get('firstName')?.hasError('required')">First name is required.</div>
+                </div>
+              </div>
+              <div>
+                <label for="lastName" class="block text-sm font-medium text-gray-700 mb-1.5">Last Name</label>
+                <input id="lastName" type="text" placeholder="Enter last name" formControlName="lastName"
+                       class="w-full px-4 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <div *ngIf="signupForm.get('lastName')?.invalid && (signupForm.get('lastName')?.dirty || signupForm.get('lastName')?.touched)"
+                     class="text-red-600 text-xs mt-1">
+                  <div *ngIf="signupForm.get('lastName')?.hasError('required')">Last name is required.</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Email Field -->
+            <div>
+              <label for="email" class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <div class="relative">
+                <input id="email" type="email" placeholder="Enter your email" formControlName="email"
+                       class="w-full px-4 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <mat-icon class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400">email</mat-icon>
+              </div>
+              <div *ngIf="signupForm.get('email')?.invalid && (signupForm.get('email')?.dirty || signupForm.get('email')?.touched)"
+                   class="text-red-600 text-xs mt-1">
+                <div *ngIf="signupForm.get('email')?.hasError('required')">Email is required.</div>
+                <div *ngIf="signupForm.get('email')?.hasError('email')">Please enter a valid email address.</div>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div>
+              <label for="password" class="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+              <div class="relative">
+                <input id="password" [type]="hidePassword ? 'password' : 'text'" placeholder="Choose a password" formControlName="password"
+                       class="w-full pl-4 pr-10 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <button type="button" mat-icon-button (click)="hidePassword = !hidePassword"
+                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        [attr.aria-label]="'Toggle password visibility'">
+                  <mat-icon>{{hidePassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+              </div>
+              <div *ngIf="signupForm.get('password')?.invalid && (signupForm.get('password')?.dirty || signupForm.get('password')?.touched)"
+                   class="text-red-600 text-xs mt-1">
+                <div *ngIf="signupForm.get('password')?.hasError('required')">Password is required.</div>
+                <div *ngIf="signupForm.get('password')?.hasError('minlength')">Password must be at least 6 characters.</div>
+              </div>
+            </div>
+
+            <!-- Confirm Password Field -->
+            <div>
+              <label for="confirmPassword" class="block text-sm font-medium text-gray-700 mb-1.5">Confirm Password</label>
+              <div class="relative">
+                <input id="confirmPassword" [type]="hideConfirmPassword ? 'password' : 'text'" placeholder="Confirm your password" formControlName="confirmPassword"
+                       class="w-full pl-4 pr-10 py-2.5 rounded-md border border-gray-300 bg-gray-50 focus:ring-2 focus:ring-[#B7A57A]/50 focus:border-[#B7A57A] outline-none transition duration-150 ease-in-out">
+                <button type="button" mat-icon-button (click)="hideConfirmPassword = !hideConfirmPassword"
+                        class="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                        [attr.aria-label]="'Toggle confirm password visibility'">
+                  <mat-icon>{{hideConfirmPassword ? 'visibility_off' : 'visibility'}}</mat-icon>
+                </button>
+              </div>
+              <div *ngIf="signupForm.get('confirmPassword')?.invalid && (signupForm.get('confirmPassword')?.dirty || signupForm.get('confirmPassword')?.touched)"
+                   class="text-red-600 text-xs mt-1">
+                <div *ngIf="signupForm.get('confirmPassword')?.hasError('required')">Please confirm your password.</div>
+              </div>
+              <div *ngIf="signupForm.hasError('passwordMismatch') && signupForm.get('confirmPassword')?.dirty"
+                   class="text-red-600 text-xs mt-1">
+                Passwords do not match.
+              </div>
+            </div>
+
+            <!-- Terms and Conditions -->
+            <!--
+            <div class="flex items-start">
+                <mat-checkbox formControlName="termsAccepted" color="primary" class="mt-0.5">
+                    <span class="text-sm text-gray-600 ml-2">
+                        I agree to the <a href="/terms" target="_blank" class="text-[#B7A57A] hover:text-[#9b8a65] hover:underline">Terms & Conditions</a>
+                    </span>
+                </mat-checkbox>
+            </div>
+             <div *ngIf="signupForm.get('termsAccepted')?.hasError('requiredTrue') && (signupForm.get('termsAccepted')?.dirty || signupForm.get('termsAccepted')?.touched)"
+                   class="text-red-600 text-xs -mt-4 ml-1">
+                You must accept the terms.
+             </div>
+            -->
+
+            <!-- Signup Button -->
+            <button mat-raised-button type="submit" [disabled]="isLoading || signupForm.invalid" class="w-full py-3 text-lg bg-[#B7A57A] hover:bg-[#a8966c] text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+              <mat-spinner diameter="24" *ngIf="isLoading" class="inline-block mr-2"></mat-spinner>
+              {{ isLoading ? 'Creating Account...' : 'Sign Up' }}
+            </button>
+
+            <!-- Divider -->
+            <div class="relative flex py-4 items-center">
+              <div class="flex-grow border-t border-gray-300"></div>
+              <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
+              <div class="flex-grow border-t border-gray-300"></div>
+            </div>
+
+            <!-- Google Sign-Up Button -->
+             <button type="button" (click)="signupWithGoogle()" [disabled]="isLoading" class="w-full py-3 text-lg flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed group">
+              <!-- Ensure SVG size is constrained and does not shrink -->
+               <svg class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12
+c-0.007-6.633,5.367-12.006,11.994-12.006c3.613,0,6.839,1.556,9.067,4.016l5.657-5.657C34.046,6.053,29.268,4,24,4
+C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" fill="#FFC107"></path>
+                <path d="M43.611,20.083H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571
+c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C39.999,35.66,44,30.478,44,24C44,22.659,43.862,21.35,43.611,20.083z" fill="#FF3D00"></path>
+                <path d="M24,42c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238c-2.008,1.62-4.746,2.572-7.641,2.572
+c-6.08,0-11.303-3.343-13.409-8.169l-5.845,4.554C8.174,37.318,15.43,42,24,42z" fill="#4CAF50"></path>
+                <path d="M11.994,11.994c-2.228,2.458-3.635,5.722-3.635,9.399c0,0.811,0.09,1.603,0.254,2.363l-5.845-4.554
+C4.254,21.189,4.007,19.967,4,18.686c0-3.036,0.924-5.831,2.544-8.202L11.994,11.994z" fill="#1976D2"></path>
+               </svg>
+              <span class="transition-transform duration-200 group-hover:translate-x-1">Sign Up with Google</span>
+            </button>
+
+            <!-- Login Link -->
+            <div class="text-center mt-8">
+              <p class="text-gray-600">
+                Already have an account?
+                <a routerLink="/auth/login" class="font-medium text-[#B7A57A] hover:text-[#9b8a65] hover:underline transition-colors">
+                  Sign In
+                </a>
+              </p>
+            </div>
+          </form>
+        </mat-card-content>
+      </mat-card>
+    </div> <!-- End Signup Card Section -->
+
+  </div> <!-- End Container -->
+</div> <!-- End Page Wrapper -->
+
+<!-- Define theme colors and override Angular Material styles here or in SCSS -->
+<style>
+  :root {
+    --cream-light: #FDF8EC; /* Example */
+    --cream-base: #FAF3E0; /* Example */
+    --cream-dark: #EAE0C8; /* Example */
+    --gold-accent: #C0A062; /* Example Gold */
+    --gold-accent-dark: #A08450; /* Example Darker Gold */
+    --text-primary: #333333;
+    --text-secondary: #555555;
+  }
+
+  .bg-gradient-to-br {
+    background-image: linear-gradient(to bottom right, var(--cream-light), var(--cream-base), var(--cream-dark));
+  }
+  .text-gold-accent { color: var(--gold-accent); }
+  .hover\:text-gold-accent-dark:hover { color: var(--gold-accent-dark); }
+  .bg-gold-accent { background-color: var(--gold-accent); }
+  .hover\:bg-gold-accent-dark:hover { background-color: var(--gold-accent-dark); }
+
+  /* Shared Form Field Styles */
+  ::ng-deep .mat-mdc-form-field-appearance-outline {
+    .mdc-notched-outline > * {
+        border-color: rgba(100, 116, 139, 0.4) !important; /* Lighter gray border */
+    }
+    .mdc-text-field {
+      border-radius: 8px !important; /* Rounded corners */
+      background-color: rgba(248, 250, 252, 0.7) !important; /* Slightly different subtle bg for variety */
+    }
+    .mat-mdc-form-field-infix {
+       padding-top: 12px !important; /* Adjust padding */
+       padding-bottom: 12px !important;
+    }
+  }
+
+  /* Signup Specific Focus Styles (Gold Accent) */
+  ::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused {
+     .mdc-notched-outline > * {
+        border-color: var(--gold-accent) !important; /* Gold border on focus */
+        border-width: 2px !important;
+     }
+     .mat-mdc-floating-label {
+         color: var(--gold-accent) !important; /* Gold label on focus */
+     }
+     .mdc-text-field {
+        background-color: white !important; /* White background on focus */
+     }
+  }
+
+  /* Override Checkbox color (Gold Accent) */
+  ::ng-deep .mat-mdc-checkbox.mat-primary .mdc-checkbox__native-control:enabled:checked ~ .mdc-checkbox__background,
+  ::ng-deep .mat-mdc-checkbox.mat-primary .mdc-checkbox__native-control:enabled:indeterminate ~ .mdc-checkbox__background {
+    background-color: var(--gold-accent) !important;
+    border-color: var(--gold-accent) !important;
+  }
+  /* Ensure the checkmark itself is visible against the gold background */
+  ::ng-deep .mat-mdc-checkbox.mat-primary .mdc-checkbox__native-control:enabled:checked ~ .mdc-checkbox__background .mdc-checkbox__checkmark path {
+    stroke: #1A365D !important; /* Use a dark contrasting color */
+  }
+  ::ng-deep .mat-mdc-checkbox.mat-primary .mdc-checkbox__ripple {
+    color: var(--gold-accent);
+  }
+
+  /* Style spinner on gold button */
+  .spinner-white ::ng-deep circle {
+     stroke: white !important;
+  }
+</style> 

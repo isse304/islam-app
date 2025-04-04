@@ -1,4 +1,4 @@
-<nav class="header-nav">
+<nav class="header-nav" *ngIf="!isLandingPage">
   <div class="nav-container">
     <!-- Logo Section -->
     <div class="logo-container">
@@ -7,9 +7,9 @@
       </a>
     </div>
 
-    <!-- Nav  gation Links -->
+    <!-- Navigation Links -->
     <div class="nav-links">
-      <a routerLink="/"
+      <a routerLink="/home"
          routerLinkActive="nav-link-active"
          [routerLinkActiveOptions]="{exact: true}"
          class="nav-link">
@@ -30,6 +30,11 @@
          class="nav-link">
         Dua
       </a>
+      <a routerLink="/profile"
+         routerLinkActive="nav-link-active"
+         class="nav-link">
+        Profile
+      </a>
     </div>
 
     <!-- Auth Buttons -->
@@ -47,10 +52,11 @@
 
   <!-- Mobile Menu -->
   <div class="mobile-menu" [class.mobile-menu-active]="isMobileMenuOpen">
-    <a routerLink="/" class="mobile-link" (click)="closeMobileMenu()">Home</a>
+    <a routerLink="/home" class="mobile-link" (click)="closeMobileMenu()">Home</a>
     <a routerLink="/quran" class="mobile-link" (click)="closeMobileMenu()">Quran Reader</a>
     <a routerLink="/learn" class="mobile-link" (click)="closeMobileMenu()">Learn Quran</a>
     <a routerLink="/dua" class="mobile-link" (click)="closeMobileMenu()">Dua</a>
+    <a routerLink="/profile" class="mobile-link" (click)="closeMobileMenu()">Profile</a>
     
     <!-- Auth Buttons in Mobile Menu -->
     <div class="mobile-auth-container">
@@ -60,7 +66,7 @@
 </nav>
 
 <!-- Spacer to prevent content from hiding under fixed navbar -->
-<div class="nav-spacer"></div>
+<div class="nav-spacer" *ngIf="!isLandingPage"></div>
 
 <!-- <header> -->
   <!-- Navbar -->

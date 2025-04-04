@@ -3,7 +3,7 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import { Request, Response, NextFunction } from 'express';
 
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env['NODE_ENV'] === 'development';
 
 // Rate limiting configuration
 const limiter = rateLimit({

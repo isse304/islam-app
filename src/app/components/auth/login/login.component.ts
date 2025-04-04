@@ -1,8 +1,15 @@
 import { Component } from '@angular/core';
 import { Router } from '@angular/router';
+import { FormsModule, NgForm } from '@angular/forms';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
+  imports: [
+    CommonModule,
+    FormsModule
+  ],
   template: `
     <div class="min-h-screen bg-[#FAF3E0] dark:bg-gray-900 py-8">
       <div class="container mx-auto px-4">
@@ -11,7 +18,7 @@ import { Router } from '@angular/router';
             Login to IslamApp
           </h2>
           
-          <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="space-y-6">
+          <form (ngSubmit)="onSubmit(loginForm)" #loginForm="ngForm" class="space-y-6">
             <div>
               <label for="email" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Email
@@ -85,12 +92,18 @@ export class LoginComponent {
   email = '';
   password = '';
   rememberMe = false;
+  isLoading = false;
+  error = null;
 
   constructor(private router: Router) {}
 
-  onSubmit() {
-    // TODO: Implement login logic
-    console.log('Login attempt:', { email: this.email, rememberMe: this.rememberMe });
+  onSubmit(form: NgForm) {
+    if (form.invalid) {
+      return;
+    }
+    // console.log('Login attempt:', { email: this.email, rememberMe: this.rememberMe });
+    this.isLoading = true;
+    this.error = null;
     this.router.navigate(['/']);
   }
 } 

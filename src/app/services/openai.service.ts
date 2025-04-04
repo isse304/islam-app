@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, map } from 'rxjs';
+import { Observable, from, map, firstValueFrom, timeout, catchError, throwError } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Dua } from './dua.service';
-import { AuthService } from './auth.service';
 import { ApiService } from './api.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 
@@ -36,7 +35,8 @@ interface AIGenerateResponse {
   providedIn: 'root'
 })
 export class OpenAIService {
-  private readonly apiUrl = `${environment.apiUrl}/api/ai/generate`;
+  private apiUrl = `${environment.apiUrl}/api/ai/generate`;
+  private requestTimeout = 30000;
   
   // Temperature settings for different types of content
   private readonly TEMPERATURES = {
@@ -177,7 +177,7 @@ export class OpenAIService {
             relatedVerses: processReferences(jsonResponse.related_references)
           };
         } catch (error) {
-          console.error('Error parsing JSON response:', error);
+          // console.error('Error parsing JSON response:', error);
           // Fallback to original text parsing if JSON parsing fails
           const sections = response.content.split('\n\n');
           const parseSection = (title: string) => {
@@ -393,46 +393,48 @@ export class OpenAIService {
         modernApplication: dynamicResponse.modernApplication
       };
     } catch (error) {
-      console.error('Error in combined completion:', error);
+      // console.error('Error in combined completion:', error);
       throw error;
     }
   }
 
   private async getCompletion(prompt: AIRequestPrompt): Promise<AIResponse> {
     try {
-      console.log('Getting auth token...');
+      // console.log('Getting auth token...');
       const token = await this.authService.getToken();
       
       if (!token) {
-        console.error('Failed to get authentication token');
-        throw new Error('No authentication token available');
-      }
-      
-      console.log('Making API request with token...');
-      const response = await this.http.post<AIGenerateResponse>(
-        this.apiUrl, 
-        { prompt },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      ).toPromise();
-      
-      if (!response?.content) {
-        console.error('Invalid response format:', response);
-        throw new Error('Invalid response format from server');
+        // console.error('Failed to get authentication token for AI request');
+        throw new Error('Authentication required for AI feature.');
       }
 
-      console.log('Successfully received API response');
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // console.log('Making API request with token...');
+      const response = await firstValueFrom(this.http.post<AIGenerateResponse>(
+        this.apiUrl, 
+        prompt, 
+        { headers }
+      ).pipe(
+          timeout(this.requestTimeout),
+          catchError(err => {
+              // console.error('Error in getCompletion HTTP request:', err);
+              return throwError(() => new Error('AI service request failed.'));
+          })
+      ));
+
+      if (!response?.content) {
+          throw new Error('Invalid response structure from AI service.');
+      }
+
+      // console.log('Successfully received API response');
       return this.parseAIResponse(response.content);
     } catch (error: any) {
-      console.error('API error:', error);
-      if (error.status === 401) {
-        console.error('Authentication failed - please ensure you are logged in');
-      }
-      throw error;
+      // console.error('Error calling OpenAI service:', error);
+      throw new Error('Could not generate AI response. Please try again later.');
     }
   }
 
@@ -598,7 +600,7 @@ export class OpenAIService {
       };
     } catch (error) {
       // Fallback to text parsing if JSON parsing fails
-      console.error('Error parsing JSON response:', error);
+      // console.error('Error parsing JSON response:', error);
       const sections = content.split('\n\n');
       return {
         content: sections[0] || '',
@@ -614,4 +616,36 @@ export class OpenAIService {
   private generateAIResponse(prompt: AIRequestPrompt): Observable<AIResponse> {
     return from(this.getCompletion(prompt));
   }
+
+  // Keeping makeApiRequest commented out as getCompletion seems to handle the logic now
+  /*
+  private async makeApiRequest(endpoint: string, body: any, retries = 3): Promise<any> {
+    // console.log('Getting auth token...');
+    const token = await this.authService.getToken();
+    if (!token) {
+      console.error('Failed to get authentication token');
+      throw new Error('No authentication token available');
+    }
+
+    // console.log('Making API request with token...');
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    };
+
+    return firstValueFrom(this.http.post<any>(`${this.apiUrl}/${endpoint}`, body, { headers }).pipe(
+      timeout(this.requestTimeout),
+      catchError((error: any) => {
+        console.error('API error:', error);
+        if (error.status === 401) {
+          console.error('Authentication failed - please ensure you are logged in');
+        }
+        return throwError(() => error);
+      })
+    )).then(response => {
+      // console.log('Successfully received API response');
+      return response;
+    });
+  }
+  */
 } 

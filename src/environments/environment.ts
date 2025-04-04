@@ -21,9 +21,10 @@ export const environment: Environment = {
     region: 'us-east-1'
   },
   stripeConfig: {
-    publishableKey: 'pk_test_51R1RShGYeNehzlUZBgXi4s6sf5u4BvRkXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj',
-    priceId: 'price_1R1TPjGYeNehzlUZi71dNilr'
+    publishableKey: 'pk_live_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
+    priceId: 'price_1R1SKuGYeNehzlUZPlVwt392'
   },
   // List of admin user IDs (moved from .env to environment.ts for client-side access)
   adminUsers: ['test-admin-user']
 }; 
+

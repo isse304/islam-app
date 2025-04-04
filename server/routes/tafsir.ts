@@ -1,12 +1,19 @@
 import express, { Request, Response } from 'express';
-import { withAuth, AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest, withAuth, withPremium } from '../middleware/auth';
 import axios from 'axios';
 import { OpenAIService } from '../services/openai.service';
 import { TafsirCacheService } from '../services/tafsir-cache.service';
+import { UserUsage } from '../models/UserUsage';
+import { UsageService } from '../services/usage.service';
+import { StripeService } from '../services/stripe.service';
+import { EmailService } from '../services/email.service';
 
 const router = express.Router();
 const openai = new OpenAIService();
 const tafsirCacheService = new TafsirCacheService();
+const emailService = new EmailService();
+const stripeService = new StripeService(emailService);
+const usageService = new UsageService(stripeService);
 
 interface TafsirSourceConfig {
   baseUrl: string;
@@ -160,10 +167,11 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response) => {
   }
 });
 
-// Tafsir chat endpoint
-router.post('/chat', withAuth(async (req: Request, res: Response) => {
+// Tafsir chat endpoint (Requires Auth AND Premium)
+router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { surah, verse, question, isFirstResponse = false, selectedTafsir = 'ibn-kathir' } = req.body;
+    const userId = req.auth!.uid;
     
     if (!surah || !verse || !question) {
       return res.status(400).json({ 
@@ -172,15 +180,33 @@ router.post('/chat', withAuth(async (req: Request, res: Response) => {
       });
     }
 
-    // Get only the selected tafsir content
+    let userUsage;
+    try {
+        userUsage = await usageService.getOrCreateUsage(userId);
+
+        if (!await userUsage.canMakeAIRequest()) {
+            return res.status(429).json({ 
+                success: false,
+                error: 'AI request limit exceeded for today',
+                limit: userUsage.aiRequestLimit,
+                used: userUsage.aiRequests.count
+            });
+        }
+    } catch (usageError) {
+        console.error('Error managing user usage in tafsir/chat:', usageError);
+        return res.status(500).json({
+            success: false,
+            error: 'Failed to verify usage limits'
+        });
+    }
+
     const tafsirContent = await getTafsirContent(selectedTafsir, surah, verse);
     const hasTafsirContent = !!tafsirContent;
 
-    // Construct the system message based on available content
     let systemMessage = '';
     if (hasTafsirContent) {
       const scholarName = selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari';
-      systemMessage = `You are a knowledgeable Islamic scholar answering questions about the Quran based on ${scholarName}'s tafsir. You will be provided with tafsir content for specific verses.
+      systemMessage = `You are a knowledgeable Muslim scholar answering questions about the Quran based on ${scholarName}'s tafsir. You will be provided with tafsir content for specific verses.
 
 CRITICAL RULES FOR AUTHENTIC RESPONSES:
 1. VERSE CONTEXT ENFORCEMENT:
@@ -235,13 +261,17 @@ Provide a focused answer based strictly on the provided tafsir content for THIS 
 It would not be appropriate to provide an interpretation without access to ${scholarName}'s tafsir for this verse."`;
     }
 
-    // Generate response with temperature 0.2 for more focused outputs
-    const response = await openai.generateResponse(systemMessage);
+    const responseContent = await openai.generateResponse(systemMessage);
 
-    // Return formatted response with source information
+    try {
+        await userUsage.incrementAIRequestCount();
+    } catch (incrementError) {
+        console.error('Error incrementing usage count in tafsir/chat:', incrementError);
+    }
+
     return res.json({
       success: true,
-      content: response,
+      content: responseContent,
       source: hasTafsirContent ? 'tafsir_sources' : 'ai_fallback',
       sources: hasTafsirContent ? [
         {
@@ -251,76 +281,223 @@ It would not be appropriate to provide an interpretation without access to ${sch
       ] : []
     });
 
-  } catch (error) {
-    console.error('Error in tafsir chat:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to generate tafsir response'
-    });
+  } catch (error: any) {
+    console.error('Error in tafsir chat route:', error);
+    res.status(500).json({ success: false, error: 'Internal server error' });
   }
 }));
 
-// Helper function to fetch tafsir content
-async function getTafsirContent(source: 'ibn-kathir' | 'tabari', surah: number, verse: number): Promise<string> {
+// Helper function to estimate tokens (rough estimate)
+function estimateTokens(text: string): number {
+  // GPT models typically use ~4 chars per token on average
+  return Math.ceil(text.length / 4);
+}
+
+// Process tafsir content to fit within token limits
+function processTafsirContent(content: string, maxTokens: number = 6000, isArabic: boolean = false): string {
+  if (!content) return '';
+  
+  // Adjust token limit for Arabic content (Arabic typically needs more tokens)
+  const adjustedMaxTokens = isArabic ? Math.floor(maxTokens * 0.7) : maxTokens;
+  
+  // If content is already within limits, return as is
+  if (estimateTokens(content) <= adjustedMaxTokens) return content;
+
+  // Split content into sections, handling both Arabic and English text
+  const sections = content.split(/\n\n+/);
+  
+  // Priority keywords for section selection (including Arabic keywords)
+  const priorityPatterns = [
+    /سبب.*نزول|context.*revelation|occasion.*revelation/i,    // Context of revelation
+    /تفسير|معنى|شرح|interpretation|meaning|explanation/i,     // Main interpretations
+    /حكم|ruling|فقه|fiqh/i,                                  // Legal rulings
+    /فائدة|حكمة|benefit|wisdom/i,                            // Benefits and wisdom
+    /حديث|أثر|hadith|narration|reported/i                     // Supporting hadith
+  ];
+
+  // Score and sort sections by priority
+  const scoredSections = sections.map(section => {
+    let score = 0;
+    priorityPatterns.forEach((pattern, index) => {
+      if (pattern.test(section)) {
+        score += (priorityPatterns.length - index); // Higher priority = higher score
+      }
+    });
+    return { section, score };
+  }).sort((a, b) => b.score - a.score);
+
+  // Build processed content within token limit
+  let processedContent = '';
+  let currentTokens = 0;
+  
+  // Always include first section (usually introduction/context)
+  processedContent = sections[0] + '\n\n';
+  currentTokens = estimateTokens(processedContent);
+
+  // Add high-priority sections until we approach the limit
+  for (const {section} of scoredSections) {
+    const sectionTokens = estimateTokens(section);
+    // Use a tighter buffer for Arabic content (85% instead of 95%)
+    const bufferLimit = adjustedMaxTokens * (isArabic ? 0.85 : 0.95);
+    
+    if (currentTokens + sectionTokens <= bufferLimit) {
+      processedContent += section + '\n\n';
+      currentTokens += sectionTokens;
+    }
+  }
+
+  // Add note if content was truncated
+  if (estimateTokens(content) > adjustedMaxTokens) {
+    const note = isArabic 
+      ? '\n[ملاحظة: تم تحسين بعض المحتوى للطول مع الحفاظ على التفسيرات والسياق الرئيسي.]'
+      : '\n[Note: Some content has been optimized for length while preserving key interpretations and context.]';
+    processedContent += note;
+  }
+
+  return processedContent.trim();
+}
+
+// Modified getTafsirContent function with improved Arabic handling and error logging
+async function getTafsirContent(source: string, surah: string, verse: string): Promise<string> {
   try {
+    console.log('Getting tafsir content for:', { source, surah, verse });
+    
     // Try to get from cache first
-    const cachedEntry = await tafsirCacheService.getTafsir(source, surah, verse);
-    if (cachedEntry) {
-      console.log(`Retrieved ${source} tafsir from cache for ${surah}:${verse}`);
-      return cachedEntry.content;
+    const cacheKey = `${source}-${surah}-${verse}`;
+    const cachedContent = await tafsirCacheService.get(cacheKey);
+    if (cachedContent) {
+      console.log('Found cached content:', { source, contentLength: cachedContent.length });
+      const sourceConfig = tafsirSources[source];
+      const isArabic = sourceConfig?.language === 'ar';
+      return processTafsirContent(cachedContent, 6000, isArabic);
     }
 
     // If not in cache, fetch from API
-    const response = await axios.get(
-      `${tafsirSources[source].baseUrl}/by_ayah/${surah}:${verse}`,
-      { timeout: 5000 }
-    );
-
-    if (response.data?.tafsir?.text) {
-      // Process the content with better structure preservation
-      let content = response.data.tafsir.text
-        // Convert headers to markdown-style sections
-        .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '\n\n## $1\n\n')
-        .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '\n\n### $1\n\n')
-        // Convert paragraphs to double-line-breaks for clear separation
-        .replace(/<p[^>]*>(.*?)<\/p>/gi, '\n\n$1\n\n')
-        // Convert lists to bullet points
-        .replace(/<li[^>]*>(.*?)<\/li>/gi, '• $1\n')
-        // Convert emphasis and strong tags to markdown
-        .replace(/<em[^>]*>(.*?)<\/em>/gi, '_$1_')
-        .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
-        // Remove any remaining HTML tags
-        .replace(/<[^>]+>/g, '')
-        // Fix multiple line breaks
-        .replace(/\n\s*\n\s*\n/g, '\n\n')
-        .trim();
-
-      // Add section markers for better AI parsing
-      if (source === 'ibn-kathir') {
-        content = `[Ibn Kathir's Tafsir]\n\n${content}`;
-      } else {
-        content = `[Tabari's Tafsir]\n\n${content}`;
-      }
-
-      // Add language marker if it's Arabic
-      if (tafsirSources[source].language === 'ar') {
-        content = `[Arabic Text]\n${content}\n[End Arabic Text]`;
-      }
-
-      // Save to cache
-      await tafsirCacheService.saveTafsir({
-        source,
-        surah,
-        verse,
-        content,
-        language: tafsirSources[source].language
-      });
-
-      return content;
+    const sourceConfig = tafsirSources[source];
+    if (!sourceConfig) {
+      console.error('Invalid tafsir source:', source);
+      return '';
     }
-    return '';
+
+    const isArabic = sourceConfig.language === 'ar';
+    const url = `${sourceConfig.baseUrl}/by_ayah/${surah}:${verse}`;
+    console.log('Fetching from API:', { url, language: sourceConfig.language });
+    
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'IslamApp/1.0'
+      }
+    });
+
+    console.log('API Response:', {
+      status: response.status,
+      hasData: !!response.data,
+      hasTafsir: !!response.data?.tafsir,
+      hasText: !!response.data?.tafsir?.text,
+      contentLength: response.data?.tafsir?.text?.length,
+      isArabic
+    });
+
+    if (!response.data?.tafsir?.text) {
+      console.warn('No tafsir content found:', { source, surah, verse });
+      return '';
+    }
+
+    // Process the content
+    let cleanText = response.data.tafsir.text
+      .replace(/<h2>/g, '\n\n')
+      .replace(/<\/h2>/g, '\n')
+      .replace(/<p>/g, '\n')
+      .replace(/<\/p>/g, '')
+      .replace(/<[^>]+>/g, '')
+      .replace(/\n\s*\n/g, '\n\n')
+      .trim();
+
+    console.log('Initial cleaning:', { 
+      source,
+      originalLength: response.data.tafsir.text.length,
+      cleanedLength: cleanText.length,
+      isArabic
+    });
+
+    // Special handling for Arabic text
+    if (isArabic) {
+      try {
+        console.log('Processing Arabic text:', { 
+          source,
+          beforeLength: cleanText.length,
+          containsArabic: /[\u0600-\u06FF]/.test(cleanText)
+        });
+
+        // Normalize Arabic text
+        cleanText = cleanText
+          // Normalize whitespace
+          .replace(/\s+/g, ' ')
+          // Handle Arabic punctuation marks
+          .replace(/[،؛؟]/g, '\n')
+          // Split by common Arabic sentence endings
+          .split(/[.。।॥]|[۔።।॥]|\u06D4|\u061F/g)
+          .map((sentence: string) => {
+            const trimmed = sentence.trim();
+            // Only keep sentences that have actual content
+            return trimmed.length > 0 && !/^\s*$/.test(trimmed) ? trimmed : '';
+          })
+          .filter(Boolean)
+          .join('\n\n');
+
+        // Add section markers for better readability
+        cleanText = cleanText
+          .replace(/(قال|وقال|روى|وروى|أخبرنا|حدثنا|عن)/g, '\n\n$1')
+          .replace(/\n\s*\n\s*\n/g, '\n\n')
+          .trim();
+
+        console.log('Arabic processing complete:', { 
+          source,
+          afterLength: cleanText.length,
+          sections: cleanText.split('\n\n').length
+        });
+
+      } catch (error) {
+        console.error('Error processing Arabic text:', {
+          source,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
+        });
+        // Return the original cleaned text if Arabic processing fails
+        return cleanText;
+      }
+    }
+
+    // Process content before saving to cache
+    console.log('Processing final content:', { source, length: cleanText.length, isArabic });
+    const processedContent = processTafsirContent(cleanText, 6000, isArabic);
+    console.log('Content processed:', { 
+      source,
+      originalLength: cleanText.length,
+      processedLength: processedContent.length,
+      sections: processedContent.split('\n\n').length,
+      isArabic
+    });
+    
+    // Only cache if we have valid content
+    if (processedContent) {
+      await tafsirCacheService.set(cacheKey, processedContent);
+      console.log('Content cached:', { source, cacheKey });
+    }
+    
+    return processedContent;
+
   } catch (error) {
-    console.error(`Error fetching ${source} tafsir:`, error);
+    console.error('Error in getTafsirContent:', {
+      source,
+      surah,
+      verse,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      response: error instanceof Error && 'response' in error ? (error as any).response?.data : undefined
+    });
     return '';
   }
 }

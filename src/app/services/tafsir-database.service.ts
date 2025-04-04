@@ -66,7 +66,7 @@ export class TafsirDatabaseService {
           metadata: response.metadata
         } as TafsirEntry)),
         catchError(error => {
-          console.error(`Error fetching tafsir from ${source.id}:`, error);
+          // console.error(`Error fetching tafsir from ${source.id}:`, error);
           return of(null);
         })
       )
@@ -92,7 +92,7 @@ export class TafsirDatabaseService {
           return of(parsedCache.entries);
         }
       } catch (e) {
-        console.warn('Cache parsing error:', e);
+        // console.warn('Cache parsing error:', e);
       }
     }
     
@@ -104,7 +104,7 @@ export class TafsirDatabaseService {
             if (error.status === 429) {
               // Exponential backoff for rate limit errors
               const delay = Math.min(1000 * Math.pow(2, retryCount), 10000);
-              console.log(`Rate limited, retrying in ${delay}ms...`);
+              // console.log(`Rate limited, retrying in ${delay}ms...`);
               return timer(delay);
             }
             return timer(1000); // Default 1s delay for other errors
@@ -119,7 +119,7 @@ export class TafsirDatabaseService {
           metadata: response.metadata
         } as TafsirEntry)),
         catchError(error => {
-          console.warn(`Error fetching tafsir from ${source}:`, error);
+          // console.warn(`Error fetching tafsir from ${source}:`, error);
           return of({
             source,
             content: error.status === 429 ? 'Service temporarily unavailable due to rate limiting. Please try again in a few minutes.' : 'Tafsir not available',
@@ -146,9 +146,9 @@ export class TafsirDatabaseService {
         }));
         
         if (entries.length === 0) {
-          console.warn('No tafsir entries available for:', { surah: surahNumber, verse: verseNumber });
+          // console.warn('No tafsir entries available for:', { surah: surahNumber, verse: verseNumber });
         } else {
-          console.log('Loaded tafsir entries:', entries);
+          // console.log('Loaded tafsir entries:', entries);
         }
       })
     );
@@ -168,7 +168,7 @@ export class TafsirDatabaseService {
       const key = `${surah}:${verse}`;
       return cache[key] || null;
     } catch (error) {
-      console.error('Error reading from tafsir cache:', error);
+      // console.error('Error reading from tafsir cache:', error);
       return null;
     }
   }
@@ -182,7 +182,7 @@ export class TafsirDatabaseService {
       cache[key] = entries;
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-      console.error('Error caching tafsir entries:', error);
+      // console.error('Error caching tafsir entries:', error);
     }
   }
 
@@ -190,7 +190,7 @@ export class TafsirDatabaseService {
   searchTafsir(query: string): Observable<TafsirEntry[]> {
     return this.http.post<TafsirEntry[]>(`${this.baseUrl}/api/tafsir/search`, { query }).pipe(
       catchError(error => {
-        console.error('Error searching tafsir:', error);
+        // console.error('Error searching tafsir:', error);
         return of([]);
       })
     );

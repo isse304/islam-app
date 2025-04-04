@@ -1,59 +1,60 @@
 <div class="usage-container p-4">
-  <div class="mb-4">
-    <h2 class="text-2xl font-bold mb-2">AI Usage</h2>
-    <div class="status-banner p-4 rounded-lg mb-4" 
-         [ngClass]="{
-           'bg-green-100 text-green-800': usageLimits?.status === 'active',
-           'bg-gray-100 text-gray-800': usageLimits?.status === 'free'
-         }">
-      <div class="font-semibold">
-        {{ getStatusMessage() }}
-      </div>
-    </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="flex justify-center items-center py-8">
+    <mat-spinner diameter="40"></mat-spinner>
   </div>
 
-  <!-- AI Requests -->
-  <div class="feature-card p-4 border rounded-lg">
-    <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
-    <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-      <div class="bg-blue-500 h-2 rounded-full" 
-           [style.width]="getProgressWidth() + '%'">
-      </div>
-    </div>
-    <p class="text-sm text-gray-600">
-      {{ getUsedRequests() }} / {{ getTotalRequests() }} daily requests
-    </p>
+  <!-- Error State -->
+  <div *ngIf="!loading && error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+    <strong class="font-bold">Error:</strong>
+    <span class="block sm:inline"> {{ error }}</span>
+    <button mat-icon-button (click)="error = null; fetchUsageLimits()" *ngIf="isPremiumUser" class="absolute top-0 bottom-0 right-0 px-4 py-3" matTooltip="Try Again">
+      <mat-icon>refresh</mat-icon>
+    </button>
   </div>
 
-  <div class="mt-6" *ngIf="usageLimits?.status === 'free'">
-    <button 
-      (click)="subscribe()"
-      class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+  <!-- Main Content (Premium User) -->
+  <div *ngIf="!loading && !error && isPremiumUser">
+    <div class="mb-4">
+      <h2 class="text-2xl font-bold mb-2">AI Usage</h2>
+      <div class="status-banner p-4 rounded-lg mb-4 bg-green-100 text-green-800">
+        <div class="font-semibold">
+          {{ getStatusMessage() }}
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Requests -->
+    <div class="feature-card p-4 border rounded-lg">
+      <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
+      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
+        <div class="bg-blue-500 h-2 rounded-full" 
+             [style.width]="getProgressWidth() + '%'">
+        </div>
+      </div>
+      <p class="text-sm text-gray-600">
+        {{ getUsedRequests() }} / {{ getTotalRequests() }} daily requests used
+      </p>
+      <!-- Add Timer Display Here -->
+      <div *ngIf="resetTimeRemaining" class="text-sm text-blue-600 mt-2 flex items-center gap-1">
+        <mat-icon class="text-sm">timer</mat-icon>
+        <span>Resets in: {{ resetTimeRemaining }}</span>
+      </div>
+    </div>
+    <!-- Add other usage metrics here if needed -->
+  </div>
+
+  <!-- Upgrade Message (Free User) -->
+  <div *ngIf="!loading && !error && !isPremiumUser" class="text-center py-12 px-6 bg-gray-50 rounded-lg">
+    <mat-icon class="text-[#B7A57A] text-6xl mb-4">lock_outline</mat-icon>
+    <h3 class="text-xl font-semibold mb-2">Usage Details Unavailable</h3>
+    <p class="text-gray-600 mb-6">Detailed usage tracking is a premium feature. Upgrade to monitor your AI request limits.</p>
+    <button mat-raised-button color="primary" 
+            routerLink="/subscription"
+            class="bg-[#B7A57A] hover:bg-[#9b8a65] text-white px-6 py-2">
       Upgrade to Premium
     </button>
   </div>
-</div>
 
-<!-- Loading state -->
-<mat-progress-spinner *ngIf="loading" mode="indeterminate" diameter="40"></mat-progress-spinner>
-
-<!-- Error state -->
-<mat-card *ngIf="error" class="error-card">
-  <mat-card-content>
-    <mat-icon color="warn">error</mat-icon>
-    <p>{{ error }}</p>
-    <div class="actions">
-      <button mat-button color="primary" (click)="fetchUsageLimits()">Try Again</button>
-      <button mat-raised-button color="primary" *ngIf="error.includes('Premium')" (click)="subscribe()">
-        Upgrade to Premium
-      </button>
-    </div>
-  </mat-card-content>
-</mat-card>
-
-<!-- Usage data -->
-<ng-container *ngIf="!loading && !error">
-  <mat-card *ngIf="usageLimits" class="usage-card">
-    <!-- ... existing code ... -->
-  </mat-card>
-</ng-container> 
+</div> 

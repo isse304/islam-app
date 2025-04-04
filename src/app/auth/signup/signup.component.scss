@@ -1,3 +1,18 @@
+/* Remove or comment out existing styles if they conflict */
+
+/* Add styles if needed to support the new HTML structure and theme */
+/* For example, define the custom properties if not using inline <style> */
+:host {
+  // Example: Define CSS variables used in the inline style block if you move them here
+  // --cream-light: #FDF8EC;
+  // --cream-base: #FAF3E0;
+  // --cream-dark: #EAE0C8;
+  // --gold-accent: #C0A062;
+  // --gold-accent-dark: #A08450;
+}
+
+/* Remove or comment out existing styles if they conflict */
+
 .auth-container {
   display: flex;
   justify-content: center;
@@ -169,4 +184,7 @@ mat-card-content {
 mat-spinner {
   display: inline-block;
   margin: 0 auto;
-} 
+}
+
+// You might need additional styles here for specific elements
+// if the Tailwind classes + inline styles aren't sufficient. 

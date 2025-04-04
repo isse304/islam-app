@@ -1,9 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, from, throwError, firstValueFrom, retry, mergeMap } from 'rxjs';
+import { Observable, from, throwError, firstValueFrom, retry, mergeMap, TimeoutError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { AuthService } from './auth.service';
 import { NotificationService } from './notification.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 
@@ -52,8 +51,8 @@ export class ApiService {
 
   constructor(
     private http: HttpClient,
-    private authService: FirebaseAuthService,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private authService: FirebaseAuthService
   ) {}
 
   // Premium features
@@ -63,33 +62,48 @@ export class ApiService {
     temperature?: number;
     maxTokens?: number;
   }): Promise<{ content: string }> {
-    const token = await this.authService.getToken();
-    if (!token) {
-      throw new Error('Not authenticated');
+    // console.log('API Service: Generating AI response...');
+    try {
+      const token = await this.authService.getToken();
+      if (!token) {
+        // console.error('API Service Error: Authentication token not available.');
+        throw new Error('Authentication required');
+      }
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // console.log('API Service: Making request to:', this.apiUrl);
+      const response = await firstValueFrom(
+        this.http.post<{ content: string }>(`${this.baseUrl}/api/ai/generate`, prompt, { headers }).pipe(
+          catchError(err => {
+            // console.error('API Service Error in HTTP request:', err);
+            let message = 'Failed to generate AI response.';
+            if (err instanceof TimeoutError) {
+              message = 'The request timed out. Please try again.';
+            } else if (err.status === 401) {
+              message = 'Authentication failed. Please log in again.';
+            } else if (err.status === 403) {
+              message = 'You do not have permission for this feature (Premium required?).';
+            } else if (err.status === 429) {
+              message = 'Usage limit reached or rate limit exceeded. Please try again later.';
+            } else if (err.error?.error) {
+              message = err.error.error; // Use server-provided error message if available
+            }
+            return throwError(() => new Error(message));
+          })
+        )
+      );
+
+      // console.log('API Service: Received response');
+      return response;
+    } catch (error: any) {
+      // console.error('API Service Error:', error.message || error);
+      // Re-throw the specific error message caught or generated in catchError
+      throw new Error(error.message || 'An unknown error occurred while generating the AI response.');
     }
-
-    const response = await fetch(`${this.baseUrl}/api/ai/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({
-        prompt: prompt.userMessage,
-        systemMessage: prompt.systemMessage,
-        temperature: prompt.temperature,
-        maxTokens: prompt.maxTokens
-      })
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('AI generation error:', error);
-      throw new Error(`Failed to generate AI response: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return { content: data.content || data.response };
   }
 
   // Free features
@@ -115,16 +129,16 @@ export class ApiService {
   // Specialized AI endpoints
   async generateDuaInsights(dua: any): Promise<AIResponse> {
     try {
-      console.log('🚀 Generating dua insights...', { duaId: dua.id, title: dua.title });
+      // console.log('🚀 Generating dua insights...', { duaId: dua.id, title: dua.title });
       
       const token = await this.authService.getToken(true);
       if (!token) {
-        console.error('❌ No auth token available');
+        // console.error('❌ No auth token available');
         this.notificationService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
 
-      console.log('📤 Making insights request...');
+      // console.log('📤 Making insights request...');
       const response = await firstValueFrom(
         this.http.post<AIResponse>(`${this.baseUrl}/api/ai/dua/insights`, { dua }, {
           headers: new HttpHeaders({
@@ -138,9 +152,9 @@ export class ApiService {
             resetOnSuccess: true
           }),
           catchError(async (error: HttpErrorResponse) => {
-            console.error('❌ Insights request failed:', error);
+            // console.error('❌ Insights request failed:', error);
             if (error.status === 401) {
-              console.log('🔄 Attempting token refresh...');
+              // console.log('🔄 Attempting token refresh...');
               await this.authService.refreshAuth();
               const newToken = await this.authService.getToken(true);
               if (!newToken) throw error;
@@ -159,15 +173,15 @@ export class ApiService {
         )
       );
 
-      console.log('✅ Insights response received:', {
-        success: response.success,
-        hasContent: !!response.content,
-        sections: Object.keys(response).filter(key => 
-          key in response && 
-          response[key as keyof AIResponse] !== undefined && 
-          response[key as keyof AIResponse] !== null
-        )
-      });
+      // console.log('✅ Insights response received:', {
+      //   success: response.success,
+      //   hasContent: !!response.content,
+      //   sections: Object.keys(response).filter(key => 
+      //     key in response && 
+      //     response[key as keyof AIResponse] !== undefined && 
+      //     response[key as keyof AIResponse] !== null
+      //   )
+      // });
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to generate insights');
@@ -175,7 +189,7 @@ export class ApiService {
 
       return response;
     } catch (error: any) {
-      console.error('❌ Failed to generate insights:', error);
+      // console.error('❌ Failed to generate insights:', error);
       if (error instanceof HttpErrorResponse && error.status === 401) {
         await this.authService.signOut();
       }
@@ -208,7 +222,7 @@ export class ApiService {
 
       return response;
     } catch (error) {
-      console.error('Error in emotional dua search:', error);
+      // console.error('Error in emotional dua search:', error);
       throw error;
     }
   }
@@ -259,22 +273,25 @@ export class ApiService {
     selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir',
     isFirstResponse: boolean = false
   ): Promise<AIResponse> {
+    // console.log(`API Service: Generating tafsir response for ${surah}:${verse}`);
     try {
       const token = await this.authService.getToken();
       if (!token) {
-        this.notificationService.warning('Please sign in to use AI features');
+        console.error('API Service Error: Authentication token not available for tafsir.');
         throw new Error('Authentication required');
       }
+      
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
 
+      // console.log('API Service: Making request to tafsir endpoint');
       const response = await firstValueFrom(
         this.http.post<TafsirResponse>(
           `${this.baseUrl}/api/tafsir/chat`,
           { surah, verse, question, selectedTafsir, isFirstResponse },
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
+          { headers }
         ).pipe(
           map(response => {
             if (!response.success) {
@@ -468,60 +485,44 @@ export class ApiService {
 
   async createCheckoutSession(userId: string): Promise<CheckoutResponse> {
     try {
-        console.log('Starting checkout session creation for user:', userId);
-        
-        // Get auth token first
-        const token = await this.authService.getToken(true); // Force token refresh
-        if (!token) {
-            console.error('No auth token available');
-            this.notificationService.warning('Please sign in to access subscription features');
-            throw new Error('Authentication required');
-        }
+      const token = await this.authService.getToken(true); // Force refresh for sensitive operation
+      if (!token) {
+        throw new Error('Authentication failed');
+      }
 
-        console.log('Got auth token, creating checkout session...');
-
-        const headers = new HttpHeaders({
-            'Content-Type': 'application/json',
+      const response = await firstValueFrom(
+        this.http.post<CheckoutResponse>(`${this.baseUrl}/api/subscription/create-checkout`, { userId }, {
+          headers: {
             'Authorization': `Bearer ${token}`
-        });
-
-        const response = await firstValueFrom(
-            this.http.post<CheckoutResponse>(
-                `${this.baseUrl}/api/subscription/create-checkout`,
-                { userId },
-                { headers }
-            ).pipe(
-                catchError((error: HttpErrorResponse) => {
-                    console.error('Checkout session error:', error);
-                    let errorMessage = 'Failed to create checkout session';
-                    
-                    if (error.status === 401) {
-                        errorMessage = 'Please sign in to continue';
-                        this.notificationService.warning(errorMessage);
-                    } else if (error.error?.message) {
-                        errorMessage = error.error.message;
-                        this.notificationService.error(errorMessage);
-                    } else {
-                        this.notificationService.error(errorMessage);
-                    }
-                    
-                    throw new Error(errorMessage);
-                })
-            )
-        );
-
-        console.log('Checkout session response:', response);
-
-        if (!response?.url) {
-            console.error('No checkout URL in response');
-            throw new Error('No checkout URL received from server');
-        }
-
-        console.log('Redirecting to checkout URL:', response.url);
-        return response;
+          }
+        })
+      );
+      return response;
     } catch (error) {
-        console.error('Error creating checkout session:', error);
-        throw error;
+      console.error('Error creating checkout session:', error);
+      throw error;
+    }
+  }
+
+  async createCustomerPortalSession(): Promise<{ url: string }> {
+    try {
+      const token = await this.authService.getToken(true); // Force refresh for sensitive operation
+      if (!token) {
+        throw new Error('Authentication failed');
+      }
+
+      const response = await firstValueFrom(
+        this.http.post<{ url: string }>(`${this.baseUrl}/api/subscription/create-customer-portal-session`, {}, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      );
+      return response;
+    } catch (error) {
+      console.error('Error creating customer portal session:', error);
+      this.notificationService.error('Could not open billing portal. Please try again later.');
+      throw error;
     }
   }
 } 

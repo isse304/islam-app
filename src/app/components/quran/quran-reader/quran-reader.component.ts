@@ -512,7 +512,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             const isAuthenticated = await this.authService.isAuthenticated();
             if (isAuthenticated) {
                 await this.authService.saveUserPreferences(prefsToSave);
-                console.log('Preferences saved successfully:', prefsToSave);
+                // console.log('Preferences saved successfully:', prefsToSave);
             }
         } catch (error: unknown) {
             if ((error as { status?: number })?.status !== 429) {
@@ -581,7 +581,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // Save to server
         try {
             await this.authService.saveReadingHistory(historyEntry);
-            console.log('History saved successfully:', historyEntry);
+            // console.log('History saved successfully:', historyEntry);
         } catch (error: unknown) {
             if ((error as { status?: number })?.status !== 429) {
                 console.error('Error saving reading history:', error);
@@ -760,7 +760,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       if (cachedSurahs) {
         try {
           this.surahs = JSON.parse(cachedSurahs);
-          console.log('Loaded surah list from cache');
+          // console.log('Loaded surah list from cache');
           if (this.surahs.length > 0) {
             return Promise.resolve();
           }
@@ -770,7 +770,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
       
       // If no cache or cache is invalid, load from API
-      console.log('Loading surah list from API...');
+      // console.log('Loading surah list from API...');
       
       // Create a promise that will reject after 5 seconds
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -779,7 +779,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       
       // Race between the actual data fetch and the timeout
       this.surahs = await Promise.race([
-        firstValueFrom(this.quranService.getSurahList()),
+        firstValueFrom(this.quranService.getSurahs()),
         timeoutPromise
       ]) as Surah[];
       
@@ -790,14 +790,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         console.warn('Error caching surahs:', cacheError);
       }
       
-      console.log('Loaded surah list successfully', this.surahs.length);
+      // console.log('Loaded surah list successfully', this.surahs.length);
       return Promise.resolve();
     } catch (error) {
       console.error('Error loading surah list:', error);
       
       // Provide fallback data if loading fails
       if (this.surahs.length === 0) {
-        console.log('Using fallback surah list');
+        // console.log('Using fallback surah list');
         this.surahs = [{
           number: 1,
           name: 'Al-Fatiha',
@@ -1803,7 +1803,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.currentSurah) {
       // Implementation will depend on your Quran data service
       // This is just a placeholder
-      console.log('Loading surah:', this.currentSurah);
+      // console.log('Loading surah:', this.currentSurah);
     }
   }
 
@@ -1820,12 +1820,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private navigateToNextVerse(): void {
     // Implementation for next verse navigation
-    console.log('Navigate to next verse');
+    // console.log('Navigate to next verse');
   }
 
   private navigateToPreviousVerse(): void {
     // Implementation for previous verse navigation
-    console.log('Navigate to previous verse');
+    // console.log('Navigate to previous verse');
   }
 
   // Add this method to validate reciter ID

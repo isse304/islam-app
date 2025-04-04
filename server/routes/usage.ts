@@ -2,6 +2,8 @@ import express, { Response } from 'express';
 import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
+import * as admin from 'firebase-admin';
+import { EmailService } from '../services/email.service';
 
 interface UsageLimitsResponse {
     status: 'free' | 'active';
@@ -13,17 +15,14 @@ interface UsageLimitsResponse {
 }
 
 const router = express.Router();
-const stripeService = new StripeService();
+const emailService = new EmailService();
+const stripeService = new StripeService(emailService);
 const usageService = new UsageService(stripeService);
 
 // Get user's current usage and subscription status
 router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        const stats = await usageService.getUserUsageStats(req.auth.uid);
+        const stats = await usageService.getUserUsageStats(req.auth!.uid);
         res.json(stats);
     } catch (error) {
         console.error('Error getting usage stats:', error);
@@ -34,22 +33,31 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) 
 // Get usage limits for authenticated user
 router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-
-        // Get subscription status first
-        const status = await stripeService.getSubscriptionStatus(req.auth.uid);
+        const status = await stripeService.getSubscriptionStatus(req.auth!.uid);
+        
+        // Check both subscription status and premium claims
+        const userRecord = await admin.auth().getUser(req.auth!.uid);
+        const claims = userRecord.customClaims || {};
+        const isPremium = claims['premium'] === true || claims['subscriptionStatus'] === 'active';
         
         // If user is not premium, return error
-        if (status !== 'active') {
-            res.status(403).json({ error: 'Premium subscription required to access usage information' });
+        if (status !== 'active' && !isPremium) {
+            console.log('User not premium:', {
+                subscriptionStatus: status,
+                claims: claims
+            });
+            res.status(403).json({ 
+                error: 'Premium subscription required to access usage information',
+                details: {
+                    subscriptionStatus: status,
+                    premium: claims['premium']
+                }
+            });
             return;
         }
 
         // Get usage limits for premium user
-        const userLimits = await usageService.getUserLimits(req.auth.uid);
+        const userLimits = await usageService.getUserLimits(req.auth!.uid);
         
         // Format response
         const limits: UsageLimitsResponse = {

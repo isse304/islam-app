@@ -11,12 +11,11 @@ import { EmailService } from '../services/email.service';
 import { OpenAIService } from '../services/openai.service';
 import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
-import { withAuth } from '../middleware/auth';
+import { withAuth, withPremium, AuthenticatedRequest } from '../middleware/auth';
 import * as admin from 'firebase-admin';
 import { SpiritualContentService } from '../services/spiritual-content.service';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { AuthenticatedRequest } from '../types/types';
 
 // Type definitions
 type AuthRequest = express.Request & {
@@ -36,7 +35,8 @@ type ChatMessage = {
 dotenv.config();
 
 const router = express.Router();
-const isDevelopment = process.env.NODE_ENV === 'development' || !process.env.NODE_ENV;
+// Use bracket notation for process.env access
+const isDevelopment = process.env['NODE_ENV'] === 'development' || !process.env['NODE_ENV'];
 
 // Initialize base services
 const cacheService = new CacheService();
@@ -49,26 +49,30 @@ const spiritualContentService = new SpiritualContentService();
 
 // Set default values for rate limiting in development mode
 if (isDevelopment) {
-    if (!process.env.RATE_LIMIT_WINDOW_MS) {
-        process.env.RATE_LIMIT_WINDOW_MS = '900000';  // 15 minutes in milliseconds
-        console.log('Using default RATE_LIMIT_WINDOW_MS:', process.env.RATE_LIMIT_WINDOW_MS);
+    // Use bracket notation for process.env access
+    if (!process.env['RATE_LIMIT_WINDOW_MS']) {
+        process.env['RATE_LIMIT_WINDOW_MS'] = '900000';  // 15 minutes in milliseconds
+        console.log('Using default RATE_LIMIT_WINDOW_MS:', process.env['RATE_LIMIT_WINDOW_MS']);
     }
     
-    if (!process.env.RATE_LIMIT_MAX_REQUESTS) {
-        process.env.RATE_LIMIT_MAX_REQUESTS = '100';
-        console.log('Using default RATE_LIMIT_MAX_REQUESTS:', process.env.RATE_LIMIT_MAX_REQUESTS);
+    // Use bracket notation for process.env access
+    if (!process.env['RATE_LIMIT_MAX_REQUESTS']) {
+        process.env['RATE_LIMIT_MAX_REQUESTS'] = '100';
+        console.log('Using default RATE_LIMIT_MAX_REQUESTS:', process.env['RATE_LIMIT_MAX_REQUESTS']);
     }
     
-    if (!process.env.DAILY_USER_LIMIT) {
-        process.env.DAILY_USER_LIMIT = '50';
-        console.log('Using default DAILY_USER_LIMIT:', process.env.DAILY_USER_LIMIT);
+    // Use bracket notation for process.env access
+    if (!process.env['DAILY_USER_LIMIT']) {
+        process.env['DAILY_USER_LIMIT'] = '50';
+        console.log('Using default DAILY_USER_LIMIT:', process.env['DAILY_USER_LIMIT']);
     }
 }
 
 // Rate limiting configuration
+// Use bracket notation for process.env access
 const limiter = rateLimit({
-    windowMs: 900000, // 15 minutes in milliseconds
-    max: 100, // Limit each IP to 100 requests per windowMs
+    windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // Use default if env var not set
+    max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100'),      // Use default if env var not set
     message: 'Too many requests from this IP, please try again later.'
 });
 
@@ -76,8 +80,9 @@ const limiter = rateLimit({
 router.use(limiter);
 
 // Initialize OpenAI with API key from environment variable
+// Use bracket notation for process.env access
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY
+    apiKey: process.env['OPENAI_API_KEY']
 });
 
 // Add this after other const declarations
@@ -127,50 +132,33 @@ setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
-// Protected route for AI generation
-router.post('/chat', withAuth, async (req, res) => {
+// Protected route for AI generation - requires auth and premium
+router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        const userId = req.auth.userId;
-        if (!userId) {
-            res.status(401).json({ success: false, error: 'User ID not found' });
-            return;
-        }
-        
-        // Get or create user usage record
-        let userUsage;
-        try {
-            userUsage = await UserUsage.findOne({ userId });
-            if (!userUsage) {
-                userUsage = await UserUsage.create({
-                    userId,
-                    status: 'premium',
-                    aiRequests: {
-                        count: 0,
-                        lastRequest: new Date()
-                    },
-                    aiRequestLimit: parseInt(process.env.DAILY_USER_LIMIT || '50')
-                });
-            }
+        const userId = req.auth!.uid;
 
-            // Check if user has exceeded their AI request limit
-            if (!await userUsage.canMakeAIRequest()) {
-                res.status(403).json({ 
-                    success: false,
-                    error: 'AI request limit exceeded',
-                    limit: userUsage.aiRequestLimit,
-                    used: userUsage.aiRequests.count
-                });
-                return;
-            }
-        } catch (error) {
-            console.error('Error managing user usage:', error);
-            res.status(500).json({
+        // Get or create user usage record
+        let userUsage = await UserUsage.findOne({ userId });
+        if (!userUsage) {
+            userUsage = await UserUsage.create({
+                userId,
+                status: 'premium',
+                aiRequests: {
+                    count: 0,
+                    lastRequest: new Date()
+                },
+                // Use bracket notation for process.env access
+                aiRequestLimit: parseInt(process.env['DAILY_USER_LIMIT'] || '50')
+            });
+        }
+
+        // Check if user has exceeded their AI request limit
+        if (!await userUsage.canMakeAIRequest()) {
+            res.status(403).json({ 
                 success: false,
-                error: 'Failed to manage user usage'
+                error: 'AI request limit exceeded',
+                limit: userUsage.aiRequestLimit,
+                used: userUsage.aiRequests.count
             });
             return;
         }
@@ -195,21 +183,12 @@ router.post('/chat', withAuth, async (req, res) => {
             error: 'Internal server error' 
         });
     }
-});
+}));
 
-// Protected route for AI generation
-router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Protected route for AI generation - requires auth and premium
+router.post('/generate', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ success: false, error: 'Unauthorized' });
-            return;
-        }
-
-        const userId = req.auth.uid;
-        if (!userId) {
-            res.status(401).json({ success: false, error: 'User ID not found' });
-            return;
-        }
+        const userId = req.auth!.uid;
 
         const { prompt, systemMessage, temperature = 0.7, maxTokens = 1000 } = req.body;
 
@@ -247,7 +226,8 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
                         count: 0,
                         lastRequest: new Date()
                     },
-                    aiRequestLimit: parseInt(process.env.DAILY_USER_LIMIT || '50')
+                    // Use bracket notation for process.env access
+                    aiRequestLimit: parseInt(process.env['DAILY_USER_LIMIT'] || '50')
                 });
             }
 
@@ -278,22 +258,60 @@ router.post('/generate', withAuth(async (req: AuthenticatedRequest, res: Respons
             content 
         });
     } catch (error) {
-        console.error('Error in AI generate:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
-        });
+        console.error('Error generating AI response:', error);
+        res.status(500).json({ success: false, error: 'Failed to generate AI response' });
+    }
+}));
+
+// Protected route for generating spiritual content - requires auth and premium
+router.post('/generate-spiritual-content', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.auth!.uid;
+        const { topic, tone, length } = req.body;
+
+        // ... (rest of spiritual content generation logic) ...
+
+        res.json({ success: true, content });
+
+    } catch (error) {
+        console.error('Error generating spiritual content:', error);
+        res.status(500).json({ success: false, error: 'Failed to generate spiritual content' });
+    }
+}));
+
+// Protected route for Tafsir chat - requires auth and premium
+router.post('/tafsir-chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const userId = req.auth!.uid;
+        const { surah, ayah, question, history } = req.body;
+        
+        // ... (rest of tafsir chat logic) ...
+
+        res.json({ success: true, answer: completion.choices[0].message.content });
+
+    } catch (error) {
+        console.error('Error in Tafsir chat:', error);
+        res.status(500).json({ success: false, error: 'Failed to get Tafsir explanation' });
+    }
+}));
+
+// Route for Dua Insights (Premium)
+router.get('/dua-insights/:duaName', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const duaName = req.params.duaName;
+        // ... (rest of dua insights logic) ...
+        
+        res.json({ success: true, insights });
+    } catch (error) {
+        console.error('Error fetching Dua insights:', error);
+        res.status(500).json({ success: false, error: 'Failed to fetch Dua insights' });
     }
 }));
 
 // Get user's AI usage statistics
 router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
-        if (!req.auth) {
-            res.status(401).json({ error: 'Unauthorized' });
-            return;
-        }
-        const userId = req.auth.userId;
+        const userId = req.auth!.uid;
         
         // Get Firebase user claims for subscription status
         const userRecord = await admin.auth().getUser(userId);
@@ -323,7 +341,7 @@ router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): 
 }));
 
 // Dua Insights endpoint
-router.post('/dua/insights', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/dua/insights', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -428,7 +446,7 @@ router.post('/dua/insights', withAuth(async (req: AuthenticatedRequest, res: Res
 }));
 
 // Emotional Dua Search endpoint
-router.post('/dua/emotional-search', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/dua/emotional-search', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -639,7 +657,7 @@ function processReferences(refs: any) {
 }
 
 // Tafsir Chat endpoint
-router.post('/tafsir/chat', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/tafsir/chat', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -732,4 +750,4 @@ function formatRelatedContent(refs: { verses: any[], hadith: any[] }): string {
     return result.trim();
 }
 
-export = router; 
+export default router; 

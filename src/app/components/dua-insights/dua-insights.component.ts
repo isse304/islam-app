@@ -5,7 +5,7 @@ import { ApiService, AIResponse } from '../../services/api.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router, RouterModule } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
-import { AuthStateService } from '../../services/auth-state.service';
+import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
@@ -51,7 +51,7 @@ export class DuaInsightsComponent implements OnInit, OnDestroy {
   constructor(
     private apiService: ApiService,
     private subscriptionService: SubscriptionService,
-    private authStateService: AuthStateService,
+    private firebaseAuthService: FirebaseAuthService,
     private sanitizer: DomSanitizer,
     private cdr: ChangeDetectorRef,
     public router: Router,
@@ -75,7 +75,7 @@ export class DuaInsightsComponent implements OnInit, OnDestroy {
     this.streamedContent = '';
     this.insights = null;
 
-    console.log('Loading insights for dua:', this.dua.id);
+    // console.log('Loading insights for dua:', this.dua.id);
 
     this.subscription = this.duaService.getDuaInsights(this.dua.id.toString())
       .subscribe({

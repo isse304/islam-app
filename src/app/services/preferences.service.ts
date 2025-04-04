@@ -23,10 +23,9 @@ export class PreferencesService {
     
     // Then try to load from server
     try {
-      const serverPrefs = await firstValueFrom(this.authService.getUserPreferences());
-      if (serverPrefs?.success) {
-        // Merge with local preferences, preferring server values
-        const mergedPrefs = { ...localPrefs, ...serverPrefs.preferences };
+      const serverPrefs = await this.authService.getUserPreferences();
+      if (serverPrefs && typeof serverPrefs === 'object') {
+        const mergedPrefs = { ...localPrefs, ...(serverPrefs.preferences || {}) };
         this.saveToLocalStorage(mergedPrefs);
         this.preferencesSubject.next(mergedPrefs);
       }
@@ -76,7 +75,7 @@ export class PreferencesService {
     
     // Save to server in background
     try {
-      await firstValueFrom(this.authService.saveUserPreferences(updated));
+      await this.authService.saveUserPreferences(updated);
     } catch (error) {
       console.warn('Could not save preferences to server:', error);
     }

@@ -22,7 +22,7 @@ const logger = winston.createLogger({
 
 const configs: Record<string, DatabaseConfig> = {
     development: {
-        uri: process.env.MONGODB_URI || 'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura',
+        uri: process.env['MONGODB_URI'] || 'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura',
         options: {
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
@@ -34,7 +34,7 @@ const configs: Record<string, DatabaseConfig> = {
         }
     },
     production: {
-        uri: process.env.MONGODB_URI!,
+        uri: process.env['MONGODB_URI']!,
         options: {
             serverSelectionTimeoutMS: 5000,
             socketTimeoutMS: 45000,
@@ -56,7 +56,7 @@ const handleError = (error: Error): void => {
 
 export const connectDatabase = async (externalLogger?: winston.Logger) => {
     const dbLogger = externalLogger || logger;
-    const env = process.env.NODE_ENV || 'development';
+    const env = process.env['NODE_ENV'] || 'development';
     const config = configs[env];
 
     if (!config) {

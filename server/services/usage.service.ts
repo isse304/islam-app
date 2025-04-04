@@ -89,9 +89,11 @@ export class UsageService {
 
     async getUserLimits(userId: string) {
         const usage = await this.getOrCreateUsage(userId);
+        // Always return the limit from environment variable
+        const currentLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '50');
         return {
             aiRequests: {
-                limit: usage.aiRequestLimit,
+                limit: currentLimit, // Use limit from env variable
                 used: usage.aiRequests.count
             }
         };

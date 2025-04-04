@@ -4,6 +4,8 @@ import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
+import { Subscription, filter, take } from 'rxjs';
+import { FormsModule } from '@angular/forms';
 
 type ActiveFeature = 'tafsir' | 'dua-search' | 'dua-insights';
 
@@ -16,26 +18,49 @@ type ActiveFeature = 'tafsir' | 'dua-search' | 'dua-insights';
     CommonModule,
     RouterModule,
     MatIconModule,
-    MatButtonModule
+    MatButtonModule,
+    FormsModule
   ]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   activeFeature: ActiveFeature = 'tafsir';
   private autoRotateInterval: any;
   private isDestroyed = false;
+  private authSubscription?: Subscription;
+  earlyAccessEmail: string = '';
 
   constructor(
     private router: Router,
     private authService: FirebaseAuthService
   ) {}
 
-  ngOnInit() {
+  async ngOnInit() {
     this.startAutoRotate();
+    
+    // Re-added: Check if user is already authenticated and redirect to home
+    // This might help prevent brief flashes of the landing page if the NoAuthGuard
+    // takes a moment to resolve during initial load.
+    const isAuthenticated = await this.authService.isAuthenticated();
+    if (isAuthenticated) {
+      this.router.navigate(['/home']);
+      return;
+    }
+
+    // Subscribe to auth changes for subsequent sign-ins
+    this.authSubscription = this.authService.user$.pipe(
+      filter(user => user !== null)
+    ).subscribe(() => {
+      // No automatic redirect needed here either, guards handle this.
+      // this.router.navigate(['/home']);
+    });
   }
 
   ngOnDestroy() {
     this.isDestroyed = true;
     this.stopAutoRotate();
+    if (this.authSubscription) {
+      this.authSubscription.unsubscribe();
+    }
   }
 
   private startAutoRotate() {
@@ -78,7 +103,7 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   async login() {
     try {
-      await this.authService.login();
+      await this.router.navigate(['/auth/login']);
     } catch (error) {
       console.error('Login error:', error);
     }
@@ -86,16 +111,10 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   async register() {
     try {
-      // Navigate to registration page
-      this.router.navigate(['/auth/register']);
+      await this.router.navigate(['/auth/signup']);
     } catch (error) {
       console.error('Registration error:', error);
     }
-  }
-
-  getStarted(event: Event) {
-    event.preventDefault();
-    this.router.navigate(['/thank-you']);
   }
 
   learnMore() {
@@ -106,11 +125,11 @@ export class LandingComponent implements OnInit, OnDestroy {
     }
   }
 
-  handleFormSubmit(event: SubmitEvent) {
-    // Let the form submit normally to Formspree
-    // After 1.5 seconds (giving time for Formspree to process), navigate to our thank-you page
-    setTimeout(() => {
+  onEarlyAccessSubmit() {
+    if (this.earlyAccessEmail) {
+      console.log('Early access email submitted:', this.earlyAccessEmail);
       this.router.navigate(['/thank-you']);
-    }, 1500);
+      this.earlyAccessEmail = '';
+    }
   }
 } 

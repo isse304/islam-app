@@ -2,23 +2,16 @@ import express, { Request, Response } from 'express';
 import { StripeService } from '../services/stripe.service';
 import { withAuth, AuthenticatedRequest } from '../middleware/auth';
 import { auth } from '../config/firebase';
+import { EmailService } from '../services/email.service';
 
 const router = express.Router();
-const stripeService = new StripeService();
+const emailService = new EmailService();
+const stripeService = new StripeService(emailService);
 
 // Create checkout session
 router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: Response) => {
   try {
-    if (!req.auth) {
-      console.error('No auth data in request');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const userId = req.auth.uid;
-    if (!userId) {
-      console.error('No user ID in auth data');
-      return res.status(401).json({ error: 'Invalid user ID' });
-    }
+    const userId = req.auth!.uid;
     
     console.log('Creating checkout session for user:', userId);
     
@@ -29,6 +22,32 @@ router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: 
   } catch (error) {
     console.error('Error creating checkout session:', error);
     res.status(500).json({ error: 'Failed to create checkout session' });
+  }
+}));
+
+// Create customer portal session
+router.post('/create-customer-portal-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+  console.log('Request received for /create-customer-portal-session');
+  try {
+    const userId = req.auth!.uid;
+
+    // Determine the return URL (back to the profile page)
+    const returnUrl = `${process.env['CLIENT_URL']}/profile`; // Adjust if your profile URL is different
+    console.log(`Attempting to create portal session for user ${userId}, returning to ${returnUrl}`);
+
+    const portalSession = await stripeService.createCustomerPortalSession(userId, returnUrl);
+    console.log(`Portal session created successfully for user ${userId}`);
+
+    res.json({ url: portalSession.url });
+  } catch (error) {
+    console.error('Error creating customer portal session:', error);
+    // Provide a more specific error message if possible
+    const errorMessage = error instanceof Error ? error.message : 'Failed to create customer portal session';
+    if (errorMessage.includes('Stripe Customer ID not found')) {
+        res.status(404).json({ error: 'Customer subscription data not found.' });
+    } else {
+        res.status(500).json({ error: errorMessage });
+    }
   }
 }));
 
@@ -48,33 +67,18 @@ router.post('/webhook', express.raw({ type: 'application/json' }), async (req: R
 router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) => {
   console.log('Subscription status request received');
   try {
-    if (!req.auth) {
-      console.error('No auth data in request');
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    const userId = req.auth.uid;
-    if (!userId) {
-      console.error('No user ID in auth data');
-      return res.status(401).json({ error: 'Invalid user ID' });
-    }
+    const userId = req.auth!.uid;
     
     console.log('Getting subscription status for user:', userId);
     
     const status = await stripeService.getSubscriptionStatus(userId);
     console.log('Subscription status retrieved:', status);
 
-    // Force a token refresh to ensure latest claims are available
-    await auth.revokeRefreshTokens(userId);
-
     res.json({
       success: true,
       status: status || 'inactive',
       plan: status === 'active' ? 'premium' : 'free',
       features: {
-        aiChat: status === 'active',
-        tafsirAccess: status === 'active',
-        wordByWord: status === 'active',
         emotionalDuaSearch: status === 'active',
         aiTafsirChat: status === 'active',
         duaInsights: status === 'active'

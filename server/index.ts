@@ -11,6 +11,7 @@ import usageRouter from './routes/usage';
 import quranRouter from './routes/quran';
 import subscriptionRouter from './routes/subscription';
 import tafsirRoutes from './routes/tafsir';
+import contactRouter from './routes/contact';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -26,7 +27,7 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 // Initialize logger
 const logger = winston.createLogger({
-    level: process.env.LOG_LEVEL || 'info',
+    level: process.env['LOG_LEVEL'] || 'info',
     format: winston.format.combine(
         winston.format.timestamp(),
         winston.format.json()
@@ -52,10 +53,10 @@ const logger = winston.createLogger({
 const app = express();
 
 // Configure CORS with development settings
-const isDevelopment = process.env.NODE_ENV === 'development';
+const isDevelopment = process.env['NODE_ENV'] === 'development';
 const allowedOrigins = isDevelopment 
     ? ['http://localhost:4200', 'http://localhost:3000']
-    : process.env.CORS_ORIGIN?.split(',') || [];
+    : process.env['CORS_ORIGIN']?.split(',') || [];
 
 logger.info(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 
@@ -87,8 +88,8 @@ app.use(express.json());
 
 // Rate limiting
 const limiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'), // 15 minutes
-    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100')
+    windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
+    max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100')
 });
 app.use(limiter);
 
@@ -97,15 +98,15 @@ app.use(securityConfig.securityHeaders);
 
 // Session configuration
 const sessionConfig = {
-    secret: process.env.SESSION_SECRET || 'dev_secret',
+    secret: process.env['SESSION_SECRET'] || 'dev_secret',
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({
-        mongoUrl: process.env.MONGODB_URI || '',
+        mongoUrl: process.env['MONGODB_URI'] || '',
         ttl: 24 * 60 * 60 // 1 day
     }),
     cookie: {
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env['NODE_ENV'] === 'production',
         maxAge: 24 * 60 * 60 * 1000 // 1 day
     }
 } as const;
@@ -123,6 +124,7 @@ app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);
 app.use('/api/subscription', subscriptionRouter);
 app.use('/api/tafsir', tafsirRoutes);
+app.use('/api/contact', contactRouter);
 
 // Basic session check endpoint
 app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {
@@ -130,7 +132,13 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
         if (!req.auth) {
             return res.status(401).json({ error: 'Unauthorized' });
         }
-        res.json({ userId: req.auth.userId });
+        // Ensure req.auth is defined and has uid before accessing
+        const userId = req.auth?.uid;
+        if (!userId) {
+            // This case should ideally be caught by withAuth, but good to double-check
+            return res.status(401).json({ error: 'Unauthorized', details: 'User ID not found in token' });
+        }
+        res.json({ userId: userId });
     } catch (error) {
         console.error('Error fetching user session:', error);
         res.status(500).json({ error: 'Internal server error' });
@@ -162,9 +170,9 @@ const startServer = async () => {
         logger.info('MongoDB connected');
 
         // Start server
-        const PORT = process.env.PORT || 3000;
+        const PORT = process.env['PORT'] || 3000;
         app.listen(PORT, () => {
-            logger.info(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+            logger.info(`Server running on port ${PORT} in ${process.env['NODE_ENV']} mode`);
         });
     } catch (error) {
         logger.error('Failed to start server:', error);

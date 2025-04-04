@@ -6,7 +6,7 @@ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { SubscriptionService } from '../../services/subscription.service';
 import { DuaInsightsComponent } from '../dua-insights/dua-insights.component';
 //import { DuaTafsirComponent } from './dua-tafsir.component';
-import { AuthStateService } from '../../services/auth-state.service';
+import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
 import { firstValueFrom } from 'rxjs';
 import { first } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
@@ -112,14 +112,14 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   constructor(
     private duaService: DuaService,
-    public authStateService: AuthStateService,
+    public firebaseAuthService: FirebaseAuthService,
     public subscriptionService: SubscriptionService,
     private cd: ChangeDetectorRef
   ) {
     this.subscriptions.add(
-      this.authStateService.isPremiumUser$.subscribe(
-        isPremium => {
-          this.isPremiumUser = isPremium;
+      this.firebaseAuthService.user$.subscribe(
+        (user: AppUser | null) => {
+          this.isPremiumUser = user?.isPremium ?? false;
           this.cd.markForCheck();
         }
       )
@@ -220,11 +220,11 @@ export class DuaComponent implements OnInit, OnDestroy {
     this.emotionSuggestions = [];
     this.spiritualAdvice = null;  // Reset spiritual advice
     
-    console.log('Starting emotional dua search for:', feeling);
-    console.log('User is premium:', this.isPremiumUser);
+    // console.log('Starting emotional dua search for:', feeling);
+    // console.log('User is premium:', this.isPremiumUser);
 
     if (!this.isPremiumUser) {
-      this.showPremiumDialog();
+      this.subscriptionService.showSubscriptionPage('Emotional Dua Search');
       return;
     }
 
@@ -233,7 +233,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
     try {
       const response = await this.duaService.getEmotionalDuasWithAI(feeling);
-      console.log('Received response:', response);
+      // console.log('Received response:', response);
 
       if (response) {
         this.aiInsights = JSON.stringify({
@@ -336,7 +336,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     try {
       const insights = JSON.parse(this.aiInsights || '{}');
       const verses = insights.related_verses_hadith?.verses || [];
-      return verses.map((v: any) => `${v.reference}\n${v.translation}\n${v.relevance}`);
+      return verses.map((v: any) => `${v.reference}\n${v.text}\n${v.relevance}`);
     } catch (e) {
       return [];
     }
@@ -352,7 +352,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async showInsights(dua: Dua) {
-    const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+    const isPremium = await this.firebaseAuthService.isPremiumUser();
     if (!isPremium) {
       this.subscriptionService.showSubscriptionPage('Dua Insights');
       return;
@@ -423,12 +423,12 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async onDuaSelect(dua: Dua) {
-    console.log('Selecting dua:', dua);
+    // console.log('Selecting dua:', dua);
     
     try {
-      const isPremium = await firstValueFrom(this.authStateService.isPremiumUser$);
+      const isPremium = await this.firebaseAuthService.isPremiumUser();
       if (!isPremium) {
-        console.log('User is not premium');
+        // console.log('User is not premium');
         this.subscriptionService.showSubscriptionPage('Dua Insights');
         return;
       }
@@ -446,6 +446,12 @@ export class DuaComponent implements OnInit, OnDestroy {
     this.emotionSuggestions = [];
     this.aiInsights = '';
     this.showResults = false;
+  }
+
+  onEnterPress(event: KeyboardEvent) {
+    if (event.key === 'Enter' && this.feeling.trim()) {
+      this.searchByFeeling(this.feeling);
+    }
   }
 
   selectSuggestedEmotion(emotion: string) {
@@ -544,7 +550,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     try {
       const insights = JSON.parse(this.aiInsights || '{}');
       const hadith = insights.related_verses_hadith?.hadith || [];
-      return hadith.map((h: any) => `${h.text}\n${h.source} (${h.grade})\n${h.relevance}`);
+      return hadith.map((h: any) => `${h.source} (${h.grade})\n${h.text}\n${h.relevance}`);
     } catch (e) {
       return [];
     }
@@ -560,14 +566,19 @@ export class DuaComponent implements OnInit, OnDestroy {
         if (Array.isArray(advice.duas)) {
           advice.duas = advice.duas.map((dua: any) => {
             if (typeof dua === 'string') {
-              const arabicMatch = dua.match(/['"]([\u0600-\u06FF\s]+)['"]/) || [];
-              const translationMatch = dua.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || [];
-              const referenceMatch = dua.match(/(?:Reference:|from)\s*([^.]+)/) || [];
-              const virtueMatch = dua.match(/(?:Virtue:|brings|provides)\s*([^.]+)/) || [];
+              // Enhanced regex patterns for better extraction
+              const arabicMatch = dua.match(/['"]([\u0600-\u06FF\s،.]+)['"]/) || 
+                                dua.match(/([\u0600-\u06FF\s،.]+)(?=\s*[-—]\s*|$)/) || [];
+              const translationMatch = dua.match(/Translation:\s*([^.]+)/) ||
+                                     dua.match(/['"]([\u0600-\u06FF\s،.]+)['"].*?['"](.*?)['"]/) ||
+                                     dua.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || [];
+              const referenceMatch = dua.match(/(?:Reference:|from|source:)\s*([^.]+)/) || [];
+              const virtueMatch = dua.match(/(?:Virtue:|brings|provides|benefit:)\s*([^.]+)/) ||
+                                dua.match(/(?<=\.)([^.]+(?:benefit|blessing|reward)[^.]+)\.?/) || [];
               
               return {
-                arabic: arabicMatch[1] || '',
-                translation: translationMatch[1] || '',
+                arabic: arabicMatch[1]?.trim() || '',
+                translation: translationMatch[1]?.trim() || '',
                 reference: referenceMatch[1]?.trim() || '',
                 virtue: virtueMatch[1]?.trim() || ''
               };
@@ -580,19 +591,24 @@ export class DuaComponent implements OnInit, OnDestroy {
         if (Array.isArray(advice.dhikr)) {
           advice.dhikr = advice.dhikr.map((dhikr: any) => {
             if (typeof dhikr === 'string') {
-              const phraseMatch = dhikr.match(/['"]([\u0600-\u06FF\s]+)['"]/) || 
-                                dhikr.match(/Recite\s+['"]([^'"]+)['"]/) || [];
-              const translationMatch = dhikr.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || [];
-              const countMatch = dhikr.match(/(\d+)\s*times/) || [];
-              const timingMatch = dhikr.match(/(?:in|during|at|every)\s+([^,.]+)/) || [];
-              const benefitMatch = dhikr.match(/(?:to|for|brings)\s+([^.]+)/) || [];
+              // Enhanced regex patterns for better dhikr extraction
+              const phraseMatch = dhikr.match(/['"]([\u0600-\u06FF\s،.]+)['"]/) || 
+                                dhikr.match(/Recite\s+['"]([^'"]+)['"]/) ||
+                                dhikr.match(/([\u0600-\u06FF\s،.]+)(?=\s*[-—]\s*|$)/) || [];
+              const translationMatch = dhikr.match(/Translation:\s*([^.]+)/) ||
+                                     dhikr.match(/means?\s*['"](.*?)['"]/) ||
+                                     dhikr.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || [];
+              const countMatch = dhikr.match(/(\d+)\s*(?:time|times|repetitions)/) || [];
+              const timingMatch = dhikr.match(/(?:Timing:|in|during|at|every)\s+([^,.]+)(?=[,.]|$)/) || [];
+              const benefitMatch = dhikr.match(/(?:Benefit:|brings|provides|for)\s+([^.]+)/) ||
+                                 dhikr.match(/(?<=\.)([^.]+(?:benefit|blessing|reward)[^.]+)\.?/) || [];
               
               return {
-                phrase: phraseMatch[1] || '',
-                translation: translationMatch[1] || '',
+                phrase: phraseMatch[1]?.trim() || '',
+                translation: translationMatch[1]?.trim() || '',
                 count: countMatch[1] ? `${countMatch[1]} times` : '',
-                timing: timingMatch[1] || '',
-                benefit: benefitMatch[1] || dhikr.split('.').slice(-1)[0].trim()
+                timing: timingMatch[1]?.trim() || '',
+                benefit: benefitMatch[1]?.trim() || ''
               };
             }
             return dhikr;
@@ -603,13 +619,15 @@ export class DuaComponent implements OnInit, OnDestroy {
         if (Array.isArray(advice.scholarly_guidance)) {
           advice.scholarly_guidance = advice.scholarly_guidance.map((guidance: any) => {
             if (typeof guidance === 'string') {
-              const quoteMatch = guidance.match(/["']([^"']+)["']/) || 
+              // Enhanced regex patterns for better scholarly guidance extraction
+              const quoteMatch = guidance.match(/["'](.*?)["']/) || 
                                guidance.match(/^([^"']+?)(?=\s*[-–—]\s*|said|according)/) || [];
               const scholarMatch = guidance.match(/(?:[-–—]\s*|said|according to|by)\s+([^,.()]+)/) || [];
-              const sourceMatch = guidance.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || [];
+              const sourceMatch = guidance.match(/\((([^()]*\([^()]*\))*[^()]*)\)/) || 
+                                guidance.match(/from\s+([^,.]+)/) || [];
               
               return {
-                quote: quoteMatch[1]?.trim() || '',
+                quote: quoteMatch[1]?.trim() || guidance.split(/[-–—]/)[0]?.trim() || '',
                 scholar: scholarMatch[1]?.trim() || '',
                 source: sourceMatch[1]?.trim() || ''
               };
@@ -618,15 +636,16 @@ export class DuaComponent implements OnInit, OnDestroy {
           }).filter((guidance: any) => guidance.quote || guidance.scholar);
         }
 
-        // Parse spiritual remedies and ensure uniqueness
+        // Parse spiritual remedies with better structure
         if (Array.isArray(advice.spiritual_remedies)) {
           const uniqueRemedies = new Map();
           advice.spiritual_remedies = advice.spiritual_remedies
             .map((remedy: any) => {
               if (typeof remedy === 'string') {
-                const practiceMatch = remedy.match(/^([^,.]+)/) || [];
+                const practiceMatch = remedy.match(/^([^,.]+)(?=\s+(?:to|for|brings|by|through|via|$))/) || [];
                 const methodMatch = remedy.match(/(?:by|through|via)\s+([^.]+?)(?=\s+(?:to|for|brings|$))/) || [];
-                const benefitMatch = remedy.match(/(?:to|for|brings)\s+([^.]+)/) || [];
+                const benefitMatch = remedy.match(/(?:to|for|brings|benefit:)\s+([^.]+)/) ||
+                                   remedy.match(/(?<=\.)([^.]+(?:benefit|blessing|reward)[^.]+)\.?/) || [];
                 
                 return {
                   practice: practiceMatch[1]?.trim() || '',

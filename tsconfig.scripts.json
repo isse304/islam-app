@@ -1,0 +1,25 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "outDir": "./dist/server/scripts",
+    "baseUrl": ".",
+    "paths": {
+      "@server/*": ["server/*"]
+    },
+    "sourceMap": false,
+    "declaration": false,
+    "skipLibCheck": true,
+    "lib": ["ES2022"]
+  },
+  "include": [
+    "server/scripts/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src"
+  ],
+  "angularCompilerOptions": {}
+} 

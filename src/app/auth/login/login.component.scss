@@ -2,9 +2,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: calc(100vh - 64px);
+  min-height: 100vh;
   padding: 20px;
-  background: url('../../../../public/islamic-pattern-1.png') center center;
+  background: url('/islamic-pattern-1.png') center center;
   background-size: cover;
   position: relative;
   
@@ -37,7 +37,7 @@
     left: 0;
     width: 100%;
     height: 5px;
-    background: linear-gradient(90deg, #3f51b5, #1976d2);
+    background: linear-gradient(90deg, #B7A57A, #9b8a65);
   }
 }
 
@@ -50,7 +50,7 @@ mat-card-header {
 mat-card-title {
   font-size: 28px;
   font-weight: 500;
-  color: #3f51b5;
+  color: #B7A57A;
   letter-spacing: 0.5px;
 }
 
@@ -71,12 +71,12 @@ mat-card-content {
     border-radius: 22px;
     font-weight: 500;
     letter-spacing: 0.3px;
-    box-shadow: 0 4px 12px rgba(63, 81, 181, 0.3);
+    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.3);
     transition: all 0.3s ease;
     
     &:hover:not([disabled]) {
       transform: translateY(-2px);
-      box-shadow: 0 6px 16px rgba(63, 81, 181, 0.4);
+      box-shadow: 0 6px 16px rgba(183, 165, 122, 0.4);
     }
   }
 }
@@ -91,7 +91,7 @@ mat-card-content {
   margin-top: 8px;
   
   a {
-    color: #3f51b5;
+    color: #B7A57A;
     text-decoration: none;
     cursor: pointer;
     font-size: 14px;
@@ -99,63 +99,78 @@ mat-card-content {
     transition: color 0.2s ease;
     
     &:hover {
-      color: #1976d2;
+      color: #9b8a65;
       text-decoration: underline;
     }
   }
 }
 
 .alternative-signin {
-  margin-top: 16px;
   margin-bottom: 24px;
-}
-
-.google-button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  height: 44px;
-  border: 1px solid #dadce0;
-  border-radius: 22px;
-  font-weight: 500;
-  transition: all 0.3s ease;
   
-  &:hover:not([disabled]) {
-    background-color: #f8f9fa;
-    border-color: #c0c0c0;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  .google-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    height: 44px;
+    border-radius: 22px;
+    border: 1px solid #B7A57A;
+    color: #B7A57A;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    
+    &:hover:not([disabled]) {
+      background-color: #f8f4eb;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(183, 165, 122, 0.2);
+    }
+    
+    .google-icon {
+      width: 20px;
+      height: 20px;
+    }
   }
-}
-
-.google-icon {
-  width: 20px;
-  height: 20px;
 }
 
 .signup-prompt {
   text-align: center;
-  margin-top: 24px;
-  font-size: 15px;
+  font-size: 14px;
+  color: #666;
   
   a {
-    color: #3f51b5;
-    margin-left: 5px;
+    color: #B7A57A;
     text-decoration: none;
     cursor: pointer;
     font-weight: 500;
+    margin-left: 8px;
     transition: color 0.2s ease;
     
     &:hover {
-      color: #1976d2;
+      color: #9b8a65;
       text-decoration: underline;
     }
   }
 }
 
-/* Spinner styling */
-mat-spinner {
-  display: inline-block;
-  margin: 0 auto;
+:host ::ng-deep {
+  .mat-mdc-form-field {
+    margin-bottom: 16px;
+  }
+  
+  .mat-mdc-form-field-outline {
+    background-color: #fff;
+  }
+  
+  .mat-mdc-raised-button.mat-primary {
+    background-color: #B7A57A;
+    
+    &:hover:not([disabled]) {
+      background-color: #9b8a65;
+    }
+  }
+  
+  .mat-mdc-progress-spinner circle {
+    stroke: #fff;
+  }
 } 

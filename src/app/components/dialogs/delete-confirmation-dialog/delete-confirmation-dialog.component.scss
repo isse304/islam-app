@@ -1,0 +1,11 @@
+// Optional: Add specific styles if needed, but Tailwind handles most of it.
+:host {
+  display: block; // Ensures the component takes up space
+}
+
+// Style the dialog container itself (optional, Material usually handles this)
+::ng-deep .mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: 0.75rem !important; // rounded-xl
+  box-shadow: none !important; // Remove default shadow if we use custom outer div shadow
+  background: transparent !important; // Make container transparent for gradient border effect
+} 

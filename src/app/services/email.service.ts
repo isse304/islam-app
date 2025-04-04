@@ -1,28 +1,32 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
+import { firstValueFrom } from 'rxjs';
 
-export interface EmailData {
-  to: string;
-  from: string;
-  subject: string;
-  text: string;
+// Interface for contact form data
+export interface ContactFormData {
+  name: string;
+  email: string;
+  message: string;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class EmailService {
-  private apiUrl = `${environment.apiUrl}/api/email`;
+  // Changed apiUrl to point to the new contact endpoint
+  private contactApiUrl = `${environment.apiUrl}/api/contact`;
 
   constructor(private http: HttpClient) {}
 
-  async sendEmail(emailData: EmailData): Promise<any> {
+  // Renamed method to be more specific and accept ContactFormData
+  async sendContactForm(formData: ContactFormData): Promise<any> {
     try {
-      return await this.http.post(this.apiUrl, emailData).toPromise();
+      // Use firstValueFrom for modern HttpClient usage
+      return await firstValueFrom(this.http.post(this.contactApiUrl, formData));
     } catch (error) {
-      console.error('Error sending email:', error);
-      throw error;
+      console.error('Error sending contact form:', error);
+      throw error; // Re-throw the error to be handled by the component
     }
   }
 } 

@@ -1,12 +1,12 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { EmailService } from '../../services/email.service';
+import { EmailService, ContactFormData } from '../../services/email.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 @Component({
   selector: 'app-contact',
@@ -26,16 +26,15 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 export class ContactComponent implements OnInit {
   contactForm: FormGroup;
   isSubmitting = false;
-  showSuccessMessage = false;
 
   constructor(
     private fb: FormBuilder,
-    private emailService: EmailService
+    private emailService: EmailService,
+    private snackBar: MatSnackBar
   ) {
     this.contactForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(2)]],
       email: ['', [Validators.required, Validators.email]],
-      subject: ['', [Validators.required, Validators.minLength(4)]],
       message: ['', [Validators.required, Validators.minLength(10)]]
     });
   }
@@ -51,33 +50,43 @@ export class ContactComponent implements OnInit {
     if (this.contactForm.valid && !this.isSubmitting) {
       this.isSubmitting = true;
 
+      const formData: ContactFormData = {
+        name: this.contactForm.value.name,
+        email: this.contactForm.value.email,
+        message: this.contactForm.value.message
+      };
+
       try {
-        await this.emailService.sendEmail({
-          to: 'nura.ai.islam@gmail.com',
-          from: this.contactForm.value.email,
-          subject: this.contactForm.value.subject,
-          text: `Name: ${this.contactForm.value.name}\nEmail: ${this.contactForm.value.email}\n\nMessage:\n${this.contactForm.value.message}`
+        await this.emailService.sendContactForm(formData);
+
+        this.snackBar.open('Message sent successfully!', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom'
         });
 
-        this.showSuccessMessage = true;
         this.contactForm.reset();
+        Object.keys(this.contactForm.controls).forEach(key => {
+          this.contactForm.get(key)?.markAsPristine();
+          this.contactForm.get(key)?.markAsUntouched();
+          this.contactForm.get(key)?.updateValueAndValidity();
+        });
+
       } catch (error) {
-        console.error('Error sending email:', error);
-        // You might want to show an error message to the user here
+        console.error('Error sending contact form:', error);
+        this.snackBar.open('Failed to send message. Please try again later.', 'Close', {
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+          panelClass: ['error-snackbar']
+        });
       } finally {
         this.isSubmitting = false;
       }
     } else {
       Object.keys(this.contactForm.controls).forEach(key => {
-        const control = this.contactForm.get(key);
-        if (control) {
-          control.markAsTouched();
-        }
+        this.contactForm.get(key)?.markAsTouched();
       });
     }
-  }
-
-  closeSuccessMessage() {
-    this.showSuccessMessage = false;
   }
 } 
