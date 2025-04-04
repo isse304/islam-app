@@ -1,6 +1,34 @@
 import { readFileSync } from 'fs';
 import { join } from 'path';
 
+// Define interfaces based on usage in the file
+interface Dua {
+  translation: string;
+  virtue: string;
+  arabic?: string;
+  reference?: string;
+}
+
+interface Dhikr {
+  translation: string;
+  benefit: string;
+  phrase?: string;
+  count?: string | number;
+  timing?: string;
+}
+
+interface Guidance {
+  quote: string;
+  scholar?: string;
+  source?: string;
+}
+
+interface Remedy {
+  practice: string;
+  benefit: string;
+  method?: string;
+}
+
 export class SpiritualContentService {
   private content: any;
   private duaInsights: any;
@@ -57,24 +85,24 @@ export class SpiritualContentService {
     const topicLower = topic.toLowerCase();
     
     // Get relevant duas based on topic
-    const relevantDuas = this.content.duas.filter(dua => 
+    const relevantDuas = this.content.duas.filter((dua: Dua) => 
       dua.translation.toLowerCase().includes(topicLower) ||
       dua.virtue.toLowerCase().includes(topicLower)
     );
 
     // Get relevant dhikr based on topic
-    const relevantDhikr = this.content.dhikr.filter(d => 
+    const relevantDhikr = this.content.dhikr.filter((d: Dhikr) => 
       d.translation.toLowerCase().includes(topicLower) ||
       d.benefit.toLowerCase().includes(topicLower)
     );
 
     // Get relevant scholarly guidance based on topic
-    const relevantGuidance = this.content.scholarly_guidance.filter(g => 
+    const relevantGuidance = this.content.scholarly_guidance.filter((g: Guidance) => 
       g.quote.toLowerCase().includes(topicLower)
     );
 
     // Get relevant spiritual remedies based on topic
-    const relevantRemedies = this.content.spiritual_remedies.filter(r => 
+    const relevantRemedies = this.content.spiritual_remedies.filter((r: Remedy) => 
       r.practice.toLowerCase().includes(topicLower) ||
       r.benefit.toLowerCase().includes(topicLower)
     );
@@ -99,25 +127,25 @@ export class SpiritualContentService {
     
     // Check if duas section exists and has valid structure
     if (!Array.isArray(advice.duas) || advice.duas.length === 0) return false;
-    for (const dua of advice.duas) {
+    for (const dua of advice.duas as Dua[]) {
       if (!dua.arabic || !dua.translation || !dua.reference || !dua.virtue) return false;
     }
     
     // Check if dhikr section exists and has valid structure
     if (!Array.isArray(advice.dhikr) || advice.dhikr.length === 0) return false;
-    for (const d of advice.dhikr) {
+    for (const d of advice.dhikr as Dhikr[]) {
       if (!d.phrase || !d.translation || !d.count || !d.benefit || !d.timing) return false;
     }
     
     // Check if scholarly_guidance section exists and has valid structure
     if (!Array.isArray(advice.scholarly_guidance) || advice.scholarly_guidance.length === 0) return false;
-    for (const g of advice.scholarly_guidance) {
+    for (const g of advice.scholarly_guidance as Guidance[]) {
       if (!g.quote || !g.scholar || !g.source) return false;
     }
     
     // Check if spiritual_remedies section exists and has valid structure
     if (!Array.isArray(advice.spiritual_remedies) || advice.spiritual_remedies.length === 0) return false;
-    for (const r of advice.spiritual_remedies) {
+    for (const r of advice.spiritual_remedies as Remedy[]) {
       if (!r.practice || !r.method || !r.benefit) return false;
     }
     
@@ -153,7 +181,7 @@ export class SpiritualContentService {
     // Ensure duas section is valid and has at least 3 items
     if (!Array.isArray(advice.duas) || 
         advice.duas.length === 0 || 
-        advice.duas.some(d => !d.arabic || d.arabic.includes('[')) ||
+        advice.duas.some((d: Dua) => !d.arabic || d.arabic.includes('[')) ||
         advice.duas.length < 3) {
       advice.duas = relevantContent.duas;
     }
@@ -161,7 +189,7 @@ export class SpiritualContentService {
     // Ensure dhikr section is valid and has at least 3 items
     if (!Array.isArray(advice.dhikr) || 
         advice.dhikr.length === 0 || 
-        advice.dhikr.some(d => !d.phrase || d.phrase.includes('[')) ||
+        advice.dhikr.some((d: Dhikr) => !d.phrase || d.phrase.includes('[')) ||
         advice.dhikr.length < 3) {
       advice.dhikr = relevantContent.dhikr;
     }
@@ -169,7 +197,7 @@ export class SpiritualContentService {
     // Ensure scholarly_guidance section is valid and has at least 3 items
     if (!Array.isArray(advice.scholarly_guidance) || 
         advice.scholarly_guidance.length === 0 || 
-        advice.scholarly_guidance.some(g => !g.quote || g.quote.includes('[') || g.quote.includes('Scholar\'s guidance')) ||
+        advice.scholarly_guidance.some((g: Guidance) => !g.quote || g.quote.includes('[') || g.quote.includes('Scholar\'s guidance')) ||
         advice.scholarly_guidance.length < 3) {
       advice.scholarly_guidance = relevantContent.scholarly_guidance;
     }
@@ -177,7 +205,7 @@ export class SpiritualContentService {
     // Ensure spiritual_remedies section is valid and has at least 3 items
     if (!Array.isArray(advice.spiritual_remedies) || 
         advice.spiritual_remedies.length === 0 || 
-        advice.spiritual_remedies.some(r => !r.practice || r.practice.includes('[')) ||
+        advice.spiritual_remedies.some((r: Remedy) => !r.practice || r.practice.includes('[')) ||
         advice.spiritual_remedies.length < 3) {
       advice.spiritual_remedies = relevantContent.spiritual_remedies;
     }
