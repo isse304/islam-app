@@ -31,6 +31,8 @@
     "@types/fuse": "2.6.2",
     "@types/marked": "6.0.0",
     "autoprefixer": "^10.4.16",
+    "express-rate-limit": "7.5.0",
+    "express-validator": "7.2.1",
     "firebase": "10.14.1",
     "fuse.js": "7.1.0",
     "localforage": "1.10.0",

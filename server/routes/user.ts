@@ -698,9 +698,11 @@ router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response) =
             console.log(`[DeleteUser] UserSubscription deletion result:`, subDeletion);
             const usageDeletion = await UserUsage.deleteOne({ userId });
             console.log(`[DeleteUser] UserUsage deletion result:`, usageDeletion);
-            // Add deletion logic for UserPreferences if stored separately
-            // const prefDeletion = await UserPreferencesModel.deleteOne({ userId });
-            // console.log(`[DeleteUser] UserPreferences deletion result:`, prefDeletion);
+            // Add deletion logic for UserPreferences and ReadingHistory
+            const prefDeletion = await UserPreferences.deleteOne({ userId });
+            console.log(`[DeleteUser] UserPreferences deletion result:`, prefDeletion);
+            const historyDeletion = await ReadingHistory.deleteMany({ userId });
+            console.log(`[DeleteUser] ReadingHistory deletion result:`, historyDeletion);
         } catch (dbError) {
             console.error(`[DeleteUser] Error deleting MongoDB data for user ${userId}:`, dbError);
             // Log error, consider alerting admin. Data might be orphaned.

@@ -322,7 +322,7 @@ export class LearnComponent implements OnInit, OnDestroy {
       this.tafsirEntries = tafsirEntries;
       
       // Get AI summary for the verse
-      await this.getAISummary(); // This might modify state indirectly (aiSummary)
+      // await this.getAISummary(); // Commented out to prevent automatic call on verse load
       
       // Removed saveState() from the end of the try block
 

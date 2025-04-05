@@ -1,5 +1,5 @@
 // @ts-nocheck
-import express, { Response } from 'express';
+import express, { Response, Request } from 'express';
 import { OpenAI } from 'openai';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
@@ -16,6 +16,8 @@ import * as admin from 'firebase-admin';
 import { SpiritualContentService } from '../services/spiritual-content.service';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { body, validationResult } from 'express-validator';
+import NodeCache from 'node-cache';
 
 // Type definitions
 type AuthRequest = express.Request & {
@@ -88,6 +90,15 @@ const openai = new OpenAI({
 // Add this after other const declarations
 const DUA_INSIGHTS_PATH = join(__dirname, '../data/dua-insights.json');
 
+// Helper middleware to handle validation results
+const validateRequest = (req: Request, res: Response, next: express.NextFunction) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+  next();
+};
+
 /**
  * Helper function to estimate tokens
  * @param {string} text - The input text to estimate tokens for
@@ -132,8 +143,17 @@ setInterval(resetDailyUsage, 24 * 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkHourlyCosts(), 60 * 60 * 1000);
 setInterval(() => costMonitorService.checkDailyCosts(), 24 * 60 * 60 * 1000);
 
-// Protected route for AI generation - requires auth and premium
-router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+// Validation rules for /chat endpoint
+const chatValidationRules = [
+  body('message').isString().notEmpty().withMessage('Message is required and must be a string.')
+];
+
+// Protected route for AI chat - requires auth and premium
+router.post('/chat', 
+  withPremium, 
+  chatValidationRules, // Apply chat validation rules
+  validateRequest,    // Handle validation results
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.auth!.uid;
 
@@ -163,14 +183,15 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
             return;
         }
 
+        // Increment AI request count *before* the call
+        await userUsage.incrementAIRequestCount();
+
         // Process AI request here
+        // Note: Using req.body.message which was validated
         const response = await openai.chat.completions.create({
             model: "gpt-3.5-turbo",
-            messages: [{ role: "user", content: req.body.message }]
+            messages: [{ role: "user", content: req.body.message }] 
         });
-
-        // Increment AI request count
-        await userUsage.incrementAIRequestCount();
 
         res.json({ 
             success: true,
@@ -183,85 +204,56 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
             error: 'Internal server error' 
         });
     }
-}));
+});
 
-// Protected route for AI generation - requires auth and premium
-router.post('/generate', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Validation rules for /generate endpoint
+const generateValidationRules = [
+  body('prompt').isString().notEmpty().withMessage('Prompt is required and must be a string.'),
+  body('systemMessage').optional().isString().withMessage('System message must be a string.'),
+  body('temperature').optional().isFloat({ min: 0, max: 1 }).withMessage('Temperature must be a number between 0 and 1.'),
+  body('maxTokens').optional().isInt({ min: 1 }).withMessage('Max tokens must be a positive integer.'),
+];
+
+// AI generate endpoint with validation and usage check
+router.post('/generate', 
+  withAuth, 
+  withPremium, 
+  generateValidationRules, // Apply validation rules
+  validateRequest,       // Handle validation results
+  async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.auth!.uid;
+    const { prompt, systemMessage, temperature, maxTokens } = req.body;
+    // console.log(`[AI Generate ${userId}] Received request:`, { prompt, systemMessage, temperature, maxTokens });
+
     try {
-        const userId = req.auth!.uid;
-
-        const { prompt, systemMessage, temperature = 0.7, maxTokens = 1000 } = req.body;
-
-        // Create messages array
-        const messages: ChatCompletionMessageParam[] = [];
-        if (systemMessage) {
-            messages.push({ role: 'system', content: systemMessage });
+        // Validate user usage (this might be redundant if withPremium already checks limits)
+        const userUsage = await usageService.getOrCreateUsage(userId);
+        if (!await userUsage.canMakeAIRequest()) {
+            return res.status(429).json({ error: 'Daily AI request limit reached.' });
         }
-        messages.push({ role: 'user', content: prompt });
 
-        // Use GPT-3.5-turbo for general AI requests
-        const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
-            messages,
+        // Increment usage BEFORE making the OpenAI call
+        await usageService.incrementAIUsage(userId);
+        // console.log(`[AI Generate ${userId}] Usage incremented.`);
+
+        // Generate response using OpenAIService
+        const aiResponse = await openAIService.generateResponseWithSettings(
+            prompt,
+            systemMessage,
             temperature,
-            max_tokens: maxTokens
-        });
+            maxTokens
+        );
+        // console.log(`[AI Generate ${userId}] Response generated.`);
 
-        // Extract the response
-        const content = completion.choices[0]?.message?.content;
+        res.json({ content: aiResponse });
 
-        if (!content) {
-            throw new Error('No response from OpenAI');
-        }
-        
-        // Get or create user usage record
-        let userUsage;
-        try {
-            userUsage = await UserUsage.findOne({ userId });
-            if (!userUsage) {
-                userUsage = await UserUsage.create({
-                    userId,
-                    status: 'premium',
-                    aiRequests: {
-                        count: 0,
-                        lastRequest: new Date()
-                    },
-                    // Use bracket notation for process.env access
-                    aiRequestLimit: parseInt(process.env['DAILY_USER_LIMIT'] || '50')
-                });
-            }
-
-            // Check if user has exceeded their AI request limit
-            if (!await userUsage.canMakeAIRequest()) {
-                res.status(403).json({ 
-                    success: false,
-                    error: 'AI request limit exceeded',
-                    limit: userUsage.aiRequestLimit,
-                    used: userUsage.aiRequests.count
-                });
-                return;
-            }
-        } catch (error) {
-            console.error('Error managing user usage:', error);
-            res.status(500).json({
-                success: false,
-                error: 'Failed to manage user usage'
-            });
-            return;
-        }
-
-        // Increment AI request count
-        await userUsage.incrementAIRequestCount();
-
-        res.json({ 
-            success: true,
-            content 
-        });
-    } catch (error) {
-        console.error('Error generating AI response:', error);
-        res.status(500).json({ success: false, error: 'Failed to generate AI response' });
+    } catch (error: any) {
+        console.error(`[AI Generate ${userId}] Error processing request:`, error);
+        // Avoid double-counting if increment succeeded but OpenAI failed
+        // Consider adding more sophisticated error handling/refund logic if needed
+        res.status(500).json({ error: 'Failed to generate AI response', details: error.message });
     }
-}));
+});
 
 // Protected route for generating spiritual content - requires auth and premium
 router.post('/generate-spiritual-content', withPremium(async (req: AuthenticatedRequest, res: Response) => {
@@ -279,11 +271,23 @@ router.post('/generate-spiritual-content', withPremium(async (req: Authenticated
     }
 }));
 
+// Validation rules for /tafsir-chat endpoint
+const tafsirChatValidationRules = [
+  body('surah').isInt({ min: 1, max: 114 }).withMessage('Surah must be an integer between 1 and 114.'),
+  body('verse').isInt({ min: 1 }).withMessage('Verse must be a positive integer.'),
+  body('question').isString().notEmpty().withMessage('Question is required and must be a string.'),
+  body('history').optional().isArray().withMessage('History must be an array if provided.')
+];
+
 // Protected route for Tafsir chat - requires auth and premium
-router.post('/tafsir-chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/tafsir-chat',
+  withPremium,
+  tafsirChatValidationRules, // Apply tafsir validation rules
+  validateRequest,         // Handle validation results
+  async (req: AuthenticatedRequest, res: Response) => {
     try {
         const userId = req.auth!.uid;
-        const { surah, ayah, question, history } = req.body;
+        const { surah, verse, question, history } = req.body;
         
         // ... (rest of tafsir chat logic) ...
 
@@ -293,7 +297,7 @@ router.post('/tafsir-chat', withPremium(async (req: AuthenticatedRequest, res: R
         console.error('Error in Tafsir chat:', error);
         res.status(500).json({ success: false, error: 'Failed to get Tafsir explanation' });
     }
-}));
+});
 
 // Route for Dua Insights (Premium)
 router.get('/dua-insights/:duaName', withPremium(async (req: AuthenticatedRequest, res: Response) => {
@@ -445,8 +449,18 @@ router.post('/dua/insights', withPremium(async (req: AuthenticatedRequest, res: 
     }
 }));
 
+// Validation rules for /dua/emotional-search endpoint
+const duaSearchValidationRules = [
+  body('emotion').isString().notEmpty().withMessage('Emotion is required and must be a string.'),
+  body('context').optional().isString().withMessage('Context must be a string if provided.')
+];
+
 // Emotional Dua Search endpoint
-router.post('/dua/emotional-search', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/dua/emotional-search',
+  withPremium,
+  duaSearchValidationRules, // Apply validation rules
+  validateRequest,        // Handle validation results
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -464,6 +478,9 @@ router.post('/dua/emotional-search', withPremium(async (req: AuthenticatedReques
             });
             return;
         }
+
+        // Increment AI usage *before* the call
+        await usageService.incrementAIUsage(req.auth.uid);
 
         // Get response from OpenAI
         const completion = await openai.chat.completions.create({
@@ -560,9 +577,6 @@ router.post('/dua/emotional-search', withPremium(async (req: AuthenticatedReques
             // Parse the JSON response from OpenAI
             const parsedResponse = JSON.parse(cleanedContent);
             
-            // Increment AI usage after successful response
-            await usageService.incrementAIUsage(req.auth.uid);
-
             // Validate response structure
             const requiredSections = [
                 'content',
@@ -585,18 +599,14 @@ router.post('/dua/emotional-search', withPremium(async (req: AuthenticatedReques
             });
         } catch (parseError) {
             console.error('Error parsing OpenAI response:', parseError);
-            console.error('Raw content:', content);
-            throw new Error('Failed to parse AI response');
+            // Send raw content if parsing fails
+            res.json({ success: true, raw_content: content, parse_error: parseError.message });
         }
-    } catch (error) {
-        console.error('Error in emotional dua search:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to process emotional dua search',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        });
+    } catch (error: any) {
+        console.error('Error generating emotional dua response:', error);
+        res.status(500).json({ success: false, error: 'Failed to generate response', details: error.message });
     }
-}));
+});
 
 // Helper functions for processing responses
 function extractSection(sections: string[], header: string): string {
@@ -656,15 +666,49 @@ function processReferences(refs: any) {
     return results;
 }
 
-// Tafsir Chat endpoint
-router.post('/tafsir/chat', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+// Add this before the endpoint handler
+function formatRelatedContent(refs: { verses: any[], hadith: any[] }): string {
+    let result = '';
+    
+    // Format verses
+    if (refs?.verses?.length) {
+        result += '**Quranic Verses:**\n\n';
+        refs.verses.forEach((verse: any) => {
+            result += `• **${verse.reference}**\n`;
+            if (verse.translation) result += `  ${verse.translation}\n`;
+            if (verse.relevance) result += `  - ${verse.relevance}\n`;
+            result += '\n';
+        });
+    }
+    
+    // Format hadith
+    if (refs?.hadith?.length) {
+        result += '**Related Hadith:**\n\n';
+        refs.hadith.forEach((h: any) => {
+            result += `• **${h.source}** ${h.grade ? `(${h.grade})` : ''}\n`;
+            if (h.text) result += `  ${h.text}\n`;
+            if (h.relevance) result += `  - ${h.relevance}\n`;
+            result += '\n';
+        });
+    }
+    
+    return result.trim();
+}
+
+// Tafsir Chat endpoint (likely the one actually used by frontend)
+router.post('/tafsir/chat', 
+  withPremium, 
+  tafsirChatValidationRules, // Apply the validation rules
+  validateRequest,         // Apply the validation result handler
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
-        const { surah, verse, question } = req.body;
+        // Use 'verse' here to match validation
+        const { surah, verse, question } = req.body; 
 
         // Validate AI usage
         const canMakeRequest = await usageService.validateAIRequest(req.auth.uid, 1500); // Approximate token count
@@ -675,6 +719,9 @@ router.post('/tafsir/chat', withPremium(async (req: AuthenticatedRequest, res: R
             });
             return;
         }
+
+        // Increment AI usage *before* the call
+        await usageService.incrementAIUsage(req.auth.uid);
 
         const prompt = {
             systemMessage: `You are a knowledgeable Islamic scholar specializing in Quranic tafsir. 
@@ -711,43 +758,11 @@ router.post('/tafsir/chat', withPremium(async (req: AuthenticatedRequest, res: R
 
         const response = completion.choices[0]?.message?.content || '';
         
-        // Increment AI usage after successful response
-        await usageService.incrementAIUsage(req.auth.uid);
-        
         res.json({ success: true, content: response });
     } catch (error) {
         console.error('Error in tafsir chat:', error);
         res.status(500).json({ success: false, error: 'Failed to generate tafsir response' });
     }
-}));
-
-// Add this before the endpoint handler
-function formatRelatedContent(refs: { verses: any[], hadith: any[] }): string {
-    let result = '';
-    
-    // Format verses
-    if (refs?.verses?.length) {
-        result += '**Quranic Verses:**\n\n';
-        refs.verses.forEach((verse: any) => {
-            result += `• **${verse.reference}**\n`;
-            if (verse.translation) result += `  ${verse.translation}\n`;
-            if (verse.relevance) result += `  - ${verse.relevance}\n`;
-            result += '\n';
-        });
-    }
-    
-    // Format hadith
-    if (refs?.hadith?.length) {
-        result += '**Related Hadith:**\n\n';
-        refs.hadith.forEach((h: any) => {
-            result += `• **${h.source}** ${h.grade ? `(${h.grade})` : ''}\n`;
-            if (h.text) result += `  ${h.text}\n`;
-            if (h.relevance) result += `  - ${h.relevance}\n`;
-            result += '\n';
-        });
-    }
-    
-    return result.trim();
-}
+});
 
 export default router; 
