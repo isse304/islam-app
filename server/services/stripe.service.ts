@@ -176,6 +176,19 @@ export class StripeService {
         const sig = req.headers['stripe-signature'] as string;
         let event: Stripe.Event;
 
+        // *** ADD LOGGING HERE ***
+        console.log('[Webhook Debug] Received Headers:', JSON.stringify(req.headers, null, 2));
+        console.log(`[Webhook Debug] Stripe Signature Header: ${sig}`);
+        // Log the body type and potentially a snippet (be careful logging full sensitive payloads)
+        console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
+        if (Buffer.isBuffer(req.body)) {
+            console.log(`[Webhook Debug] req.body is Buffer, length: ${req.body.length}`);
+            // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 200)}...`); // Optional: Log snippet
+        } else {
+            console.log('[Webhook Debug] req.body is NOT a Buffer. Body:', req.body);
+        }
+        // *** END LOGGING ***
+
         console.log('[Webhook] Attempting to construct event...');
         try {
             event = this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
