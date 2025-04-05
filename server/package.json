@@ -6,7 +6,7 @@
     "scripts": {
         "start": "node dist/index.js",
         "prebuild": "npm install --legacy-peer-deps",
-        "build": "tsc",
+        "build": "tsc && copyfiles -u 1 \"data/**/*.json\" dist/data",
         "dev": "nodemon index.ts",
         "watch": "tsc -w"
     },
