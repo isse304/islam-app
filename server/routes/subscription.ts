@@ -54,12 +54,12 @@ router.post('/create-customer-portal-session', withAuth(async (req: Authenticate
 // Handle webhook events
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
   try {
-    const event = await stripeService.constructWebhookEvent(req);
-    await stripeService.handleWebhookEvent(event);
-    res.json({ received: true });
+    await stripeService.handleWebhookEvent(req, res);
   } catch (error) {
-    console.error('Error handling webhook:', error);
-    res.status(400).json({ error: 'Webhook error' });
+    console.error('Error during webhook processing in route:', error);
+    if (!res.headersSent) {
+        res.status(500).json({ error: 'Internal server error processing webhook' });
+    }
   }
 });
 
