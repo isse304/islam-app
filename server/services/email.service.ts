@@ -39,29 +39,93 @@ export class EmailService {
 
   // Welcome email for NEWLY REGISTERED users
   async sendNewUserWelcomeEmail(userEmail: string, userName: string): Promise<void> {
-    const subject = 'Welcome to Nura AI!';
+    const subject = '🌟 Welcome to NuraAI - Your Journey to Understanding Begins!';
     const text = `
-Hello ${userName || 'there'},
+Assalamu alaikum wa rahmatullahi wa barakatuh!
 
-Thank you for joining Nura AI! We're excited to have you.
+Welcome to NuraAI, your personal companion for deepening your understanding and connection with the Quran and Islamic teachings.
 
-Explore the Quran, discover relevant duas, and deepen your understanding with our tools.
+We're thrilled to have you join our community. Here's a glimpse of what you can explore:
 
-Feel free to explore the features available in the free plan. If you'd like access to AI-powered insights, consider upgrading to Premium.
+*   Read & Listen: Access the complete Quran with multiple translations and reciters.
+*   Learn with AI Tafsir: Explore the meanings behind the verses with AI-powered explanations (Premium).
+*   Emotional Dua Search: Find relevant duas based on how you're feeling (Premium).
+*   Dua Insights: Gain deeper understanding of the virtues and context of specific duas (Premium).
+*   Bookmarks & History: Keep track of your favorite verses and reading progress.
 
-Happy learning!
+Start your journey today and unlock a richer connection to your faith.
 
-Best regards,
-The Nura AI Team
+Explore NuraAI Now: [YOUR_APP_URL]
+
+If you have any questions, feel free to reply to this email or visit our help section.
+
+May Allah grant you beneficial knowledge and success.
+
+Warm regards,
+The NuraAI Team
+
+© ${new Date().getFullYear()} NuraAI. All rights reserved.
     `.trim();
 
     const html = `
-<p>Hello ${userName || 'there'},</p>
-<p>Thank you for joining <strong>Nura AI</strong>! We're excited to have you.</p>
-<p>Explore the Quran, discover relevant duas, and deepen your understanding with our tools.</p>
-<p>Feel free to explore the features available in the free plan. If you'd like access to AI-powered insights, consider upgrading to Premium.</p>
-<p>Happy learning!</p>
-<p>Best regards,<br/>The Nura AI Team</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to NuraAI</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9; }
+        .header { text-align: center; margin-bottom: 25px; }
+        .logo { font-size: 28px; font-weight: bold; color: #1A365D; font-family: serif; }
+        .logo span { color: #B7A57A; }
+        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px; }
+        a { color: #B7A57A; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 10px; }
+        .footer { margin-top: 25px; text-align: center; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Nura<span>AI</span></div>
+            <h2>Assalamu alaikum wa rahmatullahi wa barakatuh!</h2>
+        </div>
+
+        <p>Welcome to NuraAI, ${userName || 'friend'}, your personal companion for deepening your understanding and connection with the Quran and Islamic teachings.</p>
+
+        <p>We're thrilled to have you join our community. Here's a glimpse of what you can explore:</p>
+
+        <ul>
+            <li>📖 <strong>Read & Listen:</strong> Access the complete Quran with multiple translations and reciters.</li>
+            <li>🧠 <strong>Learn with AI Tafsir:</strong> Explore the meanings behind the verses with AI-powered explanations (Premium).</li>
+            <li>💖 <strong>Emotional Dua Search:</strong> Find relevant duas based on how you're feeling (Premium).</li>
+            <li>💡 <strong>Dua Insights:</strong> Gain deeper understanding of the virtues and context of specific duas (Premium).</li>
+            <li>🔖 <strong>Bookmarks & History:</strong> Keep track of your favorite verses and reading progress.</li>
+        </ul>
+
+        <p>Start your journey today and unlock a richer connection to your faith.</p>
+
+        <div style="text-align: center;">
+            <a href="[YOUR_APP_URL]" class="button" style="color: #ffffff !important;">Explore NuraAI Now</a>
+        </div>
+
+        <p>If you have any questions, feel free to reply to this email or visit our help section.</p>
+
+        <p>May Allah grant you beneficial knowledge and success.</p>
+
+        <p>Warm regards,<br>The NuraAI Team</p>
+
+        <div class="footer">
+            You received this email because you signed up for NuraAI.
+            <br>
+            &copy; ${new Date().getFullYear()} NuraAI. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
     `.trim();
 
     try {
@@ -80,48 +144,106 @@ The Nura AI Team
 
   // Welcome email for PREMIUM subscription
   async sendWelcomeEmail(userEmail: string, userName: string): Promise<void> {
-    const subject = 'Welcome to Nura AI Premium!';
+    const subject = '🎉 JazakAllah Khair! Your NuraAI Premium Subscription is Active!';
     const text = `
-Hello ${userName || 'there'},
+Assalamu alaikum wa rahmatullahi wa barakatuh!
 
-Welcome to Nura AI Premium! We're thrilled to have you onboard.
+JazakAllah Khair for upgrading to NuraAI Premium, ${userName || 'friend'}! Your support helps us continue developing features to aid in understanding the Quran and Sunnah.
 
-You now have access to all our premium features, including:
-- AI Tafsir Chat
-- Emotional Dua Search
-- Dua Insights & Analysis
+Your Premium access is now active. You can immediately start using these powerful AI-driven features:
 
-We hope Nura AI helps you deepen your connection with the Quran.
+*   AI Tafsir Chat: Dive deep into Quranic verses. Ask questions and get detailed explanations.
+*   Emotional Dua Search: Find relevant duas based on how you're feeling.
+*   Dua Insights: Go beyond translation. Understand the virtues, benefits, and context of specific duas.
 
-Best regards,
-The Nura AI Team
+Explore these enhanced features now and enrich your spiritual journey.
+
+Start Exploring Premium: [YOUR_APP_URL]
+
+You can manage your subscription anytime from your profile page within the app.
+
+If you have any questions, please don't hesitate to contact us.
+
+May your journey with NuraAI be blessed,
+The NuraAI Team
+
+© ${new Date().getFullYear()} NuraAI. All rights reserved.
     `.trim();
 
     const html = `
-<p>Hello ${userName || 'there'},</p>
-<p>Welcome to <strong>Nura AI Premium</strong>! We're thrilled to have you onboard.</p>
-<p>You now have access to all our premium features, including:</p>
-<ul>
-  <li>AI Tafsir Chat</li>
-  <li>Emotional Dua Search</li>
-  <li>Dua Insights & Analysis</li>
-</ul>
-<p>We hope Nura AI helps you deepen your connection with the Quran.</p>
-<p>Best regards,<br/>The Nura AI Team</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NuraAI Premium Activated</title>
+     <style>
+        body { font-family: sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9; }
+        .header { text-align: center; margin-bottom: 25px; background-color: #1A365D; padding: 15px; border-radius: 8px 8px 0 0; }
+        .logo { font-size: 28px; font-weight: bold; color: #FAF3E0; font-family: serif; }
+        .logo span { color: #B7A57A; }
+        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px; }
+        a { color: #B7A57A; }
+        ul { padding-left: 20px; background-color: #ffffff; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;}
+        li { margin-bottom: 10px; display: flex; align-items: center; }
+        li strong { color: #1A365D; margin-left: 8px;}
+        .icon { color: #B7A57A; font-size: 1.2em; margin-right: 8px; } /* Basic icon styling */
+        .footer { margin-top: 25px; text-align: center; font-size: 12px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">Nura<span>AI</span></div>
+        </div>
+
+        <h2 style="color: #1A365D; text-align: center;">Assalamu alaikum wa rahmatullahi wa barakatuh!</h2>
+
+        <p><strong>JazakAllah Khair for upgrading to NuraAI Premium, ${userName || 'friend'}!</strong> Your support helps us continue developing features to aid in understanding the Quran and Sunnah.</p>
+
+        <p>Your Premium access is now active. You can immediately start using these powerful AI-driven features:</p>
+
+        <ul>
+             <li><span class="icon">🧠</span> <strong>AI Tafsir Chat:</strong> Dive deep into Quranic verses. Ask questions and get detailed explanations based on authentic tafsir, linguistic insights, and historical context.</li>
+             <li><span class="icon">💖</span> <strong>Emotional Dua Search:</strong> Feeling anxious, grateful, or seeking guidance? Describe your feelings, and NuraAI will suggest relevant duas, prophetic examples, and spiritual remedies.</li>
+             <li><span class="icon">💡</span> <strong>Dua Insights:</strong> Go beyond translation. Understand the virtues, benefits, historical context, and practical application of specific duas.</li>
+             <!-- Add any other specific premium features -->
+        </ul>
+
+        <p>Explore these enhanced features now and enrich your spiritual journey.</p>
+
+        <div style="text-align: center;">
+            <a href="[YOUR_APP_URL]" class="button" style="color: #ffffff !important;">Start Exploring Premium</a>
+        </div>
+
+         <p>You can manage your subscription anytime from your profile page within the app.</p>
+
+        <p>If you have any questions, please don't hesitate to contact us.</p>
+
+        <p>May your journey with NuraAI be blessed,<br>The NuraAI Team</p>
+
+         <div class="footer">
+            You received this email because you subscribed to NuraAI Premium.
+            <br>
+            &copy; ${new Date().getFullYear()} NuraAI. All rights reserved.
+        </div>
+    </div>
+</body>
+</html>
     `.trim();
 
     try {
       await this.transporter.sendMail({
-        from: process.env['SMTP_FROM'], // Use the configured sender email
-        to: userEmail,                   // Send to the user's email
+        from: process.env['SMTP_FROM'],
+        to: userEmail,
         subject: subject,
         text: text,
         html: html
       });
-      console.log(`Premium welcome email sent successfully to ${userEmail}`); // Log distinction
+      console.log(`Premium welcome email sent successfully to ${userEmail}`);
     } catch (error) {
       console.error(`Failed to send premium welcome email to ${userEmail}:`, error);
-      // Don't throw, log the error but continue
     }
   }
 

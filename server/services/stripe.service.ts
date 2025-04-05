@@ -1,6 +1,6 @@
 import Stripe from 'stripe';
 import { UserUsage } from '../models/UserUsage';
-import { Request } from 'express';
+import { Request, Response } from 'express';
 import { auth } from '../config/firebase';
 import { EmailService } from './email.service';
 import { UserSubscription, IUserSubscription } from '../models/UserSubscription';
@@ -160,324 +160,219 @@ export class StripeService {
         return this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
     }
 
-    async handleWebhookEvent(event: Stripe.Event): Promise<void> {
-        const adminEmail = process.env['ADMIN_EMAIL']; // Get admin email for notifications
+    async handleWebhookEvent(req: Request, res: Response): Promise<void> {
+        const sig = req.headers['stripe-signature'] as string;
+        let event: Stripe.Event;
+
         try {
-            const session = event.data.object as any; // Use 'any' carefully, consider more specific types if possible
-            let userId: string | null = null;
-            let stripeCustomerId: string | null = null;
-            let subscriptionId: string | null = null;
-            let subscriptionStatus: string | null = null;
-            let currentPeriodEnd: Date | null = null;
+            event = this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
+        } catch (err: any) {
+            console.error('[Webhook] Error verifying signature:', err.message);
+            res.status(400).send(`Webhook Error: ${err.message}`);
+            return;
+        }
 
-            // Extract common data based on event type
-            if (event.type === 'checkout.session.completed') {
-                stripeCustomerId = session.customer as string;
-                userId = session.client_reference_id;
-                subscriptionId = session.subscription as string;
-                // console.log(`[Webhook] Checkout completed for user ${userId}, customer ${stripeCustomerId}, sub ${subscriptionId}`);
+        console.log(`[Webhook] Received event: ${event.type}`);
 
-                 // Send notification to admin about new potential subscription
-                 if (adminEmail && userId) {
-                    const userRecord = await auth.getUser(userId);
-                    const subject = `🎉 New Potential Subscription Started (via Checkout)`;
-                    const text = `User ${userRecord.email} (${userId}) completed checkout. Awaiting 'customer.subscription.created' or 'customer.subscription.updated' to confirm activation.`;
-                    try {
-                        await this.emailService.sendEmail(adminEmail, subject, text);
-                    } catch (emailError) {
-                        console.error(`[Webhook] Failed to send new checkout notification email:`, emailError);
-                    }
-                 }
+        let userId: string | undefined;
+        let userSub: IUserSubscription | null = null;
+        const adminEmail = process.env['ALERT_EMAIL']; // Get admin email for notifications
 
-            } else if (event.type.startsWith('customer.subscription.')) {
-                const subscription = event.data.object as Stripe.Subscription;
-                subscriptionId = subscription.id;
-                stripeCustomerId = subscription.customer as string;
-                subscriptionStatus = subscription.status;
-                // Convert Unix timestamp (seconds) to JS Date object (milliseconds)
-                currentPeriodEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
-
-                // Find user subscription to get the userId
-                const userSub = await UserSubscription.findOne({ stripeSubscriptionId: subscriptionId });
-                if (userSub) {
-                    userId = userSub.userId;
-                    // console.log(`[Webhook] Subscription event ${event.type} for user ${userId}, sub ${subscriptionId}, status ${subscriptionStatus}`);
-                } else {
-                    // If it's a created event, the record might not exist yet. Try finding by customer ID.
-                    const userSubByCustomer = await UserSubscription.findOne({ stripeCustomerId });
-                    if (userSubByCustomer) {
-                        userId = userSubByCustomer.userId;
-                        // console.log(`[Webhook] Found user ${userId} via customer ID for subscription event ${event.type}`);
-                        // Update the subscription ID if it's missing or different (first time seeing it)
-                        if (!userSubByCustomer.stripeSubscriptionId || userSubByCustomer.stripeSubscriptionId !== subscriptionId) {
-                            userSubByCustomer.stripeSubscriptionId = subscriptionId;
-                            await userSubByCustomer.save();
-                             console.log(`[Webhook] Updated subscription ID for user ${userId} to ${subscriptionId}`);
-                        }
-                    } else {
-                        console.error(`[Webhook] UserSubscription not found for subscription ${subscriptionId} or customer ${stripeCustomerId} on event ${event.type}. Cannot determine userId.`);
-                        // Cannot proceed without userId for claim updates or user emails
-                        return;
-                    }
-                }
-            } else if (event.type === 'invoice.payment_failed') {
-                const invoice = event.data.object as Stripe.Invoice;
-                stripeCustomerId = invoice.customer as string;
-                 // Retrieve the subscription ID if available
-                 if (typeof invoice.subscription === 'string') {
-                    subscriptionId = invoice.subscription;
-                 } else if (invoice.subscription) {
-                    subscriptionId = invoice.subscription.id;
-                 }
-                 // Find user subscription to get the userId
-                 const userSub = await UserSubscription.findOne({ stripeCustomerId });
-                 if(userSub) {
-                    userId = userSub.userId;
-                     console.log(`[Webhook] Invoice payment failed for user ${userId}, customer ${stripeCustomerId}`);
-                 } else {
-                     console.error(`[Webhook] UserSubscription not found for customer ${stripeCustomerId} on invoice.payment_failed. Cannot determine userId.`);
-                     return; // Cannot proceed without userId
-                 }
-            }
-
-            // Ensure userId is found before proceeding with actions requiring it
-            if (!userId) {
-                console.error(`[Webhook] Could not determine userId for event ${event.type} (ID: ${event.id}). Aborting further processing for this event.`);
-                // Send critical error email to admin
-                if (adminEmail) {
-                    const subject = `🚨 CRITICAL Stripe Webhook Error: UserId Missing`;
-                    const text = `Could not determine userId for Stripe event type ${event.type} (ID: ${event.id}).
-Customer ID: ${stripeCustomerId}
-Subscription ID: ${subscriptionId}
-Manual investigation required.`;
-                    try {
-                        await this.emailService.sendEmail(adminEmail, subject, text);
-                    } catch (emailError) {
-                        console.error(`[Webhook] Failed to send critical error email:`, emailError);
-                    }
-                }
-                return;
-            }
-
-            // Get user email for user-facing notifications
-            let userEmail: string | undefined;
-            try {
-                const userRecord = await auth.getUser(userId);
-                userEmail = userRecord.email;
-            } catch (authError) {
-                console.error(`[Webhook] Failed to retrieve user email for ${userId}:`, authError);
-                // Decide if processing should continue without user email. For critical updates, it should.
-                // For user notifications, it cannot.
-            }
-
-
+        try {
+            // Process based on event type
             switch (event.type) {
                 case 'checkout.session.completed':
-                    // Handled above for extracting IDs, main logic in subscription events
+                    const session = event.data.object as Stripe.Checkout.Session;
+                    userId = session.metadata?.userId;
+                    if (!userId) {
+                        console.error('[Webhook] Error: userId missing in checkout session metadata', session.id);
+                        res.status(400).send('Webhook Error: Missing userId in metadata');
+                        return;
+                    }
+                    // Retrieve the subscription details if needed, or wait for subscription created event
+                    if (session.subscription) {
+                        const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+                        const subscriptionDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
+                        userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
+                        if (userSub) {
+                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd);
+                             console.log(`[Webhook] Updated claims based on checkout completion for user ${userId}`);
+                        } else {
+                            console.error(`[Webhook] Failed to update DB/claims after checkout for user ${userId}`);
+                        }
+                    }
                     break;
 
                 case 'customer.subscription.created':
                 case 'customer.subscription.updated':
-                    if (subscriptionStatus && stripeCustomerId && userId && subscriptionId) {
-                        const userSub = await UserSubscription.findOneAndUpdate(
-                            { userId },
-                            {
-                                stripeCustomerId,
-                                stripeSubscriptionId: subscriptionId,
-                                status: subscriptionStatus,
-                                currentPeriodEnd: currentPeriodEnd,
-                                updatedAt: new Date()
-                            },
-                            { upsert: true, new: true, setDefaultsOnInsert: true }
-                        );
-                         console.log(`[Webhook] Upserted UserSubscription for user ${userId}, status: ${userSub.status}`);
-                         await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd);
+                    const subscription = event.data.object as Stripe.Subscription;
+                    userId = subscription.metadata?.userId;
+                    if (!userId) {
+                        console.error('[Webhook] Error: userId missing in subscription metadata', subscription.id);
+                        res.status(400).send('Webhook Error: Missing userId in metadata');
+                        return;
+                    }
 
-                        // Send Welcome Email to USER only when subscription becomes active
-                        if (userEmail && (userSub.status === 'active' || userSub.status === 'trialing') && event.type === 'customer.subscription.created') {
-                            const subject = '🎉 Welcome to NuraAI Premium!';
-                            const text = `Assalamu alaikum,
+                    // Update subscription status in our database
+                    userSub = await this.updateUserSubscriptionStatus(userId, subscription);
+                    if (!userSub) {
+                        console.error(`[Webhook] Failed to update subscription in DB for user ${userId}, subscription ${subscription.id}`);
+                        // Still try to update claims based on Stripe data as fallback
+                    }
 
-Your NuraAI Premium subscription is now active!
+                    // Fetch user info from Firebase AFTER updating DB/getting userSub status
+                    let userEmail: string | undefined;
+                    let userName: string | undefined;
+                    try {
+                        const userRecord = await auth.getUser(userId);
+                        userEmail = userRecord.email;
+                        userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
+                    } catch (authError) {
+                        console.error(`[Webhook] Failed to fetch user ${userId} from Firebase Auth:`, authError);
+                    }
 
-You can now access exclusive features like AI Tafsir Chat, Emotional Dua Search, and Dua Insights.
+                    // Determine the status and period end to use for claims and emails
+                    const statusToUse = userSub?.status || subscription.status;
+                    const periodEndToUse = userSub?.currentPeriodEnd || (subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null);
 
-Explore your enhanced features now: [Link to App]
+                    // Update Firebase claims
+                    await this.updateFirebaseClaims(userId, statusToUse, periodEndToUse);
 
-JazakAllah Khair for your support.`;
-                            try {
-                                await this.emailService.sendEmail(userEmail, subject, text);
-                                console.log(`[Webhook] Sent welcome email to user ${userId}`);
-                            } catch (emailError) {
-                                console.error(`[Webhook] Failed to send welcome email to user ${userId}:`, emailError);
-                            }
+                    // Send Welcome Email to USER only when subscription becomes active/trialing on CREATION
+                    if (userEmail && (statusToUse === 'active' || statusToUse === 'trialing') && event.type === 'customer.subscription.created') {
+                        try {
+                            await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
+                            console.log(`[Webhook] Sent premium welcome email to user ${userId}`);
+                        } catch (emailError) {
+                            console.error(`[Webhook] Failed to send premium welcome email to user ${userId}:`, emailError);
                         }
+                    }
 
-                        // Send notification to ADMIN on creation/update for tracking
-                         if (adminEmail && (event.type === 'customer.subscription.created')) {
-                             const subject = `🚀 Subscription ${event.type === 'customer.subscription.created' ? 'Created' : 'Updated'} for ${userEmail || userId}`;
-                             const text = `User ${userEmail || userId} subscription details:
-Status: ${userSub.status}
-Sub ID: ${subscriptionId}
-Customer ID: ${stripeCustomerId}
-Period End: ${userSub.currentPeriodEnd?.toLocaleDateString()}`;
-                             try {
-                                 await this.emailService.sendEmail(adminEmail, subject, text);
-                             } catch (emailError) {
-                                 console.error(`[Webhook] Failed to send admin subscription notification email:`, emailError);
-                             }
-                         }
+                    // Send notification email to ADMIN
+                    if (adminEmail) {
+                        const subject = `🚀 Subscription ${event.type === 'customer.subscription.created' ? 'Created' : 'Updated'} for ${userEmail || userId}`;
+                        const text = `User ${userEmail || userId} subscription details:\nStatus: ${statusToUse}\nSub ID: ${subscription.id}\nCustomer ID: ${subscription.customer}\nPeriod End: ${periodEndToUse?.toLocaleDateString() || 'N/A'}`;
+                        try {
+                            await this.emailService.sendEmail(adminEmail, subject, text);
+                        } catch (emailError) {
+                            console.error(`[Webhook] Failed to send admin subscription notification email:`, emailError);
+                        }
                     }
                     break;
 
-                case 'customer.subscription.deleted': // User cancelled OR subscription ended naturally after cancellation
-                    if (userId && subscriptionId) {
-                         console.log(`[Webhook] Processing subscription deletion for user ${userId}, sub ${subscriptionId}`);
-                         const userSub = await UserSubscription.findOne({ userId, stripeSubscriptionId: subscriptionId });
+                case 'customer.subscription.deleted':
+                    const deletedSubscription = event.data.object as Stripe.Subscription;
+                    userId = deletedSubscription.metadata?.userId;
+                    if (!userId) {
+                        console.error('[Webhook] Error: userId missing in deleted subscription metadata', deletedSubscription.id);
+                        res.status(400).send('Webhook Error: Missing userId in metadata');
+                        return;
+                    }
 
-                         if (userSub) {
-                             // Mark as canceled instead of deleting, keep period end date
-                             userSub.status = 'canceled'; // Or potentially 'expired' if we want to differentiate
-                             userSub.currentPeriodEnd = null; // Set end date to null as access is revoked immediately by Stripe on delete? Or keep it? Check Stripe docs. Let's set to null for now.
-                             userSub.updatedAt = new Date();
-                             await userSub.save();
-                             console.log(`[Webhook] Marked UserSubscription as 'canceled' for user ${userId}`);
-                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd); // Update claims to remove premium access
+                    // Fetch user info for notifications
+                    let deletedUserEmail: string | undefined;
+                    try {
+                        const userRecord = await auth.getUser(userId);
+                        deletedUserEmail = userRecord.email;
+                    } catch (authError) {
+                        console.error(`[Webhook] Failed to fetch user ${userId} for deletion notification:`, authError);
+                    }
 
-                            // Send Cancellation Email to USER
-                            if (userEmail) {
-                                const subject = 'Your NuraAI Premium Subscription Has Been Cancelled';
-                                const text = `Assalamu alaikum,
+                    // Update DB status to 'canceled' instead of deleting
+                    const canceledSub = await UserSubscription.findOneAndUpdate(
+                        { userId: userId }, // Find by userId
+                        {
+                            status: 'canceled',
+                            currentPeriodEnd: null, // Indicate immediate cancellation/end
+                            cancelAtPeriodEnd: false,
+                            updatedAt: new Date()
+                        },
+                        { new: true } // Return the updated document
+                    );
 
-Your NuraAI Premium subscription has been cancelled.
+                    if (canceledSub) {
+                        console.log(`[Webhook] Marked UserSubscription as canceled for user ${userId}`);
+                         // Update claims to reflect cancellation
+                         await this.updateFirebaseClaims(userId, 'canceled', null);
+                    } else {
+                        console.warn(`[Webhook] No subscription found in DB to mark as canceled for user ${userId}`);
+                        // Still update claims as a safety measure
+                        await this.updateFirebaseClaims(userId, 'canceled', null);
+                    }
 
-Your access to premium features will end immediately (or based on Stripe's behavior for 'deleted' events).
+                    // Send Cancellation Email to User
+                    if (deletedUserEmail) {
+                        const subject = 'Your NuraAI Subscription Has Been Canceled';
+                        const text = `Assalamu alaikum,\n\nYour NuraAI Premium subscription has been canceled. Your access will continue until the end of your current billing period if applicable, otherwise it ends now.\n\nIf you believe this was in error, please contact support.\n\nWe hope to see you back soon!\n\nThe NuraAI Team`;
+                        // TODO: Add HTML version for cancellation email
+                        try {
+                            await this.emailService.sendEmail(deletedUserEmail, subject, text);
+                            console.log(`[Webhook] Sent cancellation email to user ${userId}`);
+                        } catch (emailError) {
+                            console.error(`[Webhook] Failed to send cancellation email to user ${userId}:`, emailError);
+                        }
+                    }
 
-If you believe this is an error, please contact support.
-
-We hope to see you back soon.
-
-JazakAllah Khair.`;
-                                try {
-                                    await this.emailService.sendEmail(userEmail, subject, text);
-                                    console.log(`[Webhook] Sent cancellation email to user ${userId}`);
-                                } catch (emailError) {
-                                    console.error(`[Webhook] Failed to send cancellation email to user ${userId}:`, emailError);
-                                }
-                            }
-
-                             // Send notification to ADMIN
-                             if (adminEmail) {
-                                 const subject = `❌ Subscription Cancelled/Deleted for ${userEmail || userId}`;
-                                 const text = `Subscription ${subscriptionId} for user ${userEmail || userId} was deleted via Stripe webhook.
-Status set to 'canceled'. Premium access revoked.`;
-                                 try {
-                                     await this.emailService.sendEmail(adminEmail, subject, text);
-                                 } catch (emailError) {
-                                     console.error(`[Webhook] Failed to send admin cancellation notification email:`, emailError);
-                                 }
-                             }
-
-                         } else {
-                             console.error(`[Webhook] UserSubscription not found for user ${userId} and sub ${subscriptionId} on deletion event.`);
-                             // Attempt to update claims based on userId anyway, assuming deletion means revoked access
-                             await this.updateFirebaseClaims(userId, 'canceled', null);
-                         }
+                    // Send Cancellation Notification to Admin
+                    if (adminEmail) {
+                        const subject = `❌ Subscription Canceled for ${deletedUserEmail || userId}`;
+                        const text = `User ${deletedUserEmail || userId} subscription has been canceled.\nStripe Sub ID: ${deletedSubscription.id}\nStripe Customer ID: ${deletedSubscription.customer}`;
+                        try {
+                            await this.emailService.sendEmail(adminEmail, subject, text);
+                        } catch (emailError) {
+                            console.error(`[Webhook] Failed to send admin cancellation notification email:`, emailError);
+                        }
                     }
                     break;
-
-                case 'invoice.payment_failed':
-                     // Logic for handling failed payments (notifications, etc.)
-                     if (userId && stripeCustomerId) {
-                         const userSub = await UserSubscription.findOne({ stripeCustomerId });
-                         if (userSub) {
-                             // Update status if necessary (e.g., to 'past_due')
-                             if (subscriptionId) { // Check if we got subscriptionId
-                                 try {
-                                     const subDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
-                                     if (userSub.status !== subDetails.status) {
-                                         userSub.status = subDetails.status; // e.g., 'past_due'
-                                         await userSub.save();
-                                         console.log(`[Webhook] Updated UserSubscription status to ${userSub.status} for user ${userSub.userId} after failed payment.`);
-                                         await this.updateFirebaseClaims(userSub.userId, userSub.status, userSub.currentPeriodEnd);
-                                     }
-                                 } catch (subError) {
-                                     console.error(`[Webhook] Error retrieving subscription ${subscriptionId} details after payment failure:`, subError);
-                                 }
-                             } else {
-                                console.warn(`[Webhook] Could not retrieve subscription details for failed payment event ${event.id} as subscription ID was not found on the invoice.`);
-                             }
-                             // Send Payment Failed Email to USER
-                             if (userEmail) {
-                                const subject = '⚠️ NuraAI Subscription Payment Failed';
-                                const text = `Assalamu alaikum,
-
-We were unable to process the payment for your NuraAI Premium subscription.
-
-Please update your payment method to avoid interruption of service: [Link to Billing Portal or Instructions]
-
-If you have already updated your payment method, please disregard this email.
-
-JazakAllah Khair.`;
-                                try {
-                                    await this.emailService.sendEmail(userEmail, subject, text);
-                                     console.log(`[Webhook] Sent payment failed email to user ${userId}`);
-                                } catch (emailError) {
-                                    console.error(`[Webhook] Failed to send payment failed email to user ${userId}:`, emailError);
-                                }
-                            }
-
-                         } else {
-                             console.error(`[Webhook] UserSubscription not found for customer ${stripeCustomerId} on invoice.payment_failed`);
-                         }
-                      }
-                     break;
 
                 default:
                     console.log(`[Webhook] Unhandled event type ${event.type}`);
             }
         } catch (error) {
-             console.error('[Webhook] Error processing webhook event:', error);
-             // Re-throw or handle error appropriately, maybe notify admin
-             if (adminEmail) {
-                 const subject = `🚨 Stripe Webhook Processing Error`;
-                 const text = `Error processing Stripe webhook event type ${event.type}.\nError: ${error instanceof Error ? error.message : String(error)}\nEvent ID: ${event.id}`;
-                 try {
-                     await this.emailService.sendEmail(adminEmail, subject, text);
-                 } catch (emailError) {
-                     console.error(`[Webhook] Failed to send webhook error email:`, emailError);
-                 }
-             }
+            console.error('[Webhook] Internal error handling event:', error);
+            // Send generic error response? Avoid sending error details.
+            res.status(500).send('Internal Server Error');
+            return;
+        }
+
+        // Send a 200 OK response to acknowledge receipt of the event
+        res.json({ received: true });
+    }
+
+    private async updateFirebaseClaims(userId: string, status: string, periodEnd: Date | null): Promise<void> {
+        try {
+            const claims = {
+                subscriptionStatus: status,
+                premium: status === 'active' || status === 'trialing',
+                subscriptionEnd: periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null
+            };
+            await auth.setCustomUserClaims(userId, claims);
+            console.log(`[StripeService] Updated Firebase claims for user ${userId}:`, claims);
+        } catch (error) {
+            console.error(`[StripeService] Error setting custom claims for user ${userId}:`, error);
         }
     }
 
-    private async updateFirebaseClaims(userId: string, status: string, currentPeriodEnd: Date | null): Promise<void> {
+    private async updateUserSubscriptionStatus(userId: string, subscription: Stripe.Subscription): Promise<IUserSubscription | null> {
         try {
-            const isPremium = status === 'active' || status === 'trialing';
-            // Ensure currentPeriodEnd is a valid Date before calling getTime()
-            const subscriptionEndTimestamp = (status === 'canceled' && currentPeriodEnd instanceof Date)
-                ? currentPeriodEnd.getTime() / 1000 // Convert JS ms timestamp to Unix seconds
-                : null;
-
-            const claimsToSet = {
-                premium: isPremium,
-                subscriptionStatus: status,
-                subscriptionEnd: subscriptionEndTimestamp, // Unix timestamp (seconds) or null
-                 // Update features based on premium status
-                 features: {
-                     emotionalDuaSearch: isPremium,
-                     aiTafsirChat: isPremium,
-                     duaInsights: isPremium,
-                     // Add other features here
-                 }
-            };
-
-             console.log(`[Claims] Setting Firebase custom claims for user ${userId}:`, claimsToSet);
-             await auth.setCustomUserClaims(userId, claimsToSet);
-             console.log(`[Claims] Successfully set custom claims for user ${userId}.`);
+            const userSub = await UserSubscription.findOneAndUpdate(
+                { userId },
+                {
+                    stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
+                    stripeSubscriptionId: subscription.id,
+                    status: subscription.status,
+                    planId: subscription.items.data[0]?.price.id,
+                    currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
+                    cancelAtPeriodEnd: subscription.cancel_at_period_end,
+                    updatedAt: new Date()
+                },
+                { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+            console.log(`[StripeService] Upserted UserSubscription for user ${userId}, status: ${userSub.status}`);
+            return userSub;
         } catch (error) {
-             console.error(`[Claims] Error setting custom claims for user ${userId}:`, error);
-             // Optionally notify admin about claim update failures
+            console.error(`[StripeService] Error updating UserSubscription for ${userId}:`, error);
+            return null;
         }
     }
 

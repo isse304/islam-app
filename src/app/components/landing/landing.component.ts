@@ -124,12 +124,4 @@ export class LandingComponent implements OnInit, OnDestroy {
       featuresSection.scrollIntoView({ behavior: 'smooth' });
     }
   }
-
-  onEarlyAccessSubmit() {
-    if (this.earlyAccessEmail) {
-      console.log('Early access email submitted:', this.earlyAccessEmail);
-      this.router.navigate(['/thank-you']);
-      this.earlyAccessEmail = '';
-    }
-  }
 } 

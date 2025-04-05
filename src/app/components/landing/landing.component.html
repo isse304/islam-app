@@ -325,30 +325,31 @@
       Be the first to know when NuraAI launches. Enter your email below.
     </p>
 
-    <form (ngSubmit)="onEarlyAccessSubmit()" class="max-w-xl mx-auto flex flex-col sm:flex-row items-stretch gap-4">
+    <form
+      action="https://formspree.io/f/xeoagdgz"
+      method="POST"
+      ngNoForm
+      class="max-w-xl mx-auto flex flex-col sm:flex-row items-stretch gap-4">
       <label for="early-access-email" class="sr-only">Email address</label>
-      <input 
-        type="email" 
-        id="early-access-email" 
-        name="earlyAccessEmail" 
-        [(ngModel)]="earlyAccessEmail" 
-        #emailInput="ngModel"
-        required 
+      <!-- Hidden input for Formspree redirect -->
+      <input type="hidden" name="_next" value="https://nuraai.com/thank-you"> <!-- CHANGE URL IF NEEDED -->
+
+      <input
+        type="email"
+        id="early-access-email"
+        name="email"
+        required
         email
         placeholder="Enter your email address"
         class="flex-grow px-4 py-3 rounded-md bg-gray-700/50 text-white border border-gray-600 focus:border-[#B7A57A] focus:ring-[#B7A57A] focus:outline-none transition-colors placeholder-gray-400"
       >
-      <button 
-        type="submit" 
-        [disabled]="!emailInput.valid"
+      <button
+        type="submit"
         class="px-8 py-3 rounded-md bg-[#B7A57A] hover:bg-[#a8966c] text-white transition-colors text-lg font-semibold shadow-lg transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Notify Me
       </button>
     </form>
-    <div *ngIf="emailInput.invalid && (emailInput.dirty || emailInput.touched)" class="text-center mt-2 text-red-400 text-sm">
-      Please enter a valid email address.
-    </div>
   </div>
 </div>
 
