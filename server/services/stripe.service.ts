@@ -63,11 +63,23 @@ export class StripeService {
         let userSubscription = await UserSubscription.findOne({ userId });
         let stripeCustomerId: string | undefined;
 
-        if (userSubscription && userSubscription.stripeCustomerId) {
+        // --- ADD TEST MODE CHECK ---
+        const isTestMode = process.env['STRIPE_SECRET_KEY']?.startsWith('sk_test_');
+        // -------------------------
+
+        if (userSubscription && userSubscription.stripeCustomerId && !isTestMode) { // <-- Check for !isTestMode
+            // Only use existing customer ID if NOT in test mode OR if it's guaranteed to be a test customer ID
+            // For simplicity, we'll just force new customer creation in test mode if an ID is found
             stripeCustomerId = userSubscription.stripeCustomerId;
             console.log(`[Stripe] Found existing Stripe Customer ID: ${stripeCustomerId} for user ${userId}`);
-        } else {
-            try {
+        } else if (isTestMode && userSubscription && userSubscription.stripeCustomerId) {
+             console.log(`[Stripe] TEST MODE: Ignoring potentially live customer ID ${userSubscription.stripeCustomerId} found for user ${userId}. Will create a new test customer.`);
+             // Let stripeCustomerId remain undefined so a new one is created below
+        }
+        
+        // If no valid stripeCustomerId is set yet (either not found, or ignored in test mode)
+        if (!stripeCustomerId) {
+           try {
                 // Fetch user email from Firebase Auth
             const userRecord = await auth.getUser(userId);
                 const email = userRecord.email;
@@ -76,7 +88,7 @@ export class StripeService {
                     console.warn(`[Stripe] User ${userId} does not have an email address in Firebase Auth. Creating Stripe customer without email.`);
                 }
 
-                console.log(`[Stripe] Creating new Stripe Customer for user ${userId}${email ? ' with email ' + email : ''}`);
+                console.log(`[Stripe] Creating new Stripe Customer for user ${userId}${email ? ' with email ' + email : ''} (Mode: ${isTestMode ? 'Test' : 'Live'})`);
                 const customer = await this.stripe.customers.create({
                     email: email, // Associate email if available
                     metadata: { firebaseUID: userId } // Link Firebase UID in metadata
