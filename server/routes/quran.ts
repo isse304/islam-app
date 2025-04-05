@@ -1,9 +1,9 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 
 const router = express.Router();
 
 // Get translations list
-router.get('/translations', (req: Request, res: Response) => {
+router.get('/translations', (req: Request, res: Response, next: NextFunction) => {
   try {
     const translations = [
       { id: '131', name: 'Sahih International', language: 'en' },
@@ -22,7 +22,7 @@ router.get('/translations', (req: Request, res: Response) => {
     res.json(translations);
   } catch (error) {
     console.error('Error fetching translations:', error);
-    res.status(500).json({ error: 'Failed to retrieve translations' });
+    next(error);
   }
 });
 

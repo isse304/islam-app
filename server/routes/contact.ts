@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { EmailService } from '../services/email.service';
 import { body, validationResult } from 'express-validator';
 import rateLimit from 'express-rate-limit';
@@ -20,7 +20,7 @@ const validateContactForm = [
   body('message').trim().notEmpty().withMessage('Message is required.').escape(),
 ];
 
-router.post('/', contactLimiter, validateContactForm, async (req: Request, res: Response) => {
+router.post('/', contactLimiter, validateContactForm, async (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -31,7 +31,6 @@ router.post('/', contactLimiter, validateContactForm, async (req: Request, res: 
   try {
     // Call the new public method in EmailService
     await emailService.sendContactSubmission(name, email, message);
-
     res.status(200).json({ message: 'Email sent successfully!' });
   } catch (error) {
     console.error('Error sending contact form email:', error);
@@ -39,7 +38,8 @@ router.post('/', contactLimiter, validateContactForm, async (req: Request, res: 
     if (error instanceof Error && error.message.includes("No contact email recipient set")) {
         res.status(500).json({ error: 'Server configuration error. Cannot process contact request.' });
     } else {
-        res.status(500).json({ error: 'Failed to send email.' });
+        // Pass the error to the centralized handler
+        next(error);
     }
   }
 });

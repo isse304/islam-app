@@ -101,4 +101,23 @@ html, body {
   background: rgba(0, 0, 0, 0.8) !important;
   padding: 8px 16px !important;
   color: white !important;
+}
+
+/* SnackBar Custom Styles */
+.error-snackbar {
+  background-color: #f44336; /* Red */
+  color: white;
+}
+
+.error-snackbar .mdc-snackbar__action { /* Material v15+ syntax */
+  color: #ffccbc; /* Light Red for action */
+}
+
+.success-snackbar {
+  background-color: #4CAF50; /* Green */
+  color: white;
+}
+
+.success-snackbar .mdc-snackbar__action { /* Material v15+ syntax */
+  color: #c8e6c9; /* Light Green for action */
 } 

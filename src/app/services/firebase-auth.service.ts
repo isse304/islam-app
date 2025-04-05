@@ -461,23 +461,11 @@ export class FirebaseAuthService {
   }
 
   async isAuthenticated(): Promise<boolean> {
-    try {
-      console.log('🔒 Checking authentication...');
-      const user = await this.getCurrentUser();
-      const isAuth = !!user;
-      console.log('🔒 Auth check result:', { 
-        isAuthenticated: isAuth,
-        user: user ? {
-          uid: user.uid,
-          email: user.email,
-          isAnonymous: user.isAnonymous
-        } : null
-      });
-      return isAuth;
-    } catch (error) {
-      console.error('❌ Error checking authentication:', error);
-      return false;
-    }
+    // console.log('🔒 Checking authentication...');
+    await this.waitForAuthReady(); // Ensure listener has processed initial state
+    const user = this._user.getValue();
+    // console.log('🔒 Auth check result:', { isAuthenticated: !!user, user });
+    return !!user;
   }
 
   async refreshSubscriptionStatus(): Promise<boolean> {
@@ -562,18 +550,19 @@ export class FirebaseAuthService {
         }
         const userId = user.uid;
 
-        // --- Enhanced Caching ---
-        const cacheKey = `user_prefs_${userId}`;
-        const cachedData = this.getCachedData(cacheKey); // Use helper with REQUEST_CACHE_DURATION
-        if (cachedData) {
-            console.log(`[AuthService] getUserPreferences: Returning cached data for ${userId}`);
-            this.preferencesSubject.next(cachedData); // Ensure BehaviorSubject is updated
-            return cachedData;
+        // Check cache first
+        // console.log(`[AuthService] getUserPreferences: Checking cache for user ${userId}...`);
+        const cachedData = this.getCachedData(`${this.USER_CACHE_KEY}_${userId}`);
+        if (cachedData && cachedData.preferences) {
+          // console.log(`[AuthService] getUserPreferences: Cache hit for user ${userId}.`);
+          this.preferencesSubject.next(cachedData.preferences);
+          return cachedData.preferences;
         }
-        // --- End Enhanced Caching ---
 
-        console.log(`[AuthService] getUserPreferences: Cache miss or stale for ${userId}. Fetching from API...`);
-        // Get fresh token (interceptor should handle it, but force refresh if needed)
+        // console.log(`[AuthService] getUserPreferences: Cache miss or stale for user ${userId}. Fetching from API...`);
+        this.lastPreferencesRequest = Date.now();
+
+        // Fetch from API if not cached or cache expired
         const token = await user.getIdToken();
         if (!token) {
             console.error('getUserPreferences: Failed to get auth token');
@@ -595,8 +584,8 @@ export class FirebaseAuthService {
         const preferencesToCache = response?.preferences || this.getDefaultPreferences();
 
         // --- Update Cache ---
-        console.log(`[AuthService] getUserPreferences: Caching new data for ${userId}`);
-        this.setCachedData(cacheKey, preferencesToCache);
+        // console.log(`[AuthService] getUserPreferences: Caching new data for ${userId}`);
+        this.setCachedData(`${this.USER_CACHE_KEY}_${userId}`, { preferences: preferencesToCache });
         // --- End Update Cache ---
 
         this.preferencesSubject.next(preferencesToCache);
@@ -783,7 +772,7 @@ export class FirebaseAuthService {
   // Handle redirect result
   private async handleRedirectResult(): Promise<void> {
     try {
-      console.log("Checking for redirect result...");
+      // console.log("Checking for redirect result...");
       const result = await getRedirectResult(this.auth);
       if (result) {
         console.log("Redirect result found:", result.user.uid);
@@ -793,7 +782,7 @@ export class FirebaseAuthService {
         // We might store the credential if needed for linking later, but not essential now.
         // const credential = GoogleAuthProvider.credentialFromResult(result); // or FacebookAuthProvider
       } else {
-        console.log("No redirect result found.");
+        // console.log("No redirect result found.");
       }
     } catch (error) {
       console.error("Error getting redirect result:", error);
@@ -1028,8 +1017,8 @@ export class FirebaseAuthService {
         const originalHistory: ReadingHistoryEntry[] = originalData.history ?? [];
         const optimisticallyUpdatedHistory = this.addOrUpdateHistoryEntry(originalHistory, entry);
         this.userDataSubject.next({ ...originalData, history: optimisticallyUpdatedHistory });
-        console.log('[AuthService] userDataSubject emitted after optimistic update:', JSON.stringify(this.userDataSubject.getValue())); 
-        console.log('[AuthService] Optimistically updated history:', entry);
+        // console.log('[AuthService] userDataSubject emitted after optimistic update:', updatedUserData);
+        // console.log('[AuthService] Optimistically updated history:', entry);
     } catch (optimisticError) {
         console.error('[AuthService] Error during optimistic history update:', optimisticError);
         return; 
@@ -1041,7 +1030,7 @@ export class FirebaseAuthService {
         const token = await this.getToken(true); // Get fresh token for each attempt potentially needed
         if (!token) throw new Error('Authentication token unavailable for saving history.');
 
-        console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
+        // console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
         await firstValueFrom(
           this.http.post<any>(
             `${environment.apiUrl}/api/users/${userId}/reading-history`, 
@@ -1051,7 +1040,7 @@ export class FirebaseAuthService {
         );
 
         // Server call successful, the optimistic update is now confirmed.
-        console.log('[AuthService] Reading history saved successfully on server.');
+        // console.log('[AuthService] Reading history saved successfully on server.');
         return; // Exit loop on success
 
       } catch (error: any) {
@@ -1061,7 +1050,7 @@ export class FirebaseAuthService {
         if (!reverted) {
             console.warn('[AuthService] Reverting optimistic history update due to server error.');
             this.userDataSubject.next(originalData); // Restore original state
-            console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
+            // console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
             reverted = true;
             // Optionally show a snackbar/message to the user about the failure
         }
@@ -1238,44 +1227,39 @@ export class FirebaseAuthService {
 
   // Check if user has premium status
   async isPremiumUser(): Promise<boolean> {
-    console.log("Checking isPremiumUser...");
-    await this.authReady; // Ensure auth state is initialized
-
-    const firebaseUser = this.auth.currentUser;
+    // console.log("Checking isPremiumUser...");
+    await this.waitForAuthReady(); // Ensure auth state is initialized
+    const firebaseUser = this.auth.currentUser; // Use the correct firebase user object
     if (!firebaseUser) {
-      console.log("isPremiumUser: No Firebase user found.");
-      return false; // Not logged in, definitely not premium
+       // console.log("isPremiumUser: No Firebase user found.");
+       return false; // Not logged in, definitely not premium
     }
-
-    const currentUserState = this._user.value;
-    if (!currentUserState) {
-      console.log("isPremiumUser: No user state found in BehaviorSubject.");
-      // Fallback needed - potentially check claims again or wait longer?
-    }
+    const user = this._user.getValue(); // Get current internal state
 
     // 1. Check local state first (fastest)
-    if (currentUserState?.isPremium) {
-      console.log(`isPremiumUser: Returning true based on local user state.`);
+    if (user?.isPremium) {
+      // console.log(`isPremiumUser: Returning true based on local user state.`);
       return true;
     }
 
-    // 2. If local state is false/missing, verify with token claims (more reliable)
-    console.log("isPremiumUser: Local state is false or missing. Verifying with token claims...");
+    // 2. If local state is false/missing, verify with token claims
+    // console.log("isPremiumUser: Local state is false or missing. Verifying with token claims...");
     try {
       const tokenResult = await firebaseUser.getIdTokenResult(true); // Force refresh for latest claims
       const claims = tokenResult.claims;
       const isPremium = claims['premium'] === true && claims['subscriptionStatus'] === 'active';
-      console.log(`isPremiumUser: Fetched premium status from current claims: ${isPremium}`);
+      // console.log(`isPremiumUser: Fetched premium status from current claims: ${isPremium}`);
 
       // Update local state if claims indicate premium but local state didn't
-      if (isPremium && (!currentUserState || !currentUserState.isPremium)) {
-        console.log("isPremiumUser: Updating local state to true based on claims.");
-        this._user.next({ ...currentUserState, id: firebaseUser.uid, uid: firebaseUser.uid, isPremium: true, subscriptionStatus: 'active' } as AppUser);
+      if (isPremium && (!user || !user.isPremium)) {
+        // console.log("isPremiumUser: Updating local state to true based on claims.");
+        this._user.next({ ...user, id: firebaseUser.uid, uid: firebaseUser.uid, isPremium: true, subscriptionStatus: 'active' } as AppUser);
       }
 
+      // console.log(`[AuthService] isPremiumUser: Returning ${isPremium}`);
       return isPremium;
-    } catch (claimError) {
-      console.error("isPremiumUser: Error fetching token claims:", claimError);
+    } catch (error) {
+      console.error("isPremiumUser: Error fetching token claims:", error);
       // If fetching claims fails, return false as we can't verify
       return false;
     }
@@ -1347,7 +1331,7 @@ export class FirebaseAuthService {
       if (Date.now() - timestamp < this.REQUEST_CACHE_DURATION) {
         return data;
       }
-      console.log(`[AuthService] Cache expired for key: ${key}`);
+      // console.log(`[AuthService] Cache expired for key: ${key}`);
       localStorage.removeItem(key); // Remove expired cache item
       return null;
     } catch (error) {

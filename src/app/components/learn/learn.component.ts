@@ -1,7 +1,7 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
-import { Router, RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 import { firstValueFrom, Subscription, switchMap, tap } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -47,7 +47,6 @@ interface AIResponse {
   imports: [
     CommonModule,
     FormsModule,
-    RouterModule,
     MatButtonModule,
     MatCardModule,
     MatFormFieldModule,
@@ -82,6 +81,8 @@ export class LearnComponent implements OnInit, OnDestroy {
   private lastSurahVerse: string = '';
   private isFirstResponse: boolean = true;
   private initSubscription: Subscription | null = null; // Subscription for ngOnInit async ops
+  initialPremiumCheckComplete: boolean = false; // Flag for initial check
+  isPremium: boolean = false; // Store premium status
 
   private conversationContext: {
     lastTopic?: string;
@@ -104,40 +105,41 @@ export class LearnComponent implements OnInit, OnDestroy {
     public firebaseAuthService: FirebaseAuthService,
     private tafsirDatabaseService: TafsirDatabaseService,
     private apiService: ApiService,
-    public router: Router
+    public router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
+    this.initialPremiumCheckComplete = false;
+    this.isLoading = true;
     // Restore state synchronously first
     this.restoreState();
+    this.cdr.detectChanges(); // Manually trigger change detection after restoring state
 
     // Use RxJS chain for initialization
     this.initSubscription = this.quranService.surahs$.pipe(
       take(1), // Ensure we get the first populated list
       tap(surahs => {
         this.surahs = surahs; // Assign the loaded surahs to the component property
-        // console.log('[LearnComponent] Surah list loaded via surahs$.');
       }),
-      // After surah list is confirmed loaded, proceed
-      switchMap(() => {
-        // console.log('[LearnComponent] Proceeding to updateVerseCount.');
-        // Wrap updateVerseCount in a promise-like structure if needed, or handle its async nature
-        // Since updateVerseCount is async, we convert its promise back to an observable
-        return from(this.updateVerseCount(false));
-      }),
-      // Potentially chain other async operations needed after verse count update
-      // switchMap(() => from(this.loadVerse())), // loadVerse is called within updateVerseCount
+      switchMap(() => from(this.updateVerseCount(false))),
+      // Perform the initial premium check
       switchMap(() => from(this.checkPremiumStatus()))
     ).subscribe({
-      next: () => {
-        // console.log('[LearnComponent] Initialization sequence complete.');
-        // Setup auth check interval after main init is done
-        this.setupAuthCheck();
+      next: (isPremiumResult) => {
+        this.isPremium = isPremiumResult; // Store the result
+        this.initialPremiumCheckComplete = true; // Mark initial check as done
+        this.isLoading = false; // Stop loading AFTER checks
+        // console.log('[LearnComponent] Initialization sequence complete. Premium:', this.isPremium);
+        if (this.isPremium) {
+             this.setupAuthCheck(); // Only setup periodic check if initially premium
+        }
       },
       error: (error) => {
         console.error('Error during LearnComponent initialization:', error);
-        // Handle initialization error (e.g., show error message)
+        this.initialPremiumCheckComplete = true; // Still mark as complete even on error
         this.isLoading = false; // Ensure loading stops on error
+        // Handle initialization error (e.g., show error message)
       }
     });
   }
@@ -153,18 +155,30 @@ export class LearnComponent implements OnInit, OnDestroy {
 
   private setupAuthCheck() {
     // Check premium status periodically
-    this.authCheckInterval = setInterval(() => {
-      this.checkPremiumStatus();
+    // Only run if the component should be active (i.e., user is premium)
+    if (!this.isPremium) return; // Extra safety check
+    this.authCheckInterval = setInterval(async () => {
+      const stillPremium = await this.firebaseAuthService.isPremiumUser();
+      if (!stillPremium && this.isPremium) {
+         // If status changed from premium to non-premium while using
+         this.isPremium = false;
+         this.subscriptionService.showSubscriptionPage('Learn Feature');
+         clearInterval(this.authCheckInterval); // Stop checking
+      }
+      this.isPremium = stillPremium; // Update status
     }, this.AUTH_CHECK_INTERVAL);
   }
 
-  private async checkPremiumStatus() {
-    const isPremium = await this.firebaseAuthService.isPremiumUser();
-    if (!isPremium) {
-      this.subscriptionService.showSubscriptionPage('Learn Feature');
-      return false;
-    }
-    return true;
+  private async checkPremiumStatus(): Promise<boolean> { // Return boolean
+    const isPremiumCheck = await this.firebaseAuthService.isPremiumUser();
+    this.isPremium = isPremiumCheck; // Update local state
+    // REMOVED: Don't redirect from within the component during init.
+    // The premiumGuard handles route access.
+    // if (!isPremiumCheck) {
+    //   this.subscriptionService.showSubscriptionPage('Learn Feature');
+    //   return false;
+    // }
+    return isPremiumCheck; // Simply return the status
   }
 
   private saveState() {
@@ -296,7 +310,7 @@ export class LearnComponent implements OnInit, OnDestroy {
         });
 
         // Added logging
-        console.log(`[LearnComponent] Verse changed to ${currentVerseRef}, state saved locally and history save triggered.`);
+        // console.log(`[LearnComponent] Verse changed to ${currentVerseRef}, state saved locally and history save triggered.`);
       }
       
       // Handle Bismillah for first verses

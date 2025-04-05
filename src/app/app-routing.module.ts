@@ -2,7 +2,7 @@ import { NgModule, Injectable, inject } from '@angular/core';
 import { RouterModule, Routes, CanActivate, Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree, ResolveFn } from '@angular/router';
 import { Observable, map, take, of, from, switchMap } from 'rxjs';
 
-import { AuthGuard } from './guards/auth.guard';
+import { authGuardFn } from './guards/auth.guard';
 import { premiumGuard } from './guards/premium.guard';
 import { HomeComponent } from './components/home/home.component';
 import { LandingComponent } from './components/landing/landing.component';
@@ -40,40 +40,6 @@ export class NoAuthGuard implements CanActivate {
   }
 }
 
-export const premiumResolver: ResolveFn<boolean> = 
-  (route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> => {
-    const authService = inject(FirebaseAuthService);
-    const router = inject(Router);
-    const subscriptionService = inject(SubscriptionService);
-    const feature = route.data['feature'] || 'Premium Feature';
-
-    return from(authService.waitForAuthReady()).pipe(
-      switchMap(() => authService.user$.pipe(take(1))),
-      map((user: AppUser | null): boolean => {
-        if (!user) {
-          // console.warn('PremiumResolver: No authenticated user found.');
-          return false;
-        }
-
-        const now = Math.floor(Date.now() / 1000);
-        const subEnd = user.subscriptionEnd;
-        
-        // console.log(`PremiumResolver Check: User UID: ${user.uid}, isPremium: ${user.isPremium}, subscriptionEnd: ${subEnd ? new Date(subEnd * 1000) : 'N/A'}`);
-
-        const hasActivePremium = user.isPremium && (!subEnd || now < subEnd);
-
-        if (hasActivePremium) {
-          // console.log('PremiumResolver: Access granted, resolving true.');
-          return true;
-        } else {
-          // console.log(`PremiumResolver: Access denied. Redirecting to subscription page for feature: ${feature}`);
-          subscriptionService.showSubscriptionPage(feature);
-          return false;
-        }
-      })
-    );
-};
-
 const routes: Routes = [
   {
     path: 'auth',
@@ -94,7 +60,7 @@ const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
-    canActivate: [AuthGuard],
+    canActivate: [authGuardFn],
     children: [
       {
         path: '',
@@ -109,7 +75,6 @@ const routes: Routes = [
         path: 'learn',
         loadComponent: () => import('./components/learn/learn.component').then(m => m.LearnComponent),
         canActivate: [premiumGuard],
-        resolve: { isPremium: premiumResolver },
         data: { feature: 'Learn Quran' }
       },
       {

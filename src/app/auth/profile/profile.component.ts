@@ -438,7 +438,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
   
   goToHistoryEntry(entry: ReadingHistory): void {
-    this.router.navigate(['/read', entry.surah, entry.verse]);
+    // Navigate to /quran and pass surah/verse as query parameters
+    this.router.navigate(['/quran'], { 
+      queryParams: { 
+        surah: entry.surah, 
+        verse: entry.verse 
+      } 
+    });
   }
   
   async clearHistory(): Promise<void> {

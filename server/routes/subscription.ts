@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { StripeService } from '../services/stripe.service';
 import { withAuth, AuthenticatedRequest } from '../middleware/auth';
 import { auth } from '../config/firebase';
@@ -9,7 +9,7 @@ const emailService = new EmailService();
 const stripeService = new StripeService(emailService);
 
 // Create checkout session
-router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const userId = req.auth!.uid;
     
@@ -21,12 +21,12 @@ router.post('/create-checkout', withAuth(async (req: AuthenticatedRequest, res: 
     res.json({ url: session.url });
   } catch (error) {
     console.error('Error creating checkout session:', error);
-    res.status(500).json({ error: 'Failed to create checkout session' });
+    next(error);
   }
 }));
 
 // Create customer portal session
-router.post('/create-customer-portal-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/create-customer-portal-session', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   console.log('Request received for /create-customer-portal-session');
   try {
     const userId = req.auth!.uid;
@@ -48,48 +48,66 @@ router.post('/create-customer-portal-session', withAuth(async (req: Authenticate
     } else {
         res.status(500).json({ error: errorMessage });
     }
+    next(error);
   }
 }));
 
 // Handle webhook events
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response) => {
+router.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response, next: NextFunction) => {
   try {
     await stripeService.handleWebhookEvent(req, res);
   } catch (error) {
     console.error('Error during webhook processing in route:', error);
     if (!res.headersSent) {
-        res.status(500).json({ error: 'Internal server error processing webhook' });
+        next(error);
     }
   }
 });
 
 // Get subscription status
-router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   console.log('Subscription status request received');
   try {
     const userId = req.auth!.uid;
-    
     console.log('Getting subscription status for user:', userId);
-    
-    const status = await stripeService.getSubscriptionStatus(userId);
-    console.log('Subscription status retrieved:', status);
 
+    // 1. Fetch Firebase custom claims
+    let claims: any = {};
+    try {
+      const userRecord = await auth.getUser(userId);
+      claims = userRecord.customClaims || {};
+      console.log(`[GET /status] Fetched claims for ${userId}:`, claims);
+    } catch (claimError) {
+      console.error(`[GET /status] Error fetching claims for ${userId}:`, claimError);
+      // Decide if we should proceed without claims or return an error
+      // For now, proceed and rely on DB status
+    }
+
+    // 2. Fetch status from MongoDB (as fallback or for comparison)
+    const dbStatus = await stripeService.getSubscriptionStatus(userId);
+    console.log(`[GET /status] Fetched DB status for ${userId}:`, dbStatus);
+
+    // 3. Determine effective status (prioritize claims)
+    const isPremiumClaim = claims.premium === true || claims.subscriptionStatus === 'active';
+    const effectiveStatus = isPremiumClaim ? 'active' : (dbStatus || 'inactive');
+    console.log(`[GET /status] Effective status for ${userId}: ${effectiveStatus} (Claim: ${isPremiumClaim}, DB: ${dbStatus})`);
+
+    // 4. Construct response based on effective status
     res.json({
       success: true,
-      status: status || 'inactive',
-      plan: status === 'active' ? 'premium' : 'free',
+      status: effectiveStatus,
+      plan: effectiveStatus === 'active' ? 'premium' : 'free',
       features: {
-        emotionalDuaSearch: status === 'active',
-        aiTafsirChat: status === 'active',
-        duaInsights: status === 'active'
+        emotionalDuaSearch: effectiveStatus === 'active',
+        aiTafsirChat: effectiveStatus === 'active',
+        duaInsights: effectiveStatus === 'active'
+        // Add other features if they depend on premium status
       }
     });
+
   } catch (error) {
     console.error('Error getting subscription status:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get subscription status'
-    });
+    next(error);
   }
 }));
 

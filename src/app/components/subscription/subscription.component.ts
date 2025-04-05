@@ -339,8 +339,11 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
           // Show success message
           this.snackBar.open(
             'Subscription activated successfully! You now have access to premium features.',
-            'Close',
-            { duration: 5000 }
+            'Dismiss',
+            {
+              duration: 7000,
+              panelClass: ['success-snackbar']
+            }
           );
 
           // Clear success param from URL
@@ -351,6 +354,9 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
             replaceUrl: true // Prevent back button issues
           });
           console.log('[SubComponent] Success flow completed, navigating away.'); // Log: Success exit
+
+          // ADD NAVIGATION HERE
+          this.router.navigate(['/home']); // Navigate to home page after success
 
           this.isLoading = false;
           return; // Success, exit the loop and function

@@ -101,7 +101,7 @@
         <!-- Reciter Selection -->
         <div class="space-y-2">
           <label class="text-gray-700 font-medium block">Reciter</label>
-          <select [(ngModel)]="selectedReciter.id"
+          <select [ngModel]="selectedReciter.id"
                   (change)="onReciterChange($event)"
                   class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
             <option *ngFor="let reciter of reciters" [value]="reciter.id">
@@ -247,7 +247,7 @@
              [class.border-l-4]="verse.number === currentRecitingVerse"
              [class.border-[#B7A57A]]="verse.number === currentRecitingVerse"
              [class.highlight-verse]="verse.number === currentRecitingVerse"
-             (click)="toggleVerseTranslation($event, verse.number)">
+             (click)="toggleVerseTranslation($event, verse.number); $event.stopPropagation();">
           
           <!-- Verse Number -->
           <div class="absolute top-4 right-4 text-[#B7A57A] font-semibold">
@@ -281,15 +281,15 @@
 
           <!-- Actions -->
           <div class="flex gap-4">
-            <button (click)="playAudio(verse.audio, verse.number)" class="text-[#B7A57A] hover:text-[#9b8a65]">
+            <button (click)="playVerseAudio(verse); $event.stopPropagation(); $event.preventDefault()" class="text-[#B7A57A] hover:text-[#9b8a65]">
               <i class="fas" [class.fa-pause]="isPlaying && currentPlayingVerse === verse.number" [class.fa-play]="!isPlaying || currentPlayingVerse !== verse.number"></i>
               {{ isPlaying && currentPlayingVerse === verse.number ? 'Stop' : 'Play' }}
             </button>
-            <button (click)="showTafsir(verse)"
+            <button (click)="showTafsir(verse); $event.stopPropagation(); $event.preventDefault()"
                     class="text-[#B7A57A] hover:text-[#9b8a65]">
               <i class="fas fa-book"></i> Tafsir
             </button>
-            <button (click)="toggleBookmark(verse.number)"
+            <button (click)="toggleBookmark(verse.number); $event.stopPropagation(); $event.preventDefault()"
                     class="text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-2">
               <i class="fas" [class.fa-bookmark]="isBookmarked(verse.number)" 
                  [class.fa-bookmark-o]="!isBookmarked(verse.number)"></i>

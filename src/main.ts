@@ -1,8 +1,8 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
-import { appConfig } from './app/app.config';
+import { appConfig as baseAppConfig } from './app/app.config';
 import { environment } from './environments/environment';
-import { importProvidersFrom, APP_INITIALIZER, Injector } from '@angular/core';
+import { importProvidersFrom, APP_INITIALIZER, Injector, ApplicationConfig } from '@angular/core';
 import { initializeApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
@@ -52,9 +52,10 @@ export function initializeAuthFactory(authService: FirebaseAuthService): () => P
   return () => authService.waitForAuthReady();
 }
 
+// Pass providers directly to bootstrapApplication, merging with base config
 bootstrapApplication(AppComponent, {
   providers: [
-    ...appConfig.providers,
+    ...(baseAppConfig.providers || []),
     provideRouter(routes),
     provideAnimations(),
     provideHttpClient(withInterceptors([FirebaseAuthInterceptor])),

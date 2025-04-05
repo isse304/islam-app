@@ -21,6 +21,7 @@ import dotenv from 'dotenv';
 import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
+import { errorHandler } from './middleware/errorHandler';
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -145,11 +146,8 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
     }
 }));
 
-// Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-    logger.error('Unhandled error:', err);
-    res.status(500).json({ error: 'Internal server error' });
-});
+// Centralized Error Handling Middleware (MUST be last)
+app.use(errorHandler);
 
 // Start server function
 const startServer = async () => {

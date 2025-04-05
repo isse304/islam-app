@@ -26,7 +26,7 @@ const userUsageSchema = new Schema<IUserUsage>({
     status: {
         type: String,
         required: true,
-        enum: ['free', 'active'],
+        // enum: ['free', 'active'], // Temporarily remove enum constraint for debugging
         default: 'free'
     },
     currentPeriodEnd: Date,

@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
@@ -16,7 +16,6 @@ type ActiveFeature = 'tafsir' | 'dua-search' | 'dua-insights';
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule,
     MatIconModule,
     MatButtonModule,
     FormsModule

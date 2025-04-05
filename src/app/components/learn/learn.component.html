@@ -1,149 +1,145 @@
 <div class="min-h-screen bg-[#FAF3E0] py-8">
     <div class="container mx-auto px-4">
-      <div class="grid lg:grid-cols-2 gap-8">
-        <!-- Current Verse Section with Selection Controls -->
-        <div class="bg-white rounded-xl shadow-lg p-6 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
-          <div class="flex items-center gap-4 mb-6">
-            <select [(ngModel)]="selectedSurah" 
-                    (change)="updateVerseCount()"
-                    class="flex-1 p-2 border rounded-lg">
-              <option *ngFor="let surah of surahs" [value]="surah.number">
-                {{surah.number}}. {{surah.englishName}}
-              </option>
-            </select>
-            
-            <div class="flex items-center gap-2">
-              <button (click)="previousVerse()" 
-                      class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
-                      [disabled]="selectedVerse <= 1"
-                      matTooltip="Previous verse (←)">
-                <mat-icon>arrow_back</mat-icon>
-              </button>
-              
-              <select [(ngModel)]="selectedVerse" 
-                      (change)="loadVerse()"
-                      class="p-2 border rounded-lg w-24"
-                      [attr.aria-label]="'Select verse'">
-                <option *ngFor="let verse of verseNumbers" [value]="verse">
-                  {{verse}}
-                </option>
-              </select>
-              
-              <button (click)="nextVerse()"
-                      class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
-                      [disabled]="selectedVerse >= verseCounts"
-                      matTooltip="Next verse (→)">
-                <mat-icon>arrow_forward</mat-icon>
-              </button>
-            </div>
-          </div>
-
-          <div class="verse-meaning space-y-6">
-            <div class="arabic-verse">
-              <p class="text-right text-4xl leading-[2] font-uthmanic" dir="rtl">
-                {{ currentVerse }}
-              </p>
-            </div>
-            <div class="translation">
-              <p class="text-gray-800 text-lg leading-relaxed">
-                {{ translation }}
-              </p>
-            </div>
-          </div>
-
-          <!-- Commented out AI Enhanced Explanation
-          <div class="mt-6 border-t pt-4" *ngIf="authStateService.isPremiumUser$ | async">
-            <div class="flex justify-between items-center mb-3">
-              <h3 class="text-lg font-medium text-[#B7A57A]">
-                <mat-icon class="align-middle mr-2">auto_stories</mat-icon>
-                AI Enhanced Explanation
-              </h3>
-              <div class="flex items-center gap-2">
-                <select [(ngModel)]="selectedTafsir" 
-                        (change)="onTafsirChange()"
-                        class="p-2 border rounded-lg">
-                  <option value="ibn-kathir">Ibn Kathir</option>
-                  <option value="tabari">Al-Tabari</option>
-                </select>
-              </div>
-            </div>
-            <div class="prose max-w-none" [innerHTML]="aiSummary | markdown"></div>
-          </div>
-          -->
+        <!-- Loading Spinner (Visible during initial component load AND premium check) -->
+        <div *ngIf="isLoading || !initialPremiumCheckComplete" class="flex items-center justify-center min-h-[60vh]">
+            <mat-spinner diameter="40"></mat-spinner>
         </div>
-  
-        <!-- Chat Interface -->
-        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]" *ngIf="(firebaseAuthService.user$ | async)?.isPremium">
-          <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center gap-4">
-              <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
-                <mat-icon class="mr-2">chat</mat-icon>
-                AI Tafsir Chat
-              </h2>
-              <select [(ngModel)]="selectedTafsir" 
-                      (change)="onTafsirChange()"
-                      class="p-2 border rounded-lg text-sm">
-                <option value="ibn-kathir">Ibn Kathir</option>
-                <option value="tabari">Al-Tabari</option>
-              </select>
-            </div>
-            <div class="flex items-center gap-2">
-              <button (click)="clearCache()" 
-                      class="text-gray-500 hover:text-[#B7A57A] transition-colors"
-                      matTooltip="Clear AI cache">
-                <mat-icon>cached</mat-icon>
-              </button>
-              <button (click)="clearChat()" 
-                      class="text-gray-500 hover:text-red-500 transition-colors"
-                      matTooltip="Clear chat history">
-                <mat-icon>delete_outline</mat-icon>
-              </button>
-            </div>
-          </div>
-          
-          <div class="flex-1 overflow-y-auto p-4 space-y-4" #chatContainer>
-            <div *ngFor="let message of messages" class="flex flex-col">
-              <div [ngClass]="message.role === 'user' ? 
-                             'ml-auto bg-[#B7A57A] text-white' : 
-                             'mr-auto bg-gradient-to-br from-[#FAF3E0] to-white'" 
-                   class="rounded-2xl p-6 max-w-[85%] break-words shadow-lg hover:shadow-xl transition-all border border-[#B7A57A15]">
-                <div class="prose prose-lg max-w-none" 
-                     [ngClass]="{
-                       'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant',
-                       'prose-headings:text-white prose-a:text-white prose-strong:text-white': message.role === 'user'
-                     }"
-                     [innerHTML]="message.content | markdown">
+
+        <!-- Main Content Area (Render only AFTER initial premium check AND if user IS premium) -->
+        <div class="grid lg:grid-cols-2 gap-8" *ngIf="initialPremiumCheckComplete && isPremium">
+            <!-- Current Verse Section with Selection Controls -->
+            <div class="bg-white rounded-xl shadow-lg p-6 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+                <div class="flex items-center gap-4 mb-6">
+                    <select [(ngModel)]="selectedSurah" 
+                            (change)="updateVerseCount()"
+                            class="flex-1 p-2 border rounded-lg">
+                      <option *ngFor="let surah of surahs" [value]="surah.number">
+                        {{surah.number}}. {{surah.englishName}}
+                      </option>
+                    </select>
+                    
+                    <div class="flex items-center gap-2">
+                      <button (click)="previousVerse()" 
+                              class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
+                              [disabled]="selectedVerse <= 1"
+                              matTooltip="Previous verse (←)">
+                        <mat-icon>arrow_back</mat-icon>
+                      </button>
+                      
+                      <select [(ngModel)]="selectedVerse" 
+                              (change)="loadVerse()"
+                              class="p-2 border rounded-lg w-24"
+                              [attr.aria-label]="'Select verse'">
+                        <option *ngFor="let verse of verseNumbers" [value]="verse">
+                          {{verse}}
+                        </option>
+                      </select>
+                      
+                      <button (click)="nextVerse()"
+                              class="p-2 text-[#B7A57A] hover:bg-[#B7A57A15] rounded-lg"
+                              [disabled]="selectedVerse >= verseCounts"
+                              matTooltip="Next verse (→)">
+                        <mat-icon>arrow_forward</mat-icon>
+                      </button>
+                    </div>
+                  </div>
+                
+                <div class="verse-meaning space-y-6">
+                    <div class="arabic-verse">
+                        <p class="text-right text-4xl leading-[2] font-uthmanic" dir="rtl">
+                            {{ currentVerse }}
+                        </p>
+                    </div>
+                    <div class="translation">
+                        <p class="text-gray-800 text-lg leading-relaxed">
+                            {{ translation }}
+                        </p>
+                    </div>
                 </div>
-                <div [ngClass]="message.role === 'user' ? 'text-white/70' : 'text-gray-500'"
-                     class="text-xs mt-4 font-medium flex items-center gap-2">
-                  <mat-icon class="text-sm">schedule</mat-icon>
-                  {{ message.timestamp | date:'shortTime' }}
+            </div>
+
+            <!-- Chat Interface (Already inside the main *ngIf) -->
+            <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]">
+               <div class="flex justify-between items-center mb-6">
+                <div class="flex items-center gap-4">
+                  <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
+                    <mat-icon class="mr-2">chat</mat-icon>
+                    AI Tafsir Chat
+                  </h2>
+                  <select [(ngModel)]="selectedTafsir" 
+                          (change)="onTafsirChange()"
+                          class="p-2 border rounded-lg text-sm">
+                    <option value="ibn-kathir">Ibn Kathir</option>
+                    <option value="tabari">Al-Tabari</option>
+                  </select>
+                </div>
+                <div class="flex items-center gap-2">
+                  <button (click)="clearCache()" 
+                          class="text-gray-500 hover:text-[#B7A57A] transition-colors"
+                          matTooltip="Clear AI cache">
+                    <mat-icon>cached</mat-icon>
+                  </button>
+                  <button (click)="clearChat()" 
+                          class="text-gray-500 hover:text-red-500 transition-colors"
+                          matTooltip="Clear chat history">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
                 </div>
               </div>
+              
+              <div class="flex-1 overflow-y-auto p-4 space-y-4" #chatContainer>
+                <!-- Chat messages display -->
+                <div *ngFor="let message of messages" class="flex flex-col">
+                    <div [ngClass]="message.role === 'user' ? 
+                                    'ml-auto bg-[#B7A57A] text-white' : 
+                                    'mr-auto bg-gradient-to-br from-[#FAF3E0] to-white'" 
+                         class="rounded-2xl p-6 max-w-[85%] break-words shadow-lg hover:shadow-xl transition-all border border-[#B7A57A15]">
+                      <div class="prose prose-lg max-w-none" 
+                           [ngClass]="{
+                             'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant',
+                             'prose-headings:text-white prose-a:text-white prose-strong:text-white': message.role === 'user'
+                           }"
+                           [innerHTML]="message.content | markdown">
+                      </div>
+                      <div [ngClass]="message.role === 'user' ? 'text-white/70' : 'text-gray-500'"
+                           class="text-xs mt-4 font-medium flex items-center gap-2">
+                        <mat-icon class="text-sm">schedule</mat-icon>
+                        {{ message.timestamp | date:'shortTime' }}
+                      </div>
+                    </div>
+                  </div>
+                
+                <!-- Loading indicator specifically for chat responses -->
+                <div *ngIf="isLoading && initialPremiumCheckComplete" class="flex justify-center py-4">
+                  <mat-spinner diameter="30" color="accent"></mat-spinner>
+                </div>
+              </div>
+      
+              <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
+                <input type="text" 
+                       [(ngModel)]="userQuestion"
+                       (keyup.enter)="sendQuestion()"
+                       placeholder="Ask about this verse..."
+                       class="flex-1 p-3 border rounded-xl focus:outline-none focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A15] transition-all">
+                <button (click)="sendQuestion()"
+                        [disabled]="isLoading || !userQuestion.trim()"
+                        class="bg-[#B7A57A] text-white px-6 py-3 rounded-xl hover:bg-[#9b8a65] transition-colors disabled:opacity-50 disabled:hover:bg-[#B7A57A] flex items-center gap-2">
+                  <span class="hidden sm:inline">Send</span>
+                  <mat-icon>send</mat-icon>
+                </button>
+              </div>
             </div>
-            
-            <div *ngIf="isLoading" class="flex justify-center">
-              <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B7A57A]"></div>
-            </div>
-          </div>
-  
-          <div class="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-            <input type="text" 
-                   [(ngModel)]="userQuestion"
-                   (keyup.enter)="sendQuestion()"
-                   placeholder="Ask about this verse..."
-                   class="flex-1 p-3 border rounded-xl focus:outline-none focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A15] transition-all">
-            <button (click)="sendQuestion()"
-                    [disabled]="isLoading || !userQuestion.trim()"
-                    class="bg-[#B7A57A] text-white px-6 py-3 rounded-xl hover:bg-[#9b8a65] transition-colors disabled:opacity-50 disabled:hover:bg-[#B7A57A] flex items-center gap-2">
-              <span class="hidden sm:inline">Send</span>
-              <mat-icon>send</mat-icon>
-            </button>
-          </div>
         </div>
-      </div>
+        
+        <!-- Subscription Prompt (Render only AFTER initial premium check AND if user is NOT premium) -->
+        <div *ngIf="initialPremiumCheckComplete && !isPremium" class="text-center py-20">
+             <p class="text-lg text-gray-600">This feature requires a premium subscription.</p>
+             <button mat-raised-button color="primary" routerLink="/subscription" class="mt-4">
+               View Subscription Options
+             </button>
+        </div>
     </div>
-  </div>
+</div>
 
 <style>
 .filter-blur {

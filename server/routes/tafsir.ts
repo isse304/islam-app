@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest, withAuth, withPremium } from '../middleware/auth';
 import axios from 'axios';
 import { OpenAIService } from '../services/openai.service';
@@ -38,7 +38,7 @@ const tafsirSources: Record<string, TafsirSourceConfig> = {
 };
 
 // Get raw tafsir from a specific source
-router.get('/:source/:surah/:verse', async (req: Request, res: Response) => {
+router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { source, surah, verse } = req.params;
     console.log('Fetching tafsir for:', { source, surah, verse });
@@ -160,15 +160,12 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response) => {
       stack: error.stack
     });
     
-    return res.status(500).json({
-      error: 'Internal server error',
-      text: 'An unexpected error occurred. Please try again later.'
-    });
+    next(error);
   }
 });
 
 // Tafsir chat endpoint (Requires Auth AND Premium)
-router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   try {
     const { surah, verse, question, isFirstResponse = false, selectedTafsir = 'ibn-kathir' } = req.body;
     const userId = req.auth!.uid;
@@ -194,10 +191,7 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
         }
     } catch (usageError) {
         console.error('Error managing user usage in tafsir/chat:', usageError);
-        return res.status(500).json({
-            success: false,
-            error: 'Failed to verify usage limits'
-        });
+        return next(usageError);
     }
 
     const tafsirContent = await getTafsirContent(selectedTafsir, surah, verse);
@@ -283,7 +277,7 @@ It would not be appropriate to provide an interpretation without access to ${sch
 
   } catch (error: any) {
     console.error('Error in tafsir chat route:', error);
-    res.status(500).json({ success: false, error: 'Internal server error' });
+    next(error);
   }
 }));
 

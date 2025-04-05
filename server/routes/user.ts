@@ -1,4 +1,4 @@
-import express, { Response } from 'express';
+import express, { Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import { AuthenticatedRequest, withAuth, withPremium } from '../middleware/auth';
 import mongoose, { Document, Schema } from 'mongoose';
@@ -126,7 +126,7 @@ const emailServiceInstance = new EmailService(); // Assuming this exists
 const stripeService = new StripeService(emailServiceInstance); // Instantiate StripeService
 
 // Get user data (preferences, bookmarks, history)
-router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -149,12 +149,12 @@ router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
         });
     } catch (error) {
         console.error('Error getting user data:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        next(error);
     }
 }));
 
 // Update user data
-router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -198,12 +198,12 @@ router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
         });
     } catch (error) {
         console.error('Error updating user data:', error);
-        res.status(500).json({ error: 'Failed to update user data' });
+        next(error);
     }
 }));
 
 // For backward compatibility - redirect old endpoints to new ones
-router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         console.log('Handling preferences request for user:', req.params.userId);
         console.log('Auth object:', req.auth);
@@ -231,11 +231,11 @@ router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
         });
     } catch (error) {
         console.error('Error getting preferences:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        next(error);
     }
 }));
 
-router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -261,12 +261,12 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
         });
     } catch (error) {
         console.error('Error updating preferences:', error);
-        res.status(500).json({ error: 'Failed to update preferences' });
+        next(error);
     }
 }));
 
 // Get reading history
-router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -281,12 +281,12 @@ router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest
         res.json({ success: true, history });
     } catch (error) {
         console.error('Error getting reading history:', error);
-        res.status(500).json({ success: false, error: 'Failed to get reading history' });
+        next(error);
     }
 }));
 
 // Save reading history entry
-router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -386,16 +386,12 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
         });
     } catch (error) {
         console.error('Error saving reading history:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Failed to save reading history',
-            details: error instanceof Error ? error.message : 'Unknown error'
-        });
+        next(error);
     }
 }));
 
 // Clear reading history
-router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -407,12 +403,12 @@ router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequ
         res.json({ success: true, message: 'Reading history cleared' });
     } catch (error) {
         console.error('Error clearing reading history:', error);
-        res.status(500).json({ success: false, error: 'Failed to clear reading history' });
+        next(error);
     }
 }));
 
 // Get user bookmarks
-router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -429,12 +425,12 @@ router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res:
 
     } catch (error) {
         console.error('Error getting bookmarks:', error);
-        res.status(500).json({ error: 'Internal server error getting bookmarks' }); // More specific error message
+        next(error);
     }
 }));
 
 // Add bookmark
-router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -488,12 +484,12 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
         });
     } catch (error) {
         console.error('Error adding bookmark:', error);
-        res.status(500).json({ error: 'Failed to add bookmark' });
+        next(error);
     }
 }));
 
 // Delete bookmark
-router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
             return res.status(403).json({ error: 'Forbidden' });
@@ -537,12 +533,12 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
         });
     } catch (error) {
         console.error('Error removing bookmark:', error);
-        res.status(500).json({ error: 'Failed to remove bookmark' });
+        next(error);
     }
 }));
 
 // Get user profile
-router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const requestedUserId = req.params.userId;
     const startTime = Date.now(); // Start timing
 
@@ -614,12 +610,12 @@ router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: R
     } catch (error) {
         const duration = Date.now() - startTime;
         console.error(`[Profile ${userId}] Error fetching profile after ${duration}ms:`, error);
-        res.status(500).json({ error: 'Internal server error' });
+        next(error);
     }
 }));
 
 // DELETE User Account (Handles Stripe Cancellation + Firebase Deletion)
-router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.auth!.uid;
     console.log(`[API] Received request to delete account for user: ${userId}`);
 
@@ -715,7 +711,7 @@ router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response) =
         console.error(`[API] Error during account deletion for user ${userId}:`, error);
         // Ensure error response structure is consistent
         const message = error instanceof Error ? error.message : 'An unexpected error occurred during account deletion.';
-        res.status(500).json({ success: false, error: 'Account Deletion Failed', message: message });
+        next(error);
     }
 }));
 

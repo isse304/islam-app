@@ -1,4 +1,4 @@
-import express, { Response } from 'express';
+import express, { Response, NextFunction } from 'express';
 import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
 import { AuthenticatedRequest, withAuth } from '../middleware/auth';
@@ -20,18 +20,18 @@ const stripeService = new StripeService(emailService);
 const usageService = new UsageService(stripeService);
 
 // Get user's current usage and subscription status
-router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const stats = await usageService.getUserUsageStats(req.auth!.uid);
         res.json(stats);
     } catch (error) {
         console.error('Error getting usage stats:', error);
-        res.status(500).json({ error: 'Failed to get usage stats' });
+        next(error);
     }
 }));
 
 // Get usage limits for authenticated user
-router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         // Check subscription status from DB AND claims
         const dbStatus = await stripeService.getSubscriptionStatus(req.auth!.uid);
@@ -75,7 +75,7 @@ router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response):
         res.json(limits);
     } catch (error: any) {
         console.error('Error getting usage limits:', error);
-        res.status(500).json({ error: 'Failed to get usage limits' });
+        next(error);
     }
 }));
 

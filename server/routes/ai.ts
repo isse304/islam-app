@@ -1,5 +1,5 @@
 // @ts-nocheck
-import express, { Response, Request } from 'express';
+import express, { Response, Request, NextFunction } from 'express';
 import { OpenAI } from 'openai';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
@@ -153,7 +153,7 @@ router.post('/chat',
   withPremium, 
   chatValidationRules, // Apply chat validation rules
   validateRequest,    // Handle validation results
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.auth!.uid;
 
@@ -199,10 +199,7 @@ router.post('/chat',
         });
     } catch (error) {
         console.error('Error in AI chat:', error);
-        res.status(500).json({ 
-            success: false, 
-            error: 'Internal server error' 
-        });
+        next(error);
     }
 });
 
@@ -220,7 +217,7 @@ router.post('/generate',
   withPremium, 
   generateValidationRules, // Apply validation rules
   validateRequest,       // Handle validation results
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.auth!.uid;
     const { prompt, systemMessage, temperature, maxTokens } = req.body;
     // console.log(`[AI Generate ${userId}] Received request:`, { prompt, systemMessage, temperature, maxTokens });
@@ -251,12 +248,12 @@ router.post('/generate',
         console.error(`[AI Generate ${userId}] Error processing request:`, error);
         // Avoid double-counting if increment succeeded but OpenAI failed
         // Consider adding more sophisticated error handling/refund logic if needed
-        res.status(500).json({ error: 'Failed to generate AI response', details: error.message });
+        next(error);
     }
 });
 
 // Protected route for generating spiritual content - requires auth and premium
-router.post('/generate-spiritual-content', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+router.post('/generate-spiritual-content', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.auth!.uid;
         const { topic, tone, length } = req.body;
@@ -267,7 +264,7 @@ router.post('/generate-spiritual-content', withPremium(async (req: Authenticated
 
     } catch (error) {
         console.error('Error generating spiritual content:', error);
-        res.status(500).json({ success: false, error: 'Failed to generate spiritual content' });
+        next(error);
     }
 }));
 
@@ -284,7 +281,7 @@ router.post('/tafsir-chat',
   withPremium,
   tafsirChatValidationRules, // Apply tafsir validation rules
   validateRequest,         // Handle validation results
-  async (req: AuthenticatedRequest, res: Response) => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.auth!.uid;
         const { surah, verse, question, history } = req.body;
@@ -295,12 +292,12 @@ router.post('/tafsir-chat',
 
     } catch (error) {
         console.error('Error in Tafsir chat:', error);
-        res.status(500).json({ success: false, error: 'Failed to get Tafsir explanation' });
+        next(error);
     }
 });
 
 // Route for Dua Insights (Premium)
-router.get('/dua-insights/:duaName', withPremium(async (req: AuthenticatedRequest, res: Response) => {
+router.get('/dua-insights/:duaName', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const duaName = req.params.duaName;
         // ... (rest of dua insights logic) ...
@@ -308,12 +305,12 @@ router.get('/dua-insights/:duaName', withPremium(async (req: AuthenticatedReques
         res.json({ success: true, insights });
     } catch (error) {
         console.error('Error fetching Dua insights:', error);
-        res.status(500).json({ success: false, error: 'Failed to fetch Dua insights' });
+        next(error);
     }
 }));
 
 // Get user's AI usage statistics
-router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         const userId = req.auth!.uid;
         
@@ -337,15 +334,12 @@ router.get('/usage', withAuth(async (req: AuthenticatedRequest, res: Response): 
         });
     } catch (error) {
         console.error('Usage stats error:', error);
-        res.status(500).json({
-            error: 'Failed to fetch usage statistics',
-            message: 'An error occurred while fetching usage statistics'
-        });
+        next(error);
     }
 }));
 
 // Dua Insights endpoint
-router.post('/dua/insights', withPremium(async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+router.post('/dua/insights', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -460,7 +454,7 @@ router.post('/dua/emotional-search',
   withPremium,
   duaSearchValidationRules, // Apply validation rules
   validateRequest,        // Handle validation results
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -604,7 +598,7 @@ router.post('/dua/emotional-search',
         }
     } catch (error: any) {
         console.error('Error generating emotional dua response:', error);
-        res.status(500).json({ success: false, error: 'Failed to generate response', details: error.message });
+        next(error);
     }
 });
 
@@ -700,7 +694,7 @@ router.post('/tafsir/chat',
   withPremium, 
   tafsirChatValidationRules, // Apply the validation rules
   validateRequest,         // Apply the validation result handler
-  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
     try {
         if (!req.auth) {
             res.status(401).json({ error: 'Unauthorized' });
@@ -761,7 +755,7 @@ router.post('/tafsir/chat',
         res.json({ success: true, content: response });
     } catch (error) {
         console.error('Error in tafsir chat:', error);
-        res.status(500).json({ success: false, error: 'Failed to generate tafsir response' });
+        next(error);
     }
 });
 
