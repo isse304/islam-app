@@ -199,12 +199,13 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
     // --- Handle General Questions or Greetings FIRST --- 
     // Basic check for non-tafsir related questions BEFORE any DB calls or complex logic
     const lowerCaseQuestion = question?.toLowerCase() || ''; // Handle potential undefined question
-    const isGreeting = /^(hi|hello|hey|greetings|salam)/i.test(lowerCaseQuestion);
+    // More specific greeting check
+    const isGreeting = /^(hi|hello|hey|greetings|salam$|salam alaikum|assalamu alaikum)/i.test(lowerCaseQuestion.trim()); 
     const isCapabilityQuestion = /what can you do|how do you work|capabilities/i.test(lowerCaseQuestion);
     const isGeneralSurahQuestion = /theme of surah|tell me about surah|summary of surah/i.test(lowerCaseQuestion);
 
     if (isGreeting) {
-        console.log(`[Tafsir Chat] Responding to greeting from user ${userId}.`); // Added log
+        console.log(`[Tafsir Chat] Responding to greeting from user ${userId}. Question: "${question}"`); // Added log
         return res.json({ 
             success: true, 
             content: "Wa alaikum assalam! I'm ready to help you understand the Quran based on scholarly tafsir. How can I assist you today?",
@@ -327,7 +328,7 @@ CRITICAL RULES FOR AUTHENTIC & FOCUSED RESPONSES:
    - Start relevant paragraphs with "[Source: ${scholarName}]" when drawing from the tafsir text.
    - Present opinions in order of authenticity if mentioned in the source, labeling clearly (e.g., "Most Authentic Opinion:", "Alternative Opinion:").
    - Use exact quotes if helpful: '[Source: ${scholarName}] As stated: "..."'.
-   - If a point isn't in the source: '[Note: This specific point is not directly addressed in the provided ${scholarName}'s tafsir for this verse.]'.
+   - If a point isn't in the source: '[Note: This specific point is not directly addressed in the provided ${scholarName}\'s tafsir for this verse.]'.
 
 5. RESPONSE STRUCTURE (FOR TAFSIR QUESTIONS):
    - CONTEXT OF REVELATION (Sabab an-Nuzul, if mentioned).
@@ -339,7 +340,10 @@ CRITICAL RULES FOR AUTHENTIC & FOCUSED RESPONSES:
    - NEVER state interpretations without basis in the provided tafsir.
    - If asked about something not covered in the provided source, state that clearly (e.g., "${scholarName} does not detail this specific point in the provided text for this verse.").
 
-Provide a focused, respectful, and concise answer to the USER'S QUESTION based primarily on the provided tafsir source. Include context or Hadith if available in the source. Mention the connection to the Surah's theme ONLY if it directly helps answer the user's specific question or if the user explicitly asks about the theme. Prioritize accuracy and adherence to the source material above all else, following all rules.`;
+Provide a detailed yet concise answer to the USER'S QUESTION based **strictly and primarily** on the provided tafsir source material (\`${scholarName}\'s Tafsir for Verse ${surah}:${verse}\`).
+Extract and include relevant details like context of revelation (Sabab an-Nuzul), linguistic points, main interpretation(s), and any supporting Hadith or narrations mentioned **within that specific provided text**. Be comprehensive in extracting information *from the source*.
+**Do NOT add a separate 'Connection to Surah Theme' section unless the user explicitly asks about the theme.** You may naturally weave in thematic relevance *only* if it directly clarifies the answer to the user's specific question about the verse itself, citing the source.
+Prioritize accuracy and faithfulness to the provided source material for the specific verse. Adhere strictly to all rules. **Do not add a greeting (like 'Wa alaikum assalam') if the user is asking a direct question.** Respond directly to the question asked.`;
     } else {
       // Fallback if tafsir content is not available for the specific verse
       systemMessage = `You are a helpful and respectful AI assistant knowledgeable about the Quran, discussing ${currentSurahName}, Verse ${verse}.

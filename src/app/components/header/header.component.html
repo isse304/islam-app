@@ -30,15 +30,17 @@
          class="nav-link">
         Dua
       </a>
+      <!-- Hide Profile link on mobile -->
       <a routerLink="/profile"
          routerLinkActive="nav-link-active"
-         class="nav-link">
+         class="nav-link hide-on-mobile">
         Profile
       </a>
     </div>
 
     <!-- Auth Buttons -->
-    <div class="auth-container">
+    <!-- Hide Auth buttons container on mobile -->
+    <div class="auth-container hide-on-mobile">
       <app-auth-buttons></app-auth-buttons>
     </div>
 
@@ -57,8 +59,10 @@
     <a routerLink="/learn" class="mobile-link" (click)="closeMobileMenu()">Learn Quran</a>
     <a routerLink="/dua" class="mobile-link" (click)="closeMobileMenu()">Dua</a>
     <a routerLink="/profile" class="mobile-link" (click)="closeMobileMenu()">Profile</a>
-    
-    <!-- Auth Buttons in Mobile Menu -->
+    <a routerLink="/contact" class="mobile-link" (click)="closeMobileMenu()">Contact Us</a>
+    <a routerLink="/about" class="mobile-link" (click)="closeMobileMenu()">About</a>
+
+    <!-- Auth Buttons in Mobile Menu (Profile is already here, Sign Out is part of app-auth-buttons) -->
     <div class="mobile-auth-container">
       <app-auth-buttons></app-auth-buttons>
     </div>

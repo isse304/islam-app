@@ -4,6 +4,7 @@ import { authGuardFn } from './guards/auth.guard';
 import { premiumGuard } from './guards/premium.guard';
 import { NoAuthGuard } from './guards/no-auth.guard';
 
+
 export const routes: Routes = [
   // Redirect empty path to a protected route (e.g., home)
   // AuthGuard will handle redirecting to login if needed
@@ -58,6 +59,10 @@ export const routes: Routes = [
     path: 'contact',
     loadComponent: () => import('./components/contact/contact.component').then(m => m.ContactComponent),
     // Allow access regardless of auth state
+  },
+  {
+    path: 'about',
+    loadComponent: () => import('./components/about/about.component').then(m => m.AboutComponent)
   },
   /*
   {

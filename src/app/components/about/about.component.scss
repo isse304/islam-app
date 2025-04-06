@@ -1,0 +1,199 @@
+/* Import theme variables if available (adjust path if needed) */
+// @import '../../../styles/theme-variables'; // Uncomment if you have a theme file
+
+.about-container {
+  padding: 30px 20px;
+  max-width: 950px;
+  margin: 30px auto;
+  animation: fadeIn 0.6s ease-in-out;
+  background: linear-gradient(135deg, var(--app-background-light, #f8f9fa) 0%, var(--app-background-medium, #e9ecef) 100%);
+  border-radius: 12px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.about-card {
+  background-color: var(--app-card-background, #ffffff);
+  color: var(--app-text-color, #333);
+  border-radius: 8px;
+  box-shadow: none; // Shadow is on the container now
+  overflow: hidden; // Ensures content respects border radius
+}
+
+mat-card-header {
+  background-color: var(--app-primary-color, #1A365D);
+  color: var(--app-header-text-color, #ffffff);
+  padding: 25px 30px;
+  border-bottom: 5px solid var(--app-accent-color, #B7A57A);
+
+  mat-card-title {
+    font-size: 2.2em;
+    font-weight: bold;
+    color: inherit; // Inherit from header color
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  mat-card-subtitle {
+    font-size: 1.2em;
+    color: rgba(var(--app-header-text-rgb, 255, 255, 255), 0.85); // Slightly transparent white
+    margin-bottom: 0;
+  }
+}
+
+mat-card-content {
+  padding: 30px;
+}
+
+.section {
+  margin-bottom: 35px;
+  padding: 25px;
+  border-radius: 8px;
+  background-color: rgba(var(--app-section-background-rgb, 240, 240, 240), 0.5); // Subtle background for sections
+  border: 1px solid var(--app-divider-color, #e0e0e0);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+
+  &:hover {
+     transform: translateY(-3px);
+     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07);
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  h2 {
+    display: flex;
+    align-items: center;
+    font-size: 1.6em;
+    font-weight: 600;
+    color: var(--app-primary-color, #1A365D);
+    margin-top: 0;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--app-accent-color, #B7A57A);
+
+    mat-icon {
+      margin-right: 12px;
+      color: var(--app-accent-color, #B7A57A);
+      font-size: 1.4em; // Make icon slightly larger
+      vertical-align: middle;
+    }
+  }
+
+  p {
+    line-height: 1.75;
+    margin-bottom: 15px;
+    color: var(--app-secondary-text-color, #555);
+  }
+
+  ul {
+    list-style: none;
+    padding-left: 5px; // Reduced padding
+
+    li {
+      margin-bottom: 14px;
+      padding-left: 30px;
+      position: relative;
+      line-height: 1.65;
+
+      &::before {
+        content: '\2728'; // Unicode sparkle ✨
+        position: absolute;
+        left: 0;
+        top: 2px;
+        color: var(--app-accent-color, #B7A57A);
+        font-size: 1.1em;
+        line-height: 1;
+      }
+    }
+  }
+}
+
+.creator-section {
+  background-color: rgba(var(--app-accent-rgb, 183, 165, 122), 0.1); // Slightly stronger accent background
+  border-left: 4px solid var(--app-accent-color, #B7A57A);
+  padding: 25px;
+  margin-top: 25px;
+
+  h2 {
+    border-bottom: none; // Remove double border
+    margin-bottom: 15px;
+  }
+
+  p strong {
+      color: var(--app-primary-color, #1A365D);
+  }
+
+  a[mat-stroked-button] {
+    margin-top: 20px;
+    border-width: 2px;
+    border-color: var(--app-primary-color, #1A365D);
+    color: var(--app-primary-color, #1A365D);
+    font-weight: 600;
+    transition: background-color 0.3s ease, color 0.3s ease;
+
+
+    mat-icon {
+       color: var(--app-primary-color, #1A365D);
+       margin-right: 8px;
+       transition: color 0.3s ease;
+    }
+
+    &:hover {
+       background-color: var(--app-primary-color, #1A365D);
+       color: var(--app-header-text-color, #ffffff);
+       mat-icon {
+         color: var(--app-header-text-color, #ffffff);
+       }
+    }
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .about-container {
+      padding: 20px 15px;
+      margin: 20px auto;
+  }
+  mat-card-header {
+      padding: 20px 25px;
+  }
+  mat-card-title {
+    font-size: 1.8em;
+  }
+  mat-card-subtitle {
+    font-size: 1.1em;
+  }
+  .section h2 {
+    font-size: 1.4em;
+  }
+}
+
+@media (max-width: 600px) {
+  .about-container {
+    padding: 15px 10px;
+  }
+  mat-card-title {
+    font-size: 1.6em;
+  }
+  mat-card-subtitle {
+    font-size: 1em;
+  }
+  .section h2 {
+    font-size: 1.3em;
+    mat-icon {
+        font-size: 1.2em;
+    }
+  }
+}
