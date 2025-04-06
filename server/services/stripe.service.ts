@@ -224,7 +224,6 @@ export class StripeService {
             switch (event.type) {
                 case 'checkout.session.completed':
                     const session = event.data.object as Stripe.Checkout.Session;
-                    // Use client_reference_id as the primary way to get userId
                     userId = session.client_reference_id ?? session.metadata?.userId;
                     console.log(`[Webhook ${event.type}] Session ID: ${session.id}, User ID (from client_ref/metadata): ${userId}`);
                     if (!userId) {
@@ -237,10 +236,50 @@ export class StripeService {
                         console.log(`[Webhook ${event.type}] Found subscription ID: ${subscriptionId}. Retrieving details...`);
                         const subscriptionDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
                         console.log(`[Webhook ${event.type}] Retrieved subscription details. Status: ${subscriptionDetails.status}. Updating DB and claims for user ${userId}...`);
+                        
+                        // Update DB and Claims
                         userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
                         if (userSub) {
                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
                             console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
+
+                            // --- ADDED: Email Logic here --- 
+                            const statusToUse = userSub.status; // Use status directly from the updated userSub
+                            if (statusToUse === 'active' || statusToUse === 'trialing') { 
+                                // Fetch user info from Firebase
+                                let userEmail: string | undefined;
+                                let userName: string | undefined;
+                                try {
+                                    console.log(`[Webhook ${event.type} - Email Trigger] Fetching Firebase user record for ${userId}...`);
+                                    const userRecord = await auth.getUser(userId);
+                                    userEmail = userRecord.email;
+                                    userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
+                                    console.log(`[Webhook ${event.type} - Email Trigger] Fetched Firebase user: ${userEmail}`);
+                                } catch (authError) {
+                                    console.error(`[Webhook ${event.type} - Email Trigger] Failed to fetch user ${userId} from Firebase Auth:`, authError);
+                                }
+
+                                // Send Welcome Email (if active and not already sent)
+                                if (userEmail && userSub && !userSub.welcomeEmailSent) { 
+                                     console.log(`[Webhook ${event.type} - Email Trigger] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
+                                    try {
+                                        await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
+                                        console.log(`[Webhook ${event.type} - Email Trigger] Sent premium welcome email to user ${userId}. Updating DB flag...`);
+                                        // Mark email as sent in the database
+                                        userSub.welcomeEmailSent = true;
+                                        await userSub.save();
+                                        console.log(`[Webhook ${event.type} - Email Trigger] Marked welcomeEmailSent=true in DB for user ${userId}.`);
+                                    } catch (emailError) {
+                                        console.error(`[Webhook ${event.type} - Email Trigger] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
+                                    }
+                                } else if (userSub?.welcomeEmailSent) {
+                                    console.log(`[Webhook ${event.type} - Email Trigger] Welcome email already sent flag is true for user ${userId}, skipping.`);
+                                } else {
+                                    console.log(`[Webhook ${event.type} - Email Trigger] Conditions not met (missing email or userSub) for user ${userId}.`);
+                                }
+                            }
+                            // --- END ADDED: Email Logic --- 
+
                         } else {
                             console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
                         }
