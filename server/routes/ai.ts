@@ -695,18 +695,27 @@ router.post('/tafsir/chat',
   tafsirChatValidationRules, // Apply the validation rules
   validateRequest,         // Apply the validation result handler
   async (req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> => {
+    // --- ADD LOGGING HERE ---
+    console.log(`[DEBUG] Reached /api/tafsir/chat route handler at ${new Date().toISOString()} for user: ${req.auth?.uid}`);
+    // ------------------------
     try {
         if (!req.auth) {
+            console.log('[DEBUG] /api/tafsir/chat: Unauthorized - req.auth missing.'); // Added debug log
             res.status(401).json({ error: 'Unauthorized' });
             return;
         }
 
         // Use 'verse' here to match validation
         const { surah, verse, question } = req.body; 
+        console.log(`[DEBUG] /api/tafsir/chat: Request details - Surah: ${surah}, Verse: ${verse}, User: ${req.auth.uid}`); // Added debug log
 
         // Validate AI usage
+        console.log(`[DEBUG] /api/tafsir/chat: Checking usage for user ${req.auth.uid}...`); // Added debug log
         const canMakeRequest = await usageService.validateAIRequest(req.auth.uid, 1500); // Approximate token count
+        console.log(`[DEBUG] /api/tafsir/chat: Usage check result for ${req.auth.uid}: ${canMakeRequest}`); // Added debug log
+        
         if (!canMakeRequest) {
+            console.log(`[DEBUG] /api/tafsir/chat: Usage limit exceeded for user ${req.auth.uid}.`); // Added debug log
             res.status(403).json({ 
                 success: false, 
                 error: 'Daily AI request limit reached. Please try again tomorrow or upgrade your plan.' 
@@ -715,7 +724,9 @@ router.post('/tafsir/chat',
         }
 
         // Increment AI usage *before* the call
+        console.log(`[DEBUG] /api/tafsir/chat: Incrementing usage for user ${req.auth.uid}...`); // Added debug log
         await usageService.incrementAIUsage(req.auth.uid);
+        console.log(`[DEBUG] /api/tafsir/chat: Usage incremented for user ${req.auth.uid}.`); // Added debug log
 
         const prompt = {
             systemMessage: `You are a knowledgeable Islamic scholar specializing in Quranic tafsir. 
@@ -740,6 +751,7 @@ router.post('/tafsir/chat',
         };
 
         // Use GPT-3.5-turbo-16k for more detailed responses
+        console.log(`[DEBUG] /api/tafsir/chat: Calling OpenAI for user ${req.auth.uid}...`); // Added debug log
         const completion = await openai.chat.completions.create({
             model: 'gpt-3.5-turbo',
             messages: [
@@ -749,12 +761,13 @@ router.post('/tafsir/chat',
             temperature: 0.7,
             max_tokens: 4000
         });
+        console.log(`[DEBUG] /api/tafsir/chat: OpenAI call completed for user ${req.auth.uid}.`); // Added debug log
 
         const response = completion.choices[0]?.message?.content || '';
         
         res.json({ success: true, content: response });
     } catch (error) {
-        console.error('Error in tafsir chat:', error);
+        console.error('[ERROR] /api/tafsir/chat:', error); // Enhanced error logging
         next(error);
     }
 });
