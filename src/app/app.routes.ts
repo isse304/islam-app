@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 // Import the functional guard
 import { authGuardFn } from './guards/auth.guard';
 import { premiumGuard } from './guards/premium.guard';
+import { NoAuthGuard } from './guards/no-auth.guard';
 
 export const routes: Routes = [
   // Redirect empty path to a protected route (e.g., home)
@@ -13,12 +14,12 @@ export const routes: Routes = [
   // { path: 'landing', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent), canActivate: [NoAuthGuard] },
 
   // Auth routes (login, signup, etc.) - accessible only when not logged in
-  { 
-    path: 'auth', 
+  {
+    path: 'auth',
     // Use the AuthModule to load children routes
-    loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule)
-    // Remove the NoAuthGuard for now
-    // canActivate: [NoAuthGuard] 
+    loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule),
+    // Reinstate the NoAuthGuard
+    canActivate: [NoAuthGuard]
   },
 
   // Main application routes - accessible only when logged in
