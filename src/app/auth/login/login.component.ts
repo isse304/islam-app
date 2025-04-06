@@ -45,6 +45,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   activeFeature: ActiveFeature = 'tafsir';
   private featureRotationInterval: Subscription | null = null;
   private returnUrl: string | null = null;
+  private routeSub: Subscription;
 
   constructor(
     private fb: FormBuilder,
@@ -58,6 +59,11 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
+    });
+
+    // Get the return URL from route parameters or default to '/'
+    this.routeSub = this.route.queryParams.subscribe(params => {
+        this.returnUrl = params['returnUrl'] || '/'; // Default to root, which redirects to /home
     });
   }
 
@@ -88,6 +94,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       this.authSubscription.unsubscribe();
     }
     this.stopAutoRotate();
+    this.routeSub?.unsubscribe();
   }
 
   // Helper function to handle navigation after successful login

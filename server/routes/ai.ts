@@ -78,6 +78,9 @@ const limiter = rateLimit({
     message: 'Too many requests from this IP, please try again later.'
 });
 
+// Apply rate limiting to all routes
+// router.use(limiter); // REMOVED - Causing 429 on Tafsir chat
+
 // Initialize OpenAI with API key from environment variable
 // Use bracket notation for process.env access
 const openai = new OpenAI({

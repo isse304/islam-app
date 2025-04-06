@@ -239,7 +239,7 @@ export class StripeService {
                         console.log(`[Webhook ${event.type}] Retrieved subscription details. Status: ${subscriptionDetails.status}. Updating DB and claims for user ${userId}...`);
                         userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
                         if (userSub) {
-                            await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd);
+                            await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
                             console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
                         } else {
                             console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
@@ -275,19 +275,32 @@ export class StripeService {
                     try {
                         // --- PRE-DB UPDATE LOG --- 
                         console.log(`[Webhook ${event.type}] PRE-DB_UPDATE: About to call updateUserSubscriptionStatus for user ${userId}`);
+                        // Fetch OR Update the user subscription document
                         userSub = await this.updateUserSubscriptionStatus(userId, subscription);
                         // --- POST-DB UPDATE LOG --- 
                         console.log(`[Webhook ${event.type}] POST-DB_UPDATE: Finished calling updateUserSubscriptionStatus. Result userSub:`, !!userSub);
 
                         if (!userSub) {
-                            console.error(`[Webhook ${event.type}] Failed to update subscription in DB for user ${userId}, subscription ${subscription.id}`);
-                            // Decide if we should stop or proceed with claim update attempt
-                            // For now, let's try to update claims anyway, but log the error
+                            console.error(`[Webhook ${event.type}] Failed to update/retrieve subscription in DB for user ${userId}, subscription ${subscription.id}`);
+                            // If we can't get the DB record, we can't track email status, so skip email attempt.
+                            // Still attempt claim update based on event data.
+                        } else {
+                             console.log(`[Webhook ${event.type}] Retrieved UserSubscription doc. Welcome email sent status: ${userSub.welcomeEmailSent}`);
                         }
 
-                        // Determine status and period end
+                        // Determine status and period end (prioritize DB status if available, fallback to event)
                         const statusToUse = userSub?.status || subscription.status;
-                        const periodEndToUse = userSub?.currentPeriodEnd || (subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null);
+                        let periodEndToUse: Date | null = null;
+                        // Use nullish coalescing for db status and check subscription event status explicitly
+                        const rawPeriodEndFromDb = userSub?.currentPeriodEnd ?? null;
+                        const rawPeriodEndFromEvent = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
+                        
+                        // Prioritize DB value if it exists, otherwise use event value
+                        const finalRawPeriodEnd = rawPeriodEndFromDb ?? rawPeriodEndFromEvent;
+
+                        if (finalRawPeriodEnd instanceof Date) {
+                            periodEndToUse = finalRawPeriodEnd;
+                        }
                         console.log(`[Webhook ${event.type}] Status to use for claims/email: ${statusToUse}, Period End: ${periodEndToUse}`);
 
                         // Fetch user info from Firebase
@@ -305,12 +318,9 @@ export class StripeService {
 
                         // --- PRE-CLAIMS UPDATE LOG ---
                         console.log(`[Webhook ${event.type}] PRE-CLAIMS_UPDATE: About to call updateFirebaseClaims for user ${userId} with status: ${statusToUse}`);
-                        // Update Firebase claims
-                        // TEMP COMMENT OUT FOR DEBUGGING - RESTORING
                         await this.updateFirebaseClaims(userId, statusToUse, periodEndToUse);
                         // --- POST-CLAIMS UPDATE LOG ---
                         console.log(`[Webhook ${event.type}] POST-CLAIMS_UPDATE: Finished calling updateFirebaseClaims for user ${userId}`);
-                        // console.log(`[Webhook ${event.type}] SKIPPED updateFirebaseClaims for debugging.`); // Log that it was skipped
 
                         // Existing log check
                         console.log(`[Webhook Validation Check] Status being used before potential email/further processing:`, {
@@ -320,15 +330,25 @@ export class StripeService {
                             eventType: event.type
                         });
 
-                        // Send Welcome Email (only on create + active/trialing)
-                        if (userEmail && (statusToUse === 'active' || statusToUse === 'trialing') && event.type === 'customer.subscription.created') {
+                        // Send Welcome Email (only if active/trialing AND not already sent)
+                        if (userEmail && (statusToUse === 'active' || statusToUse === 'trialing') && userSub && !userSub.welcomeEmailSent) {
                              console.log(`[Webhook ${event.type}] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
                             try {
                                 await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
-                                console.log(`[Webhook ${event.type}] Sent premium welcome email to user ${userId}`);
+                                console.log(`[Webhook ${event.type}] Sent premium welcome email to user ${userId}. Updating DB flag...`);
+                                // Mark email as sent in the database
+                                userSub.welcomeEmailSent = true;
+                                await userSub.save();
+                                console.log(`[Webhook ${event.type}] Marked welcomeEmailSent=true in DB for user ${userId}.`);
                             } catch (emailError) {
-                                console.error(`[Webhook ${event.type}] Failed to send premium welcome email to user ${userId}:`, emailError);
+                                console.error(`[Webhook ${event.type}] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
                             }
+                        } else if (userSub?.welcomeEmailSent) {
+                            console.log(`[Webhook ${event.type}] Welcome email already sent for user ${userId}, skipping.`);
+                        } else if (!userSub) {
+                             console.log(`[Webhook ${event.type}] Skipping welcome email check because UserSubscription record was not found/updated.`);
+                        } else {
+                            console.log(`[Webhook ${event.type}] Conditions not met to send welcome email (Status: ${statusToUse}, Email Sent Flag: ${userSub?.welcomeEmailSent}, User Email Found: ${!!userEmail}).`);
                         }
 
                         // Send Admin Notification
