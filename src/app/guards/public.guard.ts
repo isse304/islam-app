@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
 import { FirebaseAuthService } from '../services/firebase-auth.service';
-import { Observable, map, take, delay } from 'rxjs';
+import { Observable, map, take } from 'rxjs';
 
 /**
  * Prevents authenticated users from accessing routes like login/signup.
@@ -15,9 +15,8 @@ export const publicGuard: CanActivateFn = (): Observable<boolean | UrlTree> => {
   // Auth state should be definitive by the time this runs.
   return authService.user$.pipe(
     take(1), // Take the definitive state available after APP_INITIALIZER
-    delay(0), // Introduce a minimal delay to allow state stabilization
     map(user => {
-      console.log(`[PublicGuard] Received user state after take(1) + delay(0):`, user ? user.email : 'null');
+      console.log(`[PublicGuard] Received user state after take(1):`, user ? user.email : 'null');
       const isAuthenticated = !!user;
       // console.log(`PublicGuard Check (after delay): User authenticated = ${isAuthenticated}`);
 

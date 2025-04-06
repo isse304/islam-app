@@ -361,6 +361,28 @@ export class StripeService {
                         // --- POST-CLAIMS UPDATE LOG ---
                         console.log(`[Webhook ${event.type}] POST-CLAIMS_UPDATE: Finished calling updateFirebaseClaims for user ${userId}`);
 
+                        // --- ADDED: Update UserUsage aiRequestLimit ---
+                        try {
+                            const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
+                            const limitToSet = (statusToUse === 'active' || statusToUse === 'trialing') ? premiumLimit : 0;
+                            console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
+                            const usageUpdateResult = await UserUsage.findOneAndUpdate(
+                                { userId: userId },
+                                { $set: { aiRequestLimit: limitToSet } },
+                                { new: true, upsert: false } // Don't upsert, assume usage record exists from earlier steps
+                            );
+                            if (usageUpdateResult) {
+                                console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                            } else {
+                                console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
+                                // Optional: Attempt to create if it really should exist? Or rely on getOrCreateUsage elsewhere.
+                            }
+                        } catch (usageUpdateError) {
+                            console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
+                            // Decide if this error should prevent the webhook 200 OK. Usually not.
+                        }
+                        // --- END ADDED: Update UserUsage aiRequestLimit ---
+
                         // Existing log check
                         console.log(`[Webhook Validation Check] Status being used before potential email/further processing:`, {
                             userId: userId,
