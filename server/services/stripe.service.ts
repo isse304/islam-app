@@ -251,7 +251,7 @@ export class StripeService {
                                 console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
                                 const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                     { userId: userId },
-                                    { $set: { aiRequestLimit: limitToSet } },
+                                    { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                     { new: true, upsert: true, setDefaultsOnInsert: true }
                                 );
                                 if (usageUpdateResult) {
@@ -389,7 +389,7 @@ export class StripeService {
                             console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
                             const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                 { userId: userId },
-                                { $set: { aiRequestLimit: limitToSet } },
+                                { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                 { new: true, upsert: true, setDefaultsOnInsert: true }
                             );
                             if (usageUpdateResult) {

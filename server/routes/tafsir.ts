@@ -196,14 +196,15 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
     const { surah, verse, question, isFirstResponse = false, selectedTafsir = 'ibn-kathir' } = req.body;
     const userId = req.auth!.uid;
     
-    // --- Handle General Questions or Greetings --- 
-    // Basic check for non-tafsir related questions BEFORE usage check
-    const lowerCaseQuestion = question.toLowerCase();
+    // --- Handle General Questions or Greetings FIRST --- 
+    // Basic check for non-tafsir related questions BEFORE any DB calls or complex logic
+    const lowerCaseQuestion = question?.toLowerCase() || ''; // Handle potential undefined question
     const isGreeting = /^(hi|hello|hey|greetings|salam)/i.test(lowerCaseQuestion);
     const isCapabilityQuestion = /what can you do|how do you work|capabilities/i.test(lowerCaseQuestion);
     const isGeneralSurahQuestion = /theme of surah|tell me about surah|summary of surah/i.test(lowerCaseQuestion);
 
     if (isGreeting) {
+        console.log(`[Tafsir Chat] Responding to greeting from user ${userId}.`); // Added log
         return res.json({ 
             success: true, 
             content: "Wa alaikum assalam! I'm ready to help you understand the Quran based on scholarly tafsir. How can I assist you today?",
@@ -212,6 +213,7 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
         });
     }
     if (isCapabilityQuestion) {
+        console.log(`[Tafsir Chat] Responding to capability question from user ${userId}.`); // Added log
         return res.json({ 
             success: true, 
             content: "I can provide tafsir explanations for specific Quran verses based on selected scholars like Ibn Kathir and Al-Tabari. I can also discuss the overall theme of a Surah. Ask me about a specific verse (e.g., 'Explain Surah 2 Verse 155') or a Surah's theme (e.g., 'What is the theme of Surah Al-Fatiha?').",
@@ -219,11 +221,17 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
             sources: []
         });
     }
-
-    // --- End General Handling ---
+    // --- End General Handling --- 
     
-    if (!surah || !verse || !question) {
-      // Return error only if it's not a general surah question handled below
+    // --- Input Validation for Specific Tafsir Questions --- 
+    if (!question) { // Check if question itself is missing
+        return res.status(400).json({ 
+            success: false, 
+            error: 'Missing required parameter: question.' 
+          });
+    }
+    if (!surah || !verse) {
+      // Allow general surah questions to proceed
       if (!isGeneralSurahQuestion) {
          return res.status(400).json({ 
             success: false, 
@@ -231,8 +239,9 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
           });
       }
     }
+    // --- End Input Validation --- 
 
-    // --- AI Usage Check (moved after initial checks) --- 
+    // --- AI Usage Check --- 
     let userUsage;
     try {
         userUsage = await usageService.getOrCreateUsage(userId);
@@ -330,7 +339,7 @@ CRITICAL RULES FOR AUTHENTIC & FOCUSED RESPONSES:
    - NEVER state interpretations without basis in the provided tafsir.
    - If asked about something not covered in the provided source, state that clearly (e.g., "${scholarName} does not detail this specific point in the provided text for this verse.").
 
-Provide a focused, respectful, and helpful answer to the USER'S QUESTION based strictly on the provided tafsir, incorporating the connection to the Surah's theme and adhering to all rules above.`;
+Provide a focused, respectful, and concise answer to the USER'S QUESTION based primarily on the provided tafsir source. Include context or Hadith if available in the source. Mention the connection to the Surah's theme ONLY if it directly helps answer the user's specific question or if the user explicitly asks about the theme. Prioritize accuracy and adherence to the source material above all else, following all rules.`;
     } else {
       // Fallback if tafsir content is not available for the specific verse
       systemMessage = `You are a helpful and respectful AI assistant knowledgeable about the Quran, discussing ${currentSurahName}, Verse ${verse}.
