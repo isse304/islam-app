@@ -92,7 +92,7 @@ const limiter = rateLimit({
     windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
     max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100')
 });
-app.use(limiter);
+// app.use(limiter); // Commented out global limiter
 
 // Apply security headers
 app.use(securityConfig.securityHeaders);

@@ -461,10 +461,14 @@ export class StripeService {
     }
 
     private async updateUserSubscriptionStatus(userId: string, subscription: Stripe.Subscription): Promise<IUserSubscription | null> {
+        const currentStatus = subscription.status.toLowerCase();
+        const isPremiumActive = currentStatus === 'active' || currentStatus === 'trialing';
+
         const updateData = {
             stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
             stripeSubscriptionId: subscription.id,
-            status: subscription.status.toLowerCase(),
+            status: currentStatus, // Use variable
+            plan: isPremiumActive ? 'premium' : 'free', // <-- Set plan based on status
             planId: subscription.items.data[0]?.price.id,
             currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
