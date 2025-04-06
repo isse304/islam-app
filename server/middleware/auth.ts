@@ -59,6 +59,7 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, ne
       const decodedToken = await verifyToken(token);
       console.log(`[withAuth] User ${decodedToken.uid}: Token verification successful.`); // Log after verify
       req.auth = decodedToken; // Attach decoded token info
+      console.log('[withAuth] Successfully attached auth data. Proceeding to call handler (if provided) or next().'); // Added Log
       console.log('[withAuth] Token verified, proceeding...');
       if (handler) {
           // Call the handler (e.g., premiumCheckHandler or the final route handler)
@@ -87,17 +88,22 @@ export const withPremium = (handler: (req: AuthenticatedRequest, res: Response, 
           return res.status(500).json({ error: 'Server Configuration Error', details: 'Authentication context missing' });
       }
       
+      console.log(`[premiumCheckHandler] Entered for user ${req.auth?.uid}. Checking premium status...`); // Added Log
+      console.log(`[premiumCheckHandler] Value of req.auth?.premium: ${req.auth?.premium}`); // Added Log
       // Ensure req.auth exists before accessing claims
       if (req.auth?.premium === true) {
           console.log('[withPremium] Premium status verified.');
+          console.log(`[premiumCheckHandler] Premium check PASSED for user ${req.auth.uid}. Preparing to call final route handler...`); // Added Log
           // User is premium, call the original route handler passed to withPremium
           // Ensure the final handler is called correctly
           console.log(`[withPremium] User ${req.auth.uid}: Calling final handler...`); // Log before calling final handler
           const result = await handler(req, res, next);
           console.log(`[withPremium] User ${req.auth.uid}: Final handler call finished.`); // Log after calling final handler
+          console.log(`[premiumCheckHandler] POST-HANDLER: Final handler finished for user ${req.auth.uid}. Returning control.`); // Added Log
           return result;
       } else {
           console.log('[withPremium] Premium status check failed.');
+          console.log(`[premiumCheckHandler] Premium check FAILED for user ${req.auth.uid}. Returning 403.`); // Added Log
           return res.status(403).json({ error: 'Forbidden', details: 'Premium access required' });
       }
   };

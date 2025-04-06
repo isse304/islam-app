@@ -201,175 +201,181 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
     // --- Handle General Questions or Greetings FIRST --- 
     // Basic check for non-tafsir related questions BEFORE any DB calls or complex logic
     const lowerCaseQuestion = question?.toLowerCase() || ''; // Handle potential undefined question
-    // More specific greeting check
-    const isGreeting = /^(hi|hello|hey|greetings|salam$|salam alaikum|assalamu alaikum)/i.test(lowerCaseQuestion.trim()); 
-    const isCapabilityQuestion = /what can you do|how do you work|capabilities/i.test(lowerCaseQuestion);
     const isGeneralSurahQuestion = /theme of surah|tell me about surah|summary of surah/i.test(lowerCaseQuestion);
-
-    if (isGreeting) {
-        console.log(`[Tafsir Chat] Responding to greeting from user ${userId}. Question: "${question}"`); // Added log
-        return res.json({ 
-            success: true, 
-            content: "Wa alaikum assalam! I'm ready to help you understand the Quran based on scholarly tafsir. How can I assist you today?",
-            source: 'ai_greeting',
-            sources: []
-        });
-    }
-    if (isCapabilityQuestion) {
-        console.log(`[Tafsir Chat] Responding to capability question from user ${userId}.`); // Added log
-        return res.json({ 
-            success: true, 
-            content: "I can provide tafsir explanations for specific Quran verses based on selected scholars like Ibn Kathir and Al-Tabari. I can also discuss the overall theme of a Surah. Ask me about a specific verse (e.g., 'Explain Surah 2 Verse 155') or a Surah's theme (e.g., 'What is the theme of Surah Al-Fatiha?').",
-            source: 'ai_capability',
-            sources: []
-        });
-    }
     // --- End General Handling --- 
     
-    // --- Input Validation for Specific Tafsir Questions --- 
+    // --- Input Validation --- 
     if (!question) { // Check if question itself is missing
         return res.status(400).json({ 
             success: false, 
             error: 'Missing required parameter: question.' 
           });
     }
-    if (!surah || !verse) {
-      // Allow general surah questions to proceed
-      if (!isGeneralSurahQuestion) {
-         return res.status(400).json({ 
-            success: false, 
-            error: 'Missing required parameters (surah, verse) for specific tafsir question.' 
-          });
-      }
+    // Allow general surah questions, greetings, capability questions to proceed without surah/verse initially
+    if (!isGeneralSurahQuestion && !surah && !verse) {
+        // If it's not a general surah question AND surah/verse are missing, 
+        // it might be a greeting/capability question OR an invalid tafsir request.
+        // Let the AI handle greetings/capabilities based on the unified prompt.
+        // If it was an invalid tafsir request (e.g., "explain verse 5"), the AI should state it needs more info.
+        console.log("[Tafsir Chat] Proceeding without surah/verse (likely greeting, capability, or general question).");
+    } else if (!isGeneralSurahQuestion && (!surah || !verse)) {
+        // If it's NOT a general surah question, but surah or verse IS missing, it's an invalid tafsir request.
+        return res.status(400).json({
+            success: false,
+            error: 'Missing required parameters (surah, verse) for specific tafsir question.'
+        });
     }
     // --- End Input Validation --- 
 
-    // --- AI Usage Check --- 
-    let userUsage;
-    try {
-        userUsage = await usageService.getOrCreateUsage(userId);
-
-        if (!await userUsage.canMakeAIRequest()) {
-            return res.status(429).json({ 
-                success: false,
-                error: 'AI request limit exceeded for today',
-                limit: userUsage.aiRequestLimit,
-                used: userUsage.aiRequests.count
-            });
-        }
-    } catch (usageError) {
-        console.error('Error managing user usage in tafsir/chat:', usageError);
-        return next(usageError);
-    }
-    // --- End AI Usage Check --- 
+    // --- AI Usage Check and Increment are now MOVED INSIDE specific processing blocks --- 
 
     let systemMessage = '';
     const scholarName = selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari';
-    const surahNumStr = String(surah);
+    const surahNumStr = String(surah); // May be "undefined" if not provided yet
     const currentSurahTheme = surahThemesData[surahNumStr]?.theme || 'Not available in theme data.';
     const currentSurahName = surahThemesData[surahNumStr]?.name || `Surah ${surahNumStr}`;
+    let tafsirContent = ''; // Initialize tafsirContent
+    let hasTafsirContent = false; // Initialize flag
 
-    // --- Handle General Surah Theme Question --- 
-    if (isGeneralSurahQuestion && !verse) { // Check if it's ONLY a surah question
-      systemMessage = `You are an AI assistant knowledgeable about the Quran. The user wants to know about the theme of ${currentSurahName}. 
-
-General Theme Provided: ${currentSurahTheme}
-
-Based on this theme, provide a concise and informative summary (1-2 paragraphs) explaining the main topics and message of ${currentSurahName}. If the theme data was 'Not available', state that you don't have specific theme data but can discuss common topics associated with the Surah if known. Do not hallucinate specific details if theme data is unavailable. Respond directly to the user's question about the Surah's theme. Be polite and focused on the Quranic topic.`;
-      
-      // Generate response for general surah question
-      const responseContent = await openai.generateResponse(systemMessage);
-      await userUsage.incrementAIRequestCount(); // Increment usage
-      return res.json({
-          success: true,
-          content: responseContent,
-          source: 'ai_surah_theme',
-          sources: []
-      });
-    }
-    // --- End General Surah Theme Question --- 
-
-    // --- Logic for Specific Verse Tafsir --- 
-    // Ensure surah and verse are valid if we reach here
-    if (!surah || !verse) {
-         return res.status(400).json({ 
-            success: false, 
-            error: 'Missing required parameters (surah, verse) for specific tafsir question.' 
-          });
-    }
-
-    const tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
-    const hasTafsirContent = !!tafsirContent;
-
-    if (hasTafsirContent) {
-      systemMessage = `You are a knowledgeable and respectful Muslim scholar AI assistant specializing in Quranic tafsir based on ${scholarName}. Your primary goal is to help users understand the Quran. You also understand the overall context of the Surah.
-
-Surah Information:
-- Name: ${currentSurahName}
-- General Theme: ${currentSurahTheme}
-
-Verse for Discussion: ${surah}:${verse}
-
-AVAILABLE TAFSIR SOURCE FOR VERSE ${surah}:${verse}:
-[${scholarName}'s Tafsir for Verse ${surah}:${verse}]:
-${tafsirContent}
-
-USER'S QUESTION: ${question}
-
-CRITICAL RULES FOR AUTHENTIC & FOCUSED RESPONSES:
-1. GREETINGS & CONVERSATION: Respond warmly and naturally to greetings (e.g., "Wa alaikum assalam! How can I help you with the Quran today?"). Engage politely in brief, relevant conversation, but always gently steer back towards Quranic discussion or tafsir if the user strays too far off-topic.
-
-2. INAPPROPRIATE/OFF-TOPIC QUESTIONS: If the user asks questions unrelated to the Quran, Islam, tafsir, or your capabilities, or asks inappropriate questions, politely decline to answer and redirect. Example responses: "My purpose is to assist with understanding the Quran and tafsir. How can I help you with that today?" or "I am focused on providing insights related to the Quran. Do you have a question about a specific verse or Surah theme?" Do not engage in unrelated debates or discussions.
-
-3. VERSE CONTEXT ENFORCEMENT:
-   - Focus ONLY on verse ${surah}:${verse} unless explicitly comparing.
-   - Clearly mark references to other verses (e.g., "Related Verse: X:Y").
-   - If asked about unrelated topics/verses within a tafsir request, state they are discussed elsewhere and offer to discuss verse ${surah}:${verse}.
-
-4. SOURCE ATTRIBUTION & OPINION HIERARCHY:
-   - Start relevant paragraphs with "[Source: ${scholarName}]" when drawing from the tafsir text.
-   - Present opinions in order of authenticity if mentioned in the source, labeling clearly (e.g., "Most Authentic Opinion:", "Alternative Opinion:").
-   - Use exact quotes if helpful: '[Source: ${scholarName}] As stated: "..."'.
-   - If a point isn't in the source: '[Note: This specific point is not directly addressed in the provided ${scholarName}\'s tafsir for this verse.]'.
-
-5. RESPONSE STRUCTURE (FOR TAFSIR QUESTIONS):
-   - CONTEXT OF REVELATION (Sabab an-Nuzul, if mentioned).
-   - MAIN INTERPRETATION (ordered by authenticity if applicable).
-   - WORD EXPLANATIONS (only if defined in the tafsir).
-   - CONNECTION TO SURAH THEME: **Explicitly state how the interpretation of this verse (${surah}:${verse}) connects to or exemplifies the overall theme of ${currentSurahName} (${currentSurahTheme}).**
-
-6. AUTHENTICITY ENFORCEMENT:
-   - NEVER state interpretations without basis in the provided tafsir.
-   - If asked about something not covered in the provided source, state that clearly (e.g., "${scholarName} does not detail this specific point in the provided text for this verse.").
-
-Provide a detailed yet concise answer to the USER'S QUESTION based **strictly and primarily** on the provided tafsir source material (\`${scholarName}\'s Tafsir for Verse ${surah}:${verse}\`).
-Extract and include relevant details like context of revelation (Sabab an-Nuzul), linguistic points, main interpretation(s), and any supporting Hadith or narrations mentioned **within that specific provided text**. Be comprehensive in extracting information *from the source*.
-**Do NOT add a separate 'Connection to Surah Theme' section unless the user explicitly asks about the theme.** You may naturally weave in thematic relevance *only* if it directly clarifies the answer to the user's specific question about the verse itself, citing the source.
-Prioritize accuracy and faithfulness to the provided source material for the specific verse. Adhere strictly to all rules. **Do not add a greeting (like 'Wa alaikum assalam') if the user is asking a direct question.** Respond directly to the question asked.`;
+    // --- Determine if we need to fetch Tafsir content ---
+    // Only fetch if surah and verse are provided and it's not just a general theme question
+    if (surah && verse && !isGeneralSurahQuestion) {
+         console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
+        tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
+        hasTafsirContent = !!tafsirContent;
+         console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
     } else {
-      // Fallback if tafsir content is not available for the specific verse
-      systemMessage = `You are a helpful and respectful AI assistant knowledgeable about the Quran, discussing ${currentSurahName}, Verse ${verse}.
-
-Surah Information:
-- Name: ${currentSurahName}
-- General Theme: ${currentSurahTheme}
-
-Unfortunately, ${scholarName}'s detailed tafsir text is not available in our database for this specific verse (${surah}:${verse}).
-
-USER'S QUESTION: ${question}
-
-Address the user's question generally based on your knowledge of the Quran and the Surah's theme. Clearly state that you cannot provide ${scholarName}'s specific interpretation for this verse due to missing source text. You can mention how the verse *might* relate to the Surah's theme (${currentSurahTheme}) based on common understanding. 
-Politely redirect if the question is off-topic or inappropriate, focusing the conversation back to Quranic understanding. Example: "While I don't have the specific tafsir you requested, perhaps we could discuss the general meaning of this verse or its connection to the Surah's theme?" Avoid speculation presented as fact.`;
+        console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
     }
 
+    // --- Unified System Prompt ---
+    systemMessage = `You are NuraAI, a knowledgeable, respectful, and friendly Muslim AI assistant specializing in the Quran. Your primary goal is to help users understand the Quran and engage in relevant, respectful conversation.
+
+CONTEXT & AVAILABLE DATA:
+- Selected Scholar (if relevant): ${scholarName}
+- Surah (if relevant): ${surah ? currentSurahName : 'Not specified'} (${surah || 'N/A'})
+- Verse (if relevant): ${verse || 'N/A'}
+- General Theme of Surah ${surah || 'N/A'} (if relevant): ${surah ? currentSurahTheme : 'Not specified'}
+- Tafsir Text for ${surah}:${verse} from ${scholarName} (if relevant and available): ${hasTafsirContent ? '\n' + tafsirContent + '\n' : 'Not Available/Not Requested'}
+
+USER'S CURRENT MESSAGE: ${question}
+
+YOUR TASK & RESPONSE RULES:
+
+1.  **GREETINGS & BASIC CHAT:**
+    *   Respond warmly and naturally to greetings (e.g., "Wa alaikum assalam!", "Salam! How may I assist you today?").
+    *   Engage politely in brief, relevant conversation ONLY if it pertains to Islam, the Quran, or your capabilities.
+    *   If the conversation strays, gently guide it back. Example: "That's an interesting point. Returning to the Quran, did you have a question about a specific verse or theme?"
+
+2.  **CAPABILITY QUESTIONS:**
+    *   If asked "what can you do?", "how do you work?", etc., explain your functions clearly: "I can provide tafsir (explanations) for specific Quran verses based on scholars like ${Object.keys(tafsirSources).join(', ')}. I can also discuss the overall theme of a Surah based on available data. Ask me about a specific verse (e.g., 'Explain Surah 2 Verse 155 using Ibn Kathir') or a Surah's theme (e.g., 'What is the theme of Surah Al-Fatiha?')."
+
+3.  **GENERAL SURAH THEME QUESTIONS:**
+    *   If the user asks about the theme/summary of a Surah (e.g., "Tell me about Surah Al-Baqarah", "Theme of Surah 18") AND *specific tafsir text was NOT requested/provided for a verse*:
+        *   Check the 'General Theme' data provided above.
+        *   Provide a concise summary (1-2 paragraphs) based *only* on the provided theme.
+        *   If theme data is 'Not available', state that clearly and offer to discuss common topics if known, without hallucinating. Example: "I don't have specific theme data for Surah ${currentSurahName} loaded, but it is known to cover topics such as..."
+        *   **DO NOT use the detailed tafsir rules (below) for these general theme questions.**
+
+4.  **SPECIFIC VERSE TAFSIR QUESTIONS:**
+    *   If the user asks about a SPECIFIC verse (${surah}:${verse}) AND the relevant 'Tafsir Text' IS AVAILABLE above:
+        *   **Usage Check:** (This happens *before* this step in the code).
+        *   Follow these rules STRICTLY:
+            *   Base your answer **primarily and strictly** on the provided '[${scholarName}'s Tafsir for Verse ${surah}:${verse}]'.
+            *   Structure: Context (Sabab an-Nuzul, if mentioned), Main Interpretation(s), Linguistic points (if mentioned), Connection to Surah Theme (if it clarifies the verse interpretation naturally), Relevant Hadith/Narrations *mentioned in the source*.
+            *   Attribute clearly: Start relevant extractions with "[Source: ${scholarName}]". Use exact quotes sparingly if impactful: '[Source: ${scholarName}] As stated: "..."'.
+            *   If a point is NOT in the source: '[Note: This point is not detailed in the provided ${scholarName} text for this verse.]'.
+            *   Verse Context: Focus ONLY on ${surah}:${verse} unless explicitly comparing. Clearly mark other verse references.
+            *   Authenticity: NEVER state interpretations not found in the provided source text. If asked something not covered, state: "${scholarName} does not cover this specific point in the available text for verse ${surah}:${verse}."
+            *   Theme Connection: **Only weave in the Surah theme (${currentSurahTheme}) if it directly clarifies the verse's interpretation in response to the user's question.** Do not add a separate theme section unless asked.
+        *   Respond directly to the user's question about the verse.
+
+5.  **TAFSIR REQUESTED BUT TEXT UNAVAILABLE:**
+    *   If the user asks about a SPECIFIC verse (${surah}:${verse}) BUT 'Tafsir Text' is 'Not Available':
+        *   **Usage Check:** (This happens *before* this step in the code).
+        *   State clearly: "Unfortunately, ${scholarName}'s detailed tafsir text is not available in our database for verse ${surah}:${verse}."
+        *   Address the user's question generally based on your knowledge of the Quran and the Surah's theme (${currentSurahTheme}), if applicable. Mention the theme connection cautiously.
+        *   Avoid speculation presented as fact. Offer alternatives: "Perhaps we could discuss the general meaning, or look at another verse?"
+
+6.  **INAPPROPRIATE/OFF-TOPIC:**
+    *   Politely decline questions unrelated to Quran, Islam, tafsir, or your capabilities. Redirect: "My purpose is to assist with understanding the Quran. How can I help with that?" or "I focus on Quranic insights. Do you have a question about a verse or Surah?" Do not engage in debates.
+
+7.  **INVALID REQUESTS:**
+    *   If the user asks for tafsir but doesn't provide a Surah and Verse number, politely ask for them. Example: "To provide the tafsir, please specify the Surah and Verse number you're interested in."
+
+**General Tone:** Be helpful, respectful, accurate, and focused on the Quran. Avoid overly casual language. Do not add greetings like "Wa alaikum assalam" if the user asks a direct question; answer the question directly.
+`;
+    // --- End Unified System Prompt ---
+
+    // --- Determine if AI Usage Should Be Incremented ---
+    let shouldIncrementUsage = false;
+    if ((isGeneralSurahQuestion && !verse) || (surah && verse)) {
+        // Increment usage ONLY if it's a specific theme question OR a specific verse question (regardless of whether tafsir text was found)
+        // This avoids incrementing for greetings, capability questions, or invalid requests handled by the AI prompt.
+        console.log(`[Tafsir Chat] AI call required for specific theme/tafsir. Checking usage for user ${userId}...`);
+        let userUsage;
+        try {
+            userUsage = await usageService.getOrCreateUsage(userId);
+
+            if (!await userUsage.canMakeAIRequest()) {
+                return res.status(429).json({
+                    success: false,
+                    error: 'AI request limit exceeded for today',
+                    limit: userUsage.aiRequestLimit,
+                    used: userUsage.aiRequests.count
+                });
+            }
+             console.log(`[Tafsir Chat] Usage check passed for user ${userId}. Proceeding with AI call.`);
+            shouldIncrementUsage = true; // Mark that usage should be incremented AFTER the AI call succeeds.
+
+        } catch (usageError) {
+            console.error('Error managing user usage in tafsir/chat:', usageError);
+            return next(usageError);
+        }
+    } else {
+         console.log(`[Tafsir Chat] AI call is likely for greeting/capability/general chat. Skipping usage check/increment for user ${userId}.`);
+    }
+    // --- End Usage Check Logic ---
+
+
+    // --- Generate AI Response ---
+    console.log(`[Tafsir Chat] Generating AI response for user ${userId}. Should increment usage: ${shouldIncrementUsage}`);
     const responseContent = await openai.generateResponse(systemMessage);
-    await userUsage.incrementAIRequestCount(); // Increment usage
+    console.log(`[Tafsir Chat] AI response generated for user ${userId}.`);
+    // --- End Generate AI Response ---
+
+    // --- Increment Usage (if applicable) ---
+    if (shouldIncrementUsage) {
+        try {
+            // We already retrieved userUsage in the check block
+            const userUsage = await UserUsage.findOne({ userId }); // Re-fetch or use variable from check scope if possible/safe
+            if (userUsage) {
+                 console.log(`[Tafsir Chat] Incrementing AI request count for user ${userId}.`);
+                await userUsage.incrementAIRequestCount();
+                 console.log(`[Tafsir Chat] Incremented AI request count for user ${userId}.`);
+            } else {
+                 console.warn(`[Tafsir Chat] Could not find userUsage record to increment count for user ${userId} after AI call.`);
+            }
+        } catch (incrementError) {
+             console.error(`[Tafsir Chat] Error incrementing usage count for user ${userId} after AI call:`, incrementError);
+             // Decide if this should be fatal. Usually, we still want to return the response.
+        }
+    }
+    // --- End Increment Usage ---
+
+    // Determine source based on whether tafsir was used or available
+    let responseSource = 'ai_general_chat'; // Default for greetings, capabilities, general fallback
+     if (isGeneralSurahQuestion && !verse) {
+        responseSource = 'ai_surah_theme';
+    } else if (surah && verse) {
+        responseSource = hasTafsirContent ? 'tafsir_sources' : 'ai_fallback';
+    }
 
     return res.json({
       success: true,
       content: responseContent,
-      source: hasTafsirContent ? 'tafsir_sources' : 'ai_fallback',
-      sources: hasTafsirContent ? [
+      source: responseSource, // Updated source based on logic
+      sources: (responseSource === 'tafsir_sources') ? [ // Only include sources if tafsir was used
         {
           name: selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari',
           language: tafsirSources[selectedTafsir].language
