@@ -22,6 +22,8 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
+import morgan from 'morgan';
+import cookieParser from 'cookie-parser';
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -68,15 +70,8 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
-// Add request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-    logger.info(`${req.method} ${req.url}`, {
-        body: req.body,
-        query: req.query,
-        params: req.params
-    });
-    next();
-});
+// Add request logging middleware (use standard morgan format)
+app.use(morgan(isDevelopment ? 'dev' : 'combined')); // Use 'dev' for concise dev logs, 'combined' for production
 
 // Apply security middleware
 app.use(helmet());
@@ -115,8 +110,12 @@ app.use(session(sessionConfig));
 
 // Apply additional security middleware
 app.use(securityConfig.helmet);
-app.use(securityConfig.compression);
-app.use(securityConfig.rateLimiter);
+app.use(cors());
+// app.use(morganMiddleware);
+// app.use(securityConfig.rateLimiter);
+app.use(cookieParser());
+app.use(express.json({ limit: '10mb' })); // Allow larger payloads
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // API Routes
 app.use('/api/ai', aiRouter.default || aiRouter);
