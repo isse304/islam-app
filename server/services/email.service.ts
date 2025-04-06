@@ -1,16 +1,46 @@
 import nodemailer from 'nodemailer';
+import Mail from 'nodemailer/lib/mailer';
+import SMTPTransport from 'nodemailer/lib/smtp-transport';
+import dotenv from 'dotenv';
+
+dotenv.config(); // Load environment variables
 
 export class EmailService {
   private transporter: ReturnType<typeof nodemailer.createTransport>;
 
   constructor() {
-    this.transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env['SMTP_USER'],
-        pass: process.env['SMTP_PASS']
-      }
-    });
+    const smtpUser = process.env['SMTP_USER'];
+    const smtpPass = process.env['SMTP_PASS'];
+    const smtpHost = process.env['SMTP_HOST'] || 'smtp.gmail.com'; // Default to Gmail
+    const smtpPort = parseInt(process.env['SMTP_PORT'] || '587', 10); // Default to 587
+
+    if (!smtpUser || !smtpPass) {
+      console.warn('SMTP credentials are not configured. Email functionality will be disabled.');
+      // Create a dummy transporter that doesn't send emails
+      this.transporter = nodemailer.createTransport({
+        name: 'dummy',
+        version: '0.0.0',
+        send: (mail: Mail.Options, callback: (err: Error | null, info: any) => void) => {
+          console.log('Dummy email send called (emails disabled):', mail);
+          callback(null, { response: '250 OK: Email disabled, not sent' });
+        }
+      });
+    } else {
+      const transportOptions: SMTPTransport.Options = {
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465, // true for 465, false for other ports
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+        // Optional: Add TLS options if needed, e.g., for self-signed certs
+        // tls: {
+        //     rejectUnauthorized: false
+        // }
+      };
+      this.transporter = nodemailer.createTransport(transportOptions);
+    }
   }
 
   // Method to send contact form submissions to the admin/support email
@@ -143,107 +173,81 @@ The NuraAI Team
   }
 
   // Welcome email for PREMIUM subscription
-  async sendWelcomeEmail(userEmail: string, userName: string): Promise<void> {
-    const subject = '🎉 JazakAllah Khair! Your NuraAI Premium Subscription is Active!';
-    const text = `
-Assalamu alaikum wa rahmatullahi wa barakatuh!
+  async sendWelcomeEmail(recipient: string, name: string = 'Friend'): Promise<void> {
+    const subject = 'Welcome to NuraAI Premium!';
+    const clientUrl = process.env['CLIENT_URL'] || 'http://localhost:4200';
 
-JazakAllah Khair for upgrading to NuraAI Premium, ${userName || 'friend'}! Your support helps us continue developing features to aid in understanding the Quran and Sunnah.
-
-Your Premium access is now active. You can immediately start using these powerful AI-driven features:
-
-*   AI Tafsir Chat: Dive deep into Quranic verses. Ask questions and get detailed explanations.
-*   Emotional Dua Search: Find relevant duas based on how you're feeling.
-*   Dua Insights: Go beyond translation. Understand the virtues, benefits, and context of specific duas.
-
-Explore these enhanced features now and enrich your spiritual journey.
-
-Start Exploring Premium: [YOUR_APP_URL]
-
-You can manage your subscription anytime from your profile page within the app.
-
-If you have any questions, please don't hesitate to contact us.
-
-May your journey with NuraAI be blessed,
-The NuraAI Team
-
-© ${new Date().getFullYear()} NuraAI. All rights reserved.
-    `.trim();
-
-    const html = `
+    // Improved HTML template without icons/emojis
+    const htmlBody = `
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NuraAI Premium Activated</title>
-     <style>
-        body { font-family: sans-serif; line-height: 1.6; color: #333; }
-        .container { max-width: 600px; margin: 20px auto; padding: 20px; border: 1px solid #eee; border-radius: 8px; background-color: #f9f9f9; }
-        .header { text-align: center; margin-bottom: 25px; background-color: #1A365D; padding: 15px; border-radius: 8px 8px 0 0; }
-        .logo { font-size: 28px; font-weight: bold; color: #FAF3E0; font-family: serif; }
-        .logo span { color: #B7A57A; }
-        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 15px; }
-        a { color: #B7A57A; }
-        ul { padding-left: 20px; background-color: #ffffff; padding: 15px; border-radius: 5px; border: 1px solid #e0e0e0;}
-        li { margin-bottom: 10px; display: flex; align-items: center; }
-        li strong { color: #1A365D; margin-left: 8px;}
-        .icon { color: #B7A57A; font-size: 1.2em; margin-right: 8px; } /* Basic icon styling */
-        .footer { margin-top: 25px; text-align: center; font-size: 12px; color: #777; }
+    <title>${subject}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #1A365D; color: #FAF3E0; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: bold; }
+        .content { padding: 30px 25px; color: #333333; line-height: 1.6; font-size: 16px; }
+        .content h2 { color: #1A365D; margin-top: 0; font-size: 20px; }
+        .content p { margin-bottom: 15px; }
+        .features-list { list-style: none; /* Changed to remove default bullets */ padding: 0; margin: 20px 0; }
+        .features-list li { margin-bottom: 12px; /* Removed padding-left and position */ display: block; /* Ensure full width */}
+        /* Removed icon-placeholder style */
+        .button-container { text-align: center; margin-top: 30px; }
+        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background-color 0.3s ease; }
+        .button:hover { background-color: #a8966c; }
+        .footer { background-color: #f8f8f8; color: #777777; padding: 20px; text-align: center; font-size: 12px; }
+        .footer a { color: #B7A57A; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">Nura<span>AI</span></div>
+            <h1>Welcome to NuraAI Premium!</h1>
         </div>
+        <div class="content">
+            <h2>Assalamu alaikum ${name},</h2>
+            <p>Alhamdulillah! Your premium subscription is active. You now have unlocked access to powerful AI-driven features designed to deepen your connection with the Quran and Sunnah.</p>
 
-        <h2 style="color: #1A365D; text-align: center;">Assalamu alaikum wa rahmatullahi wa barakatuh!</h2>
+            <h3>Here's what you can explore now:</h3>
+            <ul class="features-list">
+                <li>AI Tafsir Chat: Ask questions and get detailed explanations about Quranic verses.</li>
+                <li>Emotional Dua Search: Find relevant duas and guidance based on your feelings.</li>
+                <li>Dua Insights: Understand the deeper meanings and benefits of specific duas.</li>
+                <li>Advanced Learning Tools: Enhance your study with context-aware insights.</li>
+            </ul>
 
-        <p><strong>JazakAllah Khair for upgrading to NuraAI Premium, ${userName || 'friend'}!</strong> Your support helps us continue developing features to aid in understanding the Quran and Sunnah.</p>
+            <p>We pray these tools benefit your spiritual journey.</p>
 
-        <p>Your Premium access is now active. You can immediately start using these powerful AI-driven features:</p>
-
-        <ul>
-             <li><span class="icon">🧠</span> <strong>AI Tafsir Chat:</strong> Dive deep into Quranic verses. Ask questions and get detailed explanations based on authentic tafsir, linguistic insights, and historical context.</li>
-             <li><span class="icon">💖</span> <strong>Emotional Dua Search:</strong> Feeling anxious, grateful, or seeking guidance? Describe your feelings, and NuraAI will suggest relevant duas, prophetic examples, and spiritual remedies.</li>
-             <li><span class="icon">💡</span> <strong>Dua Insights:</strong> Go beyond translation. Understand the virtues, benefits, historical context, and practical application of specific duas.</li>
-             <!-- Add any other specific premium features -->
-        </ul>
-
-        <p>Explore these enhanced features now and enrich your spiritual journey.</p>
-
-        <div style="text-align: center;">
-            <a href="[YOUR_APP_URL]" class="button" style="color: #ffffff !important;">Start Exploring Premium</a>
+            <div class="button-container">
+                <a href="${clientUrl}/home" class="button">Start Exploring Premium Features</a>
+            </div>
         </div>
-
-         <p>You can manage your subscription anytime from your profile page within the app.</p>
-
-        <p>If you have any questions, please don't hesitate to contact us.</p>
-
-        <p>May your journey with NuraAI be blessed,<br>The NuraAI Team</p>
-
-         <div class="footer">
-            You received this email because you subscribed to NuraAI Premium.
-            <br>
-            &copy; ${new Date().getFullYear()} NuraAI. All rights reserved.
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} NuraAI. All rights reserved.</p>
+            <p>If you did not subscribe, please contact support.</p>
+            <p><a href="${clientUrl}/profile">Manage your subscription</a></p>
         </div>
     </div>
 </body>
 </html>
-    `.trim();
+    `;
+    const textBody = `Assalamu alaikum ${name},\n\nAlhamdulillah! Your premium subscription is active. You now have unlocked access to powerful AI-driven features designed to deepen your connection with the Quran and Sunnah.\n\nExplore now:\n- AI Tafsir Chat\n- Emotional Dua Search\n- Dua Insights\n- Advanced Learning Tools\n\nStart Exploring: ${clientUrl}/home\n\nWe pray these tools benefit your spiritual journey.\n\nThe NuraAI Team`;
 
     try {
       await this.transporter.sendMail({
         from: process.env['SMTP_FROM'],
-        to: userEmail,
+        to: recipient,
         subject: subject,
-        text: text,
-        html: html
+        text: textBody,
+        html: htmlBody
       });
-      console.log(`Premium welcome email sent successfully to ${userEmail}`);
+      console.log(`Premium welcome email sent successfully to ${recipient}`);
     } catch (error) {
-      console.error(`Failed to send premium welcome email to ${userEmail}:`, error);
+      console.error(`Failed to send premium welcome email to ${recipient}:`, error);
     }
   }
 
@@ -299,28 +303,91 @@ This is an automated alert from your Nura AI application.
     await this.sendEmail(subject, text, process.env['ALERT_EMAIL']);
   }
 
-  // Updated public method to accept recipient email
+  // Updated public method to accept recipient email and optional HTML body
   public async sendEmail(
     subject: string,
     text: string,
-    recipient: string | undefined // Make recipient optional or required based on needs
+    recipient: string | undefined, // Make recipient optional or required based on needs
+    htmlBody?: string // Add optional htmlBody parameter
   ): Promise<void> {
     if (!recipient) {
       console.error('No recipient specified for email alert.');
       return;
     }
+    const fromAddress = process.env['SMTP_FROM'] || process.env['SMTP_USER'];
+    if (!fromAddress) {
+        console.error('Cannot send email: SMTP_FROM or SMTP_USER not set.');
+        return; 
+    }
+    
     try {
       await this.transporter.sendMail({
-        from: process.env['SMTP_FROM'],
+        from: fromAddress, // Use determined fromAddress
         to: recipient,
         subject,
         text,
-        html: text.replace(/\n/g, '<br>') // Simple HTML conversion
+        // Use htmlBody if provided, otherwise generate simple HTML from text
+        html: htmlBody || text.replace(/\n/g, '<br>') 
       });
       console.log(`Email sent successfully to ${recipient} with subject: ${subject}`);
     } catch (error) {
       console.error(`Failed to send email to ${recipient}:`, error);
-      // Don't throw the error to prevent cascading failures
+      // Don't throw the error to prevent cascading failures in alerts
+    }
+  }
+
+  // Add new method for basic signup welcome
+  async sendSignupWelcomeEmail(recipient: string, name: string = 'Friend'): Promise<void> {
+    const subject = 'Welcome to NuraAI!';
+    const clientUrl = process.env['CLIENT_URL'] || 'http://localhost:4200';
+    const htmlBody = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${subject}</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
+        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .header { background-color: #1A365D; color: #FAF3E0; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 28px; }
+        .content { padding: 30px 25px; color: #333333; line-height: 1.6; font-size: 16px; }
+        .content h2 { color: #1A365D; margin-top: 0; font-size: 20px; }
+        .content p { margin-bottom: 15px; }
+        .button-container { text-align: center; margin-top: 30px; }
+        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background-color 0.3s ease; }
+        .button:hover { background-color: #a8966c; }
+        .footer { background-color: #f8f8f8; color: #777777; padding: 20px; text-align: center; font-size: 12px; }
+        .footer a { color: #B7A57A; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header"><h1>Welcome to NuraAI!</h1></div>
+        <div class="content">
+            <h2>Assalamu alaikum ${name},</h2>
+            <p>Thank you for joining NuraAI! We are excited to have you as part of our community dedicated to learning and connecting with the Quran.</p>
+            <p>You can start exploring the Quran text, translations, and basic features right away.</p>
+            <p>To unlock the full potential of NuraAI, including AI Tafsir Chat and Emotional Dua Search, consider upgrading to Premium.</p>
+            <div class="button-container"><a href="${clientUrl}/home" class="button">Get Started</a></div>
+        </div>
+        <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} NuraAI. All rights reserved.</p>
+            <p>Need help? Contact our support team.</p>
+            <p><a href="${clientUrl}/subscription">Learn about Premium</a></p>
+        </div>
+    </div>
+</body>
+</html>
+    `;
+    const textBody = `Assalamu alaikum ${name},\n\nThank you for joining NuraAI! We are excited to have you as part of our community.\n\nYou can start exploring the Quran text, translations, and basic features right away.\n\nGet Started: ${clientUrl}/home\n\nTo unlock AI features, consider upgrading to Premium: ${clientUrl}/subscription\n\nThe NuraAI Team`;
+
+    try {
+      await this.sendEmail(subject, textBody, recipient, htmlBody);
+      console.log(`Signup welcome email sent successfully to ${recipient}`);
+    } catch (error) {
+      console.error(`Failed to send signup welcome email to ${recipient}:`, error);
     }
   }
 } 
