@@ -252,10 +252,10 @@ export class StripeService {
                                 const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                     { userId: userId },
                                     { $set: { aiRequestLimit: limitToSet } },
-                                    { new: true, upsert: false }
+                                    { new: true, upsert: true, setDefaultsOnInsert: true }
                                 );
                                 if (usageUpdateResult) {
-                                    console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                                    console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
                                 } else {
                                     console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
                                 }
@@ -390,10 +390,10 @@ export class StripeService {
                             const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                 { userId: userId },
                                 { $set: { aiRequestLimit: limitToSet } },
-                                { new: true, upsert: false } // Don't upsert, assume usage record exists from earlier steps
+                                { new: true, upsert: true, setDefaultsOnInsert: true }
                             );
                             if (usageUpdateResult) {
-                                console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                                console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
                             } else {
                                 console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
                                 // Optional: Attempt to create if it really should exist? Or rely on getOrCreateUsage elsewhere.
