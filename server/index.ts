@@ -22,8 +22,8 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
-import morgan from 'morgan';
-import cookieParser from 'cookie-parser';
+// import morgan from 'morgan'; // COMMENTED OUT
+// import cookieParser from 'cookie-parser'; // COMMENTED OUT
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -71,7 +71,7 @@ app.use(cors({
 }));
 
 // Add request logging middleware (use standard morgan format)
-app.use(morgan(isDevelopment ? 'dev' : 'combined')); // Use 'dev' for concise dev logs, 'combined' for production
+// app.use(morgan(isDevelopment ? 'dev' : 'combined')); // COMMENTED OUT
 
 // Apply security middleware
 app.use(helmet());
@@ -113,7 +113,7 @@ app.use(securityConfig.helmet);
 app.use(cors());
 // app.use(morganMiddleware);
 // app.use(securityConfig.rateLimiter);
-app.use(cookieParser());
+// app.use(cookieParser()); // COMMENTED OUT
 app.use(express.json({ limit: '10mb' })); // Allow larger payloads
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
