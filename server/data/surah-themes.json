@@ -1,0 +1,458 @@
+{
+  "1": {
+    "name": "Al-Fatiha (The Opening)",
+    "theme": "A summary of the Quran's core message: Allah's lordship (Rububiyyah), mercy (Rahmah), exclusive right to worship (Uluhiyyah), guidance (Hidayah), and the distinct paths of the favoured, the astray, and those who incurred wrath."
+  },
+  "2": {
+    "name": "Al-Baqarah (The Cow)",
+    "theme": "Comprehensive guidance for the Muslim Ummah: Pillars of Iman, Islamic law (Sharia), stories of prophets (Adam, Ibrahim, Musa), the history and lessons of Bani Israel, hypocrisy (Nifaq), piety (Taqwa), social ethics, financial dealings, Jihad, and the concept of vicegerency (Khilafah)."
+  },
+  "3": {
+    "name": "Aal-e-Imran (The Family of Imran)",
+    "theme": "Steadfastness in faith, Tawhid, lessons from the Battle of Uhud, dialogue with Ahl al-Kitab (People of the Book), the status of Isa (Jesus) and his mother Maryam, and the importance of holding fast to Allah's covenant."
+  },
+  "4": {
+    "name": "An-Nisa (The Women)",
+    "theme": "Social legislation concerning family life, women's rights, orphans, inheritance laws, marriage, justice (Adl), hypocrisy, the status of Ahl al-Kitab, obedience to Allah and His Messenger, and migration (Hijrah)."
+  },
+  "5": {
+    "name": "Al-Ma'idah (The Table Spread)",
+    "theme": "Fulfillment of covenants, dietary laws (Halal/Haram), rulings on purification (Wudu/Ghusl), justice, interactions with Ahl al-Kitab, the prohibition of intoxicants and gambling, laws of retaliation (Qisas), and the story of the disciples of Isa requesting a table spread."
+  },
+  "6": {
+    "name": "Al-An'am (The Cattle)",
+    "theme": "Arguments for Tawhid, refutation of Shirk (polytheism), Allah's absolute sovereignty and creative power, the nature of revelation (Wahy), prophethood, the folly of idolatry, and reflections on Allah's signs in nature."
+  },
+  "7": {
+    "name": "Al-A'raf (The Heights)",
+    "theme": "Narratives of previous prophets (Nuh, Hud, Salih, Lut, Shu'ayb, Musa) and the consequences faced by nations rejecting divine guidance, the story of Adam and Iblis, the concept of the A'raf (a place between Jannah and Jahannam), and warnings against arrogance and disbelief."
+  },
+  "8": {
+    "name": "Al-Anfal (The Spoils of War)",
+    "theme": "Lessons and rulings related to the Battle of Badr, distribution of spoils (Ghanimah), importance of unity, trust in Allah (Tawakkul), characteristics of believers (Mu'minun), dealing with treaties, and the nature of Jihad."
+  },
+  "9": {
+    "name": "At-Tawbah (The Repentance)",
+    "theme": "Declaration of disavowal (Bara'ah) from polytheists breaking treaties, rulings on Jihad, hypocrisy, the Tabuk expedition, Zakat, the sanctity of the sacred months, sincerity in repentance, and the characteristics of true believers versus hypocrites. (Notably, the only Surah not starting with the Basmala)."
+  },
+  "10": {
+    "name": "Yunus (Jonah)",
+    "theme": "Consolation to the Prophet Muhammad (peace be upon him), emphasis on Allah's omnipotence and Tawhid, stories of Nuh and Musa, the example of Yunus and his people's acceptance of faith, the futility of Shirk, and the nature of divine revelation."
+  },
+  "11": {
+    "name": "Hud (Hud)",
+    "theme": "Steadfastness in the face of rejection, detailed stories of prophets (Nuh, Hud, Salih, Ibrahim, Lut, Shu'ayb, Musa) emphasizing the destruction of disbelieving nations, Tawhid, and consolation for the Prophet Muhammad (peace be upon him)."
+  },
+  "12": {
+    "name": "Yusuf (Joseph)",
+    "theme": "The detailed life story of Prophet Yusuf, demonstrating Allah's plan, patience (Sabr) in adversity, trust in Allah, forgiveness, the eventual triumph of truth, and lessons in morality, wisdom, and governance."
+  },
+  "13": {
+    "name": "Ar-Ra'd (The Thunder)",
+    "theme": "The power and majesty of Allah manifested in nature (like thunder), Tawhid, the truth of the Quran and prophethood, the consequences of belief and disbelief, and the contrasting nature of truth and falsehood."
+  },
+  "14": {
+    "name": "Ibrahim (Abraham)",
+    "theme": "The message of Tawhid as preached by Prophet Ibrahim, his prayers, the contrast between gratitude (Shukr) and ingratitude (Kufr), the story of Musa and Bani Israel, warnings about the Day of Judgment (Yawm al-Qiyamah), and the parable of the goodly tree versus the evil tree."
+  },
+  "15": {
+    "name": "Al-Hijr (The Rocky Tract)",
+    "theme": "Allah's protection of the Quran, the creation of humans and Jinn, the story of Adam and Iblis, the arrogance of Satan, stories of past nations destroyed (people of Lut, companions of the Rocky Tract - Ashab al-Hijr), and consolation for the Prophet."
+  },
+  "16": {
+    "name": "An-Nahl (The Bee)",
+    "theme": "Allah's countless blessings (Ni'mah) upon humanity, exemplified by nature (including the bee), arguments for Tawhid, refutation of Shirk, the importance of gratitude, justice, kindness, fulfilling promises, and warnings against altering Allah's creation or commands."
+  },
+  "17": {
+    "name": "Al-Isra (The Night Journey)",
+    "theme": "The miraculous Night Journey (Isra) and Ascension (Mi'raj) of the Prophet Muhammad (peace be upon him), the status of Bani Israel and their corruption, moral commandments (honoring parents, avoiding extravagance, fulfilling trusts), the Quran's guidance, and Tawhid."
+  },
+  "18": {
+    "name": "Al-Kahf (The Cave)",
+    "theme": "Trials of faith and guidance through four key stories: The Companions of the Cave (Ashab al-Kahf), the Man with Two Gardens, Musa and Khidr, and Dhul-Qarnayn. Protection against the Dajjal (Antichrist) is associated with reciting this Surah."
+  },
+  "19": {
+    "name": "Maryam (Mary)",
+    "theme": "The miraculous birth of Yahya (John the Baptist) and Isa (Jesus), the story of Maryam (Mary) and her piety, affirmation of Isa's true status as a prophet (not divine), stories of other prophets (Ibrahim, Musa, Idris), and the reality of Resurrection and Judgment."
+  },
+  "20": {
+    "name": "Ta-Ha (Ta-Ha)",
+    "theme": "Consolation for the Prophet Muhammad (peace be upon him), the detailed story of Musa confronting Fir'awn (Pharaoh), the incident of the Golden Calf, Allah's mercy and power, the nature of revelation, and warnings against magic and disbelief."
+  },
+  "21": {
+    "name": "Al-Anbiya (The Prophets)",
+    "theme": "The fundamental message shared by all prophets: Tawhid (Oneness of Allah) and the call to worship Him alone. Mentions numerous prophets (Ibrahim, Lut, Nuh, Dawud, Sulayman, Ayyub, Ismail, Idris, Dhul-Kifl, Yunus, Zakariyya, Yahya, Isa) highlighting their struggles and devotion."
+  },
+  "22": {
+    "name": "Al-Hajj (The Pilgrimage)",
+    "theme": "The significance and rites of Hajj, the call of Ibrahim to pilgrimage, the Day of Judgment, arguments for resurrection, permission to fight in defense (Jihad), the sanctity of the Kaaba, and condemnation of those who hinder people from Allah's path."
+  },
+  "23": {
+    "name": "Al-Mu'minun (The Believers)",
+    "theme": "Qualities and characteristics of successful believers (Falah), stages of human creation, stories of prophets (Nuh, Hud, Musa) and the rejection they faced, refutation of Shirk, the certainty of resurrection, and supplications (Dua)."
+  },
+  "24": {
+    "name": "An-Nur (The Light)",
+    "theme": "Social etiquette and laws for maintaining chastity and morality within the Muslim community, rulings on adultery and false accusations (Qadhf), the incident of the slander against Aisha (Ifk), importance of seeking permission before entering homes, lowering gaze, Hijab, the Parable of Light (Ayat an-Nur), and establishing justice."
+  },
+  "25": {
+    "name": "Al-Furqan (The Criterion)",
+    "theme": "The Quran as the criterion between truth and falsehood, the prophethood of Muhammad (peace be upon him), refutation of objections raised by disbelievers, Allah's power in creation, the contrasting end of believers and disbelievers, and the characteristics of the servants of the Most Merciful ('Ibad-ur-Rahman)."
+  },
+  "26": {
+    "name": "Ash-Shu'ara (The Poets)",
+    "theme": "Consolation for the Prophet amidst rejection, stories of Musa, Ibrahim, Nuh, Hud, Salih, Lut, and Shu'ayb, emphasizing the consistent pattern of denial faced by prophets and the destruction of denying nations. Refutes the claim that the Prophet was merely a poet."
+  },
+  "27": {
+    "name": "An-Naml (The Ant)",
+    "theme": "The power and knowledge of Allah, the story of Sulayman (Solomon) including his interaction with the ant, the hoopoe, and the Queen of Sheba (Bilqis), the story of Musa, and the story of Salih and the Thamud, highlighting guidance versus misguidance."
+  },
+  "28": {
+    "name": "Al-Qasas (The Stories)",
+    "theme": "The detailed narrative of Prophet Musa's life, from his birth, upbringing in Fir'awn's palace, escape, prophethood, confrontation with Fir'awn, and the eventual salvation of Bani Israel and destruction of Fir'awn. Also touches upon the arrogance of Qarun and the importance of seeking the Hereafter (Akhirah)."
+  },
+  "29": {
+    "name": "Al-Ankabut (The Spider)",
+    "theme": "Trials and tests (Fitnah) as a means of distinguishing true believers, the flimsy nature of reliance on anything besides Allah (symbolized by the spider's web), stories of past prophets facing trials (Nuh, Ibrahim, Lut, Shu'ayb, Musa), the importance of patience and perseverance, and Jihad."
+  },
+  "30": {
+    "name": "Ar-Rum (The Romans)",
+    "theme": "Allah's control over worldly events and the eventual triumph of believers (prophecy of Roman victory over Persians), signs of Allah in creation (Ayat), the natural disposition towards Tawhid (Fitrah), the certainty of resurrection, and warnings against division in religion."
+  },
+  "31": {
+    "name": "Luqman (Luqman)",
+    "theme": "Wisdom (Hikmah) personified through the advice of Luqman to his son, emphasizing Tawhid, gratitude to Allah and parents, enjoining good (Ma'ruf) and forbidding evil (Munkar), patience, humility, and moderation in conduct."
+  },
+  "32": {
+    "name": "As-Sajdah (The Prostration)",
+    "theme": "The truth of the Quran, stages of human creation from clay, the reality of death and resurrection, the contrast between believers who prostrate and arrogant disbelievers, and the reward for those who believe and do righteous deeds."
+  },
+  "33": {
+    "name": "Al-Ahzab (The Combined Forces)",
+    "theme": "Lessons from the Battle of the Trench (Ahzab), rulings concerning the Prophet Muhammad (peace be upon him) and his wives (Mothers of the Believers), adoption, Hijab, the importance of following the Prophet's example, and warnings against hypocrisy and spreading rumors."
+  },
+  "34": {
+    "name": "Saba (Sheba)",
+    "theme": "Allah's power and blessings exemplified by the stories of Dawud and Sulayman, the story of the people of Saba and their ingratitude leading to destruction, refutation of Shirk, the certainty of the Hour (As-Sa'ah), and the knowledge of the unseen belonging only to Allah."
+  },
+  "35": {
+    "name": "Fatir (Originator)",
+    "theme": "Allah as the Originator of creation, the role of angels, the dependence of creation on Allah, the contrast between believers and disbelievers, the deception of worldly life and Shaytan, and the differing levels of inheritors of the Book (Quran)."
+  },
+  "36": {
+    "name": "Ya-Sin (Ya-Sin)",
+    "theme": "The truth of the Quran and the prophethood of Muhammad (peace be upon him), arguments for resurrection through signs in nature (revival of dead land), the story of the messengers sent to a town, the consequences of disbelief, and scenes from the Day of Judgment. Often referred to as the 'Heart of the Quran'."
+  },
+  "37": {
+    "name": "As-Saffat (Those who set the Ranks)",
+    "theme": "Allah's absolute oneness (Tawhid), refutation of the pagan belief that angels were Allah's daughters, the role of angels in worship and carrying out commands, stories of prophets (Nuh, Ibrahim, Ismail, Ishaq, Musa, Harun, Ilyas, Lut, Yunus) emphasizing their devotion and salvation, and the contrasting fate of believers and disbelievers in the Hereafter."
+  },
+  "38": {
+    "name": "Sad (The Letter Sad)",
+    "theme": "Patience and perseverance of prophets in the face of adversity, stories of Dawud (David) and his trial, Sulayman (Solomon) and his kingdom, Ayyub (Job) and his patience, the creation of Adam and the arrogance of Iblis, and the disputes of the inhabitants of the Fire."
+  },
+  "39": {
+    "name": "Az-Zumar (The Groups)",
+    "theme": "Sincerity (Ikhlas) in worship, emphasis on Tawhid, refutation of Shirk (especially intercession through idols), Allah's absolute power and control, the creation of humans, the reality of death, and vivid descriptions of the Day of Judgment where people will be driven into groups (Zumar) towards Jannah or Jahannam."
+  },
+  "40": {
+    "name": "Ghafir (The Forgiver)",
+    "theme": "Allah's forgiveness (Ghafir), His acceptance of repentance, the majesty of Allah, the debate between a believing man from Fir'awn's family and the disbelievers, the story of Musa and Fir'awn, the futility of arguing against Allah's signs, and the role of angels praying for believers."
+  },
+  "41": {
+    "name": "Fussilat (Explained in Detail)",
+    "theme": "The Quran explained in detail, the arrogance of disbelievers in rejecting the truth, signs of Allah in the creation of heavens and earth, the response of hearing and sight on the Day of Judgment, the consequences for the people of 'Ad and Thamud, and encouragement for believers to remain steadfast."
+  },
+  "42": {
+    "name": "Ash-Shura (Consultation)",
+    "theme": "The unity of the core message revealed to all prophets, the importance of consultation (Shura) among believers, Allah's sovereignty, the nature of revelation (Wahy), responding to transgression with justice and forgiveness, and reliance on Allah."
+  },
+  "43": {
+    "name": "Az-Zukhruf (Ornaments of Gold)",
+    "theme": "Refutation of materialism and the disbelievers' focus on worldly wealth (ornaments of gold), the true value found in guidance, the message of Tawhid preached by Ibrahim, Musa, and Isa, the folly of imitating ancestors blindly, and descriptions of Jannah and Jahannam."
+  },
+  "44": {
+    "name": "Ad-Dukhan (The Smoke)",
+    "theme": "The truth and purpose of the Quran revealed on a blessed night (Laylat al-Qadr), warning of a tangible punishment (the Smoke) in this world or the Hereafter, the story of Musa and the destruction of Fir'awn's arrogant people, and the certainty of the Day of Judgment."
+  },
+  "45": {
+    "name": "Al-Jathiyah (The Crouching)",
+    "theme": "Signs of Allah in the universe, the Quran as guidance and mercy, the consequences for those who take Allah's signs in jest, the scene on the Day of Judgment where every nation will be crouching (Jathiyah) awaiting judgment, and the recording of deeds."
+  },
+  "46": {
+    "name": "Al-Ahqaf (The Wind-Curved Sandhills)",
+    "theme": "The truth of the Quran, warnings directed at the polytheists of Makkah, the story of Prophet Hud and the people of 'Ad dwelling in Al-Ahqaf, the importance of kindness to parents, the testimony of a group of Jinn affirming faith in the Quran after hearing it."
+  },
+  "47": {
+    "name": "Muhammad (Muhammad)",
+    "theme": "Contrast between believers who follow Prophet Muhammad (peace be upon him) and disbelievers, rulings and encouragement concerning Jihad in Allah's cause, the futility of the deeds of disbelievers, hypocrisy, and the promise of victory and reward (Jannah) for believers."
+  },
+  "48": {
+    "name": "Al-Fath (The Victory)",
+    "theme": "The Treaty of Hudaybiyyah as a clear victory (Fath), the pledge of allegiance under the tree (Bay'at ar-Ridwan), the qualities of the believers, the promise of future conquests, warnings against hypocrites and bedouins who stayed behind, and the Prophet's universal mission."
+  },
+  "49": {
+    "name": "Al-Hujurat (The Rooms)",
+    "theme": "Etiquette and manners for believers in their interaction with Allah, His Messenger, and each other: lowering voices, verifying news, avoiding suspicion (Zann), backbiting (Gheebah), mocking, and defamation. Emphasizes brotherhood, piety (Taqwa) as the basis of honor, and reconciliation."
+  },
+  "50": {
+    "name": "Qaf (The Letter Qaf)",
+    "theme": "Resurrection and the Day of Judgment, Allah's power evident in creation, the closeness of Allah and the recording angels, the reality of death throes, scenes from the Hereafter (Jannah and Jahannam), and the rejection faced by previous nations ('Ad, Thamud, people of Lut)."
+  },
+  "51": {
+    "name": "Adh-Dhariyat (The Winnowing Winds)",
+    "theme": "Allah's power demonstrated through natural phenomena (winds), the certainty of the Day of Judgment, the reward of the righteous (Muttaqin) in Jannah, the story of the guests of Ibrahim (angels) and the destruction of the people of Lut, 'Ad, Thamud, and Fir'awn."
+  },
+  "52": {
+    "name": "At-Tur (The Mount)",
+    "theme": "Oaths by sacred symbols (Mount Tur, the written Book) affirming the certainty of Allah's punishment for disbelievers, descriptions of the torment in Hellfire (Jahannam) and the bliss in Paradise (Jannah), and refutation of the disbelievers' accusations against the Prophet."
+  },
+  "53": {
+    "name": "An-Najm (The Star)",
+    "theme": "The truthfulness of the Prophet Muhammad (peace be upon him) and the divine source of his revelation (Wahy), description of the Angel Jibril, the Prophet's ascension (Mi'raj) experience, condemnation of idol worship (Lat, Uzza, Manat), and Allah's absolute power and knowledge."
+  },
+  "54": {
+    "name": "Al-Qamar (The Moon)",
+    "theme": "The approaching Hour (Day of Judgment) signified by the splitting of the moon, the persistent denial of disbelievers despite clear signs, narratives of past nations (people of Nuh, 'Ad, Thamud, Lut, Fir'awn) destroyed for their rejection, and the ease of the Quran for remembrance."
+  },
+  "55": {
+    "name": "Ar-Rahman (The Most Merciful)",
+    "theme": "Allah's infinite mercy (Rahmah) and blessings, highlighting His favors upon mankind and Jinn. Contrasts the wonders of creation (sun, moon, stars, seas, plants) with vivid descriptions of Jannah (Paradise) and Jahannam (Hellfire), repeatedly asking, 'Which, then, of your Lord’s blessings do you both deny?'"
+  },
+  "56": {
+    "name": "Al-Waqi'ah (The Inevitable Event)",
+    "theme": "The certainty and description of the Day of Judgment (The Inevitable Event), the classification of people into three groups (Foremost, Companions of the Right, Companions of the Left), and detailed accounts of their respective rewards (Jannah) or punishments (Jahannam)."
+  },
+  "57": {
+    "name": "Al-Hadid (The Iron)",
+    "theme": "Allah's sovereignty, knowledge, and power; the importance of belief (Iman) and spending in Allah's cause (Infaq); the fleeting nature of worldly life; the light of believers on the Day of Judgment versus the darkness of hypocrites; and the mention of iron (Hadid) as a source of strength and benefit created by Allah."
+  },
+  "58": {
+    "name": "Al-Mujadila (The Pleading Woman)",
+    "theme": "Allah's omniscience (hearing the plea of the woman regarding Zihar - a form of divorce), rulings on Zihar, etiquette of private counsel (Najwa), condemnation of those who oppose Allah and His Messenger (forming the 'party of Shaytan'), and the description of the 'party of Allah' (Hizbullah) who will succeed."
+  },
+  "59": {
+    "name": "Al-Hashr (The Exile)",
+    "theme": "The expulsion of the Jewish tribe of Banu Nadir from Madinah, rulings on spoils of war (Fai'), the contrast between believers and hypocrites, the importance of Taqwa (piety), the Beautiful Names of Allah (Asma ul Husna), and the greatness of the Quran."
+  },
+  "60": {
+    "name": "Al-Mumtahanah (She that is to be examined)",
+    "theme": "Guidance on relations between Muslims and non-Muslims, particularly concerning permissible alliances and enmity based on faith versus kinship. Prohibits taking enemies of Allah as allies, provides rulings concerning women migrating after professing Islam, and references Prophet Ibrahim's disavowal of his polytheistic people as an example."
+  },
+  "61": {
+    "name": "As-Saff (The Ranks)",
+    "theme": "Exhortation for believers to be truthful and consistent in faith and action (matching words with deeds), encouragement to strive (Jihad) in Allah's cause forming unified ranks (Saff), the story of Musa and Isa facing rejection from their people, and the promise of Allah's victory for His religion."
+  },
+  "62": {
+    "name": "Al-Jumu'ah (Friday)",
+    "theme": "The blessing of Prophet Muhammad's advent, criticism of the Jews who failed to uphold the Tawrat, the importance and specific rulings of the Friday congregational prayer (Salat al-Jumu'ah), and urging believers not to let worldly trade divert them from remembering Allah."
+  },
+  "63": {
+    "name": "Al-Munafiqun (The Hypocrites)",
+    "theme": "Exposing the characteristics and deceitful nature of the hypocrites (Munafiqun) in Madinah, their false oaths, arrogance, attempts to discourage believers from supporting the Prophet, and warnings against their plotting. Urges believers to spend in Allah's way before death."
+  },
+  "64": {
+    "name": "At-Taghabun (Mutual Disillusion)",
+    "theme": "Allah's sovereignty and knowledge, the reality of resurrection and mutual disillusion (Taghabun) on the Day of Judgment (where merits and demerits are exchanged), exhortation to belief, obedience, and spending in Allah's way, and warning that spouses and children can sometimes be a trial (Fitnah)."
+  },
+  "65": {
+    "name": "At-Talaq (Divorce)",
+    "theme": "Specific rulings and guidelines concerning divorce (Talaq) and the waiting period ('Iddah), emphasizing Taqwa (piety), providing properly for divorced women, the consequences for nations that defied Allah's command, and Allah's power and provision."
+  },
+  "66": {
+    "name": "At-Tahrim (The Prohibition)",
+    "theme": "An incident involving the Prophet Muhammad (peace be upon him) prohibiting something lawful for himself to please his wives, emphasizing the limits set by Allah, the importance of family members guiding each other towards righteousness, repentance (Tawbah), and presenting examples of believing women (wife of Fir'awn, Maryam) and disbelieving women (wives of Nuh and Lut)."
+  },
+  "67": {
+    "name": "Al-Mulk (The Sovereignty)",
+    "theme": "Allah's absolute sovereignty (Mulk), perfection in creation as proof of His existence and power, the purpose of life and death as a test, warnings about the punishment in Hellfire (Jahannam), and Allah's control over provision and protection."
+  },
+  "68": {
+    "name": "Al-Qalam (The Pen)",
+    "theme": "Defense of the Prophet Muhammad's character against accusations of madness, emphasizing his high moral standard; oaths by the Pen and what is written; the parable of the owners of the garden who were punished for their arrogance and stinginess; and warnings against obeying persistent liars and slanderers."
+  },
+  "69": {
+    "name": "Al-Haqqah (The Reality)",
+    "theme": "The absolute certainty and description of the Day of Judgment (The Reality/Haqqah), the destruction of past nations ('Ad, Thamud) who denied it, the events of the Hour (blowing of the Trumpet, carrying of the Throne), and the presentation of deeds leading to either eternal bliss or torment."
+  },
+  "70": {
+    "name": "Al-Ma'arij (The Ways of Ascent)",
+    "theme": "The impatient nature of man when afflicted or blessed, the certainty and description of the Day of Judgment, the ways of ascent (Ma'arij) for angels and the Spirit, characteristics of those who are saved (steadfast in prayer, giving charity, fearing the Hereafter, guarding chastity, fulfilling trusts)."
+  },
+  "71": {
+    "name": "Nuh (Noah)",
+    "theme": "The detailed account of Prophet Nuh's tireless preaching to his people for 950 years, their persistent rejection and arrogance, his supplication (Dua) to Allah against the disbelievers, and the eventual destruction of his people by the Flood."
+  },
+  "72": {
+    "name": "Al-Jinn (The Jinn)",
+    "theme": "Account of a group of Jinn listening to the Quran, their affirmation of faith (Iman), their recognition of Tawhid and the error of Shirk, their understanding of the limits of their knowledge of the unseen (Ghaib), and the division of Jinn into righteous and unrighteous groups."
+  },
+  "73": {
+    "name": "Al-Muzzammil (The Enshrouded One)",
+    "theme": "Instructions to the Prophet Muhammad (peace be upon him) regarding night vigil prayers (Tahajjud) for spiritual strength, recitation of the Quran, patience with opponents' rejection, remembrance of Allah (Dhikr), reliance on Him (Tawakkul), and moderation in night prayers."
+  },
+  "74": {
+    "name": "Al-Muddaththir (The Cloaked One)",
+    "theme": "Command to the Prophet Muhammad (peace be upon him) to arise and warn people, glorify Allah, purify himself, shun idolatry, persevere patiently, warnings about the Day of Judgment (Saqar - Hellfire), the guardians of Hell, and the Quran as a reminder."
+  },
+  "75": {
+    "name": "Al-Qiyamah (The Resurrection)",
+    "theme": "The certainty of the Day of Resurrection (Yawm al-Qiyamah), oaths affirming its reality, description of the state of humans on that Day (terrified eyes, darkening moon, joining sun and moon), the eagerness for revelation, and the contrast between radiant faces (believers) and gloomy faces (disbelievers)."
+  },
+  "76": {
+    "name": "Al-Insan (Man) / Ad-Dahr (Time)",
+    "theme": "The creation of man from a mixed fluid drop, guidance given to him, the rewards of the righteous (Abrar) in Jannah (Paradise) including specific descriptions of food, drink, and attendants, emphasizing their piety, feeding the needy, and fulfilling vows in this life."
+  },
+  "77": {
+    "name": "Al-Mursalat (Those Sent Forth)",
+    "theme": "Oaths by winds and angels affirming the certainty of the Day of Judgment, repeated condemnation ('Woe that Day to the deniers!') for those who reject the truth, brief references to the destruction of earlier nations, and descriptions of the separation between believers and disbelievers on that Day."
+  },
+  "78": {
+    "name": "An-Naba (The Tidings)",
+    "theme": "The great news (An-Naba) of the Day of Judgment, which disbelievers dispute; signs of Allah's power in creation (earth, mountains, sleep, day/night, heavens, rain) as proof of His ability to resurrect; description of the Day of Decision (Yawm al-Fasl) and the contrasting fate of the rebellious (Taghin) and the pious (Muttaqin)."
+  },
+  "79": {
+    "name": "An-Nazi'at (Those Who Drag Forth)",
+    "theme": "Oaths by angels who draw out souls (violently for disbelievers, gently for believers), affirming the Resurrection; the story of Musa and the arrogant Fir'awn as an example; the creation of the universe; description of the Great Overwhelming Event (Day of Judgment) and the differing outcomes for those who transgressed versus those who feared Allah."
+  },
+  "80": {
+    "name": "Abasa (He Frowned)",
+    "theme": "Guidance regarding the approach to Da'wah (calling to Islam), recounting the incident where the Prophet Muhammad (peace be upon him) frowned when interrupted by a blind man while speaking to Qurayshi chiefs; emphasis on the value of those sincerely seeking guidance regardless of status; reminders of human creation from a sperm-drop and Allah's provision."
+  },
+  "81": {
+    "name": "At-Takwir (The Folding Up)",
+    "theme": "Vivid depiction of the cataclysmic events signaling the beginning of the Day of Judgment: the sun folding up, stars falling, mountains vanishing, seas boiling, souls paired, buried girls questioned, scrolls laid open, heavens stripped, Hell blazing, Paradise brought near. Affirms the truth of the Quran and the Prophet."
+  },
+  "82": {
+    "name": "Al-Infitar (The Cleaving Asunder)",
+    "theme": "Description of cosmic events on the Day of Judgment: the sky cleaving, stars scattering, seas bursting forth, graves overturned. Addresses man's delusion regarding Allah's generosity despite His creation and the presence of recording angels (Kiraman Katibin)."
+  },
+  "83": {
+    "name": "Al-Mutaffifin (The Defrauders)",
+    "theme": "Condemnation of those who give short measure or weight (fraud in business dealings), linking this sin to denial of the Day of Judgment; description of the record of the wicked (Sijjin) and the righteous (Illiyun); the contrasting fate of sinners and believers in the Hereafter, where believers will rejoice looking upon the disbelievers."
+  },
+  "84": {
+    "name": "Al-Inshiqaq (The Splitting Asunder)",
+    "theme": "Description of events on the Day of Judgment: the sky splitting asunder, the earth stretching out and casting forth its contents. Man's inevitable meeting with his Lord and deeds. Contrast between those receiving their record in the right hand (joy) and those receiving it behind their back (despair)."
+  },
+  "85": {
+    "name": "Al-Buruj (The Constellations)",
+    "theme": "Oaths by the sky and its constellations affirming Allah's power and witness; condemnation of the 'Companions of the Ditch' (Ashab al-Ukhdud) who persecuted believers by burning them; the promise of severe punishment for persecutors and great reward for believers; Allah's encompassing knowledge and power; the preserved nature of the Quran in the Guarded Tablet (Lawh al-Mahfuz)."
+  },
+  "86": {
+    "name": "At-Tariq (The Nightcommer)",
+    "theme": "Oaths by the sky and the 'Nightcommer' (Tariq - piercing star); assertion that every soul has a guardian angel; reflection on human creation from ejected fluid; affirmation of Allah's power to resurrect; the Day secrets are examined; the Quran as a decisive statement, not amusement."
+  },
+  "87": {
+    "name": "Al-A'la (The Most High)",
+    "theme": "Glorification of Allah, the Most High (Al-A'la); His perfect creation and decree; facilitating the Quran for the Prophet; reminder of the transient nature of worldly life compared to the better and everlasting Hereafter; confirmation that this message was also in the earlier scriptures of Ibrahim and Musa."
+  },
+  "88": {
+    "name": "Al-Ghashiyah (The Overwhelming Event)",
+    "theme": "Description of the Overwhelming Event (Day of Judgment); contrasting the state of the doomed (downcast faces, enduring scorching fire, foul food/drink) with the state of the blessed (joyful faces, in lofty gardens, hearing no idle talk, abundant comforts); reflection on Allah's signs in creation (camels, sky, mountains, earth) as reminders; the Prophet's role is only to remind, judgment belongs to Allah."
+  },
+  "89": {
+    "name": "Al-Fajr (The Dawn)",
+    "theme": "Oaths by the Dawn, the Ten Nights (likely of Dhul-Hijjah), the Even and Odd, and the departing Night; referencing the destruction of past arrogant peoples ('Ad, Thamud, Fir'awn); criticism of human failings (neglecting orphans, not urging the feeding of the poor, consuming inheritance greedily, loving wealth excessively); description of the terrors of the Day of Judgment and the regret of the disbeliever; the tranquil soul (Nafs al-Mutma'innah) invited to return to its Lord and enter Paradise."
+  },
+  "90": {
+    "name": "Al-Balad (The City)",
+    "theme": "Oath by the sacred city (Makkah); assertion that man is created into hardship (Kabad); rebuke of arrogant man boasting of wealth; highlighting Allah's gifts (eyes, tongue, lips) and guidance to two paths (good and evil); description of the difficult path ('Aqabah) of righteousness: freeing slaves, feeding the hungry (orphans, needy); the fate of those who take this path versus those who deny."
+  },
+  "91": {
+    "name": "Ash-Shams (The Sun)",
+    "theme": "Series of oaths by cosmic phenomena (Sun, Moon, Day, Night, Heaven, Earth) and the Soul; Allah's inspiration of the soul with awareness of its wickedness (Fujur) and righteousness (Taqwa); emphasis that success comes from purifying the soul, and failure from corrupting it; reference to the destruction of the Thamud for denying their prophet and hamstringing the she-camel."
+  },
+  "92": {
+    "name": "Al-Layl (The Night)",
+    "theme": "Oaths by the Night, Day, and the creation of male and female; assertion that human efforts are diverse; contrast between the one who gives, fears Allah, and believes in the best (rewarded with ease) and the one who is stingy, self-sufficient, and denies the best (fated for difficulty); Allah's role is only guidance; warning of the Blazing Fire; salvation is for the pious who spend wealth for purification, seeking only Allah's Countenance."
+  },
+  "93": {
+    "name": "Ad-Duha (The Morning Brightness)",
+    "theme": "Consolation and reassurance to the Prophet Muhammad (peace be upon him) during a period when revelation seemingly paused; oaths by the morning brightness and the still night confirming Allah had not forsaken him; reminder of Allah's past favors (sheltering when orphaned, guiding when lost, enriching when poor); instruction to be kind to orphans and the needy, and to proclaim Allah's blessings."
+  },
+  "94": {
+    "name": "Ash-Sharh (The Relief) / Al-Inshirah (The Opening-Up)",
+    "theme": "Reassurance to the Prophet Muhammad (peace be upon him), reminding him of Allah's blessings: expanding his chest (granting relief and wisdom), removing his burden, and elevating his renown. Promise that indeed, with hardship comes ease (repeated for emphasis). Instruction to strive hard in devotion after finishing duties, and to turn towards Allah with longing."
+  },
+  "95": {
+    "name": "At-Tin (The Fig)",
+    "theme": "Oaths by the Fig, Olive, Mount Sinai, and the secure city (Makkah); assertion that humans were created in the best form (Ahsani Taqwim) but can be reduced to the lowest low, except for those who believe and do righteous deeds, who will have an unending reward. Affirms Allah as the Most Just of Judges."
+  },
+  "96": {
+    "name": "Al-Alaq (The Clot)",
+    "theme": "The first verses revealed to Prophet Muhammad (peace be upon him) in the cave of Hira, commanding him to 'Read!' (Iqra') in the name of Allah the Creator; description of human creation from a clinging clot ('Alaq); Allah as the teacher by the Pen; man's tendency to transgress when feeling self-sufficient; warning to those (like Abu Jahl) who hinder worship; assertion that Allah sees all; command to prostrate and draw near to Allah."
+  },
+  "97": {
+    "name": "Al-Qadr (The Power / Decree)",
+    "theme": "The immense significance of Laylat al-Qadr (The Night of Power/Decree), the night during Ramadan when the Quran was first sent down. States that this night is better than a thousand months. Angels and the Spirit (Jibril) descend during it with Allah's permission for every matter. It is a night of peace until the emergence of dawn."
+  },
+  "98": {
+    "name": "Al-Bayyinah (The Clear Proof)",
+    "theme": "The state of the disbelievers among the People of the Book (Ahl al-Kitab) and the Polytheists (Mushrikin) before the coming of the Clear Proof (Al-Bayyinah - Prophet Muhammad with the Quran); the universal command in all religions was sincere worship of Allah (Tawhid), establishing prayer (Salat), and giving Zakat; the contrasting fate of disbelievers (worst of creatures, in Hellfire) and believers (best of creatures, in Gardens of Eden)."
+  },
+  "99": {
+    "name": "Az-Zalzalah (The Earthquake)",
+    "theme": "Description of the terrifying earthquake that will occur on the Day of Judgment, when the Earth will violently shake and cast out its burdens (the dead); the Earth itself will bear witness to human deeds; humans will come forth in scattered groups to be shown their deeds; assertion that whoever does an atom's weight of good will see it, and whoever does an atom's weight of evil will see it."
+  },
+  "100": {
+    "name": "Al-Adiyat (The Chargers)",
+    "theme": "Oaths by charging war horses, highlighting their power and the intensity of battle; assertion of man's deep ingratitude (Kanud) towards his Lord; man's excessive love for wealth; reminder that Allah is aware of everything and that the contents of the graves will be brought out and secrets revealed on the Day of Judgment."
+  },
+  "101": {
+    "name": "Al-Qari'ah (The Calamity)",
+    "theme": "Description of the Day of Judgment as the Striking Calamity (Al-Qari'ah); people will be like scattered moths, and mountains like carded wool; the outcome depends on the weighing of deeds: those whose scales are heavy will have a pleasant life, while those whose scales are light will have the Abyss (Hawiyah - Hellfire) as their home."
+  },
+  "102": {
+    "name": "At-Takathur (Rivalry in Worldly Increase)",
+    "theme": "Condemnation of preoccupation with worldly competition and accumulation (Takathur) of wealth, children, and status, which distracts from remembering Allah until death comes; warning of the certainty of seeing Hellfire and being questioned about worldly delights on the Day of Judgment."
+  },
+  "103": {
+    "name": "Al-Asr (The Time)",
+    "theme": "Oath by Time ('Asr); assertion that mankind is in a state of loss, except for those who possess four qualities: believe (Iman), do righteous deeds (Amal Salih), enjoin each other to truth (Tawasaw bil-Haqq), and enjoin each other to patience (Tawasaw bis-Sabr). A concise summary of the path to success."
+  },
+  "104": {
+    "name": "Al-Humazah (The Slanderer)",
+    "theme": "Condemnation and warning of severe punishment (in the Crushing Fire - Hutamah) for every habitual slanderer (Humazah) and backbiter (Lumazah) who accumulates wealth, thinking it will make him immortal. Describes the nature of the Fire ignited by Allah."
+  },
+  "105": {
+    "name": "Al-Fil (The Elephant)",
+    "theme": "Recounting Allah's defense of the Kaaba against Abraha and his army of the Elephant ('Ashab al-Fil) who intended to destroy it; Allah sent flocks of birds (Ababil) which struck them with stones of baked clay, leaving them like consumed straw. A demonstration of Allah's power and protection of His House."
+  },
+  "106": {
+    "name": "Quraysh (Quraysh)",
+    "theme": "Highlighting Allah's favour upon the tribe of Quraysh: their security and customary winter and summer trade journeys. As a result, they are called upon to worship the Lord of this House (the Kaaba), Who provides them with food against hunger and security against fear."
+  },
+  "107": {
+    "name": "Al-Ma'un (Small Kindnesses)",
+    "theme": "Criticism of those who deny the Day of Judgment, characterized by their harshness towards orphans and lack of encouragement for feeding the poor. Condemnation of those who are heedless in their prayers (performing them neglectfully or merely for show) and refuse to provide even small kindnesses (Ma'un) to others."
+  },
+  "108": {
+    "name": "Al-Kawthar (Abundance)",
+    "theme": "Consolation and honour to the Prophet Muhammad (peace be upon him), confirming Allah has granted him Abundance (Al-Kawthar - a river in Paradise and immense goodness); instruction to pray and sacrifice solely to Allah; assurance that his enemy, not him, is the one cut off (Abtar) from all future hope and posterity."
+  },
+  "109": {
+    "name": "Al-Kafirun (The Disbelievers)",
+    "theme": "A clear declaration of disavowal (Bara'ah) from the worship of idols and the religious practices of the disbelievers. Establishes a fundamental principle of religious distinction: 'For you is your religion, and for me is my religion' (Lakum dinukum waliya din). Rejects any compromise on Tawhid."
+  },
+  "110": {
+    "name": "An-Nasr (The Divine Support)",
+    "theme": "Annunciation of impending victory (Fath Makkah - Conquest of Makkah) and divine support (Nasr) from Allah, signified by people entering Islam in multitudes. Instruction to the Prophet Muhammad (peace be upon him) to respond by glorifying Allah (Tasbih), praising Him (Hamd), and seeking His forgiveness (Istighfar), indicating the near completion of his mission."
+  },
+  "111": {
+    "name": "Al-Masad (The Palm Fiber) / Al-Lahab (The Flame)",
+    "theme": "Condemnation of Abu Lahab (an uncle of the Prophet) and his wife for their fierce opposition and harm towards the Prophet Muhammad (peace be upon him). Declares that Abu Lahab's wealth and efforts will not avail him, and both he and his wife (who carried firewood/thorns) will enter a Blazing Fire (Lahab)."
+  },
+  "112": {
+    "name": "Al-Ikhlas (Sincerity / The Purity)",
+    "theme": "A fundamental declaration of Allah's absolute Oneness (Tawhid) and uniqueness. Defines Allah as One (Ahad), the Self-Sufficient Master (As-Samad), Who begets not nor was He begotten, and affirms there is none comparable unto Him. Considered equivalent to one-third of the Quran in importance."
+  },
+  "113": {
+    "name": "Al-Falaq (The Daybreak)",
+    "theme": "Seeking refuge (Isti'adhah) in Allah, the Lord of Daybreak (Falaq), from the evil of created things, from the evil of darkness when it settles, from the evil of those who practice witchcraft (blowing on knots), and from the evil of an envier when he envies. Part of the 'Mu'awwidhatayn' used for protection."
+  },
+  "114": {
+    "name": "An-Nas (Mankind)",
+    "theme": "Seeking refuge (Isti'adhah) in Allah, described as the Lord of Mankind (Rabb an-Nas), the King of Mankind (Malik an-Nas), and the God of Mankind (Ilah an-Nas), from the evil of the retreating whisperer (Waswas al-Khannas - Shaytan) who whispers evil into the hearts of mankind, whether from among the Jinn or mankind. Part of the 'Mu'awwidhatayn' used for protection."
+  }
+}

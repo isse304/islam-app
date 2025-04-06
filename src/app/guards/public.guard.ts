@@ -16,7 +16,7 @@ export const publicGuard: CanActivateFn = (): Observable<boolean | UrlTree> => {
   return authService.user$.pipe(
     take(1), // Take the definitive state available after APP_INITIALIZER
     map(user => {
-      console.log(`[PublicGuard] Received user state after take(1):`, user ? user.email : 'null');
+      // console.log(`[PublicGuard] Received user state after take(1):`, user ? user.email : 'null');
       const isAuthenticated = !!user;
       // console.log(`PublicGuard Check (after delay): User authenticated = ${isAuthenticated}`);
 

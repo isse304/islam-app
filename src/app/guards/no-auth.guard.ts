@@ -10,19 +10,19 @@ export const NoAuthGuard: CanActivateFn = (
   const authService = inject(FirebaseAuthService);
   const router = inject(Router);
 
-  console.log('[NoAuthGuard] Running...');
+  // console.log('[NoAuthGuard] Running...');
 
   return from(authService.waitForAuthReady()).pipe(
-    tap(() => console.log('[NoAuthGuard] Auth Ready')),
+    // tap(() => console.log('[NoAuthGuard] Auth Ready')),
     switchMap(() => authService.user$.pipe(
       filter(user => user !== undefined), // Ensure initial undefined is skipped
       take(1),
       map(user => {
         if (user) {
-          console.log('[NoAuthGuard] User is authenticated, redirecting to /home');
+          // console.log('[NoAuthGuard] User is authenticated, redirecting to /home');
           return router.createUrlTree(['/home']); // Redirect logged-in users away from auth pages
         } else {
-          console.log('[NoAuthGuard] User is not authenticated, allowing access');
+          // console.log('[NoAuthGuard] User is not authenticated, allowing access');
           return true; // Allow access to auth pages if not logged in
         }
       })
