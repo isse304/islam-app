@@ -55,7 +55,9 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, ne
     }
 
     try {
+      console.log(`[withAuth] User ${req.auth?.uid || 'N/A'}: Attempting token verification...`); // Log before verify
       const decodedToken = await verifyToken(token);
+      console.log(`[withAuth] User ${decodedToken.uid}: Token verification successful.`); // Log after verify
       req.auth = decodedToken; // Attach decoded token info
       console.log('[withAuth] Token verified, proceeding...');
       if (handler) {
@@ -90,7 +92,10 @@ export const withPremium = (handler: (req: AuthenticatedRequest, res: Response, 
           console.log('[withPremium] Premium status verified.');
           // User is premium, call the original route handler passed to withPremium
           // Ensure the final handler is called correctly
-          return handler(req, res, next); 
+          console.log(`[withPremium] User ${req.auth.uid}: Calling final handler...`); // Log before calling final handler
+          const result = await handler(req, res, next);
+          console.log(`[withPremium] User ${req.auth.uid}: Final handler call finished.`); // Log after calling final handler
+          return result;
       } else {
           console.log('[withPremium] Premium status check failed.');
           return res.status(403).json({ error: 'Forbidden', details: 'Premium access required' });

@@ -953,64 +953,100 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   // Existing playAudio method (reverted version)
-  public async playAudio(url: string, verseNumber: number): Promise<void> {
-    // Check if the same verse is already playing/paused
-    if (this.currentPlayingVerse === verseNumber && this.audioPlayer && this.currentAudioUrl === url) {
-      if (this.audioPaused) {
-        this.audioPlayer.play().catch(e => this.handleAudioError(e)); // Use the existing 1-arg handler
-      } else {
-        this.audioPlayer.pause();
-      }
+  public async playAudio(url: string, verseNumber: number | null): Promise<void> {
+    if (!url) {
+      console.error('Audio URL is invalid.');
+      this.handleAudioError('Invalid audio URL');
       return;
     }
 
-    // Stop any previous audio
-    if (this.audioPlayer) {
-      this.audioPlayer.pause();
+    // If the exact same URL is requested and player exists, just play/pause
+    if (this.currentAudioUrl === url && this.audioPlayer) {
+        if (this.audioPaused) {
+            console.log('Resuming existing audio');
+            await this.audioPlayer.play().catch(e => this.handleAudioError(e));
+        } else {
+            console.log('Pausing existing audio');
+            this.audioPlayer.pause();
+        }
+        return; // Don't reload if URL is the same
     }
 
-    this.currentPlayingVerse = verseNumber;
-    this.currentlyPlaying = `Verse ${verseNumber}`;
-    this.isLoading = true;
-    this.audioPaused = false;
-    this.isPlaying = true;
-    this.currentAudioUrl = url; // Store the URL being played
+    console.log(`playAudio called. New URL: ${url}, Verse: ${verseNumber ?? 'Full Surah'}`);
+    this.showLoadingUI();
+    this.isAudioLoading = true;
+    this.currentlyPlaying = verseNumber ? `Verse ${verseNumber}` : 'Full Surah'; // Update label
+    this.currentPlayingVerse = verseNumber; 
+    this.currentAudioUrl = url;
 
-    try {
-      if (!this.audioPlayer) {
-        this.audioPlayer = new Audio();
-        this.setupAudioEvents();
-      }
-
-      this.audioPlayer.src = url; // Use the provided URL
-      this.audioPlayer.preload = 'auto'; // Ensure metadata loads
-
-      // *** ALWAYS RE-ATTACH LISTENERS HERE ***
-      this.setupAudioEvents(); // Ensure listeners are attached to the current src
-
-      console.log(`Attempting to play audio: ${url} for verse ${verseNumber}`);
-      await this.audioPlayer.play();
-
-      // Play succeeded, clear loading flags
-      this.isAudioLoading = false;
+    // Clear any existing loading timeout
+    if (this.audioLoadingTimeout) {
       clearTimeout(this.audioLoadingTimeout);
       this.audioLoadingTimeout = null;
+    }
 
-      this.isPlaying = true;
-      this.audioPaused = false;
-      this.isLoading = false;
+    // Set a timeout for loading
+    this.audioLoadingTimeout = setTimeout(() => {
+      if (this.isAudioLoading) {
+        console.warn('Audio loading timed out after 10 seconds.');
+        this.handleAudioError('Audio loading timed out.');
+      }
+    }, 10000); // 10 seconds timeout
 
-    } catch (error) {
-      console.error('Audio playback error:', error);
-      this.handleAudioError(error); // Use the existing 1-arg handler
-      // Reset state on error
-      this.isLoading = false;
-      this.isPlaying = false;
+    try {
+      // Ensure audio player exists
+      if (!this.audioPlayer) {
+          console.warn("Audio player element not found, creating new.");
+          this.audioPlayer = new Audio();
+          // Note: Listeners are attached later
+      }
+      
+      // --- CRITICAL: Remove old listeners before changing source --- 
+      console.log('Removing existing audio event listeners...');
+      this.removeAudioEvents();
+
+      console.log(`Setting audio source to: ${url}`);
+      this.audioPlayer.src = url;
+      this.audioPlayer.preload = 'metadata'; // 'auto' or 'metadata'
+
+      // Reset UI state for new audio
+      this.progress = 0;
+      this.currentTime = '0:00';
+      this.duration = '0:00';
+      // isPlaying and audioPaused will be set by events or after play() succeeds
+      this.isPlaying = false; 
       this.audioPaused = true;
-      this.currentPlayingVerse = null;
-      this.currentlyPlaying = '';
-      this.currentAudioUrl = null;
-      // this.changeDetector.detectChanges(); // NgZone handles detection
+      this.changeDetector.detectChanges(); // Update UI immediately
+
+      console.log('Calling audioPlayer.load()...');
+      this.audioPlayer.load(); // Load the new audio source
+
+      // --- CRITICAL: Re-attach event listeners AFTER setting src and calling load --- 
+      console.log('Setting up new audio event listeners...');
+      this.setupAudioEvents(); 
+
+      console.log('Attempting to play audio...');
+      // Wait for metadata to load before playing? Might help consistency
+      // await new Promise<void>(resolve => {
+      //     const canPlayHandler = () => {
+      //         this.audioPlayer.removeEventListener('canplay', canPlayHandler);
+      //         resolve();
+      //     };
+      //     this.audioPlayer.addEventListener('canplay', canPlayHandler);
+      // });
+      await this.audioPlayer.play();
+      console.log('Audio play() promise resolved.');
+      // State will be updated by the 'play' event listener
+
+    } catch (error: any) {
+      console.error('Error in playAudio process:', error);
+      this.handleAudioError(error);
+      // Ensure loading state is cleared on error
+      this.isAudioLoading = false; 
+      if (this.audioLoadingTimeout) {
+        clearTimeout(this.audioLoadingTimeout);
+        this.audioLoadingTimeout = null;
+      }
     }
   }
 

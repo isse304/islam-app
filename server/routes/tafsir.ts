@@ -192,6 +192,8 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
 
 // Tafsir chat endpoint (Requires Auth AND Premium)
 router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+  // Log entry into the main handler
+  console.log(`[Tafsir Chat Route] Handler entered for user ${req.auth?.uid}. Question: "${req.body?.question}"`);
   try {
     const { surah, verse, question, isFirstResponse = false, selectedTafsir = 'ibn-kathir' } = req.body;
     const userId = req.auth!.uid;
