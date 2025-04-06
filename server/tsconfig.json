@@ -15,11 +15,7 @@
         "rootDir": ".",
         "allowJs": true,
         "noEmit": false,
-        "isolatedModules": true,
-        "typeRoots": [
-            "../node_modules/@types",
-            "./node_modules/@types"
-        ]
+        "isolatedModules": true
     },
     "ts-node": {
         "swc": true,
