@@ -18,6 +18,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { body, validationResult } from 'express-validator';
 import NodeCache from 'node-cache';
+import cron from 'node-cron';
 
 // Type definitions
 type AuthRequest = express.Request & {
@@ -44,7 +45,7 @@ const isDevelopment = process.env['NODE_ENV'] === 'development' || !process.env[
 const cacheService = new CacheService();
 const emailService = new EmailService();
 const openAIService = new OpenAIService();
-const stripeService = new StripeService();
+const stripeService = new StripeService(emailService);
 const usageService = new UsageService(stripeService);
 const costMonitorService = new CostMonitorService(emailService);
 const spiritualContentService = new SpiritualContentService();
@@ -767,6 +768,23 @@ router.post('/tafsir/chat',
         console.error('[ERROR] /api/tafsir/chat:', error); // Enhanced error logging
         next(error);
     }
+});
+
+// --- Scheduled Job for Resetting Daily Usage --- //
+// Schedule task to run daily at midnight UTC
+cron.schedule('0 0 * * *', async () => {
+    console.log('Running daily usage reset job...');
+    try {
+        await resetDailyUsage();
+        console.log('Daily usage reset successfully completed.');
+    } catch (error) {
+        console.error('Error running daily usage reset job:', error);
+        // Optionally send an alert on failure
+        await emailService.sendErrorAlert(error instanceof Error ? error : new Error(String(error)), 'Daily Usage Reset Cron');
+    }
+}, {
+    scheduled: true,
+    timezone: "UTC"
 });
 
 export default router; 

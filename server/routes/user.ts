@@ -715,4 +715,42 @@ router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response, n
     }
 }));
 
+// POST /api/user/send-welcome - Triggered by Firebase Cloud Function
+router.post('/send-welcome', async (req: express.Request, res: Response, next: NextFunction) => {
+    console.log('[SendWelcome] Received request...');
+    const providedSecret = req.headers['x-internal-secret'] as string;
+    const expectedSecret = process.env['FUNCTION_SECRET'];
+
+    // 1. Validate Secret
+    if (!expectedSecret) {
+        console.error('[SendWelcome] FUNCTION_SECRET environment variable not set.');
+        return res.status(500).json({ error: 'Server configuration error.' });
+    }
+    if (!providedSecret || providedSecret !== expectedSecret) {
+        console.warn('[SendWelcome] Unauthorized attempt. Invalid or missing secret.');
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    console.log('[SendWelcome] Secret validated.');
+
+    // 2. Validate Request Body
+    const { email, name } = req.body;
+    if (!email) {
+        console.warn('[SendWelcome] Bad request: Missing email.');
+        return res.status(400).json({ error: 'Missing required field: email' });
+    }
+
+    // 3. Send Email
+    try {
+        console.log(`[SendWelcome] Attempting to send signup welcome email to: ${email}`);
+        // Use the existing email service instance
+        await emailServiceInstance.sendSignupWelcomeEmail(email, name || 'Friend'); // Use name or default
+        console.log(`[SendWelcome] Signup welcome email queued successfully for ${email}.`);
+        res.status(200).json({ success: true, message: 'Welcome email sent.' });
+    } catch (error) {
+        console.error(`[SendWelcome] Error sending welcome email to ${email}:`, error);
+        next(error); // Pass to general error handler
+    }
+});
+
 export default router; 

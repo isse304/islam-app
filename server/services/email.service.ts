@@ -212,7 +212,7 @@ The NuraAI Team
             <h2>Assalamu alaikum ${name},</h2>
             <p>Alhamdulillah! Your premium subscription is active. You now have unlocked access to powerful AI-driven features designed to deepen your connection with the Quran and Sunnah.</p>
 
-            <h3>Here's what you can explore now:</h3>
+            <h3>Here's a glimpse of the insights you can explore:</h3>
             <ul class="features-list">
                 <li>AI Tafsir Chat: Ask questions and get detailed explanations about Quranic verses.</li>
                 <li>Emotional Dua Search: Find relevant duas and guidance based on your feelings.</li>
@@ -220,7 +220,16 @@ The NuraAI Team
                 <li>Advanced Learning Tools: Enhance your study with context-aware insights.</li>
             </ul>
 
-            <p>We pray these tools benefit your spiritual journey.</p>
+            <!-- Added Tafsir Preview Section -->
+            <div style="margin-top: 30px; padding: 20px; background-color: #f8f8f8; border-radius: 8px; border: 1px solid #e0e0e0;">
+                <h4 style="color: #1A365D; margin-top: 0; margin-bottom: 15px; font-size: 18px;">AI Tafsir Example: Surah 1, Verse 1</h4>
+                <p style="font-style: italic; color: #555; margin-bottom: 10px;">بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ</p>
+                <p style="color: #333;">"In the name of Allah, the Entirely Merciful, the Especially Merciful."</p>
+                <p style="margin-top: 15px; font-size: 14px; color: #444;"><strong style="color: #1A365D;">AI Insight:</strong> This foundational verse, the Basmalah, begins nearly every chapter of the Quran. It signifies starting actions seeking Allah's blessings and acknowledging His infinite mercy (Ar-Rahman - benefiting all creation) and His specific mercy (Ar-Raheem - for the believers). Reciting it reminds us of Allah's presence and guidance in all endeavors.</p>
+            </div>
+            <!-- End Tafsir Preview Section -->
+
+            <p style="margin-top: 30px;">We pray these tools benefit your spiritual journey.</p>
 
             <div class="button-container">
                 <a href="${clientUrl}/home" class="button">Start Exploring Premium Features</a>

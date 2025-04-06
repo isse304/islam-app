@@ -30,6 +30,7 @@
     "@stripe/stripe-js": "^3.0.0",
     "@types/fuse": "2.6.2",
     "autoprefixer": "^10.4.16",
+    "axios": "1.8.4",
     "cookie-parser": "1.4.7",
     "express-rate-limit": "7.5.0",
     "express-validator": "7.2.1",
