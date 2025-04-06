@@ -243,8 +243,29 @@ export class StripeService {
                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
                             console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
 
-                            // --- ADDED: Email Logic here --- 
-                            const statusToUse = userSub.status; // Use status directly from the updated userSub
+                            // --- ADDED: Update UserUsage aiRequestLimit (also in checkout.session.completed) ---
+                            try {
+                                const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
+                                const statusToUseForLimit = userSub.status; // Use status from the updated userSub
+                                const limitToSet = (statusToUseForLimit === 'active' || statusToUseForLimit === 'trialing') ? premiumLimit : 0;
+                                console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
+                                const usageUpdateResult = await UserUsage.findOneAndUpdate(
+                                    { userId: userId },
+                                    { $set: { aiRequestLimit: limitToSet } },
+                                    { new: true, upsert: false }
+                                );
+                                if (usageUpdateResult) {
+                                    console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                                } else {
+                                    console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
+                                }
+                            } catch (usageUpdateError) {
+                                console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
+                            }
+                            // --- END ADDED: Update UserUsage aiRequestLimit ---
+
+                            // --- Email Logic here (already exists) --- 
+                            const statusToUse = userSub.status; 
                             if (statusToUse === 'active' || statusToUse === 'trialing') { 
                                 // Fetch user info from Firebase
                                 let userEmail: string | undefined;

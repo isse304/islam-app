@@ -74,3 +74,12 @@ testem.log
 
 # Quran pages (large files)
 public/quran-pages/
+
+# More Environment Files
+*.env
+!*.env.example
+/src/environments/environment.prod.ts
+
+# Firebase Service Account Keys
+/serviceAccountKey.json
+/firebase-adminsdk-*.json
