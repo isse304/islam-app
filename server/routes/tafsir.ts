@@ -248,6 +248,8 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
         console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
     }
 
+    console.log('[Tafsir Chat] Fetched Tafsir Content for Prompt:', tafsirContent ? tafsirContent.substring(0, 300) + '...' : 'None');
+
     // --- Unified System Prompt ---
     systemMessage = `You are NuraAI, a knowledgeable, respectful, and friendly Muslim AI assistant specializing in the Quran. Your primary goal is to help users understand the Quran and engage in relevant, respectful conversation.
 
@@ -283,6 +285,7 @@ YOUR TASK & RESPONSE RULES:
         *   Follow these rules STRICTLY:
             *   Base your answer **primarily and strictly** on the provided '[${scholarName}'s Tafsir for Verse ${surah}:${verse}]'.
             *   Structure: Context (Sabab an-Nuzul, if mentioned), Main Interpretation(s), Linguistic points (if mentioned), Connection to Surah Theme (if it clarifies the verse interpretation naturally), Relevant Hadith/Narrations *mentioned in the source*.
+            *   **Extract and present details comprehensively from the source text**, including context, interpretations, linguistic points, and narrations mentioned *within that text*. **DO NOT just summarize; present the actual details found in the source.** Avoid excessive summarization when source material is available.
             *   Attribute clearly: Start relevant extractions with "[Source: ${scholarName}]". Use exact quotes sparingly if impactful: '[Source: ${scholarName}] As stated: "..."'.
             *   If a point is NOT in the source: '[Note: This point is not detailed in the provided ${scholarName} text for this verse.]'.
             *   Verse Context: Focus ONLY on ${surah}:${verse} unless explicitly comparing. Clearly mark other verse references.
@@ -303,7 +306,8 @@ YOUR TASK & RESPONSE RULES:
 7.  **INVALID REQUESTS:**
     *   If the user asks for tafsir but doesn't provide a Surah and Verse number, politely ask for them. Example: "To provide the tafsir, please specify the Surah and Verse number you're interested in."
 
-**General Tone:** Be helpful, respectful, accurate, and focused on the Quran. Avoid overly casual language. Do not add greetings like "Wa alaikum assalam" if the user asks a direct question; answer the question directly.
+**General Tone:** Be helpful, respectful, accurate, and focused on the Quran. Avoid overly casual language.
+**ABSOLUTE RULE: If the user asks a direct question (not just 'hi' or 'salam'), DO NOT start your response with any greeting** (like "Wa alaikum assalam" or "Hello"). Answer the question directly.
 `;
     // --- End Unified System Prompt ---
 
@@ -340,7 +344,9 @@ YOUR TASK & RESPONSE RULES:
 
     // --- Generate AI Response ---
     console.log(`[Tafsir Chat] Generating AI response for user ${userId}. Should increment usage: ${shouldIncrementUsage}`);
+    console.log(`[Tafsir Chat] PRE-AI_CALL: About to call openai.generateResponse for user ${userId}`);
     const responseContent = await openai.generateResponse(systemMessage);
+    console.log(`[Tafsir Chat] POST-AI_CALL: Received response from openai.generateResponse for user ${userId}. Content length: ${responseContent?.length}`);
     console.log(`[Tafsir Chat] AI response generated for user ${userId}.`);
     // --- End Generate AI Response ---
 
@@ -371,6 +377,7 @@ YOUR TASK & RESPONSE RULES:
         responseSource = hasTafsirContent ? 'tafsir_sources' : 'ai_fallback';
     }
 
+    console.log(`[Tafsir Chat] PRE-JSON_RESPONSE: About to send final JSON response. Source: ${responseSource}`);
     return res.json({
       success: true,
       content: responseContent,

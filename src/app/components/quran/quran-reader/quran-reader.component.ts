@@ -986,12 +986,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
 
     // Set a timeout for loading
+    clearTimeout(this.audioLoadingTimeout); // Clear previous timeout using the handle
     this.audioLoadingTimeout = setTimeout(() => {
-      if (this.isAudioLoading) {
-        console.warn('Audio loading timed out after 10 seconds.');
-        this.handleAudioError('Audio loading timed out.');
+      if (this.isAudioLoading) { // Use the correct loading state variable
+        console.warn('Audio loading timed out after 20 seconds.'); // Increased timeout duration
+        this.isAudioLoading = false; // Set loading to false
+        // Optionally call handleAudioError or just update UI
+        // this.handleAudioError('Audio loading timed out.'); 
+        this.changeDetector.detectChanges(); // Update view if timeout happens
       }
-    }, 10000); // 10 seconds timeout
+    }, 20000); // Increased to 20 seconds
 
     try {
       // Ensure audio player exists
@@ -1084,9 +1088,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   private readonly onLoadedMetadata = (): void => {
     this.ngZone.run(() => { // Wrap in NgZone
       if (this.audioPlayer && !isNaN(this.audioPlayer.duration)) {
-        this.duration = this.formatTime(this.audioPlayer.duration);
+        const duration = this.audioPlayer.duration;
+        console.log(`[onLoadedMetadata] Fired. Duration: ${duration}, URL: ${this.audioPlayer.src}`); // ADDED LOG
+        this.duration = this.formatTime(duration);
         this.progress = 0;
-        // this.changeDetector.detectChanges(); // NgZone handles detection
+        this.isAudioLoading = false; // Ensure loading is false once metadata is loaded
+        if (this.audioLoadingTimeout) { // Clear loading timeout
+          clearTimeout(this.audioLoadingTimeout);
+          this.audioLoadingTimeout = null;
+        }
+        this.changeDetector.detectChanges(); // Force UI update (Ensure cdr is named correctly)
       }
     });
   };

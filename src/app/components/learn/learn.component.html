@@ -1,10 +1,5 @@
 <div class="min-h-screen bg-[#FAF3E0] py-8">
     <div class="container mx-auto px-4">
-        <!-- Loading Spinner (Visible during initial component load AND premium check) -->
-        <div *ngIf="isLoading || !initialPremiumCheckComplete" class="flex items-center justify-center min-h-[60vh]">
-            <mat-spinner diameter="40"></mat-spinner>
-        </div>
-
         <!-- Main Content Area (Render only AFTER initial premium check AND if user IS premium) -->
         <div class="grid lg:grid-cols-2 gap-8" *ngIf="initialPremiumCheckComplete && isPremium">
             <!-- Current Verse Section with Selection Controls -->
