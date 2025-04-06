@@ -269,36 +269,39 @@ export class ProfileComponent implements OnInit, OnDestroy {
     // This ensures default values are picked correctly if needed
     this.initializeForms(null, null, 24); 
 
-    // Subscribe to the AppUser observable
+    // Subscribe to the AppUser observable - Consolidated logic
     this.authService.user$.pipe(
-      filter((user): user is AppUser => !!user), // Ensure user is not null
-      take(1), // Take the first emitted AppUser
-      tap(appUser => {
-        this.user = appUser; // Assign the AppUser
-        // Initiate loading of preferences, bookmarks (subscription status is part of AppUser)
-        this.loadOtherUserData(appUser.id);
+      take(1), // Take the first emitted value (could be null initially)
+      switchMap(user => {
+        if (!user) {
+          // Handle user not found case directly
+          this.isLoading = false;
+          this.error = 'User not found. Please log in again.';
+          console.warn('[Profile] User is null or undefined in user$ stream.');
+          this.cdr.markForCheck();
+          // Optionally navigate to login here if needed
+          // this.router.navigate(['/auth/login']);
+          return of(null); // End this path of the stream
+        } else {
+          // User found, proceed with loading data
+          this.user = user as AppUser; // Assign the AppUser
+          this.loadOtherUserData(this.user.id); // Load other data
+          return of(user); // Pass the user down the stream if needed elsewhere
+        }
       }),
       catchError(err => {
-        this.isLoading = false; // Stop loading on error fetching user
-        this.error = 'Failed to load user data. Please log in again.';
-        console.error('[Profile] Error getting user from authService.user$:', err);
+        // Handle errors fetching user OR loading other data
+        this.isLoading = false;
+        this.error = 'Failed to load profile data. Please try again.';
+        console.error('[Profile] Error in user$ stream or loadOtherUserData:', err);
         this.cdr.markForCheck();
-        return of(null); // Complete the observable chain
+        return of(null); // Complete the observable chain on error
       }),
       takeUntil(this.destroy$)
-    ).subscribe();
-
-    // Handle case where user$ might complete without emitting a user (e.g., logged out)
-    // This might be redundant if the filter handles it, but provides a fallback.
-    this.authService.user$.pipe(take(1)).subscribe(user => {
-      if (!user) {
-         this.isLoading = false;
-         this.error = 'User not found. Please log in again.';
-         this.cdr.markForCheck();
-         // Optionally navigate to login
-         // this.router.navigate(['/auth/login']);
-      }
-    });
+    ).subscribe(
+      // Optional: Add a next handler if you need to do something after successful load
+      // next: (loadedUser) => { if (loadedUser) { console.log('[Profile] User data loaded successfully'); } }
+    );
   }
 
   ngOnDestroy(): void {

@@ -71,7 +71,21 @@ export class StripeService {
             // Only use existing customer ID if NOT in test mode OR if it's guaranteed to be a test customer ID
             // For simplicity, we'll just force new customer creation in test mode if an ID is found
             stripeCustomerId = userSubscription.stripeCustomerId;
-            console.log(`[Stripe] Found existing Stripe Customer ID: ${stripeCustomerId} for user ${userId}`);
+            console.log(`[Stripe] Found existing Stripe Customer ID: ${stripeCustomerId} for user ${userId}. Ensuring metadata is current...`);
+            try {
+                // *** ADDED BLOCK: Force update metadata for existing customer ***
+                await this.stripe.customers.update(stripeCustomerId, {
+                    metadata: { firebaseUID: userId } // Ensure the current Firebase UID is set
+                });
+                console.log(`[Stripe] Updated metadata for existing customer ${stripeCustomerId}`);
+                // *** END OF ADDED BLOCK ***
+            } catch (updateError) {
+                 console.error(`[Stripe] Failed to update metadata for existing customer ${stripeCustomerId}:`, updateError);
+                 // Optional: Decide if you want to proceed or throw an error.
+                 // Proceeding might be okay if metadata update isn't strictly critical for checkout itself,
+                 // but it's critical for the webhook later. Throwing an error might be safer.
+                 // For now, we log the error and proceed.
+            }
         } else if (isTestMode && userSubscription && userSubscription.stripeCustomerId) {
              console.log(`[Stripe] TEST MODE: Ignoring potentially live customer ID ${userSubscription.stripeCustomerId} found for user ${userId}. Will create a new test customer.`);
              // Let stripeCustomerId remain undefined so a new one is created below
