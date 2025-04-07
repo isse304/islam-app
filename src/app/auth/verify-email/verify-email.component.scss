@@ -1,82 +1,183 @@
-.auth-container {
+// Theme colors (adjust as needed)
+$bg-color: #FAF3E0; // Light beige background
+$card-bg-color: #FFFFFF; // White card background
+$primary-accent: #B7A57A; // Muted gold/tan for primary actions
+$dark-accent: #8B4513; // Dark brown for text, borders, icons
+$secondary-accent: #A0937D; // Lighter tan/grey for secondary actions/text
+$success-color: #4CAF50; // Green for success states
+$error-color: #D32F2F; // Red for error states
+
+.verify-email-container {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 80vh;
+  min-height: 80vh; // Take up most of the viewport height
+  background-color: $bg-color;
   padding: 20px;
-  background-color: var(--background-color, #f5f5f5);
 }
 
-.auth-card {
+.verify-email-card {
+  max-width: 500px;
   width: 100%;
-  max-width: 400px;
-  border-radius: 8px;
+  padding: 25px;
+  background-color: $card-bg-color;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
+  border-radius: 8px;
 
-.full-width {
-  width: 100%;
-}
+  .mat-card-header {
+    padding-bottom: 20px;
+    border-bottom: 1px solid rgba($dark-accent, 0.1);
+    margin-bottom: 20px;
 
-mat-card-header {
-  margin-bottom: 16px;
-  justify-content: center;
-}
-
-mat-card-title {
-  font-size: 24px;
-  font-weight: 500;
-  margin-bottom: 8px;
-}
-
-.verify-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: 16px;
-}
-
-.email-icon {
-  font-size: 48px;
-  height: 48px;
-  width: 48px;
-  margin-bottom: 16px;
-}
-
-h3 {
-  margin-bottom: 16px;
-  font-weight: 500;
-}
-
-.message {
-  margin-bottom: 16px;
-  color: var(--text-primary, rgba(0, 0, 0, 0.87));
-}
-
-.sub-message {
-  margin-bottom: 24px;
-  color: var(--text-secondary, rgba(0, 0, 0, 0.6));
-}
-
-.button-container {
-  margin-bottom: 24px;
-  width: 100%;
-}
-
-.login-prompt {
-  display: flex;
-  justify-content: center;
-  margin-top: 24px;
-  
-  a {
-    color: var(--primary-color, #673ab7);
-    cursor: pointer;
-    text-decoration: none;
-    font-weight: 500;
-    
-    &:hover {
-      text-decoration: underline;
+    .mat-card-avatar {
+      font-size: 48px; // Make icon larger
+      width: 48px;
+      height: 48px;
+      color: $primary-accent;
+      margin-right: 16px;
     }
+
+    .mat-card-title {
+      font-size: 1.4em;
+      font-weight: 500;
+      color: $dark-accent;
+    }
+
+    .mat-card-subtitle {
+      color: $secondary-accent;
+      font-size: 0.95em;
+    }
+  }
+
+  .mat-card-content {
+    padding: 10px 0;
+    color: $dark-accent;
+    line-height: 1.6;
+
+    .loading-indicator,
+    .error-text {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 0;
+      text-align: center;
+
+      mat-progress-spinner {
+        margin-bottom: 15px;
+        // Use custom colors if needed, requires importing theming
+        // Example: --mdc-circular-progress-active-indicator-color: $primary-accent;
+      }
+
+      p {
+        color: $secondary-accent;
+        margin-top: 10px;
+      }
+    }
+
+    .error-text {
+      color: $error-color;
+      mat-icon {
+        font-size: 36px;
+        width: 36px;
+        height: 36px;
+        margin-bottom: 10px;
+      }
+    }
+
+    .info-text {
+      margin-bottom: 15px;
+    }
+
+    .user-email {
+      font-weight: 600;
+      color: $primary-accent;
+      word-break: break-all; // Ensure long emails wrap
+    }
+  }
+
+  .mat-card-actions {
+    padding: 20px 0 0; // Add padding top
+    display: flex;
+    justify-content: flex-end; // Align buttons to the right
+    gap: 10px; // Space between buttons
+
+    button {
+      padding: 8px 16px;
+      min-width: 120px; // Give buttons some minimum width
+
+      mat-icon,
+      mat-progress-spinner {
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+
+      mat-progress-spinner::ng-deep circle {
+        // Style spinner color if needed (check Angular Material docs for latest)
+        stroke: currentColor; 
+      }
+
+      // Specific button styling
+      &[mat-stroked-button] {
+        border-color: $secondary-accent;
+        color: $dark-accent;
+        &:hover:not([disabled]) {
+          background-color: rgba($primary-accent, 0.05);
+        }
+      }
+      &[mat-flat-button][color="primary"] {
+        background-color: $primary-accent;
+        color: $card-bg-color;
+        &:hover:not([disabled]) {
+          background-color: darken($primary-accent, 5%);
+        }
+      }
+      &[disabled] {
+        opacity: 0.6;
+      }
+    }
+  }
+  
+  .mat-card-footer {
+      margin-top: 20px;
+      padding-top: 15px;
+      border-top: 1px solid rgba($dark-accent, 0.1);
+      display: flex;
+      justify-content: center;
+
+      .sign-out-button {
+        color: $secondary-accent;
+        &:hover {
+          color: $error-color; // Make hover red for sign out
+          background-color: rgba($error-color, 0.05);
+        }
+
+        mat-icon {
+          margin-right: 6px;
+          vertical-align: middle;
+        }
+      }
+  }
+}
+
+// Styles for snackbars (place in global styles or here if specific)
+// Ensure you have panelClass defined in the component's snackBar.open() call
+::ng-deep .success-snackbar {
+  .mdc-snackbar__surface {
+    background-color: $success-color !important;
+    color: white !important;
+  }
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: white !important;
+  }
+}
+
+::ng-deep .error-snackbar {
+  .mdc-snackbar__surface {
+    background-color: $error-color !important;
+    color: white !important;
+  }
+  .mat-mdc-button.mat-mdc-snack-bar-action {
+    color: white !important;
   }
 } 

@@ -90,7 +90,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
         const cachedUser = localStorage.getItem('currentUser');
         if (cachedUser) {
           // console.log('Found cached user, reinitializing from cache...');
-          this.firebaseAuthService['initFromCache']();
+          // REMOVED: this.firebaseAuthService['initFromCache']();
         }
       }
     });
