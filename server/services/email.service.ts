@@ -14,6 +14,11 @@ export class EmailService {
     const smtpHost = process.env['SMTP_HOST'] || 'smtp.gmail.com'; // Default to Gmail
     const smtpPort = parseInt(process.env['SMTP_PORT'] || '587', 10); // Default to 587
 
+    console.log(`[EmailService Constructor] Initializing...`);
+    console.log(`[EmailService Constructor] SMTP_HOST: ${smtpHost}, SMTP_PORT: ${smtpPort}`);
+    console.log(`[EmailService Constructor] SMTP_USER Set: ${!!smtpUser}`);
+    console.log(`[EmailService Constructor] SMTP_PASS Set: ${!!smtpPass}`);
+
     if (!smtpUser || !smtpPass) {
       console.warn('SMTP credentials are not configured. Email functionality will be disabled.');
       // Create a dummy transporter that doesn't send emails
@@ -333,61 +338,27 @@ This is an automated alert from your Nura AI application.
     } catch (error) {
       console.error(`Failed to send email to ${recipient}:`, error);
       // Don't throw the error to prevent cascading failures in alerts
+      // --- Throw error for contact form specifically ---
+      if (subject.startsWith('Contact Form Submission')) {
+        throw error; // Re-throw specifically for contact form forwarding
+      }
+      // --- End specific throw ---
     }
   }
 
-  // Add new method for basic signup welcome
+  /* --- Welcome Email Logic Removed - Handled by Mailchimp Automation --- */
+
+  /*
   async sendSignupWelcomeEmail(recipient: string, name: string = 'Friend'): Promise<void> {
-    const subject = 'Welcome to NuraAI!';
-    const clientUrl = process.env['CLIENT_URL'] || 'http://localhost:4200';
-    const htmlBody = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${subject}</title>
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 0; padding: 0; background-color: #f4f4f4; }
-        .container { max-width: 600px; margin: 20px auto; background-color: #ffffff; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
-        .header { background-color: #1A365D; color: #FAF3E0; padding: 30px 20px; text-align: center; }
-        .header h1 { margin: 0; font-size: 28px; }
-        .content { padding: 30px 25px; color: #333333; line-height: 1.6; font-size: 16px; }
-        .content h2 { color: #1A365D; margin-top: 0; font-size: 20px; }
-        .content p { margin-bottom: 15px; }
-        .button-container { text-align: center; margin-top: 30px; }
-        .button { display: inline-block; background-color: #B7A57A; color: #ffffff !important; padding: 12px 25px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 16px; transition: background-color 0.3s ease; }
-        .button:hover { background-color: #a8966c; }
-        .footer { background-color: #f8f8f8; color: #777777; padding: 20px; text-align: center; font-size: 12px; }
-        .footer a { color: #B7A57A; text-decoration: none; }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header"><h1>Welcome to NuraAI!</h1></div>
-        <div class="content">
-            <h2>Assalamu alaikum ${name},</h2>
-            <p>Thank you for joining NuraAI! We are excited to have you as part of our community dedicated to learning and connecting with the Quran.</p>
-            <p>You can start exploring the Quran text, translations, and basic features right away.</p>
-            <p>To unlock the full potential of NuraAI, including AI Tafsir Chat and Emotional Dua Search, consider upgrading to Premium.</p>
-            <div class="button-container"><a href="${clientUrl}/home" class="button">Get Started</a></div>
-        </div>
-        <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} NuraAI. All rights reserved.</p>
-            <p>Need help? Contact our support team.</p>
-            <p><a href="${clientUrl}/subscription">Learn about Premium</a></p>
-        </div>
-    </div>
-</body>
-</html>
-    `;
-    const textBody = `Assalamu alaikum ${name},\n\nThank you for joining NuraAI! We are excited to have you as part of our community.\n\nYou can start exploring the Quran text, translations, and basic features right away.\n\nGet Started: ${clientUrl}/home\n\nTo unlock AI features, consider upgrading to Premium: ${clientUrl}/subscription\n\nThe NuraAI Team`;
-
-    try {
-      await this.sendEmail(subject, textBody, recipient, htmlBody);
-      console.log(`Signup welcome email sent successfully to ${recipient}`);
-    } catch (error) {
-      console.error(`Failed to send signup welcome email to ${recipient}:`, error);
-    }
+    // ... implementation removed ...
   }
+  */
+
+  /*
+  async sendNewUserWelcomeEmail(userEmail: string, userName: string): Promise<void> {
+     // ... implementation removed ...
+  }
+  */
+  /* --- End Removed Welcome Email Logic --- */
+
 } 

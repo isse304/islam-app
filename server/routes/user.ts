@@ -6,6 +6,8 @@ import { UserSubscription, IUserSubscription } from '../models/UserSubscription'
 import { StripeService } from '../services/stripe.service';
 import { UserUsage } from '../models/UserUsage';
 import { EmailService } from '../services/email.service';
+import mailchimp from '@mailchimp/mailchimp_marketing';
+import crypto from 'crypto';
 
 const router = express.Router();
 
@@ -121,9 +123,27 @@ const getDefaultPreferences = (): IPreferences => ({
     isDoublePageView: false
 });
 
-// Instantiate StripeService (assuming EmailService is already instantiated)
-const emailServiceInstance = new EmailService(); // Assuming this exists
-const stripeService = new StripeService(emailServiceInstance); // Instantiate StripeService
+// Configure Mailchimp
+try {
+  const apiKey = process.env.MAILCHIMP_API_KEY;
+  const serverPrefix = process.env.MAILCHIMP_SERVER_PREFIX;
+  if (!apiKey || !serverPrefix) {
+    throw new Error('Mailchimp API Key or Server Prefix not found in environment variables.');
+  }
+  mailchimp.setConfig({
+    apiKey: apiKey,
+    server: serverPrefix, 
+  });
+  console.log('Mailchimp client configured successfully.');
+} catch (error) {
+  console.error('Error configuring Mailchimp client:', error);
+  // Consider how critical Mailchimp is. If essential, maybe throw?
+  // For now, we log the error and continue; the route will fail later if config is missing.
+}
+
+// Keep EmailService instance for other potential uses (like contact form)
+const emailServiceInstance = new EmailService();
+const stripeService = new StripeService(emailServiceInstance); // Pass instance
 
 // Get user data (preferences, bookmarks, history)
 router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -715,42 +735,73 @@ router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response, n
     }
 }));
 
-// POST /api/user/send-welcome - Triggered by Firebase Cloud Function
+// POST /api/user/send-welcome - Now adds user to Mailchimp list
 router.post('/send-welcome', async (req: express.Request, res: Response, next: NextFunction) => {
-    console.log('[SendWelcome] Received request...');
-    const providedSecret = req.headers['x-internal-secret'] as string;
-    const expectedSecret = process.env['FUNCTION_SECRET'];
+  const { email, name } = req.body;
 
-    // 1. Validate Secret
-    if (!expectedSecret) {
-        console.error('[SendWelcome] FUNCTION_SECRET environment variable not set.');
-        return res.status(500).json({ error: 'Server configuration error.' });
-    }
-    if (!providedSecret || providedSecret !== expectedSecret) {
-        console.warn('[SendWelcome] Unauthorized attempt. Invalid or missing secret.');
-        return res.status(401).json({ error: 'Unauthorized' });
+  console.log(`[POST /send-welcome] Received request for email: ${email}`);
+
+  if (!email) {
+    console.warn('[POST /send-welcome] Email is required.');
+    return res.status(400).json({ message: 'Email is required' });
+  }
+
+  const listId = process.env.MAILCHIMP_AUDIENCE_ID;
+  if (!listId) {
+    console.error('[POST /send-welcome] MAILCHIMP_AUDIENCE_ID environment variable not set.');
+    return res.status(500).json({ message: 'Mailchimp configuration error (Audience ID missing).' });
+  }
+  
+  // Check if Mailchimp client was configured successfully earlier
+  // Note: mailchimp.ping.get() could be used here for a live check, but adds latency.
+  // Relying on the initial configuration check and environment variables.
+  if (!process.env.MAILCHIMP_API_KEY || !process.env.MAILCHIMP_SERVER_PREFIX) {
+      console.error('[POST /send-welcome] Mailchimp client not configured (API Key or Server Prefix missing).');
+      // Return 500 as this is a server config issue preventing Mailchimp interaction
+      return res.status(500).json({ message: 'Mailchimp service configuration error.' });
+  }
+
+  // Mailchimp requires the email address to be hashed using MD5
+  const subscriberHash = crypto.createHash('md5').update(email.toLowerCase()).digest('hex');
+
+  try {
+    console.log(`[POST /send-welcome] Attempting to add/update user ${email} in Mailchimp list ${listId}`);
+    const response = await mailchimp.lists.setListMember(listId, subscriberHash, {
+      email_address: email,
+      status_if_new: 'subscribed', 
+      status: 'subscribed',        
+      merge_fields: {
+        FNAME: name?.split(' ')[0] || '', 
+        LNAME: name?.split(' ').slice(1).join(' ') || '' 
+      }
+    });
+
+    // Type guard: Check if the response looks like a success response
+    if (response && typeof response === 'object' && 'id' in response && 'status' in response) {
+        // Now TypeScript knows response has id and status here
+        console.log(`[POST /send-welcome] Successfully added/updated ${email} in Mailchimp list ${listId}. Response ID: ${response.id}, Status: ${response.status}`);
+        res.status(200).json({ message: 'User added to Mailchimp list successfully' });
+    } else {
+        // This case is unlikely if no error was thrown, but handles unexpected responses
+        console.warn(`[POST /send-welcome] Mailchimp call for ${email} succeeded but response format unexpected. Response:`, response);
+        // Still treat as success for the client, as the API didn't error out, but log the warning.
+        res.status(200).json({ message: 'User added to Mailchimp list (unexpected response format).' }); 
     }
 
-    console.log('[SendWelcome] Secret validated.');
-
-    // 2. Validate Request Body
-    const { email, name } = req.body;
-    if (!email) {
-        console.warn('[SendWelcome] Bad request: Missing email.');
-        return res.status(400).json({ error: 'Missing required field: email' });
+  } catch (error: any) {
+    // Check if the error is because the member already exists (which is okay)
+    if (error.response && error.response.body && error.response.body.title === 'Member Exists') {
+      console.log(`[POST /send-welcome] User ${email} already exists in Mailchimp list ${listId}.`);
+      // Treat as success since they are on the list.
+      res.status(200).json({ message: 'User already exists in Mailchimp list.' });
+    } else {
+      // Log the detailed error from Mailchimp if available
+      const errorDetails = error.response?.body || error.message || error;
+      console.error(`[POST /send-welcome] Failed to add user ${email} to Mailchimp list ${listId}:`, errorDetails);
+      // Send a generic error message to the client
+      res.status(500).json({ message: 'Failed to process signup with mailing list.' });
     }
-
-    // 3. Send Email
-    try {
-        console.log(`[SendWelcome] Attempting to send signup welcome email to: ${email}`);
-        // Use the existing email service instance
-        await emailServiceInstance.sendSignupWelcomeEmail(email, name || 'Friend'); // Use name or default
-        console.log(`[SendWelcome] Signup welcome email queued successfully for ${email}.`);
-        res.status(200).json({ success: true, message: 'Welcome email sent.' });
-    } catch (error) {
-        console.error(`[SendWelcome] Error sending welcome email to ${email}:`, error);
-        next(error); // Pass to general error handler
-    }
+  }
 });
 
 export default router; 
