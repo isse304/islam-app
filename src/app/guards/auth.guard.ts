@@ -18,14 +18,19 @@ export const authGuardFn: CanActivateFn = (
       filter(user => user !== undefined),
       take(1),
       map(user => {
-        console.log(`[AuthGuardFn] User state check for ${state.url}:`, user ? user.email : 'null');
+        console.log(`[AuthGuardFn] User state check for ${state.url}:`, user ? `${user.email} (Verified: ${user.emailVerified})` : 'null');
         const isAuthenticated = !!user;
 
         if (isAuthenticated) {
-          console.log(`[AuthGuardFn] Allowing access to ${state.url}, returning true.`);
-          return true;
+          if (user.emailVerified) {
+            console.log(`[AuthGuardFn] Allowing access to ${state.url}, returning true.`);
+            return true;
+          } else {
+            console.log(`[AuthGuardFn] User authenticated but email not verified. Redirecting to /auth/verify-email for ${state.url}.`);
+            return router.createUrlTree(['/auth/verify-email']);
+          }
         } else {
-          console.log(`[AuthGuardFn] Denying access to ${state.url}, creating UrlTree to redirect to login.`);
+          console.log(`[AuthGuardFn] User not authenticated. Denying access to ${state.url}, creating UrlTree to redirect to login.`);
           return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
         }
       })

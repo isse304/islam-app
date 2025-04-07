@@ -93,11 +93,12 @@ export class SignupComponent implements OnInit {
           });
         })
         .then(() => {
-          this.snackBar.open('Account created successfully!', 'Close', {
-            duration: 5000,
-            panelClass: ['success-snackbar']
-          });
-          this.router.navigate(['/']);
+          this.snackBar.open(
+            'Account created! Please check your email to verify your account.',
+            'Close',
+            { duration: 7000 }
+          );
+          this.router.navigate(['/auth/login']);
         })
         .catch(error => {
           let errorMessage = 'An error occurred during registration';

@@ -706,7 +706,28 @@ export class FirebaseAuthService {
 
   // Create new user with email/password
   createUserWithEmailAndPassword(email: string, password: string): Promise<UserCredential> {
-    return createUserWithEmailAndPassword(this.auth, email, password);
+    return createUserWithEmailAndPassword(this.auth, email, password)
+      .then(async (userCredential) => {
+        // User created successfully
+        const firebaseUser = userCredential.user;
+        console.log('[AuthService] User created successfully:', firebaseUser.uid);
+
+        // Send verification email immediately after creation
+        try {
+          await sendEmailVerification(firebaseUser);
+          console.log('[AuthService] Verification email sent to:', firebaseUser.email);
+        } catch (verificationError) {
+          console.error('[AuthService] Error sending verification email:', verificationError);
+          // Decide how to handle this - maybe log it, but don't fail the signup
+        }
+
+        return userCredential; // Return the original credential
+      })
+      .catch(error => {
+        // Handle creation errors
+        console.error('[AuthService] Error creating user:', error);
+        throw error; // Re-throw the error to be handled by the caller
+      });
   }
 
   // Sign in with Google
@@ -1265,14 +1286,21 @@ export class FirebaseAuthService {
     }
   }
 
-  // Send email verification
+  // Method to send email verification to the current user
   async sendEmailVerification(): Promise<void> {
     const user = this.auth.currentUser;
-    if (!user) {
-      return Promise.reject(new Error('No user logged in'));
+    if (user) {
+      try {
+        await sendEmailVerification(user);
+        console.log('[AuthService] Verification email sent.');
+      } catch (error) {
+        console.error('[AuthService] Error sending verification email:', error);
+        throw error; // Re-throw the error to be handled by the component
+      }
+    } else {
+      console.warn('[AuthService] No user logged in to send verification email.');
+      throw new Error('No user logged in.'); // Throw error if no user
     }
-    
-    return sendEmailVerification(user);
   }
 
   // Change password
