@@ -186,6 +186,23 @@ interface ChatHistory {
   }>;
 }
 
+// Add missing interface definition
+export interface TranslationMeta {
+  id: number;
+  name: string;
+  author: string;
+  language: string;
+}
+
+// Interface for the expected backend /api/tafsir/chat response
+export interface TafsirChatResponse {
+  success: boolean;
+  content?: string;
+  error?: string;
+  source?: string;
+  sources?: any[]; 
+}
+
 export interface SurahData {
   numberOfAyahs: number;
 }
@@ -260,14 +277,14 @@ export class QuranService {
   ];
 
   readonly translations = [
-    { id: 131, name: 'Dr. Mustafa Khattab (English)', language: 'english' },
-    { id: 20, name: 'Sahih International (English)', language: 'english' },
-    { id: 95, name: 'Dr. Ghali (English)', language: 'english' },
-    { id: 85, name: 'Abdullah Yusuf Ali (English)', language: 'english' },
-    { id: 161, name: 'Junagarhi (Urdu)', language: 'urdu' },
-    { id: 136, name: 'Muhammad Hamidullah (French)', language: 'french' },
-    { id: 33, name: 'Indonesian Ministry of Religion (Indonesian)', language: 'indonesian' },
-    { id: 77, name: 'Diyanet İşleri (Turkish)', language: 'turkish' }
+    { id: 131, name: 'Dr. Mustafa Khattab (English)', language: 'english', author: 'Dr. Mustafa Khattab' },
+    { id: 20, name: 'Sahih International (English)', language: 'english', author: 'Sahih International' },
+    { id: 95, name: 'Dr. Ghali (English)', language: 'english', author: 'Dr. Muhammad Mahmud Ghali' },
+    { id: 85, name: 'Abdullah Yusuf Ali (English)', language: 'english', author: 'Abdullah Yusuf Ali' },
+    { id: 161, name: 'Junagarhi (Urdu)', language: 'urdu', author: 'Muhammad Junagarhi' },
+    { id: 136, name: 'Muhammad Hamidullah (French)', language: 'french', author: 'Muhammad Hamidullah' },
+    { id: 33, name: 'Indonesian Ministry of Religion (Indonesian)', language: 'indonesian', author: 'Indonesian Ministry of Religion' },
+    { id: 77, name: 'Diyanet İşleri (Turkish)', language: 'turkish', author: 'Diyanet İşleri Başkanlığı' }
   ];
 
   private saveCache() {
@@ -525,9 +542,7 @@ export class QuranService {
     return this.http.get(`${this.baseUrl}/ayah/${surahNumber}:${ayahNumber}/en.word`);
   }
 
-  getTranslations(): Observable<any> {
-    return this.http.get(`${this.quranComUrl}/resources/translations`);
-  }
+ 
 
   getWordDetails(wordId: number): Observable<WordDetails> {
     return this.http.get<WordDetails>(`${this.quranComUrl}/words/${wordId}?fields=text_uthmani,text_indopak,translation,transliteration,root,lemma,grammar`);
@@ -909,5 +924,36 @@ export class QuranService {
     };
     this.saveCache();
     // console.log('QuranService cache cleared');
+  }
+
+  // Method to call the backend Tafsir Chat endpoint
+  getChatResponse(payload: { 
+    surah: number; 
+    verse: number; 
+    question: string; 
+    selectedTafsir: string 
+  }): Observable<TafsirChatResponse> { 
+    const url = `/api/tafsir/chat`; // Use relative URL
+    return this.http.post<TafsirChatResponse>(url, payload).pipe(
+      catchError((error) => {
+        console.error('Error calling /api/tafsir/chat:', error);
+        // Return a fallback error response compatible with TafsirChatResponse interface
+        return of({ 
+          success: false, 
+          error: 'Failed to communicate with the chat service.',
+          content: '' // Ensure content is defined
+        } as TafsirChatResponse);
+      })
+    );
+  }
+
+  // Modified getTranslations method to return hardcoded list
+  getTranslations(): Observable<TranslationMeta[]> {
+    // Return the hardcoded list defined in this service using RxJS 'of'
+    return of(this.translations as TranslationMeta[]); // Add 'as TranslationMeta[]' to satisfy type checking
+    // const url = 'assets/data/quran/translations.json'; // Adjust path if needed
+    // return this.http.get<TranslationMeta[]>(url).pipe(
+    //   tap(translations => (this as any).translations = translations) // Assuming 'translations' property exists
+    // );
   }
 }

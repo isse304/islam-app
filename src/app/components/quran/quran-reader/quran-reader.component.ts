@@ -116,7 +116,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   };
   reciters: Reciter[] = [];
   audioPlayer: HTMLAudioElement = new Audio();
-  isLoading: boolean = false;
   isPlaying: boolean = false;
   audioPaused: boolean = true;
   currentTime: string = '0:00';
@@ -200,7 +199,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   navigationTimeout: any;
   // Add these properties at the top of the class
   private audioLoadingTimeout: any;
-  private isAudioLoading = false;
+  isAudioLoading = false; // Use this consistently for audio loading state
   private currentAudioUrl: string | null = null;
   // Add these properties to the class
   private timingData: Map<string, TimingData[]> = new Map();
@@ -265,11 +264,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.isLoading = false; // Ensure isLoading is false initially
+    this.isAudioLoading = false; // Ensure isAudioLoading is false initially
     this.loadSurahSubscription?.unsubscribe(); // Also ensure any lingering sub is cancelled
     try {
         // Show loading state
-        this.isLoading = true;
+        this.isAudioLoading = true;
 
         // Load preferences first - both from localStorage and server
         await this.loadUserPreferences();
@@ -374,17 +373,17 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             // Update URL parameters after successful load
             this.updateUrlParams();
             // Hide loading state after successful load and potential scroll setup
-            this.isLoading = false;
+            this.isAudioLoading = false;
           },
           error: (err) => {
              console.error('Error during initial surah load in ngOnInit:', err);
-             this.isLoading = false; // Ensure loading stops on error
+             this.isAudioLoading = false; // Ensure loading stops on error
           }
         });
         
     } catch (error) {
         console.error('Error initializing QuranReader:', error);
-        this.isLoading = false;
+        this.isAudioLoading = false;
     }
   }
 
@@ -393,7 +392,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
    */
   private showLoadingUI() {
     // Set default values for immediate display
-    this.isLoading = true;
+    this.isAudioLoading = true;
     this.currentSurah = 1;
     this.selectedSurah = 1;
     this.verses = Array(7).fill({}).map((_, i) => ({ 
@@ -832,9 +831,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
    * @returns An observable that completes when the surah is loaded or emits null on error.
    */
   public loadSurah(surahNumber: number): Observable<void | null> {
-    this.isLoading = true; // Set loading true for the current operation
+    this.isAudioLoading = true; // Set loading true for the current operation
     this.changeDetector.detectChanges();
-    // console.log(`[loadSurah] Started loading Surah ${surahNumber}. isLoading: ${this.isLoading}`); // REMOVE DEBUG
+    // console.log(`[loadSurah] Started loading Surah ${surahNumber}. isAudioLoading: ${this.isAudioLoading}`); // REMOVE DEBUG
 
     // Reset current verse selection when surah changes
     this.currentVerse = 1;
@@ -854,8 +853,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // Load verse timings if needed for highlighting
         // await this.loadVerseTimings(surahNumber, this.selectedReciter.path);
 
-        // console.log(`[loadSurah] Setting isLoading = false for Surah ${surahNumber}.`); // REMOVE DEBUG
-        this.isLoading = false;
+        // console.log(`[loadSurah] Setting isAudioLoading = false for Surah ${surahNumber}.`); // REMOVE DEBUG
+        this.isAudioLoading = false;
         this.changeDetector.detectChanges();
 
         // Add a slight delay before updating URL to allow rendering
@@ -863,7 +862,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }),
       catchError(error => {
         // console.error('[loadSurah] Error loading surah data:', error); // REMOVE DEBUG
-        this.isLoading = false;
+        this.isAudioLoading = false;
         this.toastService.showError('Failed to load surah data.');
         this.changeDetector.detectChanges();
         return of(null); // Return observable of null on error
@@ -887,7 +886,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     const surahDisplayName = surahDetails ? `${surahDetails.englishName} (${surahDetails.name})` : `Surah ${this.currentSurah}`;
     this.currentlyPlaying = `Full ${surahDisplayName}`; // Update display text
 
-    this.isLoading = true;
+    this.isAudioLoading = true;
     this.audioPaused = false;
     this.isPlaying = true;
     this.currentAudioUrl = url;
@@ -902,7 +901,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.audioPlayer.load();
       await this.audioPlayer.play();
 
-      this.isLoading = false; // Loading complete after play starts
+      this.isAudioLoading = false; // Loading complete after play starts
       // this.changeDetector.detectChanges(); // NgZone handles detection
 
     } catch (error) {
@@ -946,7 +945,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     const surahDetails = this.currentSurahDetails; // Use the already fetched details
     const surahDisplayName = surahDetails ? `${surahDetails.englishName} (${surahDetails.name})` : `Surah ${surahNumber}`;
     this.currentlyPlaying = `${surahDisplayName} - Verse ${verseNumber}`;
-    this.changeDetector.detectChanges(); // Update UI immediately for title
+    // Remove immediate change detection after setting title
+    // this.changeDetector.detectChanges(); 
 
     // Call the existing playAudio method with the dynamically generated URL
     await this.playAudio(correctAudioUrl, verseNumber);
@@ -960,97 +960,60 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       return;
     }
 
-    // If the exact same URL is requested and player exists, just play/pause
-    if (this.currentAudioUrl === url && this.audioPlayer) {
-        if (this.audioPaused) {
-            console.log('Resuming existing audio');
-            await this.audioPlayer.play().catch(e => this.handleAudioError(e));
-        } else {
-            console.log('Pausing existing audio');
-            this.audioPlayer.pause();
-        }
-        return; // Don't reload if URL is the same
-    }
-
-    console.log(`playAudio called. New URL: ${url}, Verse: ${verseNumber ?? 'Full Surah'}`);
-    this.showLoadingUI();
-    this.isAudioLoading = true;
-    this.currentlyPlaying = verseNumber ? `Verse ${verseNumber}` : 'Full Surah'; // Update label
-    this.currentPlayingVerse = verseNumber; 
-    this.currentAudioUrl = url;
-
-    // Clear any existing loading timeout
-    if (this.audioLoadingTimeout) {
-      clearTimeout(this.audioLoadingTimeout);
-      this.audioLoadingTimeout = null;
-    }
-
-    // Set a timeout for loading
-    clearTimeout(this.audioLoadingTimeout); // Clear previous timeout using the handle
-    this.audioLoadingTimeout = setTimeout(() => {
-      if (this.isAudioLoading) { // Use the correct loading state variable
-        console.warn('Audio loading timed out after 20 seconds.'); // Increased timeout duration
-        this.isAudioLoading = false; // Set loading to false
-        // Optionally call handleAudioError or just update UI
-        // this.handleAudioError('Audio loading timed out.'); 
-        this.changeDetector.detectChanges(); // Update view if timeout happens
-      }
-    }, 20000); // Increased to 20 seconds
-
     try {
-      // Ensure audio player exists
-      if (!this.audioPlayer) {
-          console.warn("Audio player element not found, creating new.");
-          this.audioPlayer = new Audio();
-          // Note: Listeners are attached later
-      }
-      
-      // --- CRITICAL: Remove old listeners before changing source --- 
-      console.log('Removing existing audio event listeners...');
-      this.removeAudioEvents();
+      if (this.isPlaying && this.currentlyPlaying === url) {
+        // If the same verse is clicked again, pause it
+        this.audioPlayer.pause();
+        this.isPlaying = false;
+        this.audioPaused = true;
+        this.currentPlayingVerse = null; // Reset currently playing verse
+      } else {
+        // Stop any currently playing audio first
+        this.audioPlayer.pause();
 
-      console.log(`Setting audio source to: ${url}`);
-      this.audioPlayer.src = url;
-      this.audioPlayer.preload = 'metadata'; // 'auto' or 'metadata'
+        this.currentlyPlaying = url;
+        this.currentPlayingVerse = verseNumber; // Set the currently playing verse
+        this.isAudioLoading = true; // Indicate loading
+        this.audioPaused = false;
+        // Set user-friendly display text instead of URL
+        const surahDetails = this.currentSurahDetails;
+        const surahDisplayName = surahDetails ? `${surahDetails.englishName} (${surahDetails.name})` : `Surah ${this.currentSurah}`;
+        this.currentlyPlaying = verseNumber ? `${surahDisplayName} - Verse ${verseNumber}` : `Full ${surahDisplayName}`;
+        // console.log('Setting audio source:', url); // Removed log
+        this.audioPlayer.src = url;
 
-      // Reset UI state for new audio
-      this.progress = 0;
-      this.currentTime = '0:00';
-      this.duration = '0:00';
-      // isPlaying and audioPaused will be set by events or after play() succeeds
-      this.isPlaying = false; 
-      this.audioPaused = true;
-      this.changeDetector.detectChanges(); // Update UI immediately
+        // Remove old event listeners before adding new ones
+        this.removeAudioEvents();
+        // Set up event listeners
+        this.setupAudioEvents();
 
-      console.log('Calling audioPlayer.load()...');
-      this.audioPlayer.load(); // Load the new audio source
+        await this.audioPlayer.load(); // Explicitly load the new source
+        // console.log('Audio loaded, attempting to play...'); // Removed log
+        await this.audioPlayer.play();
+        this.isPlaying = true;
+        // console.log('Audio playback started.'); // Removed log
 
-      // --- CRITICAL: Re-attach event listeners AFTER setting src and calling load --- 
-      console.log('Setting up new audio event listeners...');
-      this.setupAudioEvents(); 
-
-      console.log('Attempting to play audio...');
-      // Wait for metadata to load before playing? Might help consistency
-      // await new Promise<void>(resolve => {
-      //     const canPlayHandler = () => {
-      //         this.audioPlayer.removeEventListener('canplay', canPlayHandler);
-      //         resolve();
-      //     };
-      //     this.audioPlayer.addEventListener('canplay', canPlayHandler);
-      // });
-      await this.audioPlayer.play();
-      console.log('Audio play() promise resolved.');
-      // State will be updated by the 'play' event listener
-
-    } catch (error: any) {
-      console.error('Error in playAudio process:', error);
-      this.handleAudioError(error);
-      // Ensure loading state is cleared on error
-      this.isAudioLoading = false; 
-      if (this.audioLoadingTimeout) {
+        // Set timeout for loading indicator
         clearTimeout(this.audioLoadingTimeout);
-        this.audioLoadingTimeout = null;
+        this.audioLoadingTimeout = setTimeout(() => {
+          if (this.isAudioLoading) {
+            console.warn('Audio loading timed out.');
+            this.handleAudioError('Audio loading timed out');
+            this.isAudioLoading = false;
+          }
+        }, 10000); // 10 second timeout
+
+        // Optional: Save playback state or perform other actions
+        this.savePreferences();
       }
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      this.handleAudioError('Failed to play audio');
+      this.isPlaying = false;
+      this.audioPaused = true;
+      this.currentPlayingVerse = null; // Reset on error
+      this.isAudioLoading = false; // Ensure loading is false on error
+      clearTimeout(this.audioLoadingTimeout);
     }
   }
 
@@ -1058,94 +1021,93 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (!this.audioPlayer) return;
 
     // Remove existing event listeners to prevent duplicates
-    this.audioPlayer.removeEventListener('timeupdate', this.onTimeUpdate);
-    this.audioPlayer.removeEventListener('loadedmetadata', this.onLoadedMetadata);
-    this.audioPlayer.removeEventListener('ended', this.onEnded);
-    this.audioPlayer.removeEventListener('error', this.onError);
-    this.audioPlayer.removeEventListener('pause', this.onPause);
-    this.audioPlayer.removeEventListener('play', this.onPlay);
+    this.removeAudioEvents();
 
-    // Add event listeners
+    // Bind the handlers correctly to maintain 'this' context
     this.audioPlayer.addEventListener('timeupdate', this.onTimeUpdate);
     this.audioPlayer.addEventListener('loadedmetadata', this.onLoadedMetadata);
     this.audioPlayer.addEventListener('ended', this.onEnded);
     this.audioPlayer.addEventListener('error', this.onError);
     this.audioPlayer.addEventListener('pause', this.onPause);
     this.audioPlayer.addEventListener('play', this.onPlay);
+
+    // Add listeners for loading states
+    this.audioPlayer.addEventListener('waiting', () => this.isAudioLoading = true);
+    this.audioPlayer.addEventListener('playing', () => this.isAudioLoading = false);
+    this.audioPlayer.addEventListener('canplay', () => this.isAudioLoading = false);
   }
 
   private readonly onTimeUpdate = (): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
-      if (this.audioPlayer && !isNaN(this.audioPlayer.duration)) {
-        this.currentTime = this.formatTime(this.audioPlayer.currentTime);
-        this.duration = this.formatTime(this.audioPlayer.duration);
-        this.progress = (this.audioPlayer.currentTime / this.audioPlayer.duration) * 100;
-        // this.changeDetector.detectChanges(); // NgZone handles detection
-      }
+    this.ngZone.run(() => {
+      if (!this.audioPlayer.duration) return;
+      this.currentTime = this.formatTime(this.audioPlayer.currentTime);
+      this.duration = this.formatTime(this.audioPlayer.duration);
+      this.progress = (this.audioPlayer.currentTime / this.audioPlayer.duration) * 100;
+      this.updateRecitingVerse(this.audioPlayer.currentTime);
+      this.changeDetector.detectChanges(); // Trigger change detection
     });
   };
 
   private readonly onLoadedMetadata = (): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
-      if (this.audioPlayer && !isNaN(this.audioPlayer.duration)) {
-        const duration = this.audioPlayer.duration;
-        console.log(`[onLoadedMetadata] Fired. Duration: ${duration}, URL: ${this.audioPlayer.src}`); // ADDED LOG
-        this.duration = this.formatTime(duration);
-        this.progress = 0;
-        this.isAudioLoading = false; // Ensure loading is false once metadata is loaded
-        if (this.audioLoadingTimeout) { // Clear loading timeout
-          clearTimeout(this.audioLoadingTimeout);
-          this.audioLoadingTimeout = null;
-        }
-        this.changeDetector.detectChanges(); // Force UI update (Ensure cdr is named correctly)
+    this.ngZone.run(() => {
+      if (!this.audioPlayer.duration) return;
+      this.duration = this.formatTime(this.audioPlayer.duration);
+      this.currentTime = '0:00';
+      this.progress = 0;
+      this.isAudioLoading = false; // Audio metadata loaded
+      clearTimeout(this.audioLoadingTimeout); // Clear timeout
+      this.changeDetector.detectChanges(); // Trigger change detection
+      // Fetch verse timings if playing full surah
+      if (this.isPlayingFullSurah && this.currentSurah) {
+        this.loadVerseTimings(this.currentSurah);
       }
     });
   };
 
   private readonly onEnded = (): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
-      console.log("Audio ended. Resetting state."); // Debug log
-      
+    this.ngZone.run(() => {
       this.isPlaying = false;
-      this.audioPaused = true;
-      this.progress = 100; // Show full progress
-      this.currentPlayingVerse = null; // Clear the playing verse indicator
-      this.currentlyPlaying = ''; // Clear the title
-      this.currentTime = '0:00'; // Reset current time display
-      this.duration = '0:00'; // Reset duration display
-      this.isPlayingFullSurah = false; // Ensure full surah flag is reset
+      this.audioPaused = true; // Mark as paused when ended
+      this.progress = 0;
+      this.currentTime = '0:00';
+      this.currentPlayingVerse = null; // Reset currently playing verse
+      this.currentRecitingVerse = null; // Reset reciting verse highlight
+      this.changeDetector.detectChanges(); // Trigger change detection
 
-      // Optionally: Close the player completely
-      // this.stopAndCloseAudioPlayer(); 
-      // Note: Calling stopAndCloseAudioPlayer here might be too abrupt 
-      // if you want the player to show 100% progress briefly.
-      // If you want it to vanish instantly, uncomment the line above 
-      // and remove the state resets below it.
-
-      this.changeDetector.detectChanges(); // Force UI update
+      if (this.isRepeatEnabled) {
+        this.audioPlayer.currentTime = 0;
+        this.audioPlayer.play();
+        this.isPlaying = true;
+        this.audioPaused = false;
+      } else if (this.isPlayingFullSurah) {
+        // Optionally handle ending of full surah playback
+        console.log('Full surah playback ended.');
+        this.isPlayingFullSurah = false; // Reset flag
+      }
     });
   };
 
   private readonly onError = (e: Event): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
-      console.error('Audio playback error:', e);
-      this.handleAudioError(e);
+    this.ngZone.run(() => {
+      console.error('Audio player error:', e);
+      this.handleAudioError('Error occurred during playback');
+      this.changeDetector.detectChanges(); // Trigger change detection
     });
   };
 
   private readonly onPause = (): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
+    this.ngZone.run(() => {
       this.isPlaying = false;
       this.audioPaused = true;
-      // this.changeDetector.detectChanges(); // NgZone handles detection
+      this.changeDetector.detectChanges(); // Trigger change detection
     });
   };
 
   private readonly onPlay = (): void => {
-    this.ngZone.run(() => { // Wrap in NgZone
+    this.ngZone.run(() => {
       this.isPlaying = true;
       this.audioPaused = false;
-      // this.changeDetector.detectChanges(); // NgZone handles detection
+      this.changeDetector.detectChanges(); // Trigger change detection
     });
   };
 
@@ -1399,7 +1361,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private hideLoadingUI() {
-    this.isLoading = false;
+    this.isAudioLoading = false;
   }
 
   private async loadFonts(): Promise<boolean> {
@@ -1431,6 +1393,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     console.log('[QuranReader] Destroying component...');
+    // Explicitly save preferences on destroy
+    this.savePreferences(); 
+
     // Unsubscribe from the main surah loading subscription
     this.loadSurahSubscription?.unsubscribe();
     console.log('[QuranReader] Unsubscribed from loadSurahSubscription.');
@@ -1467,7 +1432,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Add this method to track verse visibility
   @HostListener('window:scroll', ['$event'])
   onScroll() {
-    if (!this.verses?.length || this.isLoading) return;
+    if (!this.verses?.length || this.isAudioLoading) return;
 
     // Find the verse closest to the middle of the viewport
     const viewportHeight = window.innerHeight;
@@ -1717,8 +1682,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.stopAndCloseAudioPlayer();
       }
 
-      // Save preferences immediately
-      this.savePreferences();
+      // Save preferences (debounced)
+      this.debouncedSavePreferences();
 
       // Update URL parameters immediately
       this.updateUrlParams();
@@ -1763,12 +1728,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurahSubscription = this.loadSurah(surahNumber).subscribe({
       next: () => {
         // Optional: Add logic after surah change load completes
-        console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
+        // console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`); // Removed log
         this.updateUrlParams(); // Update URL after successful load
         // Ensure isLoading is handled within loadSurah itself
       },
       error: (err) => {
-        console.error(`[Handler for line 1656] Error loading surah ${surahNumber}:`, err);
+        // console.error(`[Handler for line 1656] Error loading surah ${surahNumber}:`, err); // Keep this error log
         // Ensure isLoading is handled within loadSurah itself
       }
     });
@@ -1780,14 +1745,15 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.toastService.showError('Cannot play audio: Surah or Reciter not selected.');
       return;
     }
-    // No need to set isPlayingFullSurah here, playSurahAudio does it
-    const audioUrl = this.quranService.getSurahAudioUrl(this.currentSurah, this.selectedReciter.id);
-    if (audioUrl) {
-        this.playSurahAudio(audioUrl); // Call the new dedicated method
-    } else {
-        console.error(`Could not get audio URL for full Surah ${this.currentSurah}`);
-        this.handleAudioError('Failed to get Surah audio URL');
+
+    const surahAudioUrl = this.quranService.getSurahAudioUrl(this.currentSurah, this.selectedReciter.id);
+    if (!surahAudioUrl) {
+      this.toastService.showError('Could not get audio URL for this Surah/Reciter combination.');
+      return;
     }
+
+    this.isPlayingFullSurah = true; // Set the flag before playing
+    this.playAudio(surahAudioUrl, null); // Pass null for verseNumber
   }
 
   public toggleRepeat(): void {
@@ -1851,6 +1817,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       params.surah = this.currentSurah;
       this.loadSurah(this.currentSurah || 1).subscribe();
     }
+
+    // Save preferences (debounced) after view toggle
+    this.debouncedSavePreferences();
 
     // Update URL parameters
     this.router.navigate([], {
@@ -1921,8 +1890,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Update UI immediately
     this.selectedTranslation = translationId;
     
-    // Save preferences immediately
-    this.savePreferences();
+    // Save preferences (debounced)
+    this.debouncedSavePreferences();
     
     // Update URL params
     this.updateUrlParams();
@@ -1946,7 +1915,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   loadVerses(surahNumber: number = this.currentSurah || 1): void {
-    this.isLoading = true;
+    this.isAudioLoading = true;
     this.loadSurahSubscription?.unsubscribe();
     this.loadSurahSubscription = this.loadSurah(surahNumber).subscribe({
       next: () => {
@@ -2018,7 +1987,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private async loadMushafPage(pageNumber: number) {
-    this.isLoading = true;
+    this.isAudioLoading = true;
     
     try {
       if (pageNumber < this.FIRST_PAGE || pageNumber > this.LAST_PAGE) {
@@ -2046,7 +2015,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       console.error('Error loading mushaf page:', error);
       this.toastService.show('Error loading Quran page');
     } finally {
-      this.isLoading = false;
+      this.isAudioLoading = false;
     }
   }
 
@@ -2067,6 +2036,51 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.audioPlayer.removeEventListener('error', this.onError);
       this.audioPlayer.removeEventListener('pause', this.onPause);
       this.audioPlayer.removeEventListener('play', this.onPlay);
+      this.audioPlayer.removeEventListener('waiting', () => this.isAudioLoading = true);
+      this.audioPlayer.removeEventListener('playing', () => this.isAudioLoading = false);
+      this.audioPlayer.removeEventListener('canplay', () => this.isAudioLoading = false);
     }
   }
+
+  // Renamed from attemptPlayback for clarity
+  private startPlaybackWhenReady(): void {
+    if (this.audioPlayer && !this.isPlaying && this.isAudioLoading) { // Only play if loading and not already playing
+        console.log('Attempting to play audio now that it is ready...');
+        this.audioPlayer.play()
+            .then(() => {
+                console.log('Audio play() promise resolved after ready.');
+                // isPlaying and isAudioLoading state will be updated by 'play' and 'canplay' event handlers
+            })
+            .catch(err => {
+                console.error('Error starting playback after ready:', err);
+                this.handleAudioError('Could not start audio playback.');
+            });
+    }
+  }
+
+  // --- Event Handlers ---
+
+  private updateRecitingVerse(currentTime: number): void {
+    // Implement logic to update reciting verse based on current time
+    // This is a placeholder implementation
+    // console.log('Current time:', currentTime); // Removed log
+  }
+
+  // Add the missing method definition here
+  private loadVerseTimings(surahNumber: number): void {
+    this.quranService.getVerseTimings(surahNumber).subscribe({
+      next: (timings) => {
+        this.verseTimings = timings;
+        // console.log(`[loadVerseTimings] Loaded timings for Surah ${surahNumber}`, this.verseTimings); // Removed log
+        // Potentially trigger change detection if needed, although NgZone might handle it
+        // this.changeDetector.detectChanges(); 
+      },
+      error: (err) => {
+        // console.error(`[loadVerseTimings] Error loading timings for Surah ${surahNumber}:`, err); // Keep this error log for debugging
+        this.verseTimings = []; // Clear timings on error
+      }
+    });
+  }
+
+  // --- End Event Handlers ---
 }

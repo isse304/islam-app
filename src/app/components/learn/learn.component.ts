@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef 
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router } from '@angular/router';
-import { firstValueFrom, Subscription, switchMap, tap } from 'rxjs';
+import { firstValueFrom, Subscription, switchMap, tap, catchError, of } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -18,6 +18,7 @@ import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ApiService } from '../../services/api.service';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { take, from } from 'rxjs';
+import { HttpClient } from '@angular/common/http';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -29,6 +30,14 @@ interface Message {
     verse?: number;
     topic?: string;
   };
+}
+
+interface TafsirChatResponse {
+  success: boolean;
+  content?: string;
+  error?: string;
+  source?: string;
+  sources?: any[]; 
 }
 
 interface SurahData {
@@ -105,6 +114,7 @@ export class LearnComponent implements OnInit, OnDestroy {
     public firebaseAuthService: FirebaseAuthService,
     private tafsirDatabaseService: TafsirDatabaseService,
     private apiService: ApiService,
+    private http: HttpClient,
     public router: Router,
     private cdr: ChangeDetectorRef
   ) {}
@@ -393,137 +403,105 @@ export class LearnComponent implements OnInit, OnDestroy {
   }
 
   async sendQuestion() {
-    if (!this.userQuestion.trim()) return;
-    
-    if (!await this.checkPremiumStatus()) {
-      this.messages.push({
-        role: 'assistant',
-        content: 'Premium feature unavailable. Please subscribe to access AI Tafsir Chat.',
-        timestamp: new Date(),
-        type: 'error'
-      });
-      return;
+    if (!this.userQuestion.trim() || this.isLoading) {
+      return; // Don't send empty questions or if already loading
     }
 
-    // Add user message
-    const userMessage: Message = {
-      role: 'user',
-      content: this.userQuestion,
-      timestamp: new Date()
-    };
-    this.messages.push(userMessage);
-    this.scrollToBottom();
+    this.isLoading = true; // START loading
+    const questionToSend = this.userQuestion;
 
-    const question = this.userQuestion;
+    // Add user message immediately
+    this.messages.push({
+      role: 'user',
+      content: questionToSend,
+      timestamp: new Date(),
+      type: 'conversation'
+    });
     this.userQuestion = ''; // Clear input
-    this.isLoading = true;
+    this.scrollToBottom(); // Scroll after adding user message
+    this.cdr.detectChanges(); // Update UI to show user message & loading spinner
 
     try {
-      // Get current verse context
-      const surahName = this.surahs.find(s => s.number === this.selectedSurah)?.englishName || '';
+      // Determine if context (surah/verse) should be sent based on the question
+      const cleanedQuestion = questionToSend.toLowerCase().trim();
+      const greetings = ['hi', 'hello', 'salam', 'assalamu alaikum', 'wa alaikum assalam', 'thank you', 'thanks', 'shukran'];
+      const capabilityQueries = ['what can you do', 'how do you work', 'what are your functions', 'capabilities'];
       
-      // Detect message type with more specific patterns
-      const isIslamicGreeting = /^(salam|assalamualaikum)/i.test(question.trim());
-      const isGeneralGreeting = /^(hi|hello|hey)/i.test(question.trim());
-      const isAboutCapabilities = /what.*(can|do).*you.*(do|help)|tell.*me.*(about|your).*(capabilities|features|help)/i.test(question.toLowerCase());
-      const isPleasantry = /^(thanks?|thank you|that'?s? all|goodbye|bye|jazak|barak)/i.test(question.trim());
-      
-      // More specific Quranic question detection
-      const isQuranQuestion = 
-        question.toLowerCase().includes('verse') || 
-        question.toLowerCase().includes('surah') || 
-        question.toLowerCase().includes('ayah') ||
-        question.toLowerCase().includes('quran') ||
-        question.toLowerCase().includes('tafsir') ||
-        /what.*(mean|about|refer|say|tell|explain|understand)/i.test(question) ||
-        /meaning|interpretation|explanation|context|reason|why|how|when/i.test(question) ||
-        /dream|story|event|people|prophet|revelation|theme|linguistic|arabic|word/i.test(question);
+      // Consider it general if it's a greeting, a capability query, or very short
+      const isGeneralQuery = greetings.some(g => cleanedQuestion.startsWith(g)) ||
+                             capabilityQueries.some(q => cleanedQuestion.includes(q)) || // Add capability check
+                             cleanedQuestion.length < 5;
 
-      let response: string;
+      // Construct payload conditionally
+      const payload: any = {
+        question: questionToSend,
+        selectedTafsir: this.selectedTafsir,
+        // Only include surah/verse if it's NOT determined to be a general query
+        ...( !isGeneralQuery && { surah: this.selectedSurah, verse: this.selectedVerse } )
+      };
+      console.log('[LearnComponent] Sending payload:', payload); // Log the payload being sent
 
-      if (isIslamicGreeting || isGeneralGreeting || isAboutCapabilities || isPleasantry) {
-        // Use general AI endpoint for greetings and pleasantries
-        const prompt = {
-          systemMessage: `You are a knowledgeable Islamic AI assistant focused on helping users understand the Quran through authentic tafsir. Follow these guidelines:
+      // Call the backend API service directly using HttpClient
+      const response = await firstValueFrom(this.http.post<TafsirChatResponse>('/api/tafsir/chat', payload).pipe(
+         catchError((error: any) => {
+           console.error('Error calling /api/tafsir/chat:', error);
+           // Return a fallback error response compatible with TafsirChatResponse interface
+           return of({ 
+             success: false, 
+             error: error?.error?.details || error?.message || 'Failed to communicate with the chat service.', // Try to get backend error detail
+             content: '' 
+           } as TafsirChatResponse);
+         })
+      ));
 
-1. For greetings and pleasantries: 
-   - For "salam" or "assalamualaikum": Respond with "🌟 Wa alaikum assalam wa rahmatullahi wa barakatuh! Would you like to learn more about this verse?"
-   - For "hi", "hello", "hey": Respond with "🌟 As-salaam-alaikum! I can help you understand this verse better."
-   - For "thanks" or "thank you": Respond with "You're welcome! Would you like to explore more about this verse or surah?"
-   - For "goodbye" or "that's all": Respond with "May Allah increase us in knowledge. Feel free to return when you want to learn more about the Quran."
+      // --- SUCCESS CASE --- 
+      // isFirstResponse is handled by backend now
 
-2. For questions about capabilities:
-   Explain: "I can help you understand the Quran by:
-   • Explaining verses using authentic tafsir from Ibn Kathir and Al-Tabari
-   • Analyzing the linguistic aspects and context of verses
-   • Discussing themes and lessons from surahs
-   • Explaining the historical context and circumstances of revelation
-   • Connecting verses with related ones in the Quran
-
-   I'm currently focused on Surah ${this.selectedSurah}, Verse ${this.selectedVerse}. What would you like to know about it?"
-
-3. For off-topic questions:
-   Politely redirect to Quranic discussion: "Let me guide our discussion back to Surah ${this.selectedSurah}. Would you like to understand this verse better or learn about the themes of this surah?"`,
-          userMessage: question,
-          temperature: 0.7
-        };
-
-        const aiResponse = await this.apiService.generateAIResponse(prompt);
-        response = aiResponse.content;
+      if (response.success && response.content) {
+        this.messages.push({
+          role: 'assistant',
+          content: response.content,
+          timestamp: new Date(),
+          type: response.source === 'tafsir_sources' ? 'tafsir' : 'conversation' // Use source from backend
+        });
+        this.saveState();
       } else {
-        // Use tafsir endpoint for everything else - assume it's a Quranic question
-        const verseContext = `CURRENT VERSE CONTEXT:
-• You are discussing Surah ${this.selectedSurah}, Verse ${this.selectedVerse}
-• This is the specific verse being discussed, not any other verse
-• Do not mix this verse with other verses unless explicitly comparing them
-• If asked about linguistics, themes, or interpretation, focus only on THIS verse
-• If you need to reference other verses, clearly mark them as references
-
-VERSE TEXT:
-${this.currentVerse}
-
-TRANSLATION:
-${this.translation}`;
-
-        const tafsirResponse = await firstValueFrom(this.quranService.getTafsirExplanation(
-          this.selectedSurah,
-          this.selectedVerse,
-          `${verseContext}\n\nUser Question: ${question}`,
-          this.selectedTafsir,
-          false
-        ));
-        
-        // Format the tafsir response with proper markdown
-        const formattedTafsirResponse = `## Surah ${this.selectedSurah}. ${surahName} • Verse ${this.selectedVerse}
-
-${tafsirResponse}`;
-
-        response = formattedTafsirResponse;
+        // Handle cases where the API call succeeded but returned no content or success:false
+        console.warn('API call successful but response indicates failure or no content:', response);
+        this.messages.push({
+          role: 'assistant',
+          content: response.error || 'Sorry, I received an unexpected response. Please try again.',
+          timestamp: new Date(),
+          type: 'error'
+        });
       }
+      // --- END SUCCESS CASE --- 
 
-      // Format response based on type
-      let formattedResponse = response || 'Astaghfirullah, I am unable to generate a response at this time. Please try again later.';
-
-      // Add response message
+    } catch (error: any) { // Catch as any for easier property access
+       // --- ERROR CASE --- 
+      console.error('Error sending question to API:', error);
+      let errorMessage = 'Sorry, an error occurred while processing your request. Please try again later.';
+      if (error && typeof error === 'object' && 'status' in error) {
+          if ((error as any).status === 429) {
+              errorMessage = 'You have exceeded the daily AI request limit. Please try again tomorrow or upgrade your plan.';
+          } else if ((error as any).status === 401 || (error as any).status === 403) {
+              errorMessage = 'Authentication error. Please ensure you are logged in and have premium access.';
+          }
+      }
       this.messages.push({
         role: 'assistant',
-        content: formattedResponse,
-        timestamp: new Date(),
-        type: isIslamicGreeting || isGeneralGreeting ? 'greeting' : isAboutCapabilities ? 'conversation' : isQuranQuestion ? 'tafsir' : 'conversation'
-      });
-
-    } catch (error) {
-      console.error('Error in chat:', error);
-      this.messages.push({
-        role: 'assistant',
-        content: 'Astaghfirullah, I encountered an error. Please try asking your question again.',
+        content: errorMessage,
         timestamp: new Date(),
         type: 'error'
       });
+       // --- END ERROR CASE --- 
+    } finally {
+       // --- FINALLY BLOCK (executes on success OR error) --- 
+      this.isLoading = false; // STOP loading
+      this.scrollToBottom(); // Scroll after adding response or error
+      this.cdr.detectChanges(); // Ensure UI updates after loading stops
+      // --- END FINALLY BLOCK ---
     }
-
-    this.isLoading = false;
-    this.saveState();
   }
 
   private formatTafsirSources(): string {

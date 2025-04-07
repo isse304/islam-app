@@ -81,16 +81,12 @@
             <select [(ngModel)]="selectedTranslation"
                     (ngModelChange)="selectTranslation($event)"
                     class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
-                    [disabled]="isLoading">
+                    [disabled]="isAudioLoading">
               <option *ngFor="let trans of quranService.translations" 
                      [value]="trans.id.toString()">
                 {{trans.name}}
               </option>
             </select>
-            <!-- Loading spinner -->
-            <div *ngIf="isLoading" class="absolute right-3 top-1/2 transform -translate-y-1/2">
-              <div class="animate-spin rounded-full h-4 w-4 border-2 border-[#B7A57A] border-t-transparent"></div>
-            </div>
           </div>
           <!-- Debug Display -->
           <!-- <div class="text-xs text-gray-500 mt-1">
@@ -206,11 +202,6 @@
       </div>
     </div>
 
-    <!-- Loading State -->
-    <div *ngIf="isLoading" class="flex justify-center py-8">
-      <div class="animate-spin rounded-full h-12 w-12 border-4 border-[#B7A57A] border-t-transparent"></div>
-    </div>
-
     <!-- Search Results -->
     <div *ngIf="searchResults.length > 0" class="bg-white rounded-xl shadow-lg p-6 mb-8">
       <h2 class="text-xl font-semibold text-[#B7A57A] mb-4">Search Results</h2>
@@ -237,7 +228,7 @@
     </div>
 
     <!-- Main Content -->
-    <ng-container *ngIf="!isLoading">
+    <ng-container *ngIf="!isAudioLoading">
       <!-- Translation View -->
       <div *ngIf="!isMushafView" class="pb-24">
         <div *ngFor="let verse of verses" 
@@ -308,7 +299,7 @@
               <!-- Page Navigation -->
               <div class="flex items-center gap-3">
                 <button (click)="nextPage()" 
-                        [disabled]="displayPageNumber <= 1 || isLoading"
+                        [disabled]="displayPageNumber <= 1 || isAudioLoading"
                         class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
                   <i class="fas fa-chevron-left"></i>
                 </button>
@@ -324,7 +315,7 @@
                 </div>
 
                 <button (click)="previousPage()" 
-                        [disabled]="displayPageNumber >= DISPLAY_TOTAL || isLoading"
+                        [disabled]="displayPageNumber >= DISPLAY_TOTAL || isAudioLoading"
                         class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
                   <i class="fas fa-chevron-right"></i>
                 </button>
@@ -370,13 +361,8 @@
           </div>
         </div>
 
-        <!-- Loading State -->
-        <div *ngIf="isLoading" class="flex justify-center items-center min-h-[60vh]">
-          <div class="animate-spin rounded-full h-16 w-16 border-4 border-[#B7A57A] border-t-transparent"></div>
-        </div>
-
         <!-- Mushaf Display -->
-        <div *ngIf="!isLoading" class="container mx-auto max-w-7xl px-4 pb-8">
+        <div *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
           <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="flex justify-center" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
               <!-- Next Page (in double view) -->
