@@ -273,61 +273,62 @@ export class ApiService {
     selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir',
     isFirstResponse: boolean = false
   ): Promise<AIResponse> {
-    // console.log(`API Service: Generating tafsir response for ${surah}:${verse}`);
     try {
-      const token = await this.authService.getToken();
+      // console.log('Generating Tafsir Response for:', { surah, verse, question, selectedTafsir });
+
+      const token = await this.authService.getToken(true); // Force refresh if needed for premium
       if (!token) {
-        console.error('API Service Error: Authentication token not available for tafsir.');
+        // console.error('No auth token available');
+        this.notificationService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
-      
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      };
 
-      // console.log('API Service: Making request to tafsir endpoint');
+      // console.log('Making tafsir request with token');
       const response = await firstValueFrom(
-        this.http.post<TafsirResponse>(
-          `${this.baseUrl}/api/tafsir/chat`,
-          { surah, verse, question, selectedTafsir, isFirstResponse },
-          { headers }
-        ).pipe(
-          map(response => {
-            if (!response.success) {
-              throw new Error(response.error || 'Failed to generate tafsir response');
+        this.http.post<AIResponse>(`${this.baseUrl}/api/ai/tafsir`, { surah, verse, question, selectedTafsir }, {
+          headers: new HttpHeaders({
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          })
+        }).pipe(
+          catchError(error => {
+            // Handle specific errors like 403 (premium required)
+            if (error instanceof HttpErrorResponse && error.status === 403) {
+              return throwError(() => new Error('Premium subscription required for AI Tafsir.'));
             }
-
-            // Format the response based on the source
-            let formattedContent = response.content;
-
-            // Add source information if available
-            if (response.sources && response.sources.length > 0) {
-              formattedContent += '\n\nSources Referenced:';
-              response.sources.forEach(source => {
-                formattedContent += `\n- ${source.name}`;
-              });
-            }
-
-            // Add fallback notice if no tafsir sources were available
-            if (response.source === 'ai_fallback') {
-              formattedContent = 'Note: This explanation is based on general Islamic knowledge as no direct tafsir sources were available for this verse.\n\n' + formattedContent;
-            }
-
-            return {
-              success: true,
-              content: formattedContent,
-              sources: response.sources || [],
-              source: response.source
-            };
+            return throwError(() => error); // Rethrow other errors
           })
         )
       );
 
+      // console.log('Tafsir Response:', response);
+
+      if (response && response.success) {
+        // Process sources if they exist
+        if (!response.sources || response.sources.length === 0) {
+          // console.warn('No specific sources found, using AI fallback text as source.');
+          if (response.source === 'ai_fallback' && response.content) {
+            response.sources = [{ name: 'AI Generated Explanation', language: 'en' }];
+          }
+        }
+      } else if (!response?.success) {
+        throw new Error(response?.error || 'Failed to generate AI tafsir response');
+      }
+
+
       return response;
-    } catch (error) {
-      console.error('Error in tafsir chat:', error);
-      throw error;
+    } catch (error: any) {
+      // console.error('Error generating tafsir response:', error);
+      if (error instanceof HttpErrorResponse) {
+        // console.error('HTTP Error generating tafsir:', httpError);
+        if (error.status === 401) {
+          await this.authService.signOut(); // Force sign out on critical auth error
+        }
+        throw new Error(error.error?.message || error.message || 'An error occurred.');
+      } else {
+        // console.error('Non-HTTP error generating tafsir:', error);
+        throw error; // Rethrow non-HTTP errors
+      }
     }
   }
 
@@ -406,51 +407,54 @@ export class ApiService {
   }
 
   private handleError(error: HttpErrorResponse | Error): Observable<never> {
-    let errorMessage = 'An error occurred';
-    let notificationType: 'error' | 'warning' = 'error';
+    let errorMessage = 'An unknown error occurred!';
 
     if (error instanceof HttpErrorResponse) {
-      console.error('HTTP Error Response:', error);
-      switch (error.status) {
-        case 0:
-          errorMessage = 'Unable to connect to the server. Please check your internet connection.';
-          break;
-        case 401:
-          errorMessage = 'Please sign in to access this feature';
-          notificationType = 'warning';
-          // Redirect to login page
-          this.authService.login().catch(err => console.error('Error redirecting to login:', err));
-          break;
-        case 403:
-          errorMessage = 'You do not have permission to access this feature';
-          notificationType = 'warning';
-          break;
-        case 429:
-          errorMessage = 'Too many requests. Please try again later.';
-          notificationType = 'warning';
-          break;
-        case 500:
-          if (error.error?.message?.includes('OpenAI')) {
-            errorMessage = 'AI service is temporarily unavailable. Please try again later.';
-          } else {
-            errorMessage = error.error?.message || 'An unexpected server error occurred. Please try again later.';
-          }
-          break;
-        default:
-          errorMessage = error.error?.message || 'An unexpected error occurred';
+      // Server-side or connection error
+      // console.error('API Service Error:', error);
+      if (error.error instanceof ErrorEvent) {
+        // A client-side or network error occurred. Handle it accordingly.
+        errorMessage = `Network error: ${error.error.message}`;
+      } else {
+        // The backend returned an unsuccessful response code.
+        // The response body may contain clues as to what went wrong.
+        // console.error(
+        //   `Backend returned code ${error.status}, ` +
+        //   `body was: ${JSON.stringify(error.error)}`);
+
+        if (error.status === 401) {
+          errorMessage = 'Authentication failed. Please log in again.';
+          // console.warn('User needs to sign in again.');
+          // Consider triggering re-authentication flow
+          this.authService.signOut(); // Example: Sign out the user
+        } else if (error.status === 403) {
+          errorMessage = 'You do not have permission for this action. A premium subscription might be required.';
+          // console.warn('User is not authorized (possibly needs premium).');
+        } else if (error.status === 429) {
+           errorMessage = 'You have made too many requests. Please try again later.';
+           // console.warn('Rate limit exceeded.');
+        } else if (error instanceof TimeoutError) {
+           errorMessage = 'The request took too long to complete. Please check your connection and try again.';
+           // console.warn('The request timed out.');
+        } else if (error.error && typeof error.error === 'string') {
+          errorMessage = error.error; // Use error message from backend if available as string
+        } else if (error.error && error.error.message && typeof error.error.message === 'string') {
+          errorMessage = error.error.message; // Use error message from backend if available in object
+        } else {
+          errorMessage = `Server error: ${error.status}. Please try again later.`;
+        }
       }
-    } else {
-      console.error('Client Error:', error);
-      errorMessage = error.message || 'An unexpected error occurred';
+    } else if (error instanceof Error) {
+      // Client-side error (e.g., TypeErrors in RxJS operators)
+      // console.error('An unexpected error occurred:', error.message);
+      errorMessage = `Error: ${error.message}`;
     }
 
-    // Show notification based on type
-    if (notificationType === 'warning') {
-      this.notificationService.warning(errorMessage);
-    } else {
-      this.notificationService.error(errorMessage);
-    }
-    
+    // Notify the user
+    this.notificationService.error(errorMessage);
+
+    // Return an observable with a user-facing error message.
+    // console.error('Something bad happened; please try again later.'); // Fallback error
     return throwError(() => new Error(errorMessage));
   }
 

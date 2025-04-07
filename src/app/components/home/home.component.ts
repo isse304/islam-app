@@ -151,6 +151,7 @@ import { RouterModule } from '@angular/router';
                   <li><a routerLink="/learn" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Learn Quran</a></li>
                   <li><a routerLink="/dua" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Daily Duas</a></li>
                   <li><a routerLink="/profile" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">My Profile</a></li>
+                  <li><a routerLink="/about" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">About</a></li>
                 </ul>
               </div>
               <div>

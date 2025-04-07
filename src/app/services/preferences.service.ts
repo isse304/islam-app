@@ -30,7 +30,7 @@ export class PreferencesService {
         this.preferencesSubject.next(mergedPrefs);
       }
     } catch (error) {
-      console.warn('Could not load preferences from server:', error);
+      // console.warn('Could not load preferences from server:', error);
     }
   }
   
@@ -39,7 +39,7 @@ export class PreferencesService {
       const stored = localStorage.getItem(this.STORAGE_KEY);
       return stored ? JSON.parse(stored) : null;
     } catch (error) {
-      console.warn('Error loading preferences from localStorage:', error);
+      // console.warn('Error loading preferences from localStorage:', error);
       return null;
     }
   }
@@ -48,7 +48,7 @@ export class PreferencesService {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(preferences));
     } catch (error) {
-      console.warn('Error saving preferences to localStorage:', error);
+      // console.warn('Error saving preferences to localStorage:', error);
     }
   }
   
@@ -77,7 +77,7 @@ export class PreferencesService {
     try {
       await this.authService.saveUserPreferences(updated);
     } catch (error) {
-      console.warn('Could not save preferences to server:', error);
+      // console.warn('Could not save preferences to server:', error);
     }
   }
   

@@ -151,15 +151,15 @@ export class QuranFlashService {
   getMushafPage(page: number): Observable<MushafPage> {
     // page is already the actual file number (10-627), no need to convert
     const imageUrl = this.getPageImageUrl(page);
-    // console.log('Loading image:', imageUrl);
+    // // console.log('Loading image:', imageUrl);
     return of({ page, imageUrl });
   }
 
   getPageBySurah(surahNumber: number): Observable<number> {
     const filePage = this.surahPageMap[surahNumber];
-    // console.log(`Getting page for surah ${surahNumber}:`, filePage);
+    // // console.log(`Getting page for surah ${surahNumber}:`, filePage);
     if (!filePage) {
-      // console.error(`❌ Invalid surah number: ${surahNumber}`);
+      // // console.error(`❌ Invalid surah number: ${surahNumber}`);
       return of(10); // Default to page 10 (Al-Fatiha)
     }
     return of(filePage); // Return the actual file page number
@@ -168,7 +168,7 @@ export class QuranFlashService {
   getPageImageUrl(page: number): string {
     const formattedPage = this.formatPageNumber(page);
     const url = `${this.IMAGE_PATH}${formattedPage}.png`;
-    // console.log('Generated URL:', url);
+    // // console.log('Generated URL:', url);
     return url;
   }
 
@@ -186,13 +186,13 @@ export class QuranFlashService {
   private getPageForSurah(surahNumber: number): string {
     const filePage = this.surahPageMap[surahNumber];
     if (!filePage) throw new Error(`No page data for surah ${surahNumber}`);
-    // console.log(`Getting page for surah ${surahNumber}:`, filePage);
+    // // console.log(`Getting page for surah ${surahNumber}:`, filePage);
     return filePage.toString().padStart(3, '0');
   }
 
   private getImageUrlForPage(pageNumber: string): string {
     const url = `${this.IMAGE_PATH}${pageNumber}.png`;
-    // console.log('Generated URL:', url);
+    // // console.log('Generated URL:', url);
     return url;
   }
 }

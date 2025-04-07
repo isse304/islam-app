@@ -12,15 +12,64 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <!-- Error Logging -->
   <script>
-    window.onerror = function(msg, url, line, col, error) {
-      console.error('Error:', { message: msg, url, line, col, error });
-      return false;
-    };
-    // Add console logging for debugging
-    console.log('Document loading...');
-    document.addEventListener('DOMContentLoaded', function() {
-      console.log('DOM Content Loaded');
-    });
+    // import { initializeApp } from 'firebase/app';
+    // import { getAuth, onAuthStateChanged } from 'firebase/auth';
+    // import { getFirestore } from 'firebase/firestore';
+
+    // Remove Firebase initialization if not used here
+    // const firebaseConfig = {
+    //   apiKey: 'YOUR_API_KEY',
+    //   authDomain: 'YOUR_AUTH_DOMAIN',
+    //   projectId: 'YOUR_PROJECT_ID',
+    //   storageBucket: 'YOUR_STORAGE_BUCKET',
+    //   messagingSenderId: 'YOUR_MESSAGING_SENDER_ID',
+    //   appId: 'YOUR_APP_ID',
+    //   measurementId: 'YOUR_MEASUREMENT_ID'
+    // };
+
+    // Initialize Firebase
+    // const app = initializeApp(firebaseConfig);
+    // const auth = getAuth(app);
+    // const db = getFirestore(app);
+
+    // // Error handling function
+    // function logError(error) {
+    //     // Send error to backend or analytics service
+    //     // console.error('Global Error:', error);
+    // }
+
+    // // Global error handling
+    // window.onerror = (msg, url, line, col, error) => {
+    //     const errorDetails = {
+    //         message: msg,
+    //         url: url,
+    //         line: line,
+    //         column: col,
+    //         error: error?.toString() // Safely stringify the error
+    //     };
+    //     // console.error('Error:', { message: msg, url, line, col, error });
+    //     // logError(errorDetails);
+    // };
+
+    // window.addEventListener('unhandledrejection', (event) => {
+    //     // console.error('Unhandled Rejection:', event.reason);
+    //     // logError({ type: 'unhandledrejection', reason: event.reason });
+    // });
+
+    // document.addEventListener('DOMContentLoaded', () => {
+    //     // console.log('Document loading...');
+    //     // Check user auth state
+    //     // onAuthStateChanged(auth, (user) => {
+    //     //     if (user) {
+    //     //         console.log('User is signed in:', user.uid);
+    //     //     } else {
+    //     //         console.log('User is signed out');
+    //     //     }
+    //     // });
+
+    //     // Example: Log when the document is fully loaded and parsed
+    //     // console.log('DOM Content Loaded');
+    // });
   </script>
   <!-- Material Icons -->
   <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">

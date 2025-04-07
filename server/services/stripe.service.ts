@@ -38,11 +38,11 @@ export class StripeService {
             }
             return usage;
         } catch (error) {
-            console.error(`Error getting/creating usage record for user ${userId}:`, error);
+            // console.error(`Error getting/creating usage record for user ${userId}:`, error);
             
             // In development, provide a fallback mock record
             if (process.env['NODE_ENV'] === 'development') {
-                console.log('Returning mock usage record in development mode');
+                // console.log('Returning mock usage record in development mode');
                 return {
                     userId,
                     status: 'free',
@@ -54,7 +54,7 @@ export class StripeService {
     }
 
     async createCheckoutSession(userId: string, priceId = process.env['STRIPE_PRICE_ID']): Promise<Stripe.Checkout.Session> {
-        console.log(`[Stripe] Creating checkout session for user ${userId} and price ${priceId}`);
+        // console.log(`[Stripe] Creating checkout session for user ${userId} and price ${priceId}`);
         if (!priceId) {
             throw new Error('Stripe Price ID not configured in environment variables.');
         }
@@ -71,23 +71,23 @@ export class StripeService {
             // Only use existing customer ID if NOT in test mode OR if it's guaranteed to be a test customer ID
             // For simplicity, we'll just force new customer creation in test mode if an ID is found
             stripeCustomerId = userSubscription.stripeCustomerId;
-            console.log(`[Stripe] Found existing Stripe Customer ID: ${stripeCustomerId} for user ${userId}. Ensuring metadata is current...`);
+            // console.log(`[Stripe] Found existing Stripe Customer ID: ${stripeCustomerId} for user ${userId}. Ensuring metadata is current...`);
             try {
                 // *** ADDED BLOCK: Force update metadata for existing customer ***
                 await this.stripe.customers.update(stripeCustomerId, {
                     metadata: { firebaseUID: userId } // Ensure the current Firebase UID is set
                 });
-                console.log(`[Stripe] Updated metadata for existing customer ${stripeCustomerId}`);
+                // console.log(`[Stripe] Updated metadata for existing customer ${stripeCustomerId}`);
                 // *** END OF ADDED BLOCK ***
             } catch (updateError) {
-                 console.error(`[Stripe] Failed to update metadata for existing customer ${stripeCustomerId}:`, updateError);
+                 // console.error(`[Stripe] Failed to update metadata for existing customer ${stripeCustomerId}:`, updateError);
                  // Optional: Decide if you want to proceed or throw an error.
                  // Proceeding might be okay if metadata update isn't strictly critical for checkout itself,
                  // but it's critical for the webhook later. Throwing an error might be safer.
                  // For now, we log the error and proceed.
             }
         } else if (isTestMode && userSubscription && userSubscription.stripeCustomerId) {
-             console.log(`[Stripe] TEST MODE: Ignoring potentially live customer ID ${userSubscription.stripeCustomerId} found for user ${userId}. Will create a new test customer.`);
+             // console.log(`[Stripe] TEST MODE: Ignoring potentially live customer ID ${userSubscription.stripeCustomerId} found for user ${userId}. Will create a new test customer.`);
              // Let stripeCustomerId remain undefined so a new one is created below
         }
         
@@ -99,16 +99,16 @@ export class StripeService {
                 const email = userRecord.email;
 
                 if (!email) {
-                    console.warn(`[Stripe] User ${userId} does not have an email address in Firebase Auth. Creating Stripe customer without email.`);
+                    // console.warn(`[Stripe] User ${userId} does not have an email address in Firebase Auth. Creating Stripe customer without email.`);
                 }
 
-                console.log(`[Stripe] Creating new Stripe Customer for user ${userId}${email ? ' with email ' + email : ''} (Mode: ${isTestMode ? 'Test' : 'Live'})`);
+                // console.log(`[Stripe] Creating new Stripe Customer for user ${userId}${email ? ' with email ' + email : ''} (Mode: ${isTestMode ? 'Test' : 'Live'})`);
                 const customer = await this.stripe.customers.create({
                     email: email, // Associate email if available
                     metadata: { firebaseUID: userId } // Link Firebase UID in metadata
                 });
                 stripeCustomerId = customer.id;
-                console.log(`[Stripe] Created new Stripe Customer ID: ${stripeCustomerId} for user ${userId}`);
+                // console.log(`[Stripe] Created new Stripe Customer ID: ${stripeCustomerId} for user ${userId}`);
 
                 // Save the new customer ID back to our database
                 if (userSubscription) {
@@ -118,7 +118,7 @@ export class StripeService {
                     await UserSubscription.create({ userId, stripeCustomerId, status: 'inactive' });
                 }
             } catch (error) {
-                console.error(`[Stripe] Error creating Stripe customer or fetching user email for ${userId}:`, error);
+                // console.error(`[Stripe] Error creating Stripe customer or fetching user email for ${userId}:`, error);
                 throw new Error('Failed to prepare Stripe customer.');
             }
         }
@@ -143,35 +143,35 @@ export class StripeService {
                 // To prefill email if creating customer here (not needed if using existing customer)
                 // customer_email: email // Only if customer ID is not provided
             });
-            console.log(`[Stripe] Checkout session ${session.id} created for user ${userId}`);
+            // console.log(`[Stripe] Checkout session ${session.id} created for user ${userId}`);
             return session;
         } catch (error) {
-            console.error(`[Stripe] Error creating Stripe checkout session for user ${userId}:`, error);
+            // console.error(`[Stripe] Error creating Stripe checkout session for user ${userId}:`, error);
             throw error; // Re-throw the error to be caught by the route handler
         }
     }
 
     async createCustomerPortalSession(userId: string, returnUrl: string): Promise<Stripe.BillingPortal.Session> {
-        console.log(`[Stripe] Attempting to create portal session for user ${userId}`);
+        // console.log(`[Stripe] Attempting to create portal session for user ${userId}`);
         const userSubscription = await UserSubscription.findOne({ userId });
 
         if (!userSubscription || !userSubscription.stripeCustomerId) {
-            console.error(`[Stripe] Stripe Customer ID not found for user ${userId}`);
+            // console.error(`[Stripe] Stripe Customer ID not found for user ${userId}`);
             throw new Error('Stripe Customer ID not found for this user.');
         }
 
         const stripeCustomerId = userSubscription.stripeCustomerId;
-        console.log(`[Stripe] Found Stripe Customer ID ${stripeCustomerId} for user ${userId}. Creating portal session with return URL: ${returnUrl}`);
+        // console.log(`[Stripe] Found Stripe Customer ID ${stripeCustomerId} for user ${userId}. Creating portal session with return URL: ${returnUrl}`);
 
         try {
             const portalSession = await this.stripe.billingPortal.sessions.create({
                 customer: stripeCustomerId,
                 return_url: returnUrl,
             });
-            console.log(`[Stripe] Customer portal session created for user ${userId}`);
+            // console.log(`[Stripe] Customer portal session created for user ${userId}`);
             return portalSession;
         } catch (error) {
-            console.error(`[Stripe] Error creating Stripe customer portal session for user ${userId} (Customer ID: ${stripeCustomerId}):`, error);
+            // console.error(`[Stripe] Error creating Stripe customer portal session for user ${userId} (Customer ID: ${stripeCustomerId}):`, error);
             throw error; // Re-throw the error
         }
     }
@@ -191,24 +191,24 @@ export class StripeService {
         let event: Stripe.Event;
 
         // *** ADD LOGGING HERE ***
-        console.log('[Webhook Debug] Received Headers:', JSON.stringify(req.headers, null, 2));
-        console.log(`[Webhook Debug] Stripe Signature Header: ${sig}`);
+        // console.log('[Webhook Debug] Received Headers:', JSON.stringify(req.headers, null, 2));
+        // console.log(`[Webhook Debug] Stripe Signature Header: ${sig}`);
         // Log the body type and potentially a snippet (be careful logging full sensitive payloads)
-        console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
+        // console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
         if (Buffer.isBuffer(req.body)) {
-            console.log(`[Webhook Debug] req.body is Buffer, length: ${req.body.length}`);
-            // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 200)}...`); // Optional: Log snippet
+            // console.log(`[Webhook Debug] req.body is Buffer, length: ${req.body.length}`);
+            // // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 200)}...`); // Optional: Log snippet
         } else {
-            console.log('[Webhook Debug] req.body is NOT a Buffer. Body:', req.body);
+            // console.log('[Webhook Debug] req.body is NOT a Buffer. Body:', req.body);
         }
         // *** END LOGGING ***
 
-        console.log('[Webhook] Attempting to construct event...');
+        // console.log('[Webhook] Attempting to construct event...');
         try {
             event = this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
-            console.log(`[Webhook] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`);
+            // console.log(`[Webhook] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`);
         } catch (err: any) {
-            console.error('[Webhook] Error verifying signature:', err.message);
+            // console.error('[Webhook] Error verifying signature:', err.message);
             res.status(400).send(`Webhook Error: ${err.message}`);
             return;
         }
@@ -220,47 +220,47 @@ export class StripeService {
 
         try {
             // Process based on event type
-            console.log(`[Webhook] Processing event type: ${event.type}`);
+            // console.log(`[Webhook] Processing event type: ${event.type}`);
             switch (event.type) {
                 case 'checkout.session.completed':
                     const session = event.data.object as Stripe.Checkout.Session;
                     userId = session.client_reference_id ?? session.metadata?.userId;
-                    console.log(`[Webhook ${event.type}] Session ID: ${session.id}, User ID (from client_ref/metadata): ${userId}`);
+                    // console.log(`[Webhook ${event.type}] Session ID: ${session.id}, User ID (from client_ref/metadata): ${userId}`);
                     if (!userId) {
-                        console.error('[Webhook] Error: userId missing in session client_reference_id and metadata', session.id);
+                        // console.error('[Webhook] Error: userId missing in session client_reference_id and metadata', session.id);
                         res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
                     if (session.subscription) {
                         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
-                        console.log(`[Webhook ${event.type}] Found subscription ID: ${subscriptionId}. Retrieving details...`);
+                        // console.log(`[Webhook ${event.type}] Found subscription ID: ${subscriptionId}. Retrieving details...`);
                         const subscriptionDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
-                        console.log(`[Webhook ${event.type}] Retrieved subscription details. Status: ${subscriptionDetails.status}. Updating DB and claims for user ${userId}...`);
+                        // console.log(`[Webhook ${event.type}] Retrieved subscription details. Status: ${subscriptionDetails.status}. Updating DB and claims for user ${userId}...`);
                         
                         // Update DB and Claims
                         userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
                         if (userSub) {
                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
-                            console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
+                            // console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
 
                             // --- ADDED: Update UserUsage aiRequestLimit (also in checkout.session.completed) ---
                             try {
                                 const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
                                 const statusToUseForLimit = userSub.status; // Use status from the updated userSub
                                 const limitToSet = (statusToUseForLimit === 'active' || statusToUseForLimit === 'trialing') ? premiumLimit : 0;
-                                console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
+                                // console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
                                 const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                     { userId: userId },
                                     { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                     { new: true, upsert: true, setDefaultsOnInsert: true }
                                 );
                                 if (usageUpdateResult) {
-                                    console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                                    // console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
                                 } else {
-                                    console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
+                                    // console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
                                 }
                             } catch (usageUpdateError) {
-                                console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
+                                // console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
                             }
                             // --- END ADDED: Update UserUsage aiRequestLimit ---
 
@@ -271,41 +271,41 @@ export class StripeService {
                                 let userEmail: string | undefined;
                                 let userName: string | undefined;
                                 try {
-                                    console.log(`[Webhook ${event.type} - Email Trigger] Fetching Firebase user record for ${userId}...`);
+                                    // console.log(`[Webhook ${event.type} - Email Trigger] Fetching Firebase user record for ${userId}...`);
                                     const userRecord = await auth.getUser(userId);
                                     userEmail = userRecord.email;
                                     userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
-                                    console.log(`[Webhook ${event.type} - Email Trigger] Fetched Firebase user: ${userEmail}`);
+                                    // console.log(`[Webhook ${event.type} - Email Trigger] Fetched Firebase user: ${userEmail}`);
                                 } catch (authError) {
-                                    console.error(`[Webhook ${event.type} - Email Trigger] Failed to fetch user ${userId} from Firebase Auth:`, authError);
+                                    // console.error(`[Webhook ${event.type} - Email Trigger] Failed to fetch user ${userId} from Firebase Auth:`, authError);
                                 }
 
                                 // Send Welcome Email (if active and not already sent)
                                 if (userEmail && userSub && !userSub.welcomeEmailSent) { 
-                                     console.log(`[Webhook ${event.type} - Email Trigger] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
+                                     // console.log(`[Webhook ${event.type} - Email Trigger] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
                                     try {
                                         await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
-                                        console.log(`[Webhook ${event.type} - Email Trigger] Sent premium welcome email to user ${userId}. Updating DB flag...`);
+                                        // console.log(`[Webhook ${event.type} - Email Trigger] Sent premium welcome email to user ${userId}. Updating DB flag...`);
                                         // Mark email as sent in the database
                                         userSub.welcomeEmailSent = true;
                                         await userSub.save();
-                                        console.log(`[Webhook ${event.type} - Email Trigger] Marked welcomeEmailSent=true in DB for user ${userId}.`);
+                                        // console.log(`[Webhook ${event.type} - Email Trigger] Marked welcomeEmailSent=true in DB for user ${userId}.`);
                                     } catch (emailError) {
-                                        console.error(`[Webhook ${event.type} - Email Trigger] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
+                                        // console.error(`[Webhook ${event.type} - Email Trigger] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
                                     }
                                 } else if (userSub?.welcomeEmailSent) {
-                                    console.log(`[Webhook ${event.type} - Email Trigger] Welcome email already sent flag is true for user ${userId}, skipping.`);
+                                    // console.log(`[Webhook ${event.type} - Email Trigger] Welcome email already sent flag is true for user ${userId}, skipping.`);
                                 } else {
-                                    console.log(`[Webhook ${event.type} - Email Trigger] Conditions not met (missing email or userSub) for user ${userId}.`);
+                                    // console.log(`[Webhook ${event.type} - Email Trigger] Conditions not met (missing email or userSub) for user ${userId}.`);
                                 }
                             }
                             // --- END ADDED: Email Logic --- 
 
                         } else {
-                            console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
+                            // console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
                         }
                     } else {
-                         console.warn(`[Webhook ${event.type}] Checkout session ${session.id} completed, but no subscription ID found immediately. Waiting for customer.subscription.created/updated event.`);
+                         // console.warn(`[Webhook ${event.type}] Checkout session ${session.id} completed, but no subscription ID found immediately. Waiting for customer.subscription.created/updated event.`);
                     }
                     break;
 
@@ -321,12 +321,12 @@ export class StripeService {
                                 userId = customer.metadata?.firebaseUID;
                             }
                         } catch (custError) {
-                            console.error(`[Webhook ${event.type}] Error fetching customer ${subscription.customer} to get userId:`, custError);
+                            // console.error(`[Webhook ${event.type}] Error fetching customer ${subscription.customer} to get userId:`, custError);
                         }
                     }
-                    console.log(`[Webhook ${event.type}] Subscription ID: ${subscription.id}, Status: ${subscription.status}, User ID (from metadata/customer): ${userId}`);
+                    // console.log(`[Webhook ${event.type}] Subscription ID: ${subscription.id}, Status: ${subscription.status}, User ID (from metadata/customer): ${userId}`);
                     if (!userId) {
-                        console.error(`[Webhook ${event.type}] Error: userId missing in subscription metadata and customer metadata`, subscription.id);
+                        // console.error(`[Webhook ${event.type}] Error: userId missing in subscription metadata and customer metadata`, subscription.id);
                         res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
@@ -334,18 +334,18 @@ export class StripeService {
                     // --- Start Inner Try/Catch for the main logic ---
                     try {
                         // --- PRE-DB UPDATE LOG --- 
-                        console.log(`[Webhook ${event.type}] PRE-DB_UPDATE: About to call updateUserSubscriptionStatus for user ${userId}`);
+                        // console.log(`[Webhook ${event.type}] PRE-DB_UPDATE: About to call updateUserSubscriptionStatus for user ${userId}`);
                         // Fetch OR Update the user subscription document
                         userSub = await this.updateUserSubscriptionStatus(userId, subscription);
                         // --- POST-DB UPDATE LOG --- 
-                        console.log(`[Webhook ${event.type}] POST-DB_UPDATE: Finished calling updateUserSubscriptionStatus. Result userSub:`, !!userSub);
+                        // console.log(`[Webhook ${event.type}] POST-DB_UPDATE: Finished calling updateUserSubscriptionStatus. Result userSub:`, !!userSub);
 
                         if (!userSub) {
-                            console.error(`[Webhook ${event.type}] Failed to update/retrieve subscription in DB for user ${userId}, subscription ${subscription.id}`);
+                            // console.error(`[Webhook ${event.type}] Failed to update/retrieve subscription in DB for user ${userId}, subscription ${subscription.id}`);
                             // If we can't get the DB record, we can't track email status, so skip email attempt.
                             // Still attempt claim update based on event data.
                         } else {
-                             console.log(`[Webhook ${event.type}] Retrieved UserSubscription doc. Welcome email sent status: ${userSub.welcomeEmailSent}`);
+                             // console.log(`[Webhook ${event.type}] Retrieved UserSubscription doc. Welcome email sent status: ${userSub.welcomeEmailSent}`);
                         }
 
                         // Determine status and period end (prioritize DB status if available, fallback to event)
@@ -361,99 +361,99 @@ export class StripeService {
                         if (finalRawPeriodEnd instanceof Date) {
                             periodEndToUse = finalRawPeriodEnd;
                         }
-                        console.log(`[Webhook ${event.type}] Status to use for claims/email: ${statusToUse}, Period End: ${periodEndToUse}`);
+                        // console.log(`[Webhook ${event.type}] Status to use for claims/email: ${statusToUse}, Period End: ${periodEndToUse}`);
 
                         // Fetch user info from Firebase
                         let userEmail: string | undefined;
                         let userName: string | undefined;
                         try {
-                            console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
+                            // console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
                             const userRecord = await auth.getUser(userId);
                             userEmail = userRecord.email;
                             userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
-                            console.log(`[Webhook ${event.type}] Fetched Firebase user: ${userEmail}`);
+                            // console.log(`[Webhook ${event.type}] Fetched Firebase user: ${userEmail}`);
                         } catch (authError) {
-                            console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} from Firebase Auth:`, authError);
+                            // console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} from Firebase Auth:`, authError);
                         }
 
                         // --- PRE-CLAIMS UPDATE LOG ---
-                        console.log(`[Webhook ${event.type}] PRE-CLAIMS_UPDATE: About to call updateFirebaseClaims for user ${userId} with status: ${statusToUse}`);
+                        // console.log(`[Webhook ${event.type}] PRE-CLAIMS_UPDATE: About to call updateFirebaseClaims for user ${userId} with status: ${statusToUse}`);
                         await this.updateFirebaseClaims(userId, statusToUse, periodEndToUse);
                         // --- POST-CLAIMS UPDATE LOG ---
-                        console.log(`[Webhook ${event.type}] POST-CLAIMS_UPDATE: Finished calling updateFirebaseClaims for user ${userId}`);
+                        // console.log(`[Webhook ${event.type}] POST-CLAIMS_UPDATE: Finished calling updateFirebaseClaims for user ${userId}`);
 
                         // --- ADDED: Update UserUsage aiRequestLimit ---
                         try {
                             const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
                             const limitToSet = (statusToUse === 'active' || statusToUse === 'trialing') ? premiumLimit : 0;
-                            console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
+                            // console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
                             const usageUpdateResult = await UserUsage.findOneAndUpdate(
                                 { userId: userId },
                                 { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                 { new: true, upsert: true, setDefaultsOnInsert: true }
                             );
                             if (usageUpdateResult) {
-                                console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
+                                // console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
                             } else {
-                                console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
+                                // console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
                                 // Optional: Attempt to create if it really should exist? Or rely on getOrCreateUsage elsewhere.
                             }
                         } catch (usageUpdateError) {
-                            console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
+                            // console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
                             // Decide if this error should prevent the webhook 200 OK. Usually not.
                         }
                         // --- END ADDED: Update UserUsage aiRequestLimit ---
 
                         // Existing log check
-                        console.log(`[Webhook Validation Check] Status being used before potential email/further processing:`, {
-                            userId: userId,
-                            statusFromUserSubModel: userSub?.status, // Status from the UserSubscription model result
-                            statusUsedForClaims: statusToUse,        // Status calculated from userSub OR Stripe event
-                            eventType: event.type
-                        });
+                        // console.log(`[Webhook Validation Check] Status being used before potential email/further processing:`, {
+                        //     userId: userId,
+                        //     statusFromUserSubModel: userSub?.status, // Status from the UserSubscription model result
+                        //     statusUsedForClaims: statusToUse,        // Status calculated from userSub OR Stripe event
+                        //     eventType: event.type
+                        // });
 
                         // Send Welcome Email (only if active/trialing AND not already sent)
                         if (userEmail && (statusToUse === 'active' || statusToUse === 'trialing') && userSub && !userSub.welcomeEmailSent) {
-                             console.log(`[Webhook ${event.type}] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
+                             // console.log(`[Webhook ${event.type}] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
                             try {
                                 await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
-                                console.log(`[Webhook ${event.type}] Sent premium welcome email to user ${userId}. Updating DB flag...`);
+                                // console.log(`[Webhook ${event.type}] Sent premium welcome email to user ${userId}. Updating DB flag...`);
                                 // Mark email as sent in the database
                                 userSub.welcomeEmailSent = true;
                                 await userSub.save();
-                                console.log(`[Webhook ${event.type}] Marked welcomeEmailSent=true in DB for user ${userId}.`);
+                                // console.log(`[Webhook ${event.type}] Marked welcomeEmailSent=true in DB for user ${userId}.`);
                             } catch (emailError) {
-                                console.error(`[Webhook ${event.type}] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
+                                // console.error(`[Webhook ${event.type}] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
                             }
                         } else if (userSub?.welcomeEmailSent) {
-                            console.log(`[Webhook ${event.type}] Welcome email already sent for user ${userId}, skipping.`);
+                            // console.log(`[Webhook ${event.type}] Welcome email already sent for user ${userId}, skipping.`);
                         } else if (!userSub) {
-                             console.log(`[Webhook ${event.type}] Skipping welcome email check because UserSubscription record was not found/updated.`);
+                             // console.log(`[Webhook ${event.type}] Skipping welcome email check because UserSubscription record was not found/updated.`);
                         } else {
-                            console.log(`[Webhook ${event.type}] Conditions not met to send welcome email (Status: ${statusToUse}, Email Sent Flag: ${userSub?.welcomeEmailSent}, User Email Found: ${!!userEmail}).`);
+                            // console.log(`[Webhook ${event.type}] Conditions not met to send welcome email (Status: ${statusToUse}, Email Sent Flag: ${userSub?.welcomeEmailSent}, User Email Found: ${!!userEmail}).`);
                         }
 
                         // Send Admin Notification
                         if (adminEmail) {
-                            console.log(`[Webhook ${event.type}] Attempting to send admin notification email to ${adminEmail}...`);
+                            // console.log(`[Webhook ${event.type}] Attempting to send admin notification email to ${adminEmail}...`);
                              const subject = `🚀 Subscription ${event.type === 'customer.subscription.created' ? 'Created' : 'Updated'} for ${userEmail || userId}`;
                             const text = `User ${userEmail || userId} subscription details:\nStatus: ${statusToUse}\nSub ID: ${subscription.id}\nCustomer ID: ${subscription.customer}\nPeriod End: ${periodEndToUse?.toLocaleDateString() || 'N/A'}`;
                             try {
                                 await this.emailService.sendEmail(adminEmail, subject, text);
-                                 console.log(`[Webhook ${event.type}] Sent admin notification email.`);
+                                 // console.log(`[Webhook ${event.type}] Sent admin notification email.`);
                             } catch (emailError) {
-                                console.error(`[Webhook ${event.type}] Failed to send admin subscription notification email:`, emailError);
+                                // console.error(`[Webhook ${event.type}] Failed to send admin subscription notification email:`, emailError);
                             }
                         }
                     // --- End Inner Try/Catch ---
                     } catch (innerError: any) {
-                        console.error(`[Webhook ${event.type}] Caught inner error during processing for user ${userId}. Allowing webhook to succeed but logging error:`, innerError);
+                        // console.error(`[Webhook ${event.type}] Caught inner error during processing for user ${userId}. Allowing webhook to succeed but logging error:`, innerError);
                         // Check if it's the specific UserUsage validation error we've been seeing
                         if (innerError.message?.includes('UserUsage validation failed') && innerError.errors?.status?.kind === 'enum') {
-                            console.warn(`[Webhook ${event.type}] Confirmed specific UserUsage enum validation error occurred. Frontend should still work due to claims update.`);
+                            // console.warn(`[Webhook ${event.type}] Confirmed specific UserUsage enum validation error occurred. Frontend should still work due to claims update.`);
                         } else {
                             // Log other unexpected errors more severely if needed
-                            console.error(`[Webhook ${event.type}] An unexpected inner error occurred:`, innerError);
+                            // console.error(`[Webhook ${event.type}] An unexpected inner error occurred:`, innerError);
                         }
                          // Do NOT re-throw or send a 500 status. Allow the main flow to send 200 OK.
                     }
@@ -470,12 +470,12 @@ export class StripeService {
                                 userId = customer.metadata?.firebaseUID;
                             }
                         } catch (custError) {
-                            console.error(`[Webhook ${event.type}] Error fetching customer ${deletedSubscription.customer} to get userId:`, custError);
+                            // console.error(`[Webhook ${event.type}] Error fetching customer ${deletedSubscription.customer} to get userId:`, custError);
                         }
                     }
-                    console.log(`[Webhook ${event.type}] Subscription ID: ${deletedSubscription.id}, User ID (from metadata/customer): ${userId}`);
+                    // console.log(`[Webhook ${event.type}] Subscription ID: ${deletedSubscription.id}, User ID (from metadata/customer): ${userId}`);
                     if (!userId) {
-                        console.error(`[Webhook ${event.type}] Error: userId missing`, deletedSubscription.id);
+                        // console.error(`[Webhook ${event.type}] Error: userId missing`, deletedSubscription.id);
                         res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
@@ -483,15 +483,15 @@ export class StripeService {
                      // Fetch user info for notifications
                     let deletedUserEmail: string | undefined;
                     try {
-                         console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
+                         // console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
                         const userRecord = await auth.getUser(userId);
                         deletedUserEmail = userRecord.email;
-                         console.log(`[Webhook ${event.type}] Fetched Firebase user: ${deletedUserEmail}`);
+                         // console.log(`[Webhook ${event.type}] Fetched Firebase user: ${deletedUserEmail}`);
                     } catch (authError) {
-                        console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} for deletion notification:`, authError);
+                        // console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} for deletion notification:`, authError);
                     }
 
-                    console.log(`[Webhook ${event.type}] Marking DB subscription as canceled for user ${userId}...`);
+                    // console.log(`[Webhook ${event.type}] Marking DB subscription as canceled for user ${userId}...`);
                     const canceledSub = await UserSubscription.findOneAndUpdate(
                         { userId: userId },
                         {
@@ -504,54 +504,54 @@ export class StripeService {
                     );
 
                     if (canceledSub) {
-                        console.log(`[Webhook ${event.type}] Marked UserSubscription as canceled in DB for user ${userId}`);
-                         console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
+                        // console.log(`[Webhook ${event.type}] Marked UserSubscription as canceled in DB for user ${userId}`);
+                         // console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
                          await this.updateFirebaseClaims(userId, 'canceled', null);
                     } else {
-                        console.warn(`[Webhook ${event.type}] No subscription found in DB to mark as canceled for user ${userId}. Still updating claims.`);
-                         console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
+                        // console.warn(`[Webhook ${event.type}] No subscription found in DB to mark as canceled for user ${userId}. Still updating claims.`);
+                         // console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
                         await this.updateFirebaseClaims(userId, 'canceled', null);
                     }
 
                     // Send Cancellation Email to User
                     if (deletedUserEmail) {
-                         console.log(`[Webhook ${event.type}] Attempting to send cancellation email to user ${userId} (${deletedUserEmail})...`);
+                         // console.log(`[Webhook ${event.type}] Attempting to send cancellation email to user ${userId} (${deletedUserEmail})...`);
                         const subject = 'Your NuraAI Subscription Has Been Canceled';
                         const text = `Assalamu alaikum,\n\nYour NuraAI Premium subscription has been canceled. \n\nIf you believe this was in error, please contact support.\n\nWe hope to see you back soon!\n\nThe NuraAI Team`;
                         try {
                             await this.emailService.sendEmail(deletedUserEmail, subject, text);
-                            console.log(`[Webhook ${event.type}] Sent cancellation email to user ${userId}`);
+                            // console.log(`[Webhook ${event.type}] Sent cancellation email to user ${userId}`);
                         } catch (emailError) {
-                            console.error(`[Webhook ${event.type}] Failed to send cancellation email to user ${userId}:`, emailError);
+                            // console.error(`[Webhook ${event.type}] Failed to send cancellation email to user ${userId}:`, emailError);
                         }
                     }
 
                     // Send Cancellation Notification to Admin
                     if (adminEmail) {
-                         console.log(`[Webhook ${event.type}] Attempting to send admin cancellation notification email to ${adminEmail}...`);
+                         // console.log(`[Webhook ${event.type}] Attempting to send admin cancellation notification email to ${adminEmail}...`);
                         const subject = `❌ Subscription Canceled for ${deletedUserEmail || userId}`;
                         const text = `User ${deletedUserEmail || userId} subscription has been canceled.\nStripe Sub ID: ${deletedSubscription.id}\nStripe Customer ID: ${deletedSubscription.customer}`;
                         try {
                             await this.emailService.sendEmail(adminEmail, subject, text);
-                             console.log(`[Webhook ${event.type}] Sent admin cancellation notification email.`);
+                             // console.log(`[Webhook ${event.type}] Sent admin cancellation notification email.`);
                         } catch (emailError) {
-                            console.error(`[Webhook ${event.type}] Failed to send admin cancellation notification email:`, emailError);
+                            // console.error(`[Webhook ${event.type}] Failed to send admin cancellation notification email:`, emailError);
                         }
                     }
                     break;
 
                 default:
-                    console.log(`[Webhook] Unhandled event type ${event.type}`);
+                    // console.log(`[Webhook] Unhandled event type ${event.type}`);
             }
         } catch (error) {
-            console.error(`[Webhook] Internal error processing event ${event.type} (ID: ${event.id}):`, error);
+            // console.error(`[Webhook] Internal error processing event ${event.type} (ID: ${event.id}):`, error);
             // Avoid sending detailed errors back to Stripe
             res.status(500).send('Internal Server Error during webhook processing.');
             return; // Stop processing
         }
 
         // Send a 200 OK response to acknowledge receipt of the event
-        console.log(`[Webhook] Finished processing event ${event.type} (ID: ${event.id}). Sending 200 OK.`);
+        // console.log(`[Webhook] Finished processing event ${event.type} (ID: ${event.id}). Sending 200 OK.`);
         res.json({ received: true });
     }
 
@@ -563,14 +563,14 @@ export class StripeService {
             // Store period end only if the subscription is active/trialing, otherwise null
             subscriptionEnd: isActive && periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null
         };
-        console.log(`[Claims] Preparing to set claims for user ${userId}:`, claims);
+        // console.log(`[Claims] Preparing to set claims for user ${userId}:`, claims);
         try {
             await auth.setCustomUserClaims(userId, claims);
-            console.log(`[Claims] Successfully updated Firebase claims for user ${userId}.`);
+            // console.log(`[Claims] Successfully updated Firebase claims for user ${userId}.`);
         } catch (error) {
             // ADD LOG HERE
-            console.error(`[Claims] Error during setCustomUserClaims for user ${userId}. Status trying to set was: ${status}`, error);
-            console.error(`[Claims] Error setting custom claims for user ${userId}:`, error);
+            // console.error(`[Claims] Error during setCustomUserClaims for user ${userId}. Status trying to set was: ${status}`, error);
+            // console.error(`[Claims] Error setting custom claims for user ${userId}:`, error);
             // Consider re-throwing or logging to a monitoring service
             throw error; // Re-throw to see if this is the source
         }
@@ -590,19 +590,19 @@ export class StripeService {
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             updatedAt: new Date()
         };
-        console.log(`[DB Update] Preparing to update/insert UserSubscription for user ${userId} with data:`, updateData);
+        // console.log(`[DB Update] Preparing to update/insert UserSubscription for user ${userId} with data:`, updateData);
         try {
             const userSub = await UserSubscription.findOneAndUpdate(
                 { userId },
                 updateData,
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             );
-            console.log(`[DB Update] Successfully upserted UserSubscription for user ${userId}, new status: ${userSub.status}, Doc ID: ${userSub._id}`);
+            // console.log(`[DB Update] Successfully upserted UserSubscription for user ${userId}, new status: ${userSub.status}, Doc ID: ${userSub._id}`);
             return userSub;
         } catch (error) {
              // ADD LOG HERE
-            console.error(`[DB Update] Error during UserSubscription.findOneAndUpdate for user ${userId}. Status trying to set was: ${updateData.status}`, error);
-            console.error(`[DB Update] Error updating/inserting UserSubscription for ${userId}:`, error);
+            // console.error(`[DB Update] Error during UserSubscription.findOneAndUpdate for user ${userId}. Status trying to set was: ${updateData.status}`, error);
+            // console.error(`[DB Update] Error updating/inserting UserSubscription for ${userId}:`, error);
             return null; // Return null on failure
             // throw error; // Optionally re-throw to halt execution here if this is the cause
         }
@@ -614,17 +614,17 @@ export class StripeService {
      * @returns A promise that resolves to an array of active Stripe Subscription objects.
      */
     async getActiveSubscriptions(customerId: string): Promise<Stripe.Subscription[]> {
-        console.log(`[StripeService] Fetching active subscriptions for customer: ${customerId}`);
+        // console.log(`[StripeService] Fetching active subscriptions for customer: ${customerId}`);
         try {
             const subscriptions = await this.stripe.subscriptions.list({
                 customer: customerId,
                 status: 'active',
                 limit: 10, // Adjust limit as needed, though most users have 1
             });
-            console.log(`[StripeService] Found ${subscriptions.data.length} active subscriptions.`);
+            // console.log(`[StripeService] Found ${subscriptions.data.length} active subscriptions.`);
             return subscriptions.data;
         } catch (error) {
-            console.error(`[StripeService] Error fetching active subscriptions for customer ${customerId}:`, error);
+            // console.error(`[StripeService] Error fetching active subscriptions for customer ${customerId}:`, error);
             throw error; // Re-throw the error to be handled by the caller
         }
     }
@@ -635,7 +635,7 @@ export class StripeService {
      * @returns A promise that resolves to the cancelled Stripe Subscription object.
      */
     async cancelSubscriptionImmediately(subscriptionId: string): Promise<Stripe.Subscription> {
-        console.log(`[StripeService] Cancelling subscription immediately: ${subscriptionId}`);
+        // console.log(`[StripeService] Cancelling subscription immediately: ${subscriptionId}`);
         try {
             const cancelledSubscription = await this.stripe.subscriptions.cancel(subscriptionId);
             // To cancel immediately instead of at period end, use update:
@@ -643,10 +643,10 @@ export class StripeService {
             //   cancel_at_period_end: false, // Might require immediate cancellation logic
             // });
             // Actually, subscriptions.cancel() is sufficient and preferred.
-            console.log(`[StripeService] Subscription ${subscriptionId} cancelled successfully.`);
+            // console.log(`[StripeService] Subscription ${subscriptionId} cancelled successfully.`);
             return cancelledSubscription;
         } catch (error) {
-            console.error(`[StripeService] Error cancelling subscription ${subscriptionId}:`, error);
+            // console.error(`[StripeService] Error cancelling subscription ${subscriptionId}:`, error);
             throw error; // Re-throw the error
         }
     }

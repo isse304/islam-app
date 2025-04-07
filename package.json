@@ -27,6 +27,7 @@
     "@angular/platform-browser": "^16.2.0",
     "@angular/platform-browser-dynamic": "^16.2.0",
     "@angular/router": "^16.2.0",
+    "@angular/service-worker": "19.2.5",
     "@mailchimp/mailchimp_marketing": "3.0.80",
     "@stripe/stripe-js": "^3.0.0",
     "@types/fuse": "2.6.2",

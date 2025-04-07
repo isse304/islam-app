@@ -140,13 +140,27 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
         }
         res.json({ userId: userId });
     } catch (error) {
-        console.error('Error fetching user session:', error);
+        // console.error('Error fetching user session:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 }));
 
 // Centralized Error Handling Middleware (MUST be last)
 app.use(errorHandler);
+
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  // console.error('[Global Error Handler]', err);
+  res.status(err.status || 500).json({
+    message: err.message || 'An unexpected error occurred',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+});
+
+// 404 handler
+app.use((req: Request, res: Response) => {
+  res.status(404).send('Not Found');
+});
 
 // Start server function
 const startServer = async () => {
@@ -169,7 +183,7 @@ const startServer = async () => {
         // Start server
         const PORT = process.env['PORT'] || 3000;
         app.listen(PORT, () => {
-            logger.info(`Server running on port ${PORT} in ${process.env['NODE_ENV']} mode`);
+            // console.log(`✅ Server running on port ${PORT}`);
         });
     } catch (error) {
         logger.error('Failed to start server:', error);

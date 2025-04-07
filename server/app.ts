@@ -29,7 +29,7 @@ app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Add tafsir routes
 app.use('/api/tafsir', tafsirRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api/user', userRoutes);
 
 // API Routes
 app.use('/api/ai', aiRoutes);

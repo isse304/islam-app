@@ -1,92 +1,95 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
-import { appConfig as baseAppConfig } from './app/app.config';
-import { environment } from './environments/environment';
-import { importProvidersFrom, APP_INITIALIZER, Injector, ApplicationConfig } from '@angular/core';
-import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { appConfig } from './app/app.config';
 import { provideRouter } from '@angular/router';
-import { provideAnimations } from '@angular/platform-browser/animations';
-import { provideHttpClient, withInterceptors } from '@angular/common/http';
-import { MatDialogModule } from '@angular/material/dialog';
-import { MatButtonModule } from '@angular/material/button';
-import { FormsModule, ReactiveFormsModule } from '@angular/forms';
-import { MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatIconModule } from '@angular/material/icon';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
-import { MatCardModule } from '@angular/material/card';
-import { MatDividerModule } from '@angular/material/divider';
-import { MatCheckboxModule } from '@angular/material/checkbox';
-import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatChipsModule } from '@angular/material/chips';
-import { MatTabsModule } from '@angular/material/tabs';
-import { provideFirebaseApp } from '@angular/fire/app';
-import { provideAuth } from '@angular/fire/auth';
-import { provideFirestore } from '@angular/fire/firestore';
-import { FirebaseAuthInterceptor } from './app/interceptors/firebase-auth.interceptor';
 import { routes } from './app/app.routes';
+import { provideHttpClient } from '@angular/common/http';
+import { provideAnimations } from '@angular/platform-browser/animations';
+import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
+import { getAuth, provideAuth } from '@angular/fire/auth';
+import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { environment } from './environments/environment';
+import { provideServiceWorker } from '@angular/service-worker';
+import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
+import { DatePipe } from '@angular/common';
+
+// Import the provider functions
 import { FirebaseAuthService } from './app/services/firebase-auth.service';
+import { PreferencesService } from './app/services/preferences.service';
+import { SubscriptionService } from './app/services/subscription.service';
+import { ToastService } from './app/services/toast.service';
 
-// Initialize Firebase
-const app = initializeApp(environment.firebase);
-const auth = getAuth(app);
-const firestore = getFirestore(app);
+// APP_INITIALIZER factory function
+export function initializeAppFactory(
+  authService: FirebaseAuthService,
+  prefsService: PreferencesService,
+  subService: SubscriptionService,
+  toastService: ToastService
+): () => Promise<any> {
+  return async () => {
+    // console.log('[APP_INITIALIZER] Starting initialization...');
+    let initUser: any = null;
+    try {
+      // Start auth initialization immediately
+      const authReadyPromise = authService.waitForAuthReady();
+      // console.log('[APP_INITIALIZER] Waiting for Firebase Auth ready...');
+      await authReadyPromise;
+      // console.log('[APP_INITIALIZER] Firebase Auth is ready.');
 
-// Function to get Angular Firebase instances
-function getAngularAuth() {
-  return auth;
+      // Get the initialized user (or null)
+      initUser = authService.getCurrentUser();
+      // console.log('[APP_INITIALIZER] Initial user state from authService:', initUser?.id);
+
+      if (initUser) {
+        // console.log('[APP_INITIALIZER] User found. Preferences and subscription should load via their respective services.');
+        // Preferences and subscription status are loaded internally by their services
+        // await Promise.all([
+        //   prefsService.loadPreferences(initUser.id), // REMOVED: Incorrect method call
+        //   subService.loadSubscriptionStatus(initUser.id) // REMOVED: Incorrect method call
+        // ]);
+      } else {
+        // console.log('[APP_INITIALIZER] No user found, skipping dependent loads.');
+      }
+
+      // Toast service initialization (if needed)
+      // toastService.init();
+      // console.log('[APP_INITIALIZER] Toast service initialized (if applicable).');
+
+      // console.log('[APP_INITIALIZER] Initialization sequence complete.');
+      return Promise.resolve(); // Resolve the promise indicating completion
+    } catch (error) {
+      // console.error('[APP_INITIALIZER] Error during app initialization:', error);
+      // You might want to display an error message to the user here
+      // Return a resolved promise even on error to allow the app to potentially continue
+      return Promise.resolve();
+    }
+  };
 }
 
-function getAngularFirestore() {
-  return firestore;
-}
-
-// Factory function for APP_INITIALIZER
-export function initializeAuthFactory(authService: FirebaseAuthService): () => Promise<void> {
-  return () => authService.waitForAuthReady();
-}
-
-// Pass providers directly to bootstrapApplication, merging with base config
 bootstrapApplication(AppComponent, {
+  ...appConfig, // Spread existing app config
   providers: [
-    ...(baseAppConfig.providers || []),
+    ...(appConfig.providers || []), // Include existing providers
     provideRouter(routes),
+    provideHttpClient(),
     provideAnimations(),
-    provideHttpClient(withInterceptors([FirebaseAuthInterceptor])),
     importProvidersFrom(
       provideFirebaseApp(() => initializeApp(environment.firebase)),
-      provideAuth(() => getAngularAuth()),
-      provideFirestore(() => getAngularFirestore()),
-      MatDialogModule,
-      MatButtonModule,
-      MatSnackBarModule,
-      MatProgressSpinnerModule,
-      MatIconModule,
-      MatFormFieldModule,
-      MatInputModule,
-      MatSelectModule,
-      MatCardModule,
-      MatDividerModule,
-      MatCheckboxModule,
-      MatTooltipModule,
-      MatMenuModule,
-      MatProgressBarModule,
-      MatChipsModule,
-      MatTabsModule,
-      FormsModule,
-      ReactiveFormsModule
+      provideAuth(() => getAuth()),
+      provideFirestore(() => getFirestore())
     ),
-    {
-      provide: APP_INITIALIZER,
-      useFactory: initializeAuthFactory,
-      deps: [FirebaseAuthService],
-      multi: true
-    }
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000'
+    }),
+    // Provide your services
+    FirebaseAuthService,
+    PreferencesService,
+    SubscriptionService,
+    ToastService,
+    DatePipe, // Provide DatePipe if needed globally
+    // Provide APP_INITIALIZER to ensure auth is ready before app loads fully
+    { provide: APP_INITIALIZER, useFactory: initializeAppFactory, deps: [FirebaseAuthService, PreferencesService, SubscriptionService, ToastService], multi: true }
   ]
-}).catch((err) => console.error(err));
+})
+// .catch((err) => console.error(err)); // Commented out main bootstrap catch
