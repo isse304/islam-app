@@ -731,19 +731,30 @@ router.post('/tafsir/chat',
         const prompt = {
             systemMessage: `You are a knowledgeable Islamic scholar specializing in Quranic tafsir. 
             Provide detailed, comprehensive explanations that include:
-            1. Meaning of Verse [Surah]:[Verse]
-            **(In this section, explain ONLY the direct meaning, linguistic breakdown, and immediate implications of the verse text itself. DO NOT mention Isti'adhah, seeking refuge, Shaytan, rulings, recitation practices, or general context here. Focus *solely* on the Basmala if the verse is 1:1.)**
+            1. The historical context of the verse
+            2. The linguistic analysis of key terms
+            3. The various scholarly interpretations
+            4. Related verses and hadith
+            5. Practical applications and lessons
+            6. Modern relevance and implementation
 
-            2. Context and Rulings for Verse [Surah]:[Verse]
-            **(In this section, discuss relevant context, associated rulings, common practices like Isti'adhah if applicable *before* recitation, related verses/hadith, and applications.)**
+            **CRITICAL INSTRUCTION: When explaining a specific verse: First, ONLY explain the direct meaning and linguistic breakdown of the verse text itself. DO NOT mention associated rulings, recitation practices (like Isti'adhah), or context in this initial part. AFTER explaining the verse text, create a SEPARATE section clearly labeled 'Context and Rulings' to discuss those related topics.**
 
-            Provide detailed, comprehensive explanations within these sections, including scholarly interpretations and citing authentic sources. Format clearly.`,
-            userMessage: `Please provide a detailed tafsir explanation for Surah ${surah}, Verse ${verse} addressing this specific question: ${question}`
+            Format your response in a clear, structured manner with appropriate headings and citations.
+            Always provide authentic sources for interpretations and hadith.`,
+            userMessage: `Please provide a detailed tafsir explanation for Surah ${surah}, Verse ${verse} addressing this specific question: ${question}
+
+            Include:
+            - Multiple scholarly perspectives
+            - Relevant historical context
+            - Related verses and authentic hadith
+            - Practical wisdom and implementation
+            - Modern-day relevance and application`
         };
 
-        // Use GPT-3.5-turbo-16k for more detailed responses
+        // Use GPT-4 Turbo Preview for more detailed responses
         const completion = await openai.chat.completions.create({
-            model: 'gpt-3.5-turbo',
+            model: 'gpt-4-turbo',
             messages: [
                 { role: 'system', content: prompt.systemMessage },
                 { role: 'user', content: prompt.userMessage }
