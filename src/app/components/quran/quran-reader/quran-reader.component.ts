@@ -712,7 +712,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
         // Save to server
         try {
-            await this.authService.saveReadingHistory(historyEntry);
+            await this.authService.saveReadingHistory(historyEntry.surah, historyEntry.verse);
             // console.log('History saved successfully:', historyEntry);
         } catch (error: unknown) {
             if ((error as { status?: number })?.status !== 429) {
