@@ -310,11 +310,8 @@ export class LearnComponent implements OnInit, OnDestroy {
         this.saveState(); // Save to localStorage
 
         // Save history to backend (async, fire-and-forget for now)
-        this.firebaseAuthService.saveReadingHistory({ 
-          surah: this.selectedSurah, 
-          verse: this.selectedVerse,
-          timestamp: new Date().toISOString() // Add timestamp to satisfy interface
-        }).catch(err => {
+        this.firebaseAuthService.saveReadingHistory(this.selectedSurah, this.selectedVerse)
+        .catch(err => {
           console.warn('Failed to save reading history to backend:', err);
           // Optionally inform the user if saving fails consistently
         });

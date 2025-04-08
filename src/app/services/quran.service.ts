@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, forkJoin, catchError, of, firstValueFrom, from, mergeMap, retry, throwError, BehaviorSubject, filter, take, tap } from 'rxjs';
 import { OpenAI } from 'openai';
@@ -235,16 +235,28 @@ export class QuranService {
 
   mushafImageUrl: any;
 
+  // Lazy inject ApiService using Injector
+  private _apiService: ApiService | null = null;
+
   constructor(
-    private http: HttpClient, 
-    private apiService: ApiService,
-    private authService: FirebaseAuthService
+    private http: HttpClient,
+    private authService: FirebaseAuthService,
+    private injector: Injector // Inject Injector
   ) {
     // Fetch surah list and push to BehaviorSubject
     this.getSurahList().subscribe(
       surahs => this._surahs$.next(surahs), // Push next value
       error => { /* console.error("Failed to load initial surah list:", error) */ }
     );
+  }
+
+  // Getter to resolve ApiService when needed
+  private get apiService(): ApiService {
+    if (!this._apiService) {
+      // Dynamically get ApiService instance from the injector
+      this._apiService = this.injector.get(ApiService);
+    }
+    return this._apiService;
   }
 
   private initializeCache() {

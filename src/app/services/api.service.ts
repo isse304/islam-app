@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { Injectable, Injector } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../environments/environment';
 import { Observable, from, throwError, firstValueFrom, retry, mergeMap, TimeoutError } from 'rxjs';
@@ -48,12 +48,21 @@ interface CheckoutResponse {
 })
 export class ApiService {
   private baseUrl = environment.apiUrl;
+  private _authService: FirebaseAuthService | null = null;
 
   constructor(
     private http: HttpClient,
     private notificationService: NotificationService,
-    private authService: FirebaseAuthService
+    private injector: Injector
   ) {}
+
+  // Lazy getter for FirebaseAuthService
+  private get authService(): FirebaseAuthService {
+    if (!this._authService) {
+      this._authService = this.injector.get(FirebaseAuthService);
+    }
+    return this._authService;
+  }
 
   // Premium features
   async generateAIResponse(prompt: {
@@ -332,7 +341,8 @@ export class ApiService {
     }
   }
 
-  private async makeRequest(method: 'get' | 'post', endpoint: string, body?: any): Promise<any> {
+  // Make this public so other services can use it for authenticated requests
+  public async makeRequest(method: 'get' | 'post', endpoint: string, body?: any): Promise<any> {
     try {
       // Wait for auth state to be fully initialized
       const isAuthenticated = await this.authService.isAuthenticated();
@@ -351,15 +361,22 @@ export class ApiService {
       }
 
       const headers = new HttpHeaders({
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       });
 
       const options = { headers, withCredentials: true };
 
       if (method === 'get') {
-        return await firstValueFrom(this.http.get(`${this.baseUrl}${endpoint}`, options));
+        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.get for ${this.baseUrl}${endpoint}`);
+        const response = await firstValueFrom(this.http.get(`${this.baseUrl}${endpoint}`, options));
+        console.log(`[ApiService makeRequest] <<< FINISHED http.get for ${this.baseUrl}${endpoint}`);
+        return response;
       } else {
-        return await firstValueFrom(this.http.post(`${this.baseUrl}${endpoint}`, body, options));
+        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.post for ${this.baseUrl}${endpoint}`);
+        const response = await firstValueFrom(this.http.post(`${this.baseUrl}${endpoint}`, body, options));
+        console.log(`[ApiService makeRequest] <<< FINISHED http.post for ${this.baseUrl}${endpoint}`);
+        return response;
       }
     } catch (error) {
       console.error('API Request Error:', error);

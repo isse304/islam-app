@@ -45,12 +45,14 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, ne
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       console.log('[withAuth] No or invalid Bearer token header found.');
+      console.error('[withAuth] Sending 401 Unauthorized (Bearer token required).');
       return res.status(401).json({ error: 'Unauthorized', details: 'Bearer token required' });
     }
 
     const token = authHeader.split('Bearer ')[1];
     if (!token) {
         console.log('[withAuth] Empty token after Bearer.');
+        console.error('[withAuth] Sending 401 Unauthorized (Empty token).');
         return res.status(401).json({ error: 'Unauthorized', details: 'Empty token' });
     }
 
@@ -70,8 +72,9 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, ne
       }
     } catch (error: any) {
       console.error('[withAuth] Token verification caught error:', error.message);
-      res.status(401).json({ 
-          error: 'Unauthorized', 
+      console.error(`[withAuth] Sending 401 Unauthorized (Verification Error: ${error.message || 'Invalid token'}).`);
+      res.status(401).json({
+          error: 'Unauthorized',
           details: error.message || 'Invalid token',
       });
     }
@@ -104,6 +107,7 @@ export const withPremium = (handler: (req: AuthenticatedRequest, res: Response, 
       } else {
           console.log('[withPremium] Premium status check failed.');
           console.log(`[premiumCheckHandler] Premium check FAILED for user ${req.auth.uid}. Returning 403.`); // Added Log
+          console.error('[withPremium] Sending 403 Forbidden (Premium required).');
           return res.status(403).json({ error: 'Forbidden', details: 'Premium access required' });
       }
   };

@@ -5,6 +5,7 @@ import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { authInterceptorFn } from './interceptors/auth.interceptor';
 import { provideServiceWorker } from '@angular/service-worker';
 import { MatDialogModule } from '@angular/material/dialog';
+import { MatSnackBarModule } from '@angular/material/snack-bar';
 
 import { routes } from './app.routes';
 
@@ -21,6 +22,6 @@ export const appConfig: ApplicationConfig = {
         // or after 30 seconds (whichever comes first).
         registrationStrategy: 'registerWhenStable:30000'
     }),
-    importProvidersFrom(MatDialogModule)
+    importProvidersFrom(MatDialogModule, MatSnackBarModule)
   ]
 }; 
