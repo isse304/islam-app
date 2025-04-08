@@ -17,7 +17,7 @@ import { RouterModule } from '@angular/router';
         <div class="container mx-auto px-4 py-16">
           <div class="flex flex-col items-center justify-center text-center max-w-4xl mx-auto mb-16">
             <h1 class="text-5xl md:text-6xl font-bold text-gray-800 dark:text-white mb-6 leading-tight">
-              Welcome to <span class="text-[#B7A57A]">Nura</span>
+              Welcome to <span class="text-[#B7A57A]">Nura AI</span>
             </h1>
             <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
               Your spiritual companion for Quran, Duas, and Islamic learning. Begin your journey of faith and knowledge.
@@ -126,7 +126,7 @@ import { RouterModule } from '@angular/router';
                 <p class="text-gray-600 dark:text-gray-300">Listen to professional reciters</p>
               </div>
               <div class="text-center">
-                <i class="fas fa-translate text-3xl text-[#B7A57A] dark:text-[#9b8a65] mb-3"></i>
+                <i class="fas fa-language text-3xl text-[#B7A57A] dark:text-[#9b8a65] mb-3"></i>
                 <h3 class="text-lg font-semibold text-gray-800 dark:text-white mb-2">Multiple Translations</h3>
                 <p class="text-gray-600 dark:text-gray-300">Understand in your language</p>
               </div>

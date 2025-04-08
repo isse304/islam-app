@@ -53,7 +53,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         if (!user) {
           this.navigateToApp();
         } else if (user.emailVerified) {
-          console.warn('[VerifyEmailComponent] User is already verified but landed on this page.');
+          // console.warn('[VerifyEmailComponent] User is already verified but landed on this page.');
           this.pollingSubscription?.unsubscribe();
         } else {
           this.startPollingForVerification();
@@ -77,7 +77,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$),
         switchMap(async () => {
           if (!this.isCheckingStatus && !this.isResending && this.user && !this.user.emailVerified) {
-            console.log('[Polling] Checking verification status...');
+            // console.log('[Polling] Checking verification status...');
             await this.authService.reloadCurrentUser();
           }
         })
@@ -116,27 +116,27 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   async checkVerificationStatus(): Promise<void> {
     // Prevent concurrent checks or checks while resending
     if (this.isCheckingStatus || this.isResending) {
-      console.log('[VerifyEmail] Check skipped (already checking or resending).');
+      // console.log('[VerifyEmail] Check skipped (already checking or resending).');
       return;
     }
 
-    console.log('[VerifyEmail] Starting manual checkVerificationStatus...');
+    // console.log('[VerifyEmail] Starting manual checkVerificationStatus...');
     this.isCheckingStatus = true;
     this.cdr.markForCheck(); // Show spinner for the button
     this.pollingSubscription?.unsubscribe(); // Pause background polling
 
     try {
-      console.log('[VerifyEmail] Reloading user state...');
+      // console.log('[VerifyEmail] Reloading user state...');
       await this.authService.reloadCurrentUser();
-      console.log('[VerifyEmail] User state reload complete.');
+      // console.log('[VerifyEmail] User state reload complete.');
 
       // Fetch the latest user state AFTER reload
       const latestUser = this.authService.getCurrentUser(); // Use synchronous getter
       const isVerified = !!latestUser?.emailVerified;
-      console.log(`[VerifyEmail] Reloaded user status - Verified: ${isVerified}`);
+      // console.log(`[VerifyEmail] Reloaded user status - Verified: ${isVerified}`);
 
       if (isVerified) {
-        console.log('[VerifyEmail] Verification SUCCESSFUL via manual check. Navigating...');
+        // console.log('[VerifyEmail] Verification SUCCESSFUL via manual check. Navigating...');
         this.snackBar.open('Email successfully verified! Redirecting...', 'Close', {
           duration: 3000,
           horizontalPosition: 'center',
@@ -148,7 +148,7 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         // Don't need to reset isCheckingStatus here as we are navigating away
         return; // Exit the function early on success
       } else {
-        console.log('[VerifyEmail] Verification FAILED via manual check (still not verified). Showing message.');
+        // console.log('[VerifyEmail] Verification FAILED via manual check (still not verified). Showing message.');
         this.snackBar.open('Email is still not verified. Please ensure you clicked the link in the email.', 'Close', {
           duration: 6000,
           horizontalPosition: 'center',
@@ -157,12 +157,12 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         // Verification failed, explicitly reset the state and restart polling *before* finally
         this.isCheckingStatus = false;
         this.cdr.markForCheck(); // Update UI now
-        console.log('[VerifyEmail] Restarting polling after failed manual check.');
+        // console.log('[VerifyEmail] Restarting polling after failed manual check.');
         this.startPollingForVerification();
       }
 
     } catch (error: any) {
-      console.error('[VerifyEmail] Error during manual checkVerificationStatus:', error);
+      // console.error('[VerifyEmail] Error during manual checkVerificationStatus:', error);
       this.snackBar.open(`Error checking verification status: ${error.message || 'Please try again.'}`, 'Close', {
         duration: 5000,
         horizontalPosition: 'center',
@@ -172,17 +172,17 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
        // Reset state and restart polling even after error *before* finally
        this.isCheckingStatus = false;
        this.cdr.markForCheck(); // Update UI now
-       console.log('[VerifyEmail] Restarting polling after error during manual check.');
+       // console.log('[VerifyEmail] Restarting polling after error during manual check.');
        this.startPollingForVerification();
 
     } finally {
        // The finally block might not be strictly needed anymore if state is reset above,
        // but it's a safeguard. Ensure it doesn't interfere if navigation happened.
        if (this.isCheckingStatus) { // Only reset if it wasn't reset above (e.g., during navigation)
-         console.log('[VerifyEmail] Entering finally block (should only happen if navigation did not occur).');
+         // console.log('[VerifyEmail] Entering finally block (should only happen if navigation did not occur).');
          this.isCheckingStatus = false;
          this.cdr.markForCheck();
-         console.log('[VerifyEmail] checkVerificationStatus finally block finished.');
+         // console.log('[VerifyEmail] checkVerificationStatus finally block finished.');
        }
     }
   }

@@ -92,14 +92,8 @@ const UserPreferences = mongoose.model<IUserPreferencesDocument>('UserPreference
 
 // Helper function to verify user access
 const verifyUserAccess = (req: AuthenticatedRequest, userId: string): boolean => {
-    console.log('Verifying user access:', {
-        requestUserId: req.auth?.uid,
-        targetUserId: userId,
-        hasAuth: !!req.auth
-    });
     if (!req.auth) return false;
     const hasAccess = req.auth.uid === userId;
-    console.log('Access verification result:', hasAccess);
     return hasAccess;
 };
 
@@ -134,11 +128,10 @@ try {
     apiKey: apiKey,
     server: serverPrefix, 
   });
-  console.log('Mailchimp client configured successfully.');
 } catch (error) {
-  console.error('Error configuring Mailchimp client:', error);
-  // Consider how critical Mailchimp is. If essential, maybe throw?
-  // For now, we log the error and continue; the route will fail later if config is missing.
+  // console.error('Error configuring Mailchimp client:', error);
+  // Allow server to continue even if Mailchimp config fails initially.
+  // Routes using Mailchimp will check config later.
 }
 
 // Keep EmailService instance for other potential uses (like contact form)
@@ -168,7 +161,6 @@ router.get('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
             history: preferences.readingHistory || []
         });
     } catch (error) {
-        console.error('Error getting user data:', error);
         next(error);
     }
 }));
@@ -217,7 +209,6 @@ router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
             history: savedPreferences.readingHistory || []
         });
     } catch (error) {
-        console.error('Error updating user data:', error);
         next(error);
     }
 }));
@@ -225,16 +216,11 @@ router.put('/:userId/data', withAuth(async (req: AuthenticatedRequest, res: Resp
 // For backward compatibility - redirect old endpoints to new ones
 router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
-        console.log('Handling preferences request for user:', req.params.userId);
-        console.log('Auth object:', req.auth);
-        
         if (!verifyUserAccess(req, req.params.userId)) {
-            console.log('Access denied for user:', req.params.userId);
             return res.status(403).json({ error: 'Forbidden' });
         }
 
         const userId = req.auth!.uid;
-        console.log('Fetching preferences for user:', userId);
         
         // Fetch the lean document first
         const userPrefsResult = await UserPreferences.findOne({ userId }).lean();
@@ -244,13 +230,11 @@ router.get('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
             ? userPrefsResult.preferences // Use nested preferences from the found document
             : getDefaultPreferences();    // Use the default object if not found
 
-        console.log('Found preferences:', !!preferencesData);
         res.json({
             success: true,
             preferences: preferencesData // Return the correctly determined preferences
         });
     } catch (error) {
-        console.error('Error getting preferences:', error);
         next(error);
     }
 }));
@@ -280,7 +264,6 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
             preferences: updatedUserPrefs.preferences
         });
     } catch (error) {
-        console.error('Error updating preferences:', error);
         next(error);
     }
 }));
@@ -289,28 +272,21 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
 // Remove the temporary debugging code and reinstate withAuth
 router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     // Restore the use of req.auth and access verification
-    console.log(`[Reading History Route] Handler entered for user: ${req.params.userId}`); // Log entry
-
     if (!verifyUserAccess(req, req.params.userId)) {
-        console.log(`[Reading History Route] Access denied for user: ${req.params.userId}`);
         return res.status(403).json({ error: 'Forbidden' });
     }
 
     try {
         const userId = req.auth!.uid; // Use req.auth again
-        console.log(`[Reading History Route] Access verified for user: ${userId}. Fetching history...`);
 
         const history = await ReadingHistory.find({ userId }) // Use userId from auth
             .sort({ timestamp: -1 })
             .limit(100)
             .lean();
         
-        console.log(`[Reading History Route] Found ${history.length} history items for user: ${userId}. Sending response.`);
-        
         res.json({ success: true, history });
     } catch (error) {
         const userIdForError = req.auth?.uid || req.params.userId; // Get ID for logging
-        console.error(`[Reading History Route] Error fetching reading history for user ${userIdForError}:`, error);
         next(error);
     }
 }));
@@ -415,7 +391,6 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
             message: 'Reading history updated successfully'
         });
     } catch (error) {
-        console.error('Error saving reading history:', error);
         next(error);
     }
 }));
@@ -432,7 +407,6 @@ router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequ
 
         res.json({ success: true, message: 'Reading history cleared' });
     } catch (error) {
-        console.error('Error clearing reading history:', error);
         next(error);
     }
 }));
@@ -441,27 +415,21 @@ router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequ
 router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         const userId = req.auth!.uid; // Get userId early for logging
-        console.log(`[Bookmarks Route] >>> Handler started for user: ${userId}`); // <<< Existing LOG
 
         if (!verifyUserAccess(req, req.params.userId)) {
-            console.log(`[Bookmarks Route] Access denied for user: ${userId}`); // Optional: Log denial
             return res.status(403).json({ error: 'Forbidden' });
         }
-        console.log(`[Bookmarks Route] Access verified for user: ${userId}. Proceeding to DB query...`); // <<< ADDED LOG
 
-        // const userId = req.auth!.uid; // Original position - Now moved up
         // Find user preferences, lean for performance as we only need bookmarks
         const userPrefsDoc = await UserPreferences.findOne({ userId }).lean<IUserPreferencesDocument>();
 
         // Safely access bookmarks, defaulting to an empty array
         const bookmarks = userPrefsDoc?.preferences?.bookmarks || [];
-        console.log(`[Bookmarks Route] Found ${bookmarks.length} bookmarks for user: ${userId}. Sending response.`); // <<< ADDED LOG
 
         res.json(bookmarks); // Always return an array
 
     } catch (error) {
         const userIdForError = req.auth?.uid || req.params.userId; // Get ID for logging
-        console.error(`[Bookmarks Route] Error getting bookmarks for user ${userIdForError}:`, error);
         next(error);
     }
 }));
@@ -520,7 +488,6 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
             bookmarks: preferences.bookmarks 
         });
     } catch (error) {
-        console.error('Error adding bookmark:', error);
         next(error);
     }
 }));
@@ -569,7 +536,6 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
             bookmarks: preferences.bookmarks 
         });
     } catch (error) {
-        console.error('Error removing bookmark:', error);
         next(error);
     }
 }));
@@ -581,30 +547,23 @@ router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: R
 
     // Ensure the authenticated user is requesting their own profile
     if (!verifyUserAccess(req, requestedUserId)) {
-      console.warn(`[Profile ${requestedUserId}] Unauthorized access attempt: Auth UID ${req.auth?.uid}`);
       return res.status(403).json({ error: 'Forbidden: You can only access your own profile.' });
     }
 
     const userId = req.auth!.uid; // Use uid from verified auth token
 
-    console.log(`[Profile ${userId}] Handler started.`);
-
     try {
         // Fetch preferences and subscription status in parallel
-        console.log(`[Profile ${userId}] Starting parallel DB queries...`);
         const prefsPromise = UserPreferences.findOne({ userId }).lean<IUserPreferencesDocument>();
         const subPromise = UserSubscription.findOne({ userId }).lean<IUserSubscription>();
 
         const prefsStartTime = Date.now();
         const prefsDoc = await prefsPromise;
-        console.log(`[Profile ${userId}] Prefs query took ${Date.now() - prefsStartTime}ms. Found: ${!!prefsDoc}`);
 
         const subStartTime = Date.now();
         const subscriptionDoc = await subPromise;
-        console.log(`[Profile ${userId}] Subscription query took ${Date.now() - subStartTime}ms. Found: ${!!subscriptionDoc}`);
 
         const dbQueriesEndTime = Date.now();
-        console.log(`[Profile ${userId}] Finished parallel DB queries. Total DB time: ${dbQueriesEndTime - startTime}ms`);
 
         // Determine premium status: prioritize token claim, fallback to active subscription status
         const hasActiveSubscription = subscriptionDoc?.status === 'active';
@@ -639,14 +598,10 @@ router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: R
             subscriptionEnd: subscriptionDoc?.currentPeriodEnd || null,
         };
 
-        const processingEndTime = Date.now();
-        console.log(`[Profile ${userId}] Profile data constructed. Processing time: ${processingEndTime - dbQueriesEndTime}ms`);
-        console.log(`[Profile ${userId}] Profile fetched successfully. Total handler time: ${Date.now() - startTime}ms`);
         res.json(profileData);
 
     } catch (error) {
         const duration = Date.now() - startTime;
-        console.error(`[Profile ${userId}] Error fetching profile after ${duration}ms:`, error);
         next(error);
     }
 }));
@@ -654,7 +609,6 @@ router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: R
 // DELETE User Account (Handles Stripe Cancellation + Firebase Deletion)
 router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const userId = req.auth!.uid;
-    console.log(`[API] Received request to delete account for user: ${userId}`);
 
     try {
         // 1. Find User Subscription data to get Stripe Customer ID
@@ -662,119 +616,55 @@ router.delete('/me', withAuth(async (req: AuthenticatedRequest, res: Response, n
         let stripeCustomerId: string | undefined | null = null;
         if (userSub) {
             stripeCustomerId = userSub.stripeCustomerId;
-            console.log(`[DeleteUser] Found UserSubscription for ${userId}. Stripe Customer ID: ${stripeCustomerId}`);
-        } else {
-            console.log(`[DeleteUser] No UserSubscription record found for ${userId}. Skipping Stripe cancellation.`);
         }
 
         // 2. Cancel Active Stripe Subscriptions if Customer ID exists
         if (stripeCustomerId) {
             try {
-                console.log(`[DeleteUser] Fetching active subscriptions for Stripe Customer: ${stripeCustomerId}`);
                 const activeSubscriptions = await stripeService.getActiveSubscriptions(stripeCustomerId);
 
                 if (activeSubscriptions.length > 0) {
-                    console.log(`[DeleteUser] Found ${activeSubscriptions.length} active subscription(s) for cancellation.`);
                     for (const sub of activeSubscriptions) {
-                        console.log(`[DeleteUser] Cancelling Stripe subscription ${sub.id} for customer ${stripeCustomerId}`);
                         await stripeService.cancelSubscriptionImmediately(sub.id);
-                        console.log(`[DeleteUser] Successfully cancelled subscription ${sub.id}.`);
                     }
-                } else {
-                    console.log(`[DeleteUser] No active Stripe subscriptions found for customer ${stripeCustomerId}.`);
                 }
 
-                // --- Optional: Delete Stripe Customer ---
-                // Uncomment the following lines to delete the Stripe Customer object itself.
-                // This permanently removes payment methods and history associated with the customer in Stripe.
-                // Consider the implications before enabling (e.g., user cannot easily resubscribe later).
-                // try {
-                //     console.log(`[DeleteUser] Deleting Stripe Customer ${stripeCustomerId}`);
-                //     await stripe.customers.del(stripeCustomerId); // Assuming 'stripe' instance is available or add via StripeService method
-                //     console.log(`[DeleteUser] Successfully deleted Stripe Customer ${stripeCustomerId}`);
-                // } catch (stripeDelError) {
-                //     console.error(`[DeleteUser] Error deleting Stripe Customer ${stripeCustomerId}:`, stripeDelError);
-                //     // Log error but continue with deletion process
-                // }
-                // --- End Optional Deletion ---
-
             } catch (stripeError) {
-                console.error(`[DeleteUser] Error handling Stripe resources for customer ${stripeCustomerId}:`, stripeError);
-                // Log the error but proceed with Firebase/DB deletion if possible,
-                // as the user wants their account gone regardless of Stripe issues.
-                // Consider sending an admin alert about the Stripe failure.
             }
         }
 
         // 3. Delete Firebase User
-        console.log(`[DeleteUser] Deleting Firebase user: ${userId}`);
-        try {
-            await admin.auth().deleteUser(userId);
-            console.log(`[DeleteUser] Successfully deleted Firebase user: ${userId}`);
-        } catch (firebaseError: any) {
-             // If user was already deleted somehow, log it but don't fail the whole process
-             if (firebaseError.code === 'auth/user-not-found') {
-                 console.warn(`[DeleteUser] Firebase user ${userId} not found during deletion, possibly already deleted.`);
-             } else {
-                 console.error(`[DeleteUser] Error deleting Firebase user ${userId}:`, firebaseError);
-                 // Throw error here? If Firebase deletion fails, maybe we shouldn't delete DB data?
-                 // For now, let's throw to prevent DB deletion if Firebase deletion fails.
-                 throw new Error(`Failed to delete Firebase user: ${firebaseError.message}`);
-             }
-        }
-
+        await admin.auth().deleteUser(userId);
 
         // 4. Delete User Data from MongoDB
-        console.log(`[DeleteUser] Deleting MongoDB records for user: ${userId}`);
-        try {
-            const subDeletion = await UserSubscription.deleteOne({ userId });
-            console.log(`[DeleteUser] UserSubscription deletion result:`, subDeletion);
-            const usageDeletion = await UserUsage.deleteOne({ userId });
-            console.log(`[DeleteUser] UserUsage deletion result:`, usageDeletion);
-            // Add deletion logic for UserPreferences and ReadingHistory
-            const prefDeletion = await UserPreferences.deleteOne({ userId });
-            console.log(`[DeleteUser] UserPreferences deletion result:`, prefDeletion);
-            const historyDeletion = await ReadingHistory.deleteMany({ userId });
-            console.log(`[DeleteUser] ReadingHistory deletion result:`, historyDeletion);
-        } catch (dbError) {
-            console.error(`[DeleteUser] Error deleting MongoDB data for user ${userId}:`, dbError);
-            // Log error, consider alerting admin. Data might be orphaned.
-        }
+        await UserSubscription.deleteOne({ userId });
+        await UserUsage.deleteOne({ userId });
+        await UserPreferences.deleteOne({ userId });
+        await ReadingHistory.deleteMany({ userId });
 
-        console.log(`[DeleteUser] Account deletion process completed for user: ${userId}`);
         res.status(200).json({ success: true, message: 'Account deleted successfully.' });
 
     } catch (error) {
-        console.error(`[API] Error during account deletion for user ${userId}:`, error);
-        // Ensure error response structure is consistent
-        const message = error instanceof Error ? error.message : 'An unexpected error occurred during account deletion.';
         next(error);
     }
 }));
 
 // POST /api/user/send-welcome - Now adds user to Mailchimp list
 router.post('/send-welcome', async (req: express.Request, res: Response, next: NextFunction) => {
-  const { email, name } = req.body;
-
-  console.log(`[POST /send-welcome] Received request for email: ${email}`);
+  // Expect firstName and lastName instead of a single name field
+  const { email, firstName, lastName } = req.body;
 
   if (!email) {
-    console.warn('[POST /send-welcome] Email is required.');
     return res.status(400).json({ message: 'Email is required' });
   }
 
   const listId = process.env.MAILCHIMP_AUDIENCE_ID;
   if (!listId) {
-    console.error('[POST /send-welcome] MAILCHIMP_AUDIENCE_ID environment variable not set.');
     return res.status(500).json({ message: 'Mailchimp configuration error (Audience ID missing).' });
   }
   
   // Check if Mailchimp client was configured successfully earlier
-  // Note: mailchimp.ping.get() could be used here for a live check, but adds latency.
-  // Relying on the initial configuration check and environment variables.
   if (!process.env.MAILCHIMP_API_KEY || !process.env.MAILCHIMP_SERVER_PREFIX) {
-      console.error('[POST /send-welcome] Mailchimp client not configured (API Key or Server Prefix missing).');
-      // Return 500 as this is a server config issue preventing Mailchimp interaction
       return res.status(500).json({ message: 'Mailchimp service configuration error.' });
   }
 
@@ -782,41 +672,32 @@ router.post('/send-welcome', async (req: express.Request, res: Response, next: N
   const subscriberHash = crypto.createHash('md5').update(email.toLowerCase()).digest('hex');
 
   try {
-    console.log(`[POST /send-welcome] Attempting to add/update user ${email} in Mailchimp list ${listId}`);
     const response = await mailchimp.lists.setListMember(listId, subscriberHash, {
       email_address: email,
       status_if_new: 'subscribed', 
       status: 'subscribed',        
       merge_fields: {
-        FNAME: name?.split(' ')[0] || '', 
-        LNAME: name?.split(' ').slice(1).join(' ') || '' 
+        // Map firstName to FNAME and lastName to LNAME
+        FNAME: firstName || '', 
+        LNAME: lastName || '' 
       }
     });
 
     // Type guard: Check if the response looks like a success response
     if (response && typeof response === 'object' && 'id' in response && 'status' in response) {
-        // Now TypeScript knows response has id and status here
-        console.log(`[POST /send-welcome] Successfully added/updated ${email} in Mailchimp list ${listId}. Response ID: ${response.id}, Status: ${response.status}`);
         res.status(200).json({ message: 'User added to Mailchimp list successfully' });
     } else {
-        // This case is unlikely if no error was thrown, but handles unexpected responses
-        console.warn(`[POST /send-welcome] Mailchimp call for ${email} succeeded but response format unexpected. Response:`, response);
-        // Still treat as success for the client, as the API didn't error out, but log the warning.
         res.status(200).json({ message: 'User added to Mailchimp list (unexpected response format).' }); 
     }
 
   } catch (error: any) {
     // Check if the error is because the member already exists (which is okay)
     if (error.response && error.response.body && error.response.body.title === 'Member Exists') {
-      console.log(`[POST /send-welcome] User ${email} already exists in Mailchimp list ${listId}.`);
-      // Treat as success since they are on the list.
       res.status(200).json({ message: 'User already exists in Mailchimp list.' });
     } else {
       // Log the detailed error from Mailchimp if available
       const errorDetails = error.response?.body || error.message || error;
-      console.error(`[POST /send-welcome] Failed to add user ${email} to Mailchimp list ${listId}:`, errorDetails);
-      // Send a generic error message to the client
-      res.status(500).json({ message: 'Failed to process signup with mailing list.' });
+      next(error);
     }
   }
 });

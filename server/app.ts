@@ -17,13 +17,11 @@ const app = express();
 
 // >>> TEMPORARY PING ROUTE FOR TESTING <<<
 app.get('/ping', (req, res) => {
-  console.log('>>> PING route hit! <<<');
   res.status(200).send('pong');
 });
 
 // Log ALL incoming requests BEFORE any other middleware
 app.use((req, res, next) => {
-  console.log(`--->>> [Request Entry Point] ${req.method} ${req.originalUrl} Origin: ${req.headers.origin}`);
   next(); // Continue to next middleware
 });
 
@@ -80,7 +78,7 @@ app.get('*', (req, res) => {
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error("[Global Error Handler]:", err.stack);
+  // console.error("[Global Error Handler]:", err.stack);
 
   const origin = req.headers.origin;
   // Use the allowedOrigins array defined earlier in the file
@@ -88,13 +86,13 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
   // Set CORS headers ONLY if origin is allowed and headers not sent
   if (isOriginAllowed && !res.headersSent) {
-    console.log(`[Global Error Handler] Origin ${origin} is allowed. Setting CORS headers for error response.`);
+    // console.log(`[Global Error Handler] Origin ${origin} is allowed. Setting CORS headers for error response.`);
     res.setHeader('Access-Control-Allow-Origin', origin!); // Use the specific allowed origin
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     // Optionally add Vary header
     res.setHeader('Vary', 'Origin'); 
   } else if (!res.headersSent) {
-      console.warn(`[Global Error Handler] Origin ${origin || 'N/A'} is NOT allowed or headers sent. Not setting CORS headers for error.`);
+    // console.warn(`[Global Error Handler] Origin ${origin || 'N/A'} is NOT allowed or headers sent. Not setting CORS headers for error.`);
   }
 
   // Determine status code - prioritize error.status, default to 500
@@ -104,27 +102,27 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
   // Check if it's a CORS configuration error from the cors middleware itself
   if (err instanceof Error && err.message === 'Not allowed by CORS') {
-      console.error(`[Global Error Handler] CORS Blocked Origin: ${origin}`);
-      // Headers should have been set above if the origin was allowed (edge case)
-      // Send the determined status code (403)
-      if (!res.headersSent) {
-         res.status(statusCode).json({ error: errorType, details: errorDetails });
-      }
-      return; // Stop further processing for this specific error
+    // console.error(`[Global Error Handler] CORS Blocked Origin: ${origin}`);
+    // Headers should have been set above if the origin was allowed (edge case)
+    // Send the determined status code (403)
+    if (!res.headersSent) {
+      res.status(statusCode).json({ error: errorType, details: errorDetails });
+    }
+    return; // Stop further processing for this specific error
   }
 
   // Check if headers have already been sent
   if (res.headersSent) {
-      console.error('[Global Error Handler] Headers already sent, cannot send error response.');
-      // If next is not called here, the request might hang for the client.
-      // However, calling next(err) might lead to Express's default handler,
-      // which might send HTML, potentially undesirable for an API.
-      // Logging is often the best we can do here.
-      return; // Stop processing
+    // console.error('[Global Error Handler] Headers already sent, cannot send error response.');
+    // If next is not called here, the request might hang for the client.
+    // However, calling next(err) might lead to Express's default handler,
+    // which might send HTML, potentially undesirable for an API.
+    // Logging is often the best we can do here.
+    return; // Stop processing
   }
 
   // Send the final error response (CORS headers should be set above if applicable)
-  console.log(`[Global Error Handler] Sending final error response. Status: ${statusCode}, Type: ${errorType}, Details: ${errorDetails}`);
+  // console.log(`[Global Error Handler] Sending final error response. Status: ${statusCode}, Type: ${errorType}, Details: ${errorDetails}`);
   res.status(statusCode).json({ error: errorType, details: errorDetails }); 
 });
 
