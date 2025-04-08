@@ -738,7 +738,7 @@ router.post('/tafsir/chat',
             5. Practical applications and lessons
             6. Modern relevance and implementation
 
-            **IMPORTANT: When explaining a specific verse, first focus strictly on the meaning and direct implications of the verse's text itself. Then, separately, discuss relevant rulings, context, or practices associated with its recitation or application.**
+            **CRITICAL INSTRUCTION: When explaining a specific verse: First, ONLY explain the direct meaning and linguistic breakdown of the verse text itself. DO NOT mention associated rulings, recitation practices (like Isti'adhah), or context in this initial part. AFTER explaining the verse text, create a SEPARATE section clearly labeled 'Context and Rulings' to discuss those related topics.**
 
             Format your response in a clear, structured manner with appropriate headings and citations.
             Always provide authentic sources for interpretations and hadith.`,
