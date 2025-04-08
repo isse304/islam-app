@@ -50,8 +50,11 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
       .subscribe(user => {
         this.user = user;
         this.isLoading = false;
-        if (!user || user.emailVerified) {
+        if (!user) {
           this.navigateToApp();
+        } else if (user.emailVerified) {
+          console.warn('[VerifyEmailComponent] User is already verified but landed on this page.');
+          this.pollingSubscription?.unsubscribe();
         } else {
           this.startPollingForVerification();
         }

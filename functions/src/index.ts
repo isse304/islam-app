@@ -7,7 +7,7 @@ import axios, { isAxiosError } from "axios";
 
 // Define environment variables using functions.config()
 // You'll set these using the Firebase CLI later
-const backendUrl = functions.config().backend?.url;
+const backendUrl = process.env.REACT_APP_API_URL || "https://nura-y6uq.onrender.com";
 // e.g., "https://your-render-app.onrender.com"
 
 // The secret you set in Render
@@ -38,7 +38,7 @@ export const onUserCreate = functionsV1.auth // Use v1 auth trigger
       return;
     }
 
-    const apiEndpoint = `${backendUrl}/api/user/send-welcome`;
+    const apiEndpoint = `${backendUrl}/api/users/send-welcome`;
     const payload = {
       email: user.email,
       name: user.displayName || "Friend", // Use display name if available

@@ -437,7 +437,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
   
   goToVerse(bookmark: string): void {
     const [surah, verse] = bookmark.split(':');
-    this.router.navigate(['/read', surah, verse]);
+    // Navigate to /quran using query parameters
+    this.router.navigate(['/quran'], { 
+      queryParams: { 
+        surah: surah, 
+        verse: verse 
+      } 
+    });
   }
   
   goToHistoryEntry(entry: ReadingHistory): void {

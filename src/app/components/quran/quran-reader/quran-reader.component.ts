@@ -4,14 +4,15 @@ import { Component, OnInit, OnDestroy, HostListener, Input, Output, EventEmitter
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
-import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError } from 'rxjs';
+import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject } from 'rxjs';
+import { takeUntil, filter } from 'rxjs/operators'; // Add takeUntil and filter
 import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { SttService } from '../../../services/stt.service';
 import { QuranFlashService } from '../../../services/quran-flash.service';
 import { Router, ActivatedRoute, Params, RouterModule } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { FirebaseAuthService } from '../../../services/firebase-auth.service';
+import { AppUser, FirebaseAuthService, UserPreferences, BookmarkResponse, ReadingHistoryResponse } from '../../../services/firebase-auth.service';
 import { ToastService } from '../../../services/toast.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatButtonModule } from '@angular/material/button';
@@ -62,12 +63,6 @@ interface TimingData {
   ayah: number;
   segments: [number, number, number, number][];
   stats: { insertions: number; deletions: number; transpositions: number; };
-}
-
-interface BookmarkResponse {
-  success: boolean;
-  message: string;
-  bookmarks: string[];
 }
 
 @Component({
@@ -246,6 +241,32 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private loadSurahSubscription: Subscription | null = null; // Add this property
   private isScrolling = false;
+  private scrollDebounceTimer: any = null; // Timer for scroll event debouncing
+  private readonly SCROLL_DEBOUNCE_TIME = 150; // ms for updating currentVerse on scroll
+
+  // Add the arrow function property for the unload handler
+  private saveStateToLocalStorageOnUnload = (): void => {
+    try {
+      // console.log('[QuranReader] Saving state to localStorage on unload...'); // Optional log
+      // Save only essential state needed for restore
+      const stateToSave = {
+        surah: this.currentSurah || 1,
+        verse: this.currentVerse || 1,
+        mode: this.isMushafView ? 'mushaf' : 'translation',
+        // Add other minimal essential state if needed (e.g., reciter, translation)
+        translation: this.selectedTranslation,
+        reciter: this.selectedReciter?.id,
+        timestamp: new Date().toISOString() // Timestamp is useful for debugging
+      };
+      localStorage.setItem('quran_reader_state', JSON.stringify(stateToSave));
+      // console.log('[QuranReader] State saved on unload:', stateToSave); // Optional log
+    } catch (error) {
+      console.warn('[QuranReader] Error saving state to localStorage on unload:', error);
+    }
+  }
+
+  user: AppUser | null = null; // Add user property
+  private destroy$ = new Subject<void>(); // Add destroy subject
 
   constructor(
     public quranService: QuranService,
@@ -253,10 +274,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private quranFlash: QuranFlashService,
     private router: Router,
     private sanitizer: DomSanitizer,
-    private authService: FirebaseAuthService,
+    private authService: FirebaseAuthService, // Ensure injected
     private toastService: ToastService,
     private route: ActivatedRoute,
-    private changeDetector: ChangeDetectorRef,
+    private changeDetector: ChangeDetectorRef, // Use changeDetector consistently
     private http: HttpClient,
     private ngZone: NgZone
   ) {
@@ -264,127 +285,256 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   async ngOnInit() {
-    this.isAudioLoading = false; // Ensure isAudioLoading is false initially
-    this.loadSurahSubscription?.unsubscribe(); // Also ensure any lingering sub is cancelled
-    try {
-        // Show loading state
-        this.isAudioLoading = true;
+    console.log('[ngOnInit] Starting...');
+    window.addEventListener('beforeunload', this.saveStateToLocalStorageOnUnload);
+    this.isAudioLoading = true; // Start loading indicator
+    this.loadSurahSubscription?.unsubscribe();
 
-        // Load preferences first - both from localStorage and server
-        await this.loadUserPreferences();
-        
-        // Load basic data (surahs, translations, reciters)
-        await Promise.all([
-            this.loadSurahs(),
-            this.loadTranslationsData(),
-            this.loadRecitersData(),
-            this.loadBookmarks(),
-            this.loadReadingHistory()
-        ]);
-        
-        // Setup initial settings
-        this.checkDarkMode();
-        this.setupViewMode();
-        
-        // Get saved state from localStorage
-        let savedState;
-        try {
-            const savedStateJson = localStorage.getItem('quran_reader_state');
-            if (savedStateJson) {
-                savedState = JSON.parse(savedStateJson);
-            }
-        } catch (error) {
-            console.warn('Error reading saved state:', error);
+    // Subscribe to user changes
+    this.authService.user$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe((u: AppUser | null) => {
+      console.log('[QuranReader] User state update received.');
+      this.user = u;
+      this.changeDetector.markForCheck(); // Use markForCheck for OnPush strategy if applicable
+    });
+
+    try {
+      // Load fundamental display data first (faster)
+      console.log('[ngOnInit] Loading essential data...');
+      await Promise.all([
+        this.loadSurahs(),          // Load surah list for dropdown
+        this.loadTranslationsData(),// Load available translations for dropdown
+        this.loadRecitersData(),    // Load available reciters for dropdown
+      ]);
+      console.log('[ngOnInit] Essential data loading complete.');
+
+      // Apply default UI settings first
+      this.checkDarkMode(); // Apply theme early
+      this.selectedTranslation = '131'; // Default translation
+      this.selectedReciter = this.reciters.find(r => r.id === 1) || this.reciters[0]; // Default reciter
+      this.fontSize = 24; // Default font size
+
+      // --- Initial State Determination (Prioritize URL, then Default) ---
+      let targetSurah = 1;
+      let targetVerse = 1;
+      let targetModeIsMushaf = false;
+
+      const params = this.route.snapshot.queryParams;
+      const urlSurah = parseInt(params['surah'], 10);
+      const urlVerse = parseInt(params['verse'], 10);
+      const urlMode = params['mode'];
+      const urlTranslation = params['translation'];
+      const urlReciter = parseInt(params['reciter'], 10);
+
+      if (urlSurah >= 1 && urlSurah <= 114) {
+        targetSurah = urlSurah;
+        targetVerse = (urlVerse >= 1) ? urlVerse : 1;
+        targetModeIsMushaf = urlMode === 'mushaf';
+        if (urlTranslation) this.selectedTranslation = urlTranslation;
+        if (!isNaN(urlReciter)) this.selectedReciter = this.reciters.find(r => r.id === urlReciter) || this.selectedReciter;
+        console.log(`[ngOnInit] Initial state from URL params: S${targetSurah}:V${targetVerse}, Mode: ${targetModeIsMushaf ? 'mushaf' : 'translation'}, Trans: ${this.selectedTranslation}, Reciter: ${this.selectedReciter.id}`);
+      } else {
+        console.log(`[ngOnInit] Using default initial state: S${targetSurah}:V${targetVerse}`);
+      }
+
+      // Apply the initial state
+      this.currentSurah = targetSurah;
+      this.selectedSurah = targetSurah;
+      this.currentVerse = targetVerse;
+      this.isMushafView = targetModeIsMushaf;
+
+      // --- Load Initial Content Immediately ---
+      this.loadInitialContent(targetSurah, targetVerse, targetModeIsMushaf);
+
+      // --- Asynchronously Load Remaining Data and Restore Full State ---
+      // Use setTimeout to ensure it runs after the current execution context
+      setTimeout(() => {
+          this.loadSecondaryDataAndRestoreFullState(targetSurah, targetVerse, targetModeIsMushaf);
+      }, 0);
+
+    } catch (error) {
+      console.error('[ngOnInit] Critical error during essential initialization:', error);
+      this.isAudioLoading = false; // Ensure loading stops on major error
+      this.toastService.showError('Initialization failed. Please refresh.');
+      this.changeDetector.detectChanges();
+    }
+  }
+
+  // *** ADDED HELPER METHOD ***
+  // Helper to load initial content based on URL/defaults
+  private loadInitialContent(surah: number, verse: number, isMushaf: boolean): void {
+    console.log(`[loadInitialContent] Loading content for S${surah}:V${verse}, Mushaf: ${isMushaf}`);
+    this.isAudioLoading = true; // Ensure loading indicator is on
+
+    if (isMushaf) {
+      // Determine page and load Mushaf
+      this.quranService.getPageBySurah(surah, verse).pipe(
+        take(1),
+        map((response: any) => {
+          const displayPageNumber = response?.verse?.page_number || response?.page_number;
+          return displayPageNumber ? this.displayToActualPage(displayPageNumber) : this.FIRST_PAGE;
+        }),
+        catchError(err => {
+          console.error(`[loadInitialContent] Error fetching page for S${surah}:V${verse}:`, err);
+          return of(this.FIRST_PAGE); // Default on error
+        }),
+        switchMap(actualPage => from(this.loadMushafPage(actualPage)))
+      ).subscribe({
+        next: () => {
+          this.isAudioLoading = false;
+          console.log(`[loadInitialContent] Mushaf view loaded for page ${this.displayPageNumber}.`);
+          this.changeDetector.detectChanges();
+          this.updateUrlParams(); // Update URL after loading
+        },
+        error: (err) => {
+          console.error('[loadInitialContent] Error loading Mushaf page:', err);
+          this.isAudioLoading = false;
+          this.changeDetector.detectChanges();
         }
-        
-        // Check URL parameters
-        const queryParams = new URLSearchParams(window.location.search);
-        const surahParam = queryParams.get('surah');
-        const verseParam = queryParams.get('verse');
-        const translationParam = queryParams.get('translation');
-        const reciterParam = queryParams.get('reciter');
-        const modeParam = queryParams.get('mode');
-        
-        // Set translation (URL > savedState > preferences > default)
-        this.selectedTranslation = translationParam || 
-            savedState?.translation ||
-            this.preferences?.selectedTranslation ||
-            '131';
-        
-        // Set reciter (URL > savedState > preferences > default)
-        const reciterId = reciterParam ? parseInt(reciterParam, 10) :
-            savedState?.reciter ||
-            this.preferences?.selectedReciter ||
-            1;
-        this.selectedReciter = this.reciters.find(r => r.id === reciterId) || this.reciters[0];
-        
-        // Set view mode (URL > savedState > preferences > default)
-        this.isMushafView = modeParam === 'mushaf' ||
-            savedState?.mode === 'mushaf' ||
-            this.preferences?.lastState?.isMushafView ||
-            false;
-        
-        // Determine which surah and verse to load
-        let targetSurah = 1;
-        let targetVerse = 1;
-        
-        if (surahParam) {
-            // URL parameters take precedence
-            targetSurah = parseInt(surahParam, 10);
-            if (verseParam) {
-                targetVerse = parseInt(verseParam, 10);
-            }
-        } else if (savedState?.surah) {
-            // Then try saved state
-            targetSurah = savedState.surah;
-            targetVerse = savedState.verse || 1;
-        } else if (this.preferences?.lastState?.lastSurah) {
-            // Then try preferences
-            targetSurah = this.preferences.lastState.lastSurah;
-            targetVerse = this.preferences.lastState.lastVerse || 1;
-        } else if (this.readingHistory?.length > 0) {
-            // Finally try reading history
-            const lastRead = this.readingHistory[0];
-            targetSurah = lastRead.surah;
-            targetVerse = lastRead.verse;
+      });
+    } else {
+      // Load Translation view Surah
+      this.loadSurahSubscription?.unsubscribe(); // Cancel previous load if any
+      this.loadSurahSubscription = this.loadSurah(surah).subscribe({
+        next: () => {
+          console.log(`[loadInitialContent] Surah ${surah} loaded.`);
+          if (verse > 1) {
+            requestAnimationFrame(() => {
+              console.log(`[loadInitialContent] Queued scroll to verse ${verse}.`);
+              this.scrollToVerse(verse, 3); // Fewer attempts initially
+            });
+          } else {
+             this.updateUrlParams(); // Update URL even if not scrolling
+          }
+          this.isAudioLoading = false;
+          this.changeDetector.detectChanges();
+        },
+        error: (err) => {
+          console.error('[loadInitialContent] Error loading Surah:', err);
+          this.isAudioLoading = false;
+          this.changeDetector.detectChanges();
         }
-        
-        // Update current state
-        this.currentSurah = targetSurah;
-        this.selectedSurah = targetSurah;
-        this.currentVerse = targetVerse;
-        
-        // Load the surah and scroll to verse
-        // Cancel previous load if any
-        this.loadSurahSubscription?.unsubscribe();
-        this.loadSurahSubscription = this.loadSurah(targetSurah).subscribe({
-          next: () => {
-            // Wait for verses to be rendered before scrolling
-            if (targetVerse > 1) {
-                // Initial attempt immediately
-                const scrolled = this.scrollToVerse(targetVerse);
-                if (!scrolled) {
-                    // If initial attempt fails, try again with a delay
-                    setTimeout(() => {
-                        this.scrollToVerse(targetVerse, 15); // More attempts with longer timeout
-                    }, 500);
+      });
+    }
+  }
+
+  // *** ADDED HELPER METHOD ***
+  // Helper to load secondary data and restore state from localStorage/prefs
+  private async loadSecondaryDataAndRestoreFullState(initialSurah: number, initialVerse: number, initialIsMushaf: boolean): Promise<void> {
+      console.log('[loadSecondaryData] Starting async load of prefs, bookmarks, history...');
+      // Load remaining data concurrently
+      const [prefsResult, bookmarksResult, historyResult] = await Promise.allSettled([
+          this.loadUserPreferences(), // Returns Promise<UserPreferences | null>
+          this.loadBookmarks(),       // Returns Promise<string[] | null>
+          this.loadReadingHistory()   // Returns Promise<ReadingHistory[] | null>
+      ]);
+
+      // Process results
+      // Check only status; value is void as loadUserPreferences sets property internally
+      if (prefsResult.status === 'fulfilled') {
+          // No need to assign prefsResult.value, loadUserPreferences handles it
+          // Apply preferences that might affect UI but not content load
+          this.selectedReciter = this.reciters.find(r => r.id === this.preferences?.selectedReciter) || this.selectedReciter;
+          this.selectedTranslation = this.preferences?.selectedTranslation || this.selectedTranslation;
+          this.fontSize = this.preferences?.fontSize || this.fontSize;
+          console.log('[loadSecondaryData] User preferences loading initiated successfully and likely applied.');
+      } else {
+          console.warn('[loadSecondaryData] Failed to initiate user preferences loading.', prefsResult.status === 'rejected' ? prefsResult.reason : 'Unknown issue');
+          // Use defaults already set
+      }
+       // Check status before accessing value
+       // Check only status; value is void as loadBookmarks sets property internally
+       if (bookmarksResult.status === 'fulfilled') {
+           // No need to assign bookmarksResult.value, loadBookmarks handles it
+           console.log('[loadSecondaryData] Bookmarks loading initiated successfully.');
+       } else {
+           console.warn('[loadSecondaryData] Failed to load bookmarks:', bookmarksResult.status === 'rejected' ? bookmarksResult.reason : 'Unknown issue');
+       }
+       // Check status before accessing value
+      // Check only status; value is void as loadReadingHistory sets property internally
+      if (historyResult.status === 'fulfilled') {
+           // No need to assign historyResult.value, loadReadingHistory handles it
+           console.log('[loadSecondaryData] Reading history loading initiated successfully.');
+       } else {
+           console.warn('[loadSecondaryData] Failed to load reading history:', historyResult.status === 'rejected' ? historyResult.reason : 'Unknown issue');
+       }
+
+       // --- Defer localStorage Read and State Restoration --- 
+       setTimeout(() => {
+            console.log('[loadSecondaryData] Starting deferred localStorage read and state application...');
+            let restoredSurah = initialSurah;
+            let restoredVerse = initialVerse;
+            let restoredIsMushaf = initialIsMushaf;
+            let stateSource = 'initial (URL/Default)'; // Keep track of where the final state came from
+
+            // Try localStorage state asynchronously (within this timeout)
+            let restoredStateFromStorage: any = null; // Explicitly type as any
+            try {
+                const stateJson = localStorage.getItem('quran_reader_state');
+                if (stateJson) {
+                    restoredStateFromStorage = JSON.parse(stateJson);
+                    if (restoredStateFromStorage && restoredStateFromStorage.surah && restoredStateFromStorage.verse) {
+                        restoredSurah = parseInt(restoredStateFromStorage.surah, 10) || initialSurah;
+                        restoredVerse = parseInt(restoredStateFromStorage.verse, 10) || initialVerse;
+                        restoredIsMushaf = restoredStateFromStorage.mode === 'mushaf';
+                        // Restore reciter/translation from localStorage state
+                        this.selectedTranslation = restoredStateFromStorage.translation || this.selectedTranslation;
+                        this.selectedReciter = this.reciters.find(r => r.id === restoredStateFromStorage.reciter) || this.selectedReciter;
+                        stateSource = 'localStorage';
+                        console.log(`[loadSecondaryData] Restored state from localStorage: S${restoredSurah}:V${restoredVerse}, Mode: ${restoredIsMushaf ? 'mushaf' : 'translation'}`);
+                    } else {
+                        restoredStateFromStorage = null; // Invalid storage state
+                        localStorage.removeItem('quran_reader_state');
+                    }
+                }
+            } catch (e) {
+                console.warn('[loadSecondaryData] Error parsing state from localStorage:', e);
+                localStorage.removeItem('quran_reader_state');
+            }
+
+            // Fallback to preferences/history if localStorage wasn't used or valid
+            if (stateSource === 'initial (URL/Default)') {
+                const lastReadPrefs = this.preferences?.lastState;
+                // Check if prefs state exists and is DIFFERENT from the initial state already loaded
+                if (lastReadPrefs?.lastSurah >= 1 && (lastReadPrefs.lastSurah !== initialSurah || lastReadPrefs.lastVerse !== initialVerse || lastReadPrefs.isMushafView !== initialIsMushaf)) {
+                    restoredSurah = lastReadPrefs.lastSurah || initialSurah;
+                    restoredVerse = lastReadPrefs.lastVerse || initialVerse;
+                    restoredIsMushaf = lastReadPrefs.isMushafView ?? initialIsMushaf;
+                    // Use reciter/translation from already loaded preferences
+                    this.selectedReciter = this.reciters.find(r => r.id === this.preferences?.selectedReciter) || this.selectedReciter;
+                    this.selectedTranslation = this.preferences?.selectedTranslation || this.selectedTranslation;
+                    stateSource = 'preferences';
+                    console.log(`[loadSecondaryData] Restored state from user preferences: S${restoredSurah}:V${restoredVerse}, Mode: ${restoredIsMushaf ? 'mushaf' : 'translation'}`);
                 }
             }
-            // Update URL parameters after successful load
-            this.updateUrlParams();
-            // Hide loading state after successful load and potential scroll setup
-            this.isAudioLoading = false;
-          },
-          error: (err) => {
-             console.error('Error during initial surah load in ngOnInit:', err);
-             this.isAudioLoading = false; // Ensure loading stops on error
-          }
-        });
-        
-    } catch (error) {
-        console.error('Error initializing QuranReader:', error);
-        this.isAudioLoading = false;
-    }
+
+            console.log(`[loadSecondaryData] Final state determined from: ${stateSource}`);
+
+            // --- Apply Restored State IF DIFFERENT from initially loaded content ---
+            // Also re-apply preferences like font size here
+            this.fontSize = this.preferences?.fontSize || this.fontSize; // Apply font size from prefs
+            this.changeDetector.detectChanges(); // Apply visual prefs like font size
+
+            if (restoredSurah !== initialSurah || restoredVerse !== initialVerse || restoredIsMushaf !== initialIsMushaf) {
+                console.log(`[loadSecondaryData] State differs from initial load. Applying restored state: S${restoredSurah}:V${restoredVerse}, Mushaf: ${restoredIsMushaf}`);
+                this.currentSurah = restoredSurah;
+                this.selectedSurah = restoredSurah;
+                this.currentVerse = restoredVerse; // Will trigger scroll in loadInitialContent if needed
+                this.isMushafView = restoredIsMushaf;
+
+                // Reload content based on the fully restored state
+                this.loadInitialContent(restoredSurah, restoredVerse, restoredIsMushaf);
+            } else {
+                console.log('[loadSecondaryData] Restored state matches initial load. No content reload needed.');
+                // Ensure URL is updated even if content didn't change (e.g., prefs loaded matching URL)
+                this.updateUrlParams();
+            }
+
+            // Final UI updates if needed
+            this.changeDetector.detectChanges(); // Detect changes after applying prefs/state
+            console.log('[loadSecondaryData] Secondary data load and state restoration complete.');
+        }, 0); // End of setTimeout for localStorage
   }
 
   /**
@@ -417,74 +567,54 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.showingTranslation = true;
   }
 
-  private scrollToVerse(verseNumber: number, maxAttempts: number = 10) {
-    if (!verseNumber) return;
+  private scrollToVerse(verseNumber: number, maxAttempts: number = 5): boolean { // Reduced maxAttempts
+      if (!verseNumber || this.isMushafView) return false; // Don't scroll in mushaf view
 
-    const attemptScroll = (attempts: number = 0) => {
-        const verseElement = document.getElementById(`verse-${verseNumber}`);
-        if (verseElement) {
-            // Remove existing highlights
-            document.querySelectorAll('.highlighted-verse').forEach(el => {
-                el.classList.remove('highlighted-verse');
-            });
-            
-            // Add highlight to current verse
-            verseElement.classList.add('highlighted-verse');
-            
-            // Calculate scroll position
-            const headerOffset = 80;
-            const elementPosition = verseElement.getBoundingClientRect().top;
-            const offsetPosition = elementPosition + window.scrollY - headerOffset;
-            
-            // Update current verse tracking before scrolling
-            this.currentVerse = verseNumber;
-            this.currentRecitingVerse = verseNumber;
-            
-            // Save state and history immediately
-            const stateToSave = {
-                lastSurah: this.currentSurah,
-                lastVerse: verseNumber,
-                isMushafView: this.isMushafView,
-                timestamp: new Date().toISOString()
-            };
-            
-            // Update localStorage immediately
-            try {
-                const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-                prefs.lastState = stateToSave;
-                localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-            } catch (error) {
-                console.warn('Error updating localStorage:', error);
-            }
-            
-            // Save to server with debouncing
-            this.debouncedSavePreferences();
-            this.debouncedSaveHistory(verseNumber);
-            
-            // Scroll to verse
-            window.scrollTo({
-                top: offsetPosition,
-                behavior: 'smooth'
-            });
-            
-            // Remove highlight after animation
-            setTimeout(() => {
-                verseElement.classList.remove('highlighted-verse');
-            }, 3000);
+      let scrolledSuccessfully = false;
 
-            return true; // Successfully scrolled
-        } else if (attempts < maxAttempts) {
-            // Retry with exponential backoff
-            const delay = Math.min(100 * Math.pow(2, attempts), 2000); // Cap at 2 seconds
-            setTimeout(() => attemptScroll(attempts + 1), delay);
-            return false; // Still trying
-        } else {
-            console.warn(`Failed to scroll to verse ${verseNumber} after ${maxAttempts} attempts`);
-            return false; // Failed to scroll
-        }
-    };
+      const attemptScroll = (attempts: number = 0) => {
+          const verseElement = document.getElementById(`verse-${verseNumber}`);
+          if (verseElement) {
+              // console.log(`[scrollToVerse] Found element for verse ${verseNumber}. Scrolling...`); // Optional log
+              // Existing highlight and scroll logic...
+              document.querySelectorAll('.highlighted-verse').forEach(el => {
+                  el.classList.remove('highlighted-verse');
+              });
+              verseElement.classList.add('highlighted-verse');
+              const headerOffset = 80;
+              const elementPosition = verseElement.getBoundingClientRect().top;
+              const offsetPosition = elementPosition + window.scrollY - headerOffset;
 
-    return attemptScroll();
+              // Update state *before* scrolling
+              this.currentVerse = verseNumber;
+              // this.currentRecitingVerse = verseNumber; // Only set this if audio is playing
+
+              // Save state immediately (can be debounced later if needed)
+              // this.savePreferences(); // Avoid frequent saves during init/scroll
+              // this.debouncedSaveHistory(verseNumber); // Debounce history
+
+              this.updateUrlParams(); // Update URL to reflect the scrolled verse
+
+              window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+
+              setTimeout(() => {
+                  verseElement.classList.remove('highlighted-verse');
+              }, 2000); // Shorter highlight duration
+
+              scrolledSuccessfully = true;
+              return;
+          } else if (attempts < maxAttempts) {
+              // console.log(`[scrollToVerse] Verse ${verseNumber} not found (Attempt ${attempts + 1}). Retrying...`); // Optional log
+              // Simplified retry: Use setTimeout directly
+              setTimeout(() => attemptScroll(attempts + 1), 100 + attempts * 50); // Simple increasing delay
+          } else {
+              console.warn(`[scrollToVerse] Failed to find verse element ${verseNumber} after ${maxAttempts} attempts.`);
+              this.updateUrlParams(); // Update URL even on failure
+          }
+      };
+
+      attemptScroll();
+      return scrolledSuccessfully;
   }
 
   private debouncedSavePreferences() {
@@ -514,11 +644,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         };
 
         // Save to localStorage immediately
-        try {
-            localStorage.setItem('quran_reader_preferences', JSON.stringify(prefsToSave));
-        } catch (error) {
-            console.warn('Error saving to localStorage:', error);
-        }
+        // try {
+        //     localStorage.setItem('quran_reader_preferences', JSON.stringify(prefsToSave));
+        // } catch (error) {
+        //     console.warn('Error saving to localStorage:', error);
+        // }
 
         // Save to server if authenticated
         try {
@@ -536,29 +666,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private debouncedSaveHistory(verseNumber: number) {
-    if (!this.currentSurah || !verseNumber) return;
-
-    // Clear existing timer
-    if (this.historyDebounceTimer) {
-        clearTimeout(this.historyDebounceTimer);
-    }
-
-    // Set new timer
+    clearTimeout(this.historyDebounceTimer);
     this.historyDebounceTimer = setTimeout(async () => {
-        const historyEntry = {
-            surah: Number(this.currentSurah),
-            verse: Number(verseNumber),
-            timestamp: new Date().toISOString()
-        };
-
-        // Validate the entry
-        if (!this.isValidHistoryEntry(historyEntry)) {
-            console.warn('Invalid history entry:', historyEntry);
-            return;
-        }
+      // console.log(`[QuranReader] Debounced save history triggered for verse ${verseNumber}.`);
+      // Use this.user and isValidVerseForHistory check
+      if (!this.user || !this.isValidVerseForHistory(this.currentSurah, verseNumber)) {
+        // console.log('[QuranReader] User not logged in or invalid verse, skipping history save.');
+        return;
+      }
 
         // Update local state immediately
         const currentHistory = Array.isArray(this.readingHistory) ? this.readingHistory : [];
+        const historyEntry = { surah: this.currentSurah, verse: verseNumber, timestamp: new Date().toISOString() }; // Define historyEntry
         this.readingHistory = [
             historyEntry,
             ...currentHistory.filter(h => 
@@ -593,7 +712,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
         // Save to server
         try {
-            await this.authService.saveReadingHistory(historyEntry.surah, historyEntry.verse);
+            await this.authService.saveReadingHistory(historyEntry);
             // console.log('History saved successfully:', historyEntry);
         } catch (error: unknown) {
             if ((error as { status?: number })?.status !== 429) {
@@ -615,15 +734,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }, this.HISTORY_DEBOUNCE_TIME);
   }
 
-  private isValidHistoryEntry(entry: any): boolean {
+  // Add the helper method needed by debouncedSaveHistory
+  private isValidVerseForHistory(surah: number, verse: number): boolean {
+    // Basic validation, adjust if needed based on QuranService data
     return (
-        entry &&
-        typeof entry.surah === 'number' &&
-        typeof entry.verse === 'number' &&
-        entry.surah >= 1 &&
-        entry.surah <= 114 &&
-        entry.verse >= 1 &&
-        entry.timestamp
+      Number.isInteger(surah) &&
+      Number.isInteger(verse) &&
+      surah >= 1 &&
+      surah <= 114 &&
+      verse >= 1 &&
+      // Optional: Check against actual verse count for the surah if available
+      // verse <= (this.quranService.getVerseCountForSurah(surah) || 999)
+      true // Placeholder for now
     );
   }
 
@@ -971,6 +1093,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // Stop any currently playing audio first
         this.audioPlayer.pause();
 
+        // --- Store scroll position BEFORE potentially disturbing it ---
+        const currentScrollY = window.scrollY;
+        // -----------------------------------------------------------
+
         this.currentlyPlaying = url;
         this.currentPlayingVerse = verseNumber; // Set the currently playing verse
         this.isAudioLoading = true; // Indicate loading
@@ -993,6 +1119,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.isPlaying = true;
         // console.log('Audio playback started.'); // Removed log
 
+        // --- Restore scroll position AFTER playback starts ---
+        requestAnimationFrame(() => {
+            // Check if scroll position changed significantly (e.g., > 5px)
+            if (Math.abs(window.scrollY - currentScrollY) > 5) {
+                // console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
+                window.scrollTo({ top: currentScrollY, behavior: 'instant' }); // Use 'instant' to avoid visual jump
+            }
+        });
+        // ------------------------------------------------------
+
         // Set timeout for loading indicator
         clearTimeout(this.audioLoadingTimeout);
         this.audioLoadingTimeout = setTimeout(() => {
@@ -1004,7 +1140,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         }, 10000); // 10 second timeout
 
         // Optional: Save playback state or perform other actions
-        this.savePreferences();
+        // this.savePreferences(); <-- REMOVED this line
       }
     } catch (error) {
       console.error('Error playing audio:', error);
@@ -1392,77 +1528,66 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next(); // Signal completion for observables
+    this.destroy$.complete();
     console.log('[QuranReader] Destroying component...');
-    // Explicitly save preferences on destroy
-    this.savePreferences(); 
-
-    // Unsubscribe from the main surah loading subscription
+    window.removeEventListener('beforeunload', this.saveStateToLocalStorageOnUnload);
+    // Explicitly trigger final save if needed, though unload handler should cover it
+    // this.saveStateToLocalStorageOnUnload(); // Let beforeunload handle it
     this.loadSurahSubscription?.unsubscribe();
-    console.log('[QuranReader] Unsubscribed from loadSurahSubscription.');
-
-    // Unsubscribe from all other stored subscriptions (using pageSubscription)
     this.pageSubscription?.unsubscribe();
-    console.log(`[QuranReader] Unsubscribed from pageSubscription.`);
-    // this.subscriptions = []; // No longer needed if using single pageSubscription
-
-    // Clean up audio player resources
     this.removeAudioEvents();
     if (this.audioPlayer) {
       this.audioPlayer.pause();
-      this.audioPlayer.src = ''; // Release audio source
-      // Consider setting this.audioPlayer = null; if appropriate
+      this.audioPlayer.src = '';
     }
-    console.log('[QuranReader] Cleaned up audio player.');
-
-    // Clear any pending timers
-    if (this.debounceTimer) {
-      clearTimeout(this.debounceTimer);
-    }
-    if (this.historyDebounceTimer) {
-      clearTimeout(this.historyDebounceTimer);
-    }
-    if (this.audioLoadingTimeout) {
-      clearTimeout(this.audioLoadingTimeout);
-    }
-    console.log('[QuranReader] Cleared timers.');
+    // Clear timers
+    if (this.debounceTimer) clearTimeout(this.debounceTimer);
+    if (this.historyDebounceTimer) clearTimeout(this.historyDebounceTimer);
+    if (this.audioLoadingTimeout) clearTimeout(this.audioLoadingTimeout);
+    if (this.urlUpdateTimeoutId) clearTimeout(this.urlUpdateTimeoutId);
+    if (this.scrollDebounceTimer) clearTimeout(this.scrollDebounceTimer); // Clear scroll timer
+    console.log('[QuranReader] Cleanup complete.');
   }
 
   // === Initialization & State Management ===
 
-  // Add this method to track verse visibility
+  // Scroll handler - Re-enabled and simplified
   @HostListener('window:scroll', ['$event'])
   onScroll() {
-    if (!this.verses?.length || this.isAudioLoading) return;
+    if (!this.verses?.length || this.isAudioLoading) return; // Don't process if no verses or loading
 
-    // Find the verse closest to the middle of the viewport
-    const viewportHeight = window.innerHeight;
-    const viewportMiddle = window.scrollY + (viewportHeight / 2);
+    // Debounce the scroll handling to avoid excessive calculations
+    clearTimeout(this.scrollDebounceTimer);
+    this.scrollDebounceTimer = setTimeout(() => {
+      if (this.isMushafView) return; // No verse tracking needed in Mushaf view scroll
 
-    let closestVerse = this.verses[0];
-    let closestDistance = Infinity;
+      const headerOffset = 90; // Account for header height + some buffer
+      let topmostVisibleVerseNumber = this.currentVerse; // Default to current if none found
 
-    this.verses.forEach(verse => {
+      // Find the first verse element that is at or below the header offset
+      for (const verse of this.verses) {
         const element = document.getElementById(`verse-${verse.number}`);
         if (element) {
-            const rect = element.getBoundingClientRect();
-            const verseMiddle = window.scrollY + rect.top + (rect.height / 2);
-            const distance = Math.abs(viewportMiddle - verseMiddle);
-            
-            if (distance < closestDistance) {
-                closestDistance = distance;
-                closestVerse = verse;
-            }
+          const rect = element.getBoundingClientRect();
+          if (rect.top >= headerOffset) {
+            topmostVisibleVerseNumber = verse.number;
+            break; // Found the first visible verse, no need to check further
+          }
         }
-    });
+      }
 
-    // Update current verse if it changed
-    if (closestVerse && this.currentVerse !== closestVerse.number) {
-        this.currentVerse = closestVerse.number;
-        
-        // Save state with debouncing
-        this.debouncedSavePreferences();
-        this.debouncedSaveHistory(this.currentVerse);
-    }
+      // Update currentVerse if it has changed
+      if (this.currentVerse !== topmostVisibleVerseNumber) {
+          // console.log(`[onScroll] Topmost visible verse changed to: ${topmostVisibleVerseNumber}`); // Optional log
+          this.currentVerse = topmostVisibleVerseNumber;
+          // Update URL parameters (debounced within the function)
+          this.updateUrlParams(); // This will update surah, mode, etc. (verse handled by localStorage)
+          // Trigger debounced history save *only* for server update
+          this.debouncedSaveHistory(this.currentVerse);
+      }
+
+    }, this.SCROLL_DEBOUNCE_TIME);
   }
 
   private handleAudioError(error?: any) {
@@ -1523,58 +1648,43 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.urlUpdateTimeoutId) {
         clearTimeout(this.urlUpdateTimeoutId);
     }
-    
-    const now = Date.now();
-    const timeSinceLastUpdate = now - this.lastUrlUpdateTime;
-    const debounceTime = timeSinceLastUpdate < 1000 ? this.URL_UPDATE_DEBOUNCE_TIME : 0;
-    
+
+    // Use a fixed, slightly longer debounce time now that onScroll isn't calling it frequently
+    const debounceTime = 400; // ms
+
     this.urlUpdateTimeoutId = setTimeout(() => {
         const params: any = {
             mode: this.isMushafView ? 'mushaf' : 'translation',
+            // Optional: include translation/reciter if needed in URL always
             translation: this.selectedTranslation,
             reciter: this.selectedReciter?.id,
-            surah: this.currentSurah
         };
 
-        // Only add verse parameter if NOT in mushaf view AND a specific verse interaction occurred (e.g., click, search result)
-        // Let's refine this: Don't add verse just based on scrolling in translation mode.
-        // We'll rely on explicit navigation (goToVerse, selectSearchResult) to add the verse param when needed.
-        // For now, remove automatic verse addition based on currentVerse in translation mode.
-        /* 
+        // Add surah always
+        params.surah = this.currentSurah;
+
+        // Add verse only if > 1 and in translation view
         if (!this.isMushafView && this.currentVerse && this.currentVerse > 1) {
             params.verse = this.currentVerse;
         }
-        */
-        
-        // Add page for mushaf view
+
+        // Add page only if in mushaf view
         if (this.isMushafView && this.currentPage) {
             params.page = this.actualToDisplayPage(this.currentPage);
         }
 
-        // Save current state to localStorage
-        try {
-            const currentState = {
-                mode: params.mode,
-                translation: params.translation,
-                reciter: params.reciter,
-                surah: params.surah,
-                verse: params.verse,
-                page: params.page,
-                timestamp: new Date().toISOString()
-            };
-            localStorage.setItem('quran_reader_state', JSON.stringify(currentState));
-        } catch (error) {
-            console.warn('Error saving state to localStorage:', error);
-        }
-        
-        // Update URL without replacing history
+        // No need to save localStorage state here, beforeunload handles it reliably
+
+        // Update URL - use replaceUrl: true for state restoration/scroll updates
+        // Use queryParamsHandling: 'merge' to keep other potential params
         this.router.navigate([], {
             relativeTo: this.route,
             queryParams: params,
-            queryParamsHandling: 'merge'
+            queryParamsHandling: 'merge',
+            replaceUrl: true // Replace state as this reflects current view
         });
-        
-        this.lastUrlUpdateTime = Date.now();
+
+        this.lastUrlUpdateTime = Date.now(); // Keep track if needed elsewhere
         this.urlUpdateTimeoutId = null;
     }, debounceTime);
   }
