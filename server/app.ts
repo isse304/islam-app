@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import type { CorsOptions } from 'cors';
 import bodyParser from 'body-parser';
 import tafsirRoutes from './routes/tafsir';
 import userRoutes from './routes/user';
@@ -22,58 +23,29 @@ app.get('/ping', (req, res) => {
 
 // Log ALL incoming requests BEFORE any other middleware
 app.use((req, res, next) => {
-  console.log(`[Server] Received ${req.method} request for ${req.originalUrl} at ${new Date().toISOString()} from origin: ${req.headers.origin}`);
+  console.log(`--->>> [Request Entry Point] ${req.method} ${req.originalUrl} Origin: ${req.headers.origin}`);
   next(); // Continue to next middleware
 });
 
 // ** Apply specific CORS configuration early **
 console.log('[Server] Applying specific CORS configuration...');
-const allowedOrigins = ['http://localhost:4200'];
+
 const corsOptions = {
-  origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps or curl requests) or from allowed origins
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      console.log(`[CORS Options] Allowed origin: ${origin || '(no origin)'}`);
-      callback(null, true)
-    } else {
-      console.error(`[CORS Options] Blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'))
-    }
-  },
-  credentials: true,             // Allow cookies/authorization headers
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], // Explicitly allow methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Explicitly allow headers
-  exposedHeaders: ['Authorization'], // Expose Authorization header
-  preflightContinue: false,     // Handle preflight ourselves
-  optionsSuccessStatus: 204     // Some legacy browsers (IE11) choke on 204
+  origin: 'http://localhost:4200', // Exact origin instead of array
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600,
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware
+// Apply CORS configuration
 app.use(cors(corsOptions));
 
 // Handle preflight requests
-app.options('*', (req, res, next) => {
-  // Log preflight request details
-  console.log(`[CORS Preflight] Handling OPTIONS request for ${req.originalUrl} from origin: ${req.headers.origin}`);
-  console.log(`[CORS Preflight] Access-Control-Request-Method: ${req.headers['access-control-request-method']}`);
-  console.log(`[CORS Preflight] Access-Control-Request-Headers: ${req.headers['access-control-request-headers']}`);
-
-  // Apply CORS options logic to the preflight request
-  cors(corsOptions)(req, res, (err: any) => {
-    if (err) {
-      console.error(`[CORS Preflight] Error during preflight processing: ${err.message}`);
-      return next(err); // Pass error to the error handler
-    }
-    // cors() middleware should automatically handle setting headers and ending the response for OPTIONS
-    console.log(`[CORS Preflight] Preflight check successful for origin: ${req.headers.origin}. Sending 204.`);
-    // Explicitly set status if cors middleware didn't end the response (unlikely but safe)
-    if (!res.headersSent) {
-        res.sendStatus(204);
-    }
-  });
-});
-
-console.log('[Server] Specific CORS configuration and preflight handler applied.');
+app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -109,17 +81,51 @@ app.get('*', (req, res) => {
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error("[Global Error Handler]:", err.stack);
-  // ** Check if it's a CORS error from our options **
+
+  const origin = req.headers.origin;
+  // Use the allowedOrigins array defined earlier in the file
+  const isOriginAllowed = ['http://localhost:4200'].includes(origin || ''); 
+
+  // Set CORS headers ONLY if origin is allowed and headers not sent
+  if (isOriginAllowed && !res.headersSent) {
+    console.log(`[Global Error Handler] Origin ${origin} is allowed. Setting CORS headers for error response.`);
+    res.setHeader('Access-Control-Allow-Origin', origin!); // Use the specific allowed origin
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    // Optionally add Vary header
+    res.setHeader('Vary', 'Origin'); 
+  } else if (!res.headersSent) {
+      console.warn(`[Global Error Handler] Origin ${origin || 'N/A'} is NOT allowed or headers sent. Not setting CORS headers for error.`);
+  }
+
+  // Determine status code - prioritize error.status, default to 500
+  const statusCode = err.status || (err instanceof Error && err.message === 'Not allowed by CORS' ? 403 : 500);
+  const errorType = err.status === 401 ? 'Unauthorized' : (statusCode === 403 ? 'Forbidden' : 'Internal Server Error');
+  const errorDetails = err.message || 'An unexpected error occurred';
+
+  // Check if it's a CORS configuration error from the cors middleware itself
   if (err instanceof Error && err.message === 'Not allowed by CORS') {
-      console.error(`[Global Error Handler] CORS Blocked Origin: ${req.headers.origin}`);
-      return res.status(403).json({ error: 'CORS Error', details: 'Origin not allowed' });
+      console.error(`[Global Error Handler] CORS Blocked Origin: ${origin}`);
+      // Headers should have been set above if the origin was allowed (edge case)
+      // Send the determined status code (403)
+      if (!res.headersSent) {
+         res.status(statusCode).json({ error: errorType, details: errorDetails });
+      }
+      return; // Stop further processing for this specific error
   }
-  // ** Check if headers have already been sent **
+
+  // Check if headers have already been sent
   if (res.headersSent) {
-      console.error('[Global Error Handler] Headers already sent, cannot send 500.');
-      return next(err); // Pass to default Express error handler if possible
+      console.error('[Global Error Handler] Headers already sent, cannot send error response.');
+      // If next is not called here, the request might hang for the client.
+      // However, calling next(err) might lead to Express's default handler,
+      // which might send HTML, potentially undesirable for an API.
+      // Logging is often the best we can do here.
+      return; // Stop processing
   }
-  res.status(500).json({ error: 'Internal Server Error', details: 'Something broke!' }); // Send JSON error
+
+  // Send the final error response (CORS headers should be set above if applicable)
+  console.log(`[Global Error Handler] Sending final error response. Status: ${statusCode}, Type: ${errorType}, Details: ${errorDetails}`);
+  res.status(statusCode).json({ error: errorType, details: errorDetails }); 
 });
 
 export default app; 

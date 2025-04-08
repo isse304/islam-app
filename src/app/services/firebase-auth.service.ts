@@ -323,7 +323,7 @@ export class FirebaseAuthService {
           preferences: from(this.getUserPreferences()),
           bookmarks: from(this.getBookmarks()),
           history: from(this.getReadingHistoryInternal()).pipe(
-            timeout(10000), // Add 10-second timeout
+            timeout(30000), // Increase timeout to 30 seconds
             catchError(err => {
               console.warn('[handleUserSignedIn] Timeout or error fetching history, proceeding with empty history:', err);
               return of([]); // Return empty array on timeout or error
@@ -593,7 +593,7 @@ export class FirebaseAuthService {
 
         // Make API request
         const response = await firstValueFrom(
-            this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/preferences`).pipe(
+            this.http.get<any>(`${environment.apiUrl}/api/user/${userId}/preferences`).pipe(
                 timeout(15000),
                 retry({ count: 2, delay: 1500 }),
                 catchError(error => {
@@ -660,7 +660,7 @@ export class FirebaseAuthService {
         // Send preferences directly in the body
         const response = await firstValueFrom(
             this.http.put<any>(
-                `${environment.apiUrl}/api/users/${user.uid}/preferences`,
+                `${environment.apiUrl}/api/user/${user.uid}/preferences`,
                 mergedPreferences,
                 {
                     headers: {
@@ -697,7 +697,7 @@ export class FirebaseAuthService {
   private async checkIfUserIsAdmin(userId: string): Promise<boolean> {
     try {
       try {
-        const response = await this.http.get<{isAdmin: boolean}>(`${environment.apiUrl}/api/users/${userId}/admin-status`).toPromise();
+        const response = await this.http.get<{isAdmin: boolean}>(`${environment.apiUrl}/api/user/${userId}/admin-status`).toPromise();
         return response?.isAdmin || false;
       } catch (error) {
         // Silently handle 404 errors for admin endpoint - this is expected in development
@@ -1057,7 +1057,7 @@ export class FirebaseAuthService {
         // console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
         await firstValueFrom(
           this.http.post<any>(
-            `${environment.apiUrl}/api/users/${userId}/reading-history`, 
+            `${environment.apiUrl}/api/user/${userId}/reading-history`, 
             entry, 
             { headers: { 'Authorization': `Bearer ${token}` } }
           )
@@ -1232,7 +1232,7 @@ export class FirebaseAuthService {
         // Try to update via API first
         try {
           await this.http.put(
-            `${environment.apiUrl}/api/users/${user.uid}/reading-history`, 
+            `${environment.apiUrl}/api/user/${user.uid}/reading-history`, 
             updatedHistory
           ).toPromise();
         } catch (error) {
@@ -1378,7 +1378,7 @@ export class FirebaseAuthService {
     try {
         // Fetch combined user data from the backend profile endpoint
         // Interceptor handles token
-        const userData = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/users/${userId}/profile`).pipe(
+        const userData = await firstValueFrom(this.http.get<any>(`${environment.apiUrl}/api/user/${userId}/profile`).pipe(
             timeout(20000),
             retry({ count: 2, delay: 1500 }),
             catchError(error => {
@@ -1440,7 +1440,7 @@ export class FirebaseAuthService {
     // Save to server
     const token = await user.getIdToken();
     await this.http.put<any>(
-      `${environment.apiUrl}/api/users/${user.uid}/profile`,
+      `${environment.apiUrl}/api/user/${user.uid}/profile`,
       { preferences },
       {
         headers: {
@@ -1458,6 +1458,7 @@ export class FirebaseAuthService {
       switchMap(user => {
         if (!user || !user.id) {
           console.warn('getReadingHistory: User not authenticated');
+          // Return an object matching the expected structure on error
           return of({ success: false, message: 'User not authenticated', history: [] });
         }
 
@@ -1466,70 +1467,79 @@ export class FirebaseAuthService {
         const cachedHistory = this.getCachedData(cacheKey);
 
         if (cachedHistory) {
+          // Return cached data in the expected structure
           return of({ success: true, history: cachedHistory });
         }
 
         if (this.shouldThrottle(`history_${userId}`)) {
-          return of({ success: true, history: [] });
+          // Return empty history matching the structure if throttled
+           return of({ success: true, history: this.userDataSubject.getValue()?.history || [] }); // Return current state if throttled
         }
 
         this.updateLastRequestTime(`history_${userId}`);
 
-        return from(this.getToken(true)).pipe(
+        return from(this.getToken(true)).pipe( // Use getToken which handles refresh
           switchMap(token => {
             if (!token) {
               console.warn('getReadingHistory: Failed to get fresh token');
+              // Return error object matching the structure
               return of({ success: false, message: 'Authentication token unavailable', history: [] });
             }
 
-            // *** TEMP: Comment out API call for debugging ***
-            console.log('[getReadingHistory] TEMP DEBUG: Skipping http.get for history');
-            return of({ success: true, history: [] } as ReadingHistoryResponse);
-            // *** END TEMP ***
+            // *** REMOVED TEMP DEBUG BLOCK ***
 
-            // Original code:
-            // return this.http.get<ReadingHistoryResponse>(
-            //   `${environment.apiUrl}/api/user/${userId}/reading-history`,
-            //   {
-            //     headers: {
-            //       'Authorization': `Bearer ${token}`
-            //     }
-            //   }
-            // ).pipe(
-            //   tap(response => {
-            //     if (response.success && response.history) {
-            //       this.setCachedData(cacheKey, response.history);
-            //     } else {
-            //       console.warn(`getReadingHistory: API call did not return successful history for ${userId}`, response);
-            //     }
-            //   }),
-            //   catchError(error => {
-            //     console.error(`getReadingHistory: HTTP Error for ${userId}:`, error);
-            //     return throwError(() => ({ 
-            //       success: false, 
-            //       message: error.message || 'Failed to fetch reading history',
-            //       history: [],
-            //       status: error.status
-            //     })); 
-            //   })
-            // );
+            // Corrected URL to match server route
+            return this.http.get<ReadingHistoryResponse>(
+              `${environment.apiUrl}/api/user/${userId}/reading-history`, // Corrected path
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            ).pipe(
+              tap(response => {
+                // Ensure response structure is checked before accessing properties
+                if (response && response.success && Array.isArray(response.history)) {
+                  this.setCachedData(cacheKey, response.history);
+                  // Also update the main user data subject if needed
+                  const currentData = this.userDataSubject.getValue();
+                  if (currentData) {
+                      this.userDataSubject.next({ ...currentData, history: response.history });
+                  }
+                } else {
+                  console.warn(`getReadingHistory: API call did not return successful history for ${userId}`, response);
+                }
+              }),
+              catchError(error => {
+                console.error(`getReadingHistory: HTTP Error for ${userId}:`, error);
+                // Return error object matching the structure
+                return throwError(() => ({
+                  success: false,
+                  message: error.message || 'Failed to fetch reading history',
+                  history: [],
+                  status: error.status
+                }));
+              })
+            );
           }),
           catchError(tokenError => {
              console.error(`getReadingHistory: Error getting token for ${userId}:`, tokenError);
-             return throwError(() => ({ 
-               success: false, 
+             // Return error object matching the structure
+             return throwError(() => ({
+               success: false,
                message: 'Failed to obtain authentication token',
-               history: [] 
+               history: []
              }));
           })
         );
       }),
       catchError(outerError => {
          console.error('getReadingHistory: Error in outer user$ pipe:', outerError);
-         return throwError(() => ({ 
-           success: false, 
+         // Return error object matching the structure
+         return throwError(() => ({
+           success: false,
            message: outerError.message || 'Error processing user data for history',
-           history: [] 
+           history: []
          }));
       })
     );
@@ -1595,7 +1605,7 @@ export class FirebaseAuthService {
           'Content-Type': 'application/json'
         };
         return this.http.delete<BookmarkResponse>(
-          `${environment.apiUrl}/api/users/${user.uid}/bookmarks/${bookmark}`,
+          `${environment.apiUrl}/api/user/${user.uid}/bookmarks/${bookmark}`,
           { headers }
         ).pipe(
           tap(response => {
@@ -1632,7 +1642,7 @@ export class FirebaseAuthService {
           'Content-Type': 'application/json'
         };
         return this.http.post<BookmarkResponse>(
-          `${environment.apiUrl}/api/users/${user.uid}/bookmarks`,
+          `${environment.apiUrl}/api/user/${user.uid}/bookmarks`,
           { verseReference: bookmark },
           { headers }
         ).pipe(
@@ -1670,7 +1680,7 @@ export class FirebaseAuthService {
         const token = appUser.token;
 
         return this.http.get<string[]>(
-          `${environment.apiUrl}/api/users/${userId}/bookmarks`,
+          `${environment.apiUrl}/api/user/${userId}/bookmarks`,
           { headers: { 'Authorization': `Bearer ${token}` } }
         ).pipe(
           map(bookmarks => Array.isArray(bookmarks) ? bookmarks : []),
@@ -1990,42 +2000,54 @@ export class FirebaseAuthService {
   // Fetches reading history internally, bypassing the main observable if needed
   // This might be useful during initial load or specific updates
   private async getReadingHistoryInternal(): Promise<ReadingHistoryEntry[]> {
-    const user = this._user.getValue();
-    if (!user?.uid) {
-      console.warn('[getReadingHistoryInternal] No user ID, returning empty array.');
-      return [];
-    }
-    console.log('[getReadingHistoryInternal] Fetching history internally for user:', user.uid);
     try {
-      // *** TEMP: Comment out API call for debugging ***
-      // console.log(`[getReadingHistoryInternal] TEMP DEBUG: Skipping apiService.makeRequest for /api/user/${user.uid}/reading-history`);
-      // return []; // Return empty array immediately
-      // *** END TEMP ***
-
-      // Original code:
-      // Use the generic makeRequest method from ApiService
-      // Corrected path to include /api prefix and userId
-      console.log(`[getReadingHistoryInternal] >>> PREPARING TO CALL apiService.makeRequest for /api/user/${user.uid}/reading-history`); // <<< UPDATE LOG & URL
-      const apiUrl = `/api/user/${user.uid}/reading-history`; // Construct URL
-      console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: ${apiUrl}`); // <<< ADD THIS LOG
-      const historyData = await this.apiService.makeRequest('get', apiUrl); // <<< UPDATE URL HERE
-      console.log('[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest');
-      
-      // Ensure the data is in the expected format (basic check)
-      if (!historyData || !historyData.success || !Array.isArray(historyData.history)) {
-        console.error('[getReadingHistoryInternal] Received non-array data for history:', historyData);
+      const user = this.getCurrentUser();
+      if (!user) {
+        console.log('[getReadingHistoryInternal] No current user, returning empty history');
         return [];
       }
 
-      // Cast to the expected type
-      const history = historyData.history as ReadingHistoryEntry[];
-      
-      console.log(`[getReadingHistoryInternal] Fetched ${history.length} history entries.`);
-      return history;
-    } catch (error) {
-      // Error is likely handled by makeRequest/handleError in ApiService, but log here too
-      console.error('[getReadingHistoryInternal] Error fetching reading history via makeRequest:', error);
-      return []; // Return empty array on error
+      console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
+      console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
+
+      // Create AbortController for the request
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('[getReadingHistoryInternal] Request timeout reached, aborting...');
+        abortController.abort();
+      }, 10000); // 10 second timeout
+
+      try {
+        const response = await this.apiService.makeRequest('get', `/api/user/${user.uid}/reading-history`, undefined, {
+          signal: abortController.signal
+        });
+
+        // Clear timeout since request completed
+        clearTimeout(timeoutId);
+
+        console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
+        
+        if (response && response.success && Array.isArray(response.history)) {
+          console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
+          return response.history;
+        } else {
+          console.warn('[getReadingHistoryInternal] Invalid response format:', response);
+          return [];
+        }
+      } catch (error: any) {
+        // Clear timeout on error
+        clearTimeout(timeoutId);
+
+        if (error.name === 'AbortError') {
+          console.error('[getReadingHistoryInternal] Request aborted due to timeout');
+          return [];
+        }
+
+        throw error; // Re-throw other errors
+      }
+    } catch (error: any) {
+      console.error('[getReadingHistoryInternal] Error fetching history:', error);
+      return [];
     }
   }
 

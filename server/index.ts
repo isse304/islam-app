@@ -110,7 +110,8 @@ app.use(session(sessionConfig));
 
 // Apply additional security middleware
 app.use(securityConfig.helmet);
-app.use(cors());
+// Remove duplicate CORS middleware
+// app.use(cors());
 // app.use(morganMiddleware);
 // app.use(securityConfig.rateLimiter);
 // app.use(cookieParser()); // COMMENTED OUT
@@ -119,7 +120,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // API Routes
 app.use('/api/ai', aiRouter.default || aiRouter);
-app.use('/api/users', userRouter);
+app.use('/api/user', userRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);
 app.use('/api/subscription', subscriptionRouter);

@@ -342,46 +342,69 @@ export class ApiService {
   }
 
   // Make this public so other services can use it for authenticated requests
-  public async makeRequest(method: 'get' | 'post', endpoint: string, body?: any): Promise<any> {
-    try {
-      // Wait for auth state to be fully initialized
-      const isAuthenticated = await this.authService.isAuthenticated();
-      if (!isAuthenticated) {
-        this.notificationService.warning('Please sign in to access this feature');
-        await this.authService.login();
-        throw new Error('Authentication required');
-      }
+  public async makeRequest(method: 'get' | 'post', endpoint: string, body?: any, options: { signal?: AbortSignal } = {}): Promise<any> {
+    const maxRetries = 3;
+    let attempt = 1;
+    let lastError: any;
 
-      // Get Firebase auth token for all requests
-      const token = await this.authService.getToken();
-      if (!token) {
-        this.notificationService.warning('Please sign in to access this feature');
-        await this.authService.login();
-        throw new Error('Authentication required');
-      }
+    while (attempt <= maxRetries) {
+      try {
+        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.${method} for ${this.baseUrl}${endpoint} (Attempt ${attempt}/${maxRetries})`);
+        
+        // Get fresh token for each attempt
+        const token = await this.authService.getToken();
+        if (!token) {
+          throw new Error('No authentication token available');
+        }
 
-      const headers = new HttpHeaders({
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      });
+        const headers = new HttpHeaders({
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        });
 
-      const options = { headers, withCredentials: true };
+        // Merge provided options with default headers
+        const requestOptions = {
+          headers,
+          withCredentials: true,
+          ...options
+        };
 
-      if (method === 'get') {
-        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.get for ${this.baseUrl}${endpoint}`);
-        const response = await firstValueFrom(this.http.get(`${this.baseUrl}${endpoint}`, options));
-        console.log(`[ApiService makeRequest] <<< FINISHED http.get for ${this.baseUrl}${endpoint}`);
+        // Make the request based on method type
+        const response = method === 'get' 
+          ? await firstValueFrom(this.http.get(`${this.baseUrl}${endpoint}`, requestOptions))
+          : await firstValueFrom(this.http.post(`${this.baseUrl}${endpoint}`, body, requestOptions));
+
+        console.log(`[ApiService makeRequest] <<< FINISHED http.${method} for ${this.baseUrl}${endpoint}`);
         return response;
-      } else {
-        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.post for ${this.baseUrl}${endpoint}`);
-        const response = await firstValueFrom(this.http.post(`${this.baseUrl}${endpoint}`, body, options));
-        console.log(`[ApiService makeRequest] <<< FINISHED http.post for ${this.baseUrl}${endpoint}`);
-        return response;
+
+      } catch (error: any) {
+        lastError = error;
+        
+        // Don't retry on abort/timeout or auth errors
+        if (error.name === 'AbortError' || 
+            error.status === 401 || 
+            error.status === 403) {
+          throw error;
+        }
+
+        // Only retry on 5xx errors or network errors
+        if (error.status >= 500 || !error.status) {
+          if (attempt < maxRetries) {
+            const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
+            console.log(`[ApiService makeRequest] Attempt ${attempt} failed, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            attempt++;
+            continue;
+          }
+        }
+        
+        // If we get here, either we've exhausted retries or it's an error we don't retry
+        console.error(`[ApiService makeRequest] Request failed after ${attempt} attempt(s):`, error);
+        throw error;
       }
-    } catch (error) {
-      console.error('API Request Error:', error);
-      throw error;
     }
+
+    throw lastError;
   }
 
   // Premium request method that checks auth and subscription

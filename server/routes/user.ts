@@ -286,28 +286,34 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
 }));
 
 // Get reading history
-router.get('/:userId/reading-history', async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    try {
-        // Temporarily bypass auth check for testing:
-        // if (!verifyUserAccess(req, req.params.userId)) {
-        //     return res.status(403).json({ error: 'Forbidden' });
-        // }
+// Remove the temporary debugging code and reinstate withAuth
+router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    // Restore the use of req.auth and access verification
+    console.log(`[Reading History Route] Handler entered for user: ${req.params.userId}`); // Log entry
 
-        // const userId = req.auth!.uid; 
-        const userId = req.params.userId; // Use userId directly from params for now
-        console.log(`[Reading History Route] >>> Request received for user (auth bypassed): ${userId}`); // <<< ADDED LOG
-        const history = await ReadingHistory.find({ userId })
+    if (!verifyUserAccess(req, req.params.userId)) {
+        console.log(`[Reading History Route] Access denied for user: ${req.params.userId}`);
+        return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    try {
+        const userId = req.auth!.uid; // Use req.auth again
+        console.log(`[Reading History Route] Access verified for user: ${userId}. Fetching history...`);
+
+        const history = await ReadingHistory.find({ userId }) // Use userId from auth
             .sort({ timestamp: -1 })
             .limit(100)
             .lean();
-        console.log(`[Reading History Route] <<< Found ${history.length} history items for user: ${userId}`); // <<< ADDED LOG
-
+        
+        console.log(`[Reading History Route] Found ${history.length} history items for user: ${userId}. Sending response.`);
+        
         res.json({ success: true, history });
     } catch (error) {
-        console.error('Error getting reading history:', error);
+        const userIdForError = req.auth?.uid || req.params.userId; // Get ID for logging
+        console.error(`[Reading History Route] Error fetching reading history for user ${userIdForError}:`, error);
         next(error);
     }
-});
+}));
 
 // Save reading history entry
 router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
@@ -434,21 +440,28 @@ router.delete('/:userId/reading-history', withAuth(async (req: AuthenticatedRequ
 // Get user bookmarks
 router.get('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
+        const userId = req.auth!.uid; // Get userId early for logging
+        console.log(`[Bookmarks Route] >>> Handler started for user: ${userId}`); // <<< Existing LOG
+
         if (!verifyUserAccess(req, req.params.userId)) {
+            console.log(`[Bookmarks Route] Access denied for user: ${userId}`); // Optional: Log denial
             return res.status(403).json({ error: 'Forbidden' });
         }
+        console.log(`[Bookmarks Route] Access verified for user: ${userId}. Proceeding to DB query...`); // <<< ADDED LOG
 
-        const userId = req.auth!.uid;
+        // const userId = req.auth!.uid; // Original position - Now moved up
         // Find user preferences, lean for performance as we only need bookmarks
         const userPrefsDoc = await UserPreferences.findOne({ userId }).lean<IUserPreferencesDocument>();
 
         // Safely access bookmarks, defaulting to an empty array
         const bookmarks = userPrefsDoc?.preferences?.bookmarks || [];
+        console.log(`[Bookmarks Route] Found ${bookmarks.length} bookmarks for user: ${userId}. Sending response.`); // <<< ADDED LOG
 
         res.json(bookmarks); // Always return an array
 
     } catch (error) {
-        console.error('Error getting bookmarks:', error);
+        const userIdForError = req.auth?.uid || req.params.userId; // Get ID for logging
+        console.error(`[Bookmarks Route] Error getting bookmarks for user ${userIdForError}:`, error);
         next(error);
     }
 }));

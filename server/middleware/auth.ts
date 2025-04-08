@@ -72,11 +72,12 @@ export const withAuth = (handler?: (req: AuthenticatedRequest, res: Response, ne
       }
     } catch (error: any) {
       console.error('[withAuth] Token verification caught error:', error.message);
-      console.error(`[withAuth] Sending 401 Unauthorized (Verification Error: ${error.message || 'Invalid token'}).`);
-      res.status(401).json({
-          error: 'Unauthorized',
-          details: error.message || 'Invalid token',
-      });
+      console.error(`[withAuth] Passing error to global handler (Verification Error: ${error.message || 'Invalid token'}).`);
+      // Pass the error to the next middleware (global error handler)
+      // Create a new error object to ensure status code is handled correctly if needed
+      const authError = new Error(error.message || 'Invalid token') as any;
+      authError.status = 401; // Set a status property for the global handler
+      next(authError); // Pass the error to the global error handler
     }
   };
 };
