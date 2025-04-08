@@ -738,6 +738,8 @@ router.post('/tafsir/chat',
             5. Practical applications and lessons
             6. Modern relevance and implementation
 
+            **IMPORTANT: When explaining a specific verse, first focus strictly on the meaning and direct implications of the verse's text itself. Then, separately, discuss relevant rulings, context, or practices associated with its recitation or application.**
+
             Format your response in a clear, structured manner with appropriate headings and citations.
             Always provide authentic sources for interpretations and hadith.`,
             userMessage: `Please provide a detailed tafsir explanation for Surah ${surah}, Verse ${verse} addressing this specific question: ${question}

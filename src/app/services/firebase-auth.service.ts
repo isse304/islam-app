@@ -188,7 +188,7 @@ export class FirebaseAuthService {
     private snackBar: MatSnackBar,
     private injector: Injector // Inject Injector
   ) {
-    console.log('[AuthService] Constructor called');
+    // console.log('[AuthService] Constructor called');
     // Initialize authPromise but don't await here
     this.authPromise = this.initializeAuth();
     this.setupAuthStateListener();
@@ -300,7 +300,7 @@ export class FirebaseAuthService {
 
   // Handles processing after a user is signed in (Firebase Auth level)
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<AppUser | null> {
-    console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
+    // console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
     const startTime = Date.now();
     let appUser: AppUser | null = null;
 
@@ -2004,12 +2004,12 @@ export class FirebaseAuthService {
     try {
       const user = this.getCurrentUser();
       if (!user) {
-        console.log('[getReadingHistoryInternal] No current user, returning empty history');
+        // console.log('[getReadingHistoryInternal] No current user, returning empty history');
         return [];
       }
 
-      console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
-      console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
+      // console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
+      // console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
 
       // Create AbortController for the request
       const abortController = new AbortController();
@@ -2026,13 +2026,13 @@ export class FirebaseAuthService {
         // Clear timeout since request completed
         clearTimeout(timeoutId);
 
-        console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
+        // console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
         
         if (response && response.success && Array.isArray(response.history)) {
-          console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
+          // console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
           return response.history;
         } else {
-          console.warn('[getReadingHistoryInternal] Invalid response format:', response);
+          // console.warn('[getReadingHistoryInternal] Invalid response format:', response);
           return [];
         }
       } catch (error: any) {
@@ -2101,21 +2101,21 @@ export class FirebaseAuthService {
   // --- Initialization ---
   private async initializeAuth(): Promise<Auth> {
     if (this.isAuthInitialized) {
-        console.log('[initializeAuth] Auth already initialized.');
+        // console.log('[initializeAuth] Auth already initialized.');
         // Return the existing promise which resolves to the Auth instance
         return getAuth(initializeApp(environment.firebase)); 
     }
-    console.log('[initializeAuth] Initializing Firebase Auth...');
+    // console.log('[initializeAuth] Initializing Firebase Auth...');
     try {
         // Initialize Firebase App (idempotent)
         const app = initializeApp(environment.firebase);
         // Get Auth instance
         const auth = getAuth(app);
         this.isAuthInitialized = true;
-        console.log('[initializeAuth] Firebase Auth initialized successfully.');
+        // console.log('[initializeAuth] Firebase Auth initialized successfully.');
         return auth; // Resolve the promise with the Auth instance
     } catch (error) {
-        console.error('[initializeAuth] Error initializing Firebase:', error);
+        // console.error('[initializeAuth] Error initializing Firebase:', error);
         // Mark as initialized even on error to prevent retries
         this.isAuthInitialized = true; 
         // Reject the promise

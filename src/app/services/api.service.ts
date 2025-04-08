@@ -349,8 +349,6 @@ export class ApiService {
 
     while (attempt <= maxRetries) {
       try {
-        console.log(`[ApiService makeRequest] >>> ABOUT TO EXECUTE http.${method} for ${this.baseUrl}${endpoint} (Attempt ${attempt}/${maxRetries})`);
-        
         // Get fresh token for each attempt
         const token = await this.authService.getToken();
         if (!token) {
@@ -374,7 +372,7 @@ export class ApiService {
           ? await firstValueFrom(this.http.get(`${this.baseUrl}${endpoint}`, requestOptions))
           : await firstValueFrom(this.http.post(`${this.baseUrl}${endpoint}`, body, requestOptions));
 
-        console.log(`[ApiService makeRequest] <<< FINISHED http.${method} for ${this.baseUrl}${endpoint}`);
+        // console.log(`[ApiService makeRequest] <<< FINISHED ${method} for ${this.baseUrl}${endpoint}`);
         return response;
 
       } catch (error: any) {
@@ -391,7 +389,7 @@ export class ApiService {
         if (error.status >= 500 || !error.status) {
           if (attempt < maxRetries) {
             const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
-            console.log(`[ApiService makeRequest] Attempt ${attempt} failed, retrying in ${delay}ms...`);
+            // console.log(`[ApiService makeRequest] Attempt ${attempt} failed, retrying in ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
             attempt++;
             continue;
@@ -399,7 +397,7 @@ export class ApiService {
         }
         
         // If we get here, either we've exhausted retries or it's an error we don't retry
-        console.error(`[ApiService makeRequest] Request failed after ${attempt} attempt(s):`, error);
+        // console.error(`[ApiService makeRequest] Request failed after ${attempt} attempt(s):`, error);
         throw error;
       }
     }
