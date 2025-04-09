@@ -1738,30 +1738,35 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   public goToVerse(verseNumber: number, surahNumber?: number): void {
-    if (surahNumber && surahNumber !== this.currentSurah) {
+    this.isMushafView = false; // Ensure translation view is active
+    const targetSurah = surahNumber || this.currentSurah;
+
+    if (targetSurah !== this.currentSurah) {
       // Need to load the new surah first
-      this.loadSurah(surahNumber).subscribe({
+      this.loadSurah(targetSurah).subscribe({
         next: () => {
-          // Update currentSurah and selectedSurah AFTER loading is successful
-          this.currentSurah = surahNumber;
-          this.selectedSurah = surahNumber;
-          this.currentVerse = verseNumber; // Set currentVerse before scrolling
+          // Update state AFTER loading is successful
+          this.currentSurah = targetSurah;
+          this.selectedSurah = targetSurah; // <-- Update dropdown selection
+          this.currentVerse = verseNumber;
           this.updateUrlParams(); // Update URL
           // Use setTimeout to ensure DOM is updated after surah load
-          setTimeout(() => this.scrollToVerse(verseNumber), 150); 
+          setTimeout(() => this.scrollToVerse(verseNumber), 150);
         },
         error: (err) => {
-          console.error(`Error loading Surah ${surahNumber} before scrolling:`, err);
+          console.error(`Error loading Surah ${targetSurah} before scrolling:`, err);
+          this.toastService.showError(`Failed to load Surah ${targetSurah}`);
         }
       });
     } else {
-      // Surah is already loaded, just scroll
-      this.currentVerse = verseNumber; // Update current verse
+      // Surah is already loaded, just update verse and scroll
+      this.currentVerse = verseNumber;
       this.updateUrlParams(); // Update URL
-      // Use setTimeout just in case, though likely less critical here
-      setTimeout(() => this.scrollToVerse(verseNumber), 50); 
+      // Use setTimeout just in case
+      setTimeout(() => this.scrollToVerse(verseNumber), 50);
     }
-    this.showSuggestions = false;
+    this.showSuggestions = false; // Hide search suggestions if open
+    this.changeDetector.markForCheck(); // Ensure UI updates
   }
 
   // Audio control methods
@@ -2224,26 +2229,33 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   goToHistoryEntry(entry: { surah: number, verse: number }): void {
-    if (entry.surah === this.currentSurah) {
-      // Surah is already loaded, just scroll
-      this.currentVerse = entry.verse; // Update current verse
-      this.updateUrlParams(); // Update URL
-      setTimeout(() => this.scrollToVerse(entry.verse), 50); // Short delay
-    } else {
+    this.isMushafView = false; // Ensure translation view is active
+    const targetSurah = entry.surah;
+    const targetVerse = entry.verse;
+
+    if (targetSurah !== this.currentSurah) {
       // Load the new surah first
-      this.loadSurah(entry.surah).subscribe({
+      this.loadSurah(targetSurah).subscribe({
         next: () => {
-          this.currentSurah = entry.surah;
-          this.selectedSurah = entry.surah;
-          this.currentVerse = entry.verse;
+          // Update state AFTER loading is successful
+          this.currentSurah = targetSurah;
+          this.selectedSurah = targetSurah; // <-- Update dropdown selection
+          this.currentVerse = targetVerse;
           this.updateUrlParams(); // Update URL
           // Longer delay to allow DOM update after surah load
-          setTimeout(() => this.scrollToVerse(entry.verse), 150); 
+          setTimeout(() => this.scrollToVerse(targetVerse), 150);
         },
         error: (err) => {
-          console.error(`Error loading Surah ${entry.surah} from history:`, err);
+          console.error(`Error loading Surah ${targetSurah} from history:`, err);
+          this.toastService.showError(`Failed to load Surah ${targetSurah}`);
         }
       });
+    } else {
+      // Surah is already loaded, just update verse and scroll
+      this.currentVerse = targetVerse;
+      this.updateUrlParams(); // Update URL
+      setTimeout(() => this.scrollToVerse(targetVerse), 50); // Short delay
     }
+    this.changeDetector.markForCheck(); // Ensure UI updates
   }
 }

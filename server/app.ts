@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction, ErrorRequestHandler, RequestHandler } from 'express';
+import bodyParser from 'body-parser';
 import tafsirRoutes from './routes/tafsir';
 import userRoutes from './routes/user';
 import dotenv from 'dotenv';
@@ -56,11 +57,17 @@ app.use((req, res, next) => {
 });
 
 // --- IMPORTANT: Define the Stripe webhook route FIRST with RAW body parser ---
-app.post('/api/subscription/webhook', 
-  // Apply raw body parser ONLY to this route
-  express.raw({ type: 'application/json' }), 
+app.post('/api/subscription/webhook',
+  // Use bodyParser.raw directly for this route
+  bodyParser.raw({ type: 'application/json' }),
   async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    console.log('[Webhook Handler Start] Processing raw webhook request...'); // Add log
+    // Log the type of req.body immediately upon entry
+    console.log(`[Webhook Handler Entry] req.body type: ${req.body instanceof Buffer ? 'Buffer' : typeof req.body}`);
+    if (!(req.body instanceof Buffer)) {
+      console.error('[Webhook Handler Entry] ERROR: req.body is NOT a Buffer. Body content:', JSON.stringify(req.body).substring(0, 200) + '...');
+    }
+
+    console.log('[Webhook Handler Start] Processing raw webhook request...'); // Existing log
     try {
       // Temporarily import or get the service instance. Refactor needed for cleaner approach.
       const { StripeService } = await import('./services/stripe.service');
@@ -80,8 +87,8 @@ app.post('/api/subscription/webhook',
 
 // --- Apply JSON and URL-encoded body parsers AFTER the webhook route ---
 // --- These will apply to all subsequent routes                   ---
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ limit: '10mb', extended: true }));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // --- Configure CORS, Security, Compression, Rate Limiting, Session AFTER body parsers ---
 // Re-add allowedOrigins definition
