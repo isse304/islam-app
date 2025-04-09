@@ -1,0 +1,184 @@
+[33m3bce799[m[33m ([m[1;36mHEAD[m[33m)[m fix 20
+[33m1e1434f[m fix 19
+[33m67bfcf8[m fix 18!!!!
+[33m95c3423[m fix 17
+[33ma44f108[m landing 3
+[33m1379302[m landing 2
+[33me2d6258[m landing
+[33mdda31cc[m fix 16
+[33m56fadd7[m fix 15
+[33m9610ca2[m fix 14
+[33m2a040b4[m fix 13
+[33m15bc285[m fix 12
+[33m81f9255[m fix 11
+[33mc8750a7[m fix 10
+[33m9e2d732[m fix 9
+[33m17322ed[m fix 8
+[33mf3dccf1[m fix 7
+[33mcf36896[m fix 6
+[33me739d36[m fix 5
+[33mf24836e[m fix 4
+[33m3538f79[m fix3
+[33m383eec0[m fix 2
+[33ma354861[m fixxxxx
+[33m7493488[m fix 2
+[33m5696ae0[m fixing major launch issue
+[33m6a47f09[m fixed launch issue
+[33med3a220[m ok ready now
+[33m535e4e9[m change 6
+[33ma7d206f[m change 5 (4.0 turbo)
+[33mf47a9fb[m change 4
+[33m662d56a[m another change (3)
+[33m9ac93f6[m last minute update
+[33m9287d53[m last second ai tafsir chat fix
+[33m029f322[m finally ready.Yayy
+[33me5df767[m almost ready now
+[33mae54fa8[m more changes
+[33md72a851[m almost ready to live-just removing logs is left
+[33mc50d89a[m Fix reading history fetch and apply stashed changes
+[33m670e96a[m fixed null injector
+[33me4fae8f[m fixed service worker module error
+[33m011bd63[m removed console logs
+[33m758000e[m fixed mailchimp module error
+[33m1c32875[m added mailchimp for welcome emails
+[33m538e22f[m final deploy ready
+[33m1792c16[m added email verification
+[33m5e52e11[m refining attempt 6
+[33m7f9b88e[m refining attempt 5
+[33m77faf85[m refining attempt 4
+[33m4648745[m refining attempt 3
+[33me3e79e1[m refining attempt 2
+[33m22031a6[m tafsir chat now works, now refining further
+[33mdd8c128[m attempt 7
+[33mbd625e7[m attempt 6
+[33m1fba08a[m attempt 5 at fixing ai tafsir chat
+[33m1364c6f[m attempt 4 trying to fix tafsir chat
+[33ma99df81[m deployed cloud function and attemp 4 at fixing tafsir chat
+[33m8a12041[m fixed email button link
+[33m49b6387[m trying to fix tafsir chat too many requests attempt 1
+[33mcd0c626[m attempt 3 fix for email not sending issue
+[33mf89acd4[m reverted back from ccokie parser
+[33ma2979b7[m attempt 9
+[33m9c81b5f[m attempt 8
+[33m115626e[m attempt 7
+[33m16f728b[m attempt6
+[33mdd3847e[m attempt 5
+[33m0a8078a[m attempt 4
+[33m4a2b8d5[m removed prebuild command
+[33mc08dbd8[m attempt 3 to fix rate limiter
+[33mbbdb5ab[m attempt 2 to fix rate limiter
+[33m0bf6999[m fixed rate limiter issues
+[33meff43ac[m attempt 2 at fixing timing issue with stripe
+[33mc6a25f1[m attempt to fix firebase metadata not being added
+[33mcbe4c15[m fixed rate limiter
+[33mdcd1fb6[m added some logging
+[33ma4133e3[m removed header too
+[33m3d38fe3[m added landing back
+[33mf68d888[m added test mode fix for stripe
+[33m74391b3[m fixed copy files issue
+[33m3e33fb1[m fixed deploy issues
+[33mf39d0b2[m almost ready for full deploy
+[33m3a73dca[m working app pre npm audit fix --force
+[33ma1a6f6d[m fixed small error
+[33m84aa819[m fixed early access sign up
+[33mdb8f551[m fixed any type issues
+[33mdb577b2[m ready for final deploy (soon)
+[33m9887474[m fixed usage and dua emotional search
+[33m9f420e1[m dua emotional search, ai tafsir chat, and dua insights 100% working
+[33m4a072f2[m ai tafsir chat complete
+[33mde4db9a[m landing page visible only for now until deployment
+[33m88cee13[m ai endpoints are fully functional, creation and application of dua insights database-successful
+[33meb64f6b[m tweaked the landing page
+[33m925038a[m updated landing page redirect
+[33m8c3c622[m fixed dependencies not installing
+[33m7ea1a1f[m made deployment easier
+[33m3164d46[m fixed issues
+[33mced1bde[m fixed small issues
+[33m133dfde[m fixed ts config
+[33m7dae271[m fixed the build issues
+[33m42f7c80[m still more build errors yet
+[33m4b98d7c[m fixed yet more build issues
+[33m150fd67[m still more build errors
+[33m4f0a138[m more build issues
+[33mf62d1db[m fixed more build issues
+[33m7165ae0[m fixed build errors
+[33m7b97f55[m added some small tweaks
+[33mbe7a5c1[m made a lot of changes including landing page
+[33m986108f[m fixed alot of issues.(best working state pre stripe)
+[33m4ed2314[m fixed many issues today
+[33mca49203[m fixed more build issues again
+[33md3e792d[m fixed dependency issues
+[33mc4ffd55[m more build issues
+[33m50de8df[m more build issues resolved
+[33md5750c8[m fixed more build issues
+[33m1727963[m fixed build issues
+[33m74a9757[m fixed compile issues
+[33m0dfbf85[m removed unnecessary import
+[33m4b7ba30[m fix deployment issues
+[33m190e6ff[m fixed alot of issues
+[33mdcee2de[m trying to fix auth and quran reader 2
+[33m0466af5[m trying to fix quran reader and auth
+[33m7149e33[m fixed quran reader
+[33maae84d1[m fixed font and auth issues
+[33m97b10a4[m fixed csp and auth issues
+[33ma933560[m fixed images not loading and clerk
+[33m7cb913f[m fixed assets issues
+[33m0dd2505[m fixed routes
+[33m03c96b1[m fixed contact page
+[33m7a63b30[m fixed @ symbol
+[33m6f4a7e9[m fixed email service import
+[33mee7e172[m made various changes
+[33ma78f5c8[m fixed quran reader not working when logged in
+[33mc5a9f70[m fixed, quran reader, signout
+[33m35857c6[m updated api urls in cors policy
+[33m3321368[m fixed multiple cors issues
+[33mdbd5297[m fixed clerk loading issue
+[33mc79a0d8[m fixed csp issues
+[33md07d4a5[m fixed clerk issues
+[33mb409fec[m fixed clerk initialization issues
+[33m99e617b[m Fix build output path and CSP issues
+[33m566e3e4[m "Simplify build process for Render"
+[33me5b8e1d[m "Fix build scripts for Render deployment"
+[33md780617[m Add cross-env as direct dependency
+[33mc30821d[m Fix Angular CLI not found issue with render-build script
+[33m329fd58[m Fix ng not found and add dotenv support
+[33m040e1c6[m using web service instead of static
+[33m432f5f9[m trying express web server
+[33mffe9e43[m Switch to Express server for frontend
+[33m2fc8af3[m added base href /
+[33m2ed5b56[m refactored build path
+[33md7e15f7[m fixed publish path url
+[33m297a6d7[m corrected build path
+[33m8045153[m used updated base href
+[33m7330c53[m changes to static render type
+[33mca57404[m fix: update build configuration for Angular 18"
+[33m2790eaf[m "Fix static site configuration and build settings"
+[33me892a4b[m Update Clerk initialization to use recommended script tag
+[33m02a0899[m "Fix Clerk initialization with proper script URL and add loading state
+[33m01b98cd[m Update region, CORS configuration, and API URL
+[33m33fa230[m Update environment configurations and dependencies
+[33ma447535[m Added subscription features, Stripe integration, and security updates
+[33m092d490[m feat: add development environment support
+[33m1abc64e[m fix: update Clerk frontend API URL to clerk.nura-ai.app
+[33m6ddf9c1[m fixed clerk frontend api
+[33mab6c91c[m fix: add error handling and initialization logging
+[33m7a0f70b[m fix: update Angular output path to match Render configuration
+[33m5702699[m fixed max kb issue
+[33m6d423d4[m fix: update build configuration and environment variables for production
+[33m7576ba3[m fixed yaml
+[33m5800ff8[m fixed another yaml issue and index.html issue
+[33m00bcc02[m updated yaml
+[33m220f128[m ready for front end deployment
+[33m79226eb[m fixed the domain environment error
+[33m69d56e8[m added connect mongo
+[33mdea1226[m fixed more deployment issues
+[33m84ac92c[m fixed deployment errors
+[33mee355ba[m ready for deployment
+[33m5c0c961[m Update .env
+[33m2593c8c[m Update .env
+[33m61cde80[m fixed ai in dua, added state management
+[33ma59b460[m[33m ([m[1;31morigin/clean-branch[m[33m, [m[1;32mclean-branch[m[33m)[m Remove Quran pages from git tracking
+[33ma3e1a18[m Update .gitignore to exclude node_modules
+[33m28aed4c[m Added Authentication
+[33m79b3fcd[m NuraApp initial commit
+[33md13425b[m initial commit
