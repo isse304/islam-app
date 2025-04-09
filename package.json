@@ -4,7 +4,7 @@
   "description": "Islamic Learning App with AI Features",
   "scripts": {
     "ng": "ng",
-    "start": "npx serve -s dist/islam-app -l 3000",
+    "start": "cross-env PORT=%PORT% npx serve -s dist/islam-app -l %PORT%",
     "prebuild": "npm install --legacy-peer-deps",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
@@ -66,7 +66,7 @@
     "@types/marked": "6.0.0",
     "@types/morgan": "1.9.9",
     "copyfiles": "2.4.1",
-    "cross-env": "7.0.3",
+    "cross-env": "^7.0.3",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",

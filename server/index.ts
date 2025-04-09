@@ -98,7 +98,8 @@ app.options('*', cors(corsOptions));
 
 // Configure timeouts
 app.use((req, res, next) => {
-  const timeout = 30000; // 30 seconds
+  // Increase timeout for long-running requests
+  const timeout = 120000; // 120 seconds
   const timeoutHandler = () => {
     const err: any = new Error('Request timeout');
     err.status = 504;
@@ -117,6 +118,17 @@ app.use((req, res, next) => {
 
   // Clear the timer when the response is sent
   res.on('finish', () => {
+    clearTimeout(timer);
+  });
+
+  // Add error handling for aborted requests
+  req.on('error', (error) => {
+    clearTimeout(timer);
+    next(error);
+  });
+
+  // Handle client disconnects
+  req.on('close', () => {
     clearTimeout(timer);
   });
 
@@ -145,18 +157,10 @@ app.use(helmet({
   }
 }));
 
-// Configure rate limiting
-interface RateLimitInfo {
-  resetTime: Date;
-}
-
-interface RateLimitRequest extends Request {
-  rateLimit: RateLimitInfo;
-}
-
+// Configure rate limiting with higher limits
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 1000 : 100, // limit each IP
+  max: process.env.NODE_ENV === 'production' ? 2000 : 200, // Increased limits
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -271,9 +275,9 @@ const startServer = async () => {
         logger.info('MongoDB connected');
 
         // Start server
-        const PORT = process.env['PORT'] || 3000;
-        app.listen(PORT, () => {
-            // console.log(`✅ Server running on port ${PORT}`);
+        const PORT = parseInt(process.env.PORT || '3000', 10);
+        app.listen(PORT, '0.0.0.0', () => {
+            logger.info(`Server running on port ${PORT}`);
         });
     } catch (error) {
         logger.error('Failed to start server:', error);
