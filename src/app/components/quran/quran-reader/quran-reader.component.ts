@@ -4,7 +4,7 @@ import { Component, OnInit, OnDestroy, HostListener, Input, Output, EventEmitter
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
-import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject, debounceTime } from 'rxjs';
+import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject, debounceTime, EMPTY } from 'rxjs';
 import { takeUntil, filter } from 'rxjs/operators'; // Add takeUntil and filter
 import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -762,81 +762,49 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     
     const bookmark = `${this.currentSurah}:${verseNumber}`;
     const currentBookmarks = Array.isArray(this.bookmarks) ? this.bookmarks : [];
-    const index = currentBookmarks.indexOf(bookmark);
+    const isBookmarked = currentBookmarks.includes(bookmark);
     
-    if (index === -1) {
-        // Update local state immediately
-        this.bookmarks = [...currentBookmarks, bookmark];
-        
-        // Save to localStorage immediately
-        try {
-            const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-            prefs.bookmarks = this.bookmarks;
-            localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-        } catch (error) {
-            console.warn('Error saving to localStorage:', error);
-        }
-        
-        // Add bookmark to server
-        this.authService.addBookmark(bookmark).subscribe({
-            next: (response: BookmarkResponse) => {
-                if (response.success) {
-                    this.bookmarks = response.bookmarks;
-                    this.toastService.show('Bookmark added');
-                    // Update preferences after successful bookmark addition
-                    this.debouncedSavePreferences();
-                } else {
-                    // Revert local changes if server fails
-                    this.bookmarks = currentBookmarks;
-                    this.revertLocalStorageBookmarks(currentBookmarks);
-                    this.toastService.show(response.message || 'Failed to add bookmark');
-                }
-            },
-            error: (error: Error) => {
-                // Revert local changes on error
-                this.bookmarks = currentBookmarks;
-                this.revertLocalStorageBookmarks(currentBookmarks);
-                console.error('Error adding bookmark:', error);
-                this.toastService.show('Failed to add bookmark');
-            }
-        });
-    } else {
-        // Update local state immediately
-        this.bookmarks = currentBookmarks.filter(b => b !== bookmark);
-        
-        // Save to localStorage immediately
-        try {
-            const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-            prefs.bookmarks = this.bookmarks;
-            localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-        } catch (error) {
-            console.warn('Error saving to localStorage:', error);
-        }
-        
-        // Remove bookmark from server
-        this.authService.removeBookmark(bookmark).subscribe({
-            next: (response: BookmarkResponse) => {
-                if (response.success) {
-                    this.bookmarks = response.bookmarks;
-                    this.toastService.show('Bookmark removed');
-                    // Update preferences after successful bookmark removal
-                    this.debouncedSavePreferences();
-                } else {
-                    // Revert local changes if server fails
-                    this.bookmarks = currentBookmarks;
-                    this.revertLocalStorageBookmarks(currentBookmarks);
-                    this.toastService.show(response.message || 'Failed to remove bookmark');
-                }
-            },
-            error: (error: Error) => {
-                // Revert local changes on error
-                this.bookmarks = currentBookmarks;
-                this.revertLocalStorageBookmarks(currentBookmarks);
-                console.error('Error removing bookmark:', error);
-                this.toastService.show('Failed to remove bookmark');
-            }
-        });
+    // Optimistically update UI
+    this.bookmarks = isBookmarked 
+      ? currentBookmarks.filter(b => b !== bookmark)
+      : [...currentBookmarks, bookmark];
+    
+    // Save to localStorage
+    try {
+      const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+      prefs.bookmarks = this.bookmarks;
+      localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
+    } catch (error) {
+      console.warn('Error saving to localStorage:', error);
     }
+    
+    // Call appropriate server method
+    const serverAction = isBookmarked 
+      ? this.authService.removeBookmark(bookmark)
+      : this.authService.addBookmark(bookmark);
+    
+    serverAction.pipe(
+      take(1), // Take only one emission
+      catchError(error => {
+        console.error('Error updating bookmark:', error);
+        // Revert local changes on error
+        this.bookmarks = currentBookmarks;
+        this.revertLocalStorageBookmarks(currentBookmarks);
+        this.toastService.show('Failed to update bookmark');
+        return EMPTY;
+      })
+    ).subscribe(response => {
+      if (response.success) {
+        this.bookmarks = response.bookmarks;
+        this.toastService.show(isBookmarked ? 'Bookmark removed' : 'Bookmark added');
+        this.debouncedSavePreferences();
+      } else {
+        // Revert local changes if server fails
+        this.bookmarks = currentBookmarks;
+        this.revertLocalStorageBookmarks(currentBookmarks);
+        this.toastService.show(response.message || 'Failed to update bookmark');
+      }
+    });
   }
 
   private revertLocalStorageBookmarks(bookmarks: string[]) {
@@ -852,44 +820,36 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   private loadBookmarks(): void {
     // First try to load from localStorage
     try {
-        const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-        if (Array.isArray(prefs.bookmarks)) {
-            this.bookmarks = prefs.bookmarks;
-        }
+      const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+      if (Array.isArray(prefs.bookmarks)) {
+        this.bookmarks = prefs.bookmarks;
+      }
     } catch (error) {
-        console.warn('Error loading bookmarks from localStorage:', error);
+      console.warn('Error loading bookmarks from localStorage:', error);
+      this.bookmarks = [];
     }
 
-    // Then load from server and merge with debouncing
-    (this.authService.bookmarks$ as Observable<string[] | undefined>).pipe(
-        // Add debounceTime to prevent rapid requests
-        debounceTime(300),
-        // Take only until component is destroyed
-        takeUntil(this.destroy$)
-    ).subscribe({
-        next: (serverBookmarks) => {
-            if (Array.isArray(serverBookmarks)) {
-                // Merge with existing bookmarks to avoid losing local changes
-                const existingBookmarks = Array.isArray(this.bookmarks) ? this.bookmarks : [];
-                this.bookmarks = [...new Set([...existingBookmarks, ...serverBookmarks])];
-                
-                // Save merged state back to localStorage
-                try {
-                    const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
-                    prefs.bookmarks = this.bookmarks;
-                    localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
-                } catch (error) {
-                    console.warn('Error saving merged bookmarks to localStorage:', error);
-                }
-            }
-        },
-        error: (error: Error) => {
-            console.error('Error loading bookmarks from server:', error);
-            // Keep existing bookmarks from localStorage on server error
-            if (!Array.isArray(this.bookmarks)) {
-                this.bookmarks = [];
-            }
+    // Then load from server once, with proper error handling
+    this.authService.getBookmarks().pipe(
+      take(1), // Take only one emission
+      catchError(error => {
+        console.error('Error loading bookmarks from server:', error);
+        return of([]); // Return empty array on error
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe(serverBookmarks => {
+      if (Array.isArray(serverBookmarks)) {
+        this.bookmarks = serverBookmarks; // Use server as source of truth
+        
+        // Update localStorage with server data
+        try {
+          const prefs = JSON.parse(localStorage.getItem('quran_reader_preferences') || '{}');
+          prefs.bookmarks = this.bookmarks;
+          localStorage.setItem('quran_reader_preferences', JSON.stringify(prefs));
+        } catch (error) {
+          console.warn('Error saving bookmarks to localStorage:', error);
         }
+      }
     });
   }
 

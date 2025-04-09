@@ -22,6 +22,7 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
+import bodyParser from 'body-parser';
 // import morgan from 'morgan'; // COMMENTED OUT
 // import cookieParser from 'cookie-parser'; // COMMENTED OUT
 
@@ -64,48 +65,43 @@ const allowedOrigins = [
   'https://nura-ai-frontend.onrender.com' // Frontend on render.com
 ];
 
-const corsOptions = {
-  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
-    // Allow requests with no origin (like mobile apps, curl requests, etc)
-    if (!origin) {
-      callback(null, true);
-      return;
-    }
-
-    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
-      callback(null, true);
-    } else {
-      logger.warn(`[CORS] Blocked request from non-allowed origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 86400, // 24 hours
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-
-// Apply CORS middleware BEFORE other middleware
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
-
-// Add custom CORS error handling
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  if (err.message === 'Not allowed by CORS') {
-    const origin = req.headers.origin;
-    logger.error(`[CORS Error] ${origin} not allowed`);
-    return res.status(403).json({
-      error: 'Forbidden',
-      message: 'CORS policy violation',
-      origin: origin
+// CORS configuration
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  logger.info('[CORS Check]', {
+    origin,
+    method: req.method,
+    path: req.path,
+    headers: req.headers,
+    allowedOrigins,
+    isDevelopment: process.env.NODE_ENV === 'development'
+  });
+  
+  // Check if origin is allowed
+  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development')) {
+    logger.info('[CORS] Setting headers for origin:', origin);
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+  } else {
+    logger.warn('[CORS] Origin not allowed:', {
+      origin,
+      allowedOrigins,
+      isDevelopment: process.env.NODE_ENV === 'development'
     });
   }
-  next(err);
+
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    logger.info('[CORS] Handling OPTIONS preflight request');
+    res.sendStatus(200);
+    return;
+  }
+
+  next();
 });
 
 // Configure timeouts with longer duration for production
@@ -116,9 +112,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure body parser with increased limits
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Parse JSON bodies
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Configure compression
 app.use(compression());
@@ -168,6 +164,32 @@ const sessionConfig = {
 } as const;
 
 app.use(session(sessionConfig));
+
+// Add request logging before routes
+app.use((req, res, next) => {
+  const startTime = Date.now();
+  
+  logger.info('[Request Start]', {
+    method: req.method,
+    path: req.path,
+    origin: req.headers.origin,
+    userAgent: req.headers['user-agent'],
+    timestamp: new Date().toISOString()
+  });
+
+  res.on('finish', () => {
+    const duration = Date.now() - startTime;
+    logger.info('[Request Complete]', {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      duration: `${duration}ms`,
+      timestamp: new Date().toISOString()
+    });
+  });
+
+  next();
+});
 
 // API Routes
 app.use('/api/ai', aiRouter.default || aiRouter);

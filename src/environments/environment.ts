@@ -3,7 +3,7 @@ import { Environment } from './environment.interface';
 export const environment: Environment = {
   production: false,
   apiUrl: 'http://localhost:3000',
-  openaiApiKey: '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',
+  openaiApiKey: undefined,
   elevenLabsApiKey: undefined,
   sttApiKey: undefined,
   firebase: {
@@ -21,10 +21,9 @@ export const environment: Environment = {
     region: 'us-east-1'
   },
   stripeConfig: {
-    publishableKey: 'pk_live_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
+    publishableKey: 'pk_test_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
     priceId: 'price_1R1SKuGYeNehzlUZPlVwt392'
   },
-  // List of admin user IDs (moved from .env to environment.ts for client-side access)
   adminUsers: ['test-admin-user']
 }; 
 
