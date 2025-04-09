@@ -6,15 +6,15 @@ import { NoAuthGuard } from './guards/no-auth.guard';
 
 
 export const routes: Routes = [
-  // Make the root path load the LandingComponent directly
-  // { path: '', redirectTo: '/home', pathMatch: 'full' }, // Comment out old redirect
-  { path: '', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent) }, // Load LandingComponent at root
+  // Redirect empty path to a protected route (e.g., home)
+  // AuthGuard will handle redirecting to login if needed
+  { path: '', redirectTo: '/home', pathMatch: 'full' },
+  // { path: '', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent) }, // Comment out landing page route
 
   // Remove the old landing page route
   // { path: 'landing', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent), canActivate: [NoAuthGuard] },
 
-  // Comment out Auth routes
-  /*
+  // Auth routes (login, signup, etc.) - accessible only when not logged in
   {
     path: 'auth',
     // Use the AuthModule to load children routes
@@ -22,10 +22,8 @@ export const routes: Routes = [
     // Reinstate the NoAuthGuard
     canActivate: [NoAuthGuard]
   },
-  */
 
-  // Comment out Main application routes
-  /*
+  // Main application routes - accessible only when logged in
   {
     path: 'home',
     loadComponent: () => import('./components/home/home.component').then(m => m.HomeComponent),
@@ -52,15 +50,11 @@ export const routes: Routes = [
     loadComponent: () => import('./auth/profile/profile.component').then(m => m.ProfileComponent),
     canActivate: [authGuardFn],
   },
-  */
-  // Keep the subscription route active for success/thank you page
   {
     path: 'subscription',
     loadComponent: () => import('./components/subscription/subscription.component').then(m => m.SubscriptionComponent),
     // Allow access regardless of auth state for upgrades/management
   },
-  // Comment out other routes
-  /*
   {
     path: 'contact',
     loadComponent: () => import('./components/contact/contact.component').then(m => m.ContactComponent),
@@ -70,7 +64,6 @@ export const routes: Routes = [
     path: 'about',
     loadComponent: () => import('./components/about/about.component').then(m => m.AboutComponent)
   },
-  */
   /*
   {
     path: 'thank-you',
@@ -79,7 +72,8 @@ export const routes: Routes = [
   },
   */
 
-  // Catch-all route: Redirect unknown routes to the landing page
-  { path: '**', redirectTo: '' },
-  // { path: '**', redirectTo: '/home' }, // Comment out old wildcard redirect
+  // Catch-all route (optional: redirect to home or login based on auth)
+  // Redirect unknown routes to home; AuthGuard will handle unauthorized access
+  { path: '**', redirectTo: '/home' },
+  // { path: '**', redirectTo: '' } // Comment out landing redirect
 ]; 

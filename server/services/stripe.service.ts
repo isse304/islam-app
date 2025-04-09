@@ -181,381 +181,248 @@ export class StripeService {
         return userSubscription?.status || 'inactive';
     }
 
-    async constructWebhookEvent(req: Request): Promise<Stripe.Event> {
-        const sig = req.headers['stripe-signature'] as string;
-        return this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
-    }
-
     async handleWebhookEvent(req: Request, res: Response): Promise<void> {
         const sig = req.headers['stripe-signature'] as string;
-        let event: Stripe.Event;
+        const rawBody = req.body; // Use req.body provided by express.raw()
 
-        // --- START TEMPORARY DEBUG LOGGING ---
-        console.log('[Webhook Debug] Received Webhook Request');
-        console.log(`[Webhook Debug] Stripe Signature Header: ${sig ? 'Present' : 'MISSING!'}`);
-        console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
-        if (req.body instanceof Buffer) {
-            console.log(`[Webhook Debug] req.body is Buffer. Length: ${req.body.length}`);
-            // Avoid logging full buffer in production, log snippet if necessary for deeper debug
-            // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 100)}...`);
-        } else {
-            console.error('[Webhook Debug] ERROR: req.body is NOT a Buffer! Body:', req.body);
+        console.log('[Webhook Handler] Starting webhook processing...'); // Log start
+        console.log('[Webhook Handler] Body type:', typeof rawBody, 'Is Buffer?', Buffer.isBuffer(rawBody), 'Length:', rawBody?.length); // Log body info
+
+        if (!sig) {
+            console.error('[Webhook Handler] Error: Missing stripe-signature header');
+            res.status(400).send('Webhook Error: Missing stripe-signature header');
+            return;
         }
-        console.log(`[Webhook Debug] Webhook Secret used (type): ${typeof this.webhookSecret}`);
-        console.log(`[Webhook Debug] Webhook Secret used (length): ${this.webhookSecret?.length}`);
-        console.log(`[Webhook Debug] Webhook Secret used (starts with): ${this.webhookSecret?.substring(0, 8)}...`); // Log prefix (whsec_)
-        // --- END TEMPORARY DEBUG LOGGING ---
+        if (!this.webhookSecret) {
+            console.error('[Webhook Handler] Error: Webhook secret is not configured on the server.');
+            res.status(500).send('Webhook Configuration Error');
+            return;
+        }
+        // Ensure req.body is a Buffer (it should be, thanks to express.raw)
+        if (!Buffer.isBuffer(rawBody)) {
+             console.error('[Webhook Handler] Error: Request body is not a Buffer. Ensure express.raw() is used correctly.');
+             // Log the body type and content for debugging if not a buffer
+             console.error('[Webhook Handler] Received body type:', typeof rawBody);
+             // Be cautious logging the body itself in production if it might contain sensitive info
+             // console.error('[Webhook Handler] Received body content:', rawBody); 
+             res.status(400).send('Webhook Error: Invalid request body format.');
+             return;
+        }
 
-        console.log('[Webhook] Attempting to construct event...'); // Keep this log
+        let event: Stripe.Event;
         try {
-            event = await this.constructWebhookEvent(req);
-            console.log(`[Webhook] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`); // Keep this log
+            console.log('[Webhook Handler] Attempting to construct event...');
+            console.log(`[Webhook Handler] Using Webhook Secret (Prefix): ${this.webhookSecret?.substring(0, 8)}...`);
+            // console.log('[Webhook Handler] Raw Body (UTF8 String):', rawBody.toString('utf8')); // Keep for debugging if needed
+            // Use the rawBody from req.body directly
+            event = this.stripe.webhooks.constructEvent(rawBody, sig, this.webhookSecret);
+            console.log(`[Webhook Handler] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`);
         } catch (err: any) {
-            console.error('[Webhook] Error constructing event (Signature Verification Failed?):', err.message);
+            console.error('[Webhook Handler] Signature verification failed:', err.message);
+            console.error('[Webhook Handler] Webhook Secret Used (Prefix):', this.webhookSecret?.substring(0, 8));
+            console.error('[Webhook Handler] Signature Header Received:', sig);
+            console.error('[Webhook Handler] Raw Body Length:', rawBody.length);
+            // Avoid logging full raw body in production
+            // console.error('[Webhook Handler] Raw Body (shortened):\', rawBody.toString(\'utf8\').substring(0, 200)); 
             res.status(400).send(`Webhook Error: ${err.message}`);
             return;
         }
+        // --- END: Perform signature verification HERE ---\
 
-        // Initialize userId and userSub
+
+        // --- START: Event Processing Logic ---
+        // Moved the processing logic outside the req.on('end') block
         let userId: string | undefined;
         let userSub: IUserSubscription | null = null;
-        const adminEmail = process.env['ALERT_EMAIL']; // Get admin email for notifications
+        const adminEmail = process.env['ALERT_EMAIL'];
 
         try {
-            // Process based on event type
-            console.log(`[Webhook] Processing event type: ${event.type}`); // Keep this log
+            console.log(`[Webhook] Processing event type: ${event.type}`);
             switch (event.type) {
+                // --- Cases for checkout.session.completed, customer.subscription.* --- 
+                // --- (Keep existing logic within these cases) ---
                 case 'checkout.session.completed':
                     const session = event.data.object as Stripe.Checkout.Session;
                     userId = session.client_reference_id ?? session.metadata?.userId;
                     // console.log(`[Webhook ${event.type}] Session ID: ${session.id}, User ID (from client_ref/metadata): ${userId}`);
                     if (!userId) {
-                        // console.error('[Webhook] Error: userId missing in session client_reference_id and metadata', session.id);
-                        res.status(400).send('Webhook Error: Missing userId');
+                        console.error('[Webhook] Error: userId missing in session client_reference_id and metadata', session.id);
+                        // Send response directly from here
+                        if (!res.headersSent) res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
                     if (session.subscription) {
                         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
-                        // console.log(`[Webhook ${event.type}] Found subscription ID: ${subscriptionId}. Retrieving details...`);
                         const subscriptionDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
-                        // console.log(`[Webhook ${event.type}] Retrieved subscription details. Status: ${subscriptionDetails.status}. Updating DB and claims for user ${userId}...`);
-                        
-                        // Update DB and Claims
                         userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
                         if (userSub) {
                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
-                            // console.log(`[Webhook ${event.type}] Updated claims based on checkout completion for user ${userId}`);
-
-                            // --- ADDED: Update UserUsage aiRequestLimit (also in checkout.session.completed) ---
+                            // Update UserUsage aiRequestLimit
                             try {
                                 const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
-                                const statusToUseForLimit = userSub.status; // Use status from the updated userSub
+                                const statusToUseForLimit = userSub.status;
                                 const limitToSet = (statusToUseForLimit === 'active' || statusToUseForLimit === 'trialing') ? premiumLimit : 0;
-                                // console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
-                                const usageUpdateResult = await UserUsage.findOneAndUpdate(
+                                await UserUsage.findOneAndUpdate(
                                     { userId: userId },
                                     { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                     { new: true, upsert: true, setDefaultsOnInsert: true }
                                 );
-                                if (usageUpdateResult) {
-                                    // console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
-                                } else {
-                                    // console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
-                                }
                             } catch (usageUpdateError) {
-                                // console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
+                                console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
                             }
-                            // --- END ADDED: Update UserUsage aiRequestLimit ---
-
-                            // --- Email Logic here (already exists) --- 
-                            const statusToUse = userSub.status; 
-                            if (statusToUse === 'active' || statusToUse === 'trialing') { 
-                                // Fetch user info from Firebase
+                            // Email Logic
+                            const statusToUse = userSub.status;
+                            if (statusToUse === 'active' || statusToUse === 'trialing') {
                                 let userEmail: string | undefined;
                                 let userName: string | undefined;
                                 try {
-                                    // console.log(`[Webhook ${event.type} - Email Trigger] Fetching Firebase user record for ${userId}...`);
                                     const userRecord = await auth.getUser(userId);
                                     userEmail = userRecord.email;
                                     userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
-                                    // console.log(`[Webhook ${event.type} - Email Trigger] Fetched Firebase user: ${userEmail}`);
-                                } catch (authError) {
-                                    // console.error(`[Webhook ${event.type} - Email Trigger] Failed to fetch user ${userId} from Firebase Auth:`, authError);
-                                }
-
-                                // Send Welcome Email (if active and not already sent)
-                                if (userEmail && userSub && !userSub.welcomeEmailSent) { 
-                                     // console.log(`[Webhook ${event.type} - Email Trigger] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
+                                } catch (authError) { /* ... */ }
+                                if (userEmail && userSub && !userSub.welcomeEmailSent) {
                                     try {
                                         await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
-                                        // console.log(`[Webhook ${event.type} - Email Trigger] Sent premium welcome email to user ${userId}. Updating DB flag...`);
-                                        // Mark email as sent in the database
                                         userSub.welcomeEmailSent = true;
                                         await userSub.save();
-                                        // console.log(`[Webhook ${event.type} - Email Trigger] Marked welcomeEmailSent=true in DB for user ${userId}.`);
-                                    } catch (emailError) {
-                                        // console.error(`[Webhook ${event.type} - Email Trigger] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
-                                    }
-                                } else if (userSub?.welcomeEmailSent) {
-                                    // console.log(`[Webhook ${event.type} - Email Trigger] Welcome email already sent flag is true for user ${userId}, skipping.`);
-                                } else {
-                                    // console.log(`[Webhook ${event.type} - Email Trigger] Conditions not met (missing email or userSub) for user ${userId}.`);
+                                    } catch (emailError) { /* ... */ }
                                 }
                             }
-                            // --- END ADDED: Email Logic --- 
-
                         } else {
-                            // console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
+                            console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
                         }
                     } else {
-                         // console.warn(`[Webhook ${event.type}] Checkout session ${session.id} completed, but no subscription ID found immediately. Waiting for customer.subscription.created/updated event.`);
+                         console.warn(`[Webhook ${event.type}] Checkout session ${session.id} completed, but no subscription ID found.`);
                     }
                     break;
 
                 case 'customer.subscription.created':
                 case 'customer.subscription.updated':
                     const subscription = event.data.object as Stripe.Subscription;
-                    // Prefer metadata, fallback to retrieving customer then checking metadata
                     userId = subscription.metadata?.userId;
-                     if (!userId && typeof subscription.customer === 'string') {
-                        try {
+                    if (!userId && typeof subscription.customer === 'string') {
+                       try {
                             const customer = await this.stripe.customers.retrieve(subscription.customer);
-                            if (!customer.deleted) {
-                                userId = customer.metadata?.firebaseUID;
-                            }
-                        } catch (custError) {
-                            // console.error(`[Webhook ${event.type}] Error fetching customer ${subscription.customer} to get userId:`, custError);
-                        }
+                            if (!customer.deleted) userId = customer.metadata?.firebaseUID;
+                       } catch (custError) { /* ... */ }
                     }
-                    // console.log(`[Webhook ${event.type}] Subscription ID: ${subscription.id}, Status: ${subscription.status}, User ID (from metadata/customer): ${userId}`);
                     if (!userId) {
-                        // console.error(`[Webhook ${event.type}] Error: userId missing in subscription metadata and customer metadata`, subscription.id);
-                        res.status(400).send('Webhook Error: Missing userId');
+                        console.error(`[Webhook ${event.type}] Error: userId missing`, subscription.id);
+                        if (!res.headersSent) res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
-
-                    // --- Start Inner Try/Catch for the main logic ---
                     try {
-                        // --- PRE-DB UPDATE LOG --- 
-                        // console.log(`[Webhook ${event.type}] PRE-DB_UPDATE: About to call updateUserSubscriptionStatus for user ${userId}`);
-                        // Fetch OR Update the user subscription document
                         userSub = await this.updateUserSubscriptionStatus(userId, subscription);
-                        // --- POST-DB UPDATE LOG --- 
-                        // console.log(`[Webhook ${event.type}] POST-DB_UPDATE: Finished calling updateUserSubscriptionStatus. Result userSub:`, !!userSub);
-
-                        if (!userSub) {
-                            // console.error(`[Webhook ${event.type}] Failed to update/retrieve subscription in DB for user ${userId}, subscription ${subscription.id}`);
-                            // If we can't get the DB record, we can't track email status, so skip email attempt.
-                            // Still attempt claim update based on event data.
-                        } else {
-                             // console.log(`[Webhook ${event.type}] Retrieved UserSubscription doc. Welcome email sent status: ${userSub.welcomeEmailSent}`);
-                        }
-
-                        // Determine status and period end (prioritize DB status if available, fallback to event)
                         const statusToUse = userSub?.status || subscription.status;
                         let periodEndToUse: Date | null = null;
-                        // Use nullish coalescing for db status and check subscription event status explicitly
                         const rawPeriodEndFromDb = userSub?.currentPeriodEnd ?? null;
                         const rawPeriodEndFromEvent = subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null;
-                        
-                        // Prioritize DB value if it exists, otherwise use event value
                         const finalRawPeriodEnd = rawPeriodEndFromDb ?? rawPeriodEndFromEvent;
-
-                        if (finalRawPeriodEnd instanceof Date) {
-                            periodEndToUse = finalRawPeriodEnd;
-                        }
-                        // console.log(`[Webhook ${event.type}] Status to use for claims/email: ${statusToUse}, Period End: ${periodEndToUse}`);
-
-                        // Fetch user info from Firebase
-                        let userEmail: string | undefined;
-                        let userName: string | undefined;
-                        try {
-                            // console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
-                            const userRecord = await auth.getUser(userId);
-                            userEmail = userRecord.email;
-                            userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
-                            // console.log(`[Webhook ${event.type}] Fetched Firebase user: ${userEmail}`);
-                        } catch (authError) {
-                            // console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} from Firebase Auth:`, authError);
-                        }
-
-                        // --- PRE-CLAIMS UPDATE LOG ---
-                        // console.log(`[Webhook ${event.type}] PRE-CLAIMS_UPDATE: About to call updateFirebaseClaims for user ${userId} with status: ${statusToUse}`);
+                        if (finalRawPeriodEnd instanceof Date) periodEndToUse = finalRawPeriodEnd;
+                        
                         await this.updateFirebaseClaims(userId, statusToUse, periodEndToUse);
-                        // --- POST-CLAIMS UPDATE LOG ---
-                        // console.log(`[Webhook ${event.type}] POST-CLAIMS_UPDATE: Finished calling updateFirebaseClaims for user ${userId}`);
-
-                        // --- ADDED: Update UserUsage aiRequestLimit ---
+                        
+                        // Update UserUsage aiRequestLimit
                         try {
                             const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
                             const limitToSet = (statusToUse === 'active' || statusToUse === 'trialing') ? premiumLimit : 0;
-                            // console.log(`[Webhook ${event.type}] PRE-USAGE_LIMIT_UPDATE: About to update UserUsage for user ${userId}, setting aiRequestLimit to ${limitToSet}`);
-                            const usageUpdateResult = await UserUsage.findOneAndUpdate(
+                            await UserUsage.findOneAndUpdate(
                                 { userId: userId },
                                 { $set: { aiRequestLimit: limitToSet, status: (limitToSet > 0 ? 'premium' : 'free') } },
                                 { new: true, upsert: true, setDefaultsOnInsert: true }
                             );
-                            if (usageUpdateResult) {
-                                // console.log(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: Successfully updated/created UserUsage aiRequestLimit to ${usageUpdateResult.aiRequestLimit} for user ${userId}`);
-                            } else {
-                                // console.warn(`[Webhook ${event.type}] POST-USAGE_LIMIT_UPDATE: UserUsage record not found for user ${userId} during limit update attempt.`);
-                                // Optional: Attempt to create if it really should exist? Or rely on getOrCreateUsage elsewhere.
-                            }
                         } catch (usageUpdateError) {
-                            // console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
-                            // Decide if this error should prevent the webhook 200 OK. Usually not.
+                            console.error(`[Webhook ${event.type}] ERROR updating UserUsage aiRequestLimit for user ${userId}:`, usageUpdateError);
                         }
-                        // --- END ADDED: Update UserUsage aiRequestLimit ---
 
-                        // Existing log check
-                        // console.log(`[Webhook Validation Check] Status being used before potential email/further processing:`, {
-                        //     userId: userId,
-                        //     statusFromUserSubModel: userSub?.status, // Status from the UserSubscription model result
-                        //     statusUsedForClaims: statusToUse,        // Status calculated from userSub OR Stripe event
-                        //     eventType: event.type
-                        // });
-
-                        // Send Welcome Email (only if active/trialing AND not already sent)
+                        // Email Logic
+                        let userEmail: string | undefined;
+                        let userName: string | undefined;
+                        try {
+                            const userRecord = await auth.getUser(userId);
+                            userEmail = userRecord.email;
+                            userName = userRecord.displayName || userRecord.email?.split('@')[0] || 'Friend';
+                        } catch (authError) { /* ... */ }
+                        
                         if (userEmail && (statusToUse === 'active' || statusToUse === 'trialing') && userSub && !userSub.welcomeEmailSent) {
-                             // console.log(`[Webhook ${event.type}] Attempting to send premium welcome email to user ${userId} (${userEmail})...`);
                             try {
                                 await this.emailService.sendWelcomeEmail(userEmail, userName || 'Friend');
-                                // console.log(`[Webhook ${event.type}] Sent premium welcome email to user ${userId}. Updating DB flag...`);
-                                // Mark email as sent in the database
                                 userSub.welcomeEmailSent = true;
                                 await userSub.save();
-                                // console.log(`[Webhook ${event.type}] Marked welcomeEmailSent=true in DB for user ${userId}.`);
-                            } catch (emailError) {
-                                // console.error(`[Webhook ${event.type}] Failed to send premium welcome email or update DB flag for user ${userId}:`, emailError);
-                            }
-                        } else if (userSub?.welcomeEmailSent) {
-                            // console.log(`[Webhook ${event.type}] Welcome email already sent for user ${userId}, skipping.`);
-                        } else if (!userSub) {
-                             // console.log(`[Webhook ${event.type}] Skipping welcome email check because UserSubscription record was not found/updated.`);
-                        } else {
-                            // console.log(`[Webhook ${event.type}] Conditions not met to send welcome email (Status: ${statusToUse}, Email Sent Flag: ${userSub?.welcomeEmailSent}, User Email Found: ${!!userEmail}).`);
+                            } catch (emailError) { /* ... */ }
                         }
 
-                        // Send Admin Notification
+                        // Admin Notification
                         if (adminEmail) {
-                            // console.log(`[Webhook ${event.type}] Attempting to send admin notification email to ${adminEmail}...`);
-                             const subject = `🚀 Subscription ${event.type === 'customer.subscription.created' ? 'Created' : 'Updated'} for ${userEmail || userId}`;
-                            const text = `User ${userEmail || userId} subscription details:\nStatus: ${statusToUse}\nSub ID: ${subscription.id}\nCustomer ID: ${subscription.customer}\nPeriod End: ${periodEndToUse?.toLocaleDateString() || 'N/A'}`;
-                            try {
-                                await this.emailService.sendEmail(adminEmail, subject, text);
-                                 // console.log(`[Webhook ${event.type}] Sent admin notification email.`);
-                            } catch (emailError) {
-                                // console.error(`[Webhook ${event.type}] Failed to send admin subscription notification email:`, emailError);
-                            }
+                            const subject = `🚀 Subscription ${event.type === 'customer.subscription.created' ? 'Created' : 'Updated'} for ${userEmail || userId}`;
+                            const text = `User ${userEmail || userId} subscription details:\\nStatus: ${statusToUse}\\nSub ID: ${subscription.id}\\nCustomer ID: ${subscription.customer}\\nPeriod End: ${periodEndToUse?.toLocaleDateString() || 'N/A'}`;
+                            try { await this.emailService.sendEmail(adminEmail, subject, text); } catch (emailError) { /* ... */ }
                         }
-                    // --- End Inner Try/Catch ---
                     } catch (innerError: any) {
-                        // console.error(`[Webhook ${event.type}] Caught inner error during processing for user ${userId}. Allowing webhook to succeed but logging error:`, innerError);
-                        // Check if it's the specific UserUsage validation error we've been seeing
-                        if (innerError.message?.includes('UserUsage validation failed') && innerError.errors?.status?.kind === 'enum') {
-                            // console.warn(`[Webhook ${event.type}] Confirmed specific UserUsage enum validation error occurred. Frontend should still work due to claims update.`);
-                        } else {
-                            // Log other unexpected errors more severely if needed
-                            // console.error(`[Webhook ${event.type}] An unexpected inner error occurred:`, innerError);
-                        }
-                         // Do NOT re-throw or send a 500 status. Allow the main flow to send 200 OK.
+                        console.error(`[Webhook ${event.type}] Caught inner error during processing for user ${userId}:`, innerError);
                     }
                     break;
 
                 case 'customer.subscription.deleted':
                     const deletedSubscription = event.data.object as Stripe.Subscription;
-                     // Prefer metadata, fallback to retrieving customer then checking metadata
                     userId = deletedSubscription.metadata?.userId;
-                     if (!userId && typeof deletedSubscription.customer === 'string') {
-                        try {
+                    if (!userId && typeof deletedSubscription.customer === 'string') {
+                       try {
                             const customer = await this.stripe.customers.retrieve(deletedSubscription.customer);
-                             if (!customer.deleted) {
-                                userId = customer.metadata?.firebaseUID;
-                            }
-                        } catch (custError) {
-                            // console.error(`[Webhook ${event.type}] Error fetching customer ${deletedSubscription.customer} to get userId:`, custError);
-                        }
+                            if (!customer.deleted) userId = customer.metadata?.firebaseUID;
+                       } catch (custError) { /* ... */ }
                     }
-                    // console.log(`[Webhook ${event.type}] Subscription ID: ${deletedSubscription.id}, User ID (from metadata/customer): ${userId}`);
                     if (!userId) {
-                        // console.error(`[Webhook ${event.type}] Error: userId missing`, deletedSubscription.id);
-                        res.status(400).send('Webhook Error: Missing userId');
+                        console.error(`[Webhook ${event.type}] Error: userId missing`, deletedSubscription.id);
+                        if (!res.headersSent) res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
 
-                     // Fetch user info for notifications
                     let deletedUserEmail: string | undefined;
                     try {
-                         // console.log(`[Webhook ${event.type}] Fetching Firebase user record for ${userId}...`);
                         const userRecord = await auth.getUser(userId);
                         deletedUserEmail = userRecord.email;
-                         // console.log(`[Webhook ${event.type}] Fetched Firebase user: ${deletedUserEmail}`);
-                    } catch (authError) {
-                        // console.error(`[Webhook ${event.type}] Failed to fetch user ${userId} for deletion notification:`, authError);
-                    }
-
-                    // console.log(`[Webhook ${event.type}] Marking DB subscription as canceled for user ${userId}...`);
-                    const canceledSub = await UserSubscription.findOneAndUpdate(
-                        { userId: userId },
-                        {
-                            status: 'canceled', // Use 'canceled' to reflect immediate intent
-                            currentPeriodEnd: null,
-                            cancelAtPeriodEnd: false, // Explicitly false
-                            updatedAt: new Date()
-                        },
+                    } catch (authError) { /* ... */ }
+                    
+                    await UserSubscription.findOneAndUpdate(
+                        { userId: userId }, 
+                        { status: 'canceled', currentPeriodEnd: null, cancelAtPeriodEnd: false, updatedAt: new Date() }, 
                         { new: true }
                     );
-
-                    if (canceledSub) {
-                        // console.log(`[Webhook ${event.type}] Marked UserSubscription as canceled in DB for user ${userId}`);
-                         // console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
-                         await this.updateFirebaseClaims(userId, 'canceled', null);
-                    } else {
-                        // console.warn(`[Webhook ${event.type}] No subscription found in DB to mark as canceled for user ${userId}. Still updating claims.`);
-                         // console.log(`[Webhook ${event.type}] Updating Firebase claims for user ${userId} to canceled...`);
-                        await this.updateFirebaseClaims(userId, 'canceled', null);
-                    }
+                    await this.updateFirebaseClaims(userId, 'canceled', null);
 
                     // Send Cancellation Email to User
                     if (deletedUserEmail) {
-                         // console.log(`[Webhook ${event.type}] Attempting to send cancellation email to user ${userId} (${deletedUserEmail})...`);
                         const subject = 'Your NuraAI Subscription Has Been Canceled';
-                        const text = `Assalamu alaikum,\n\nYour NuraAI Premium subscription has been canceled. \n\nIf you believe this was in error, please contact support.\n\nWe hope to see you back soon!\n\nThe NuraAI Team`;
-                        try {
-                            await this.emailService.sendEmail(deletedUserEmail, subject, text);
-                            // console.log(`[Webhook ${event.type}] Sent cancellation email to user ${userId}`);
-                        } catch (emailError) {
-                            // console.error(`[Webhook ${event.type}] Failed to send cancellation email to user ${userId}:`, emailError);
-                        }
+                        const text = `Assalamu alaikum,\\n\\nYour NuraAI Premium subscription has been canceled. \\n\\nIf you believe this was in error, please contact support.\\n\\nWe hope to see you back soon!\\n\\nThe NuraAI Team`;
+                        try { await this.emailService.sendEmail(deletedUserEmail, subject, text); } catch (emailError) { /* ... */ }
                     }
 
                     // Send Cancellation Notification to Admin
                     if (adminEmail) {
-                         // console.log(`[Webhook ${event.type}] Attempting to send admin cancellation notification email to ${adminEmail}...`);
-                        const subject = `❌ Subscription Canceled for ${deletedUserEmail || userId}`;
-                        const text = `User ${deletedUserEmail || userId} subscription has been canceled.\nStripe Sub ID: ${deletedSubscription.id}\nStripe Customer ID: ${deletedSubscription.customer}`;
-                        try {
-                            await this.emailService.sendEmail(adminEmail, subject, text);
-                             // console.log(`[Webhook ${event.type}] Sent admin cancellation notification email.`);
-                        } catch (emailError) {
-                            // console.error(`[Webhook ${event.type}] Failed to send admin cancellation notification email:`, emailError);
-                        }
+                         const subject = `❌ Subscription Canceled for ${deletedUserEmail || userId}`;
+                        const text = `User ${deletedUserEmail || userId} subscription has been canceled.\\nStripe Sub ID: ${deletedSubscription.id}\\nStripe Customer ID: ${deletedSubscription.customer}`;
+                        try { await this.emailService.sendEmail(adminEmail, subject, text); } catch (emailError) { /* ... */ }
                     }
                     break;
 
                 default:
-                    // console.log(`[Webhook] Unhandled event type ${event.type}`);
+                    console.log(`[Webhook] Unhandled event type ${event.type}`);
             }
-            // Send success response AFTER processing
+
+            // Send success response AFTER processing is complete
             console.log(`[Webhook] Finished processing event type: ${event.type}. Sending 200 OK.`);
-            res.status(200).json({ received: true });
+            if (!res.headersSent) {
+                res.status(200).json({ received: true });
+            }
 
         } catch (processingError: any) {
-            // Catch errors during event processing AFTER successful construction
             console.error(`[Webhook] Error processing event type ${event?.type || 'unknown'}:`, processingError);
-            // Send an error response, but maybe not 400 as the webhook itself was valid
-            res.status(500).json({ error: 'Webhook processed, but internal error occurred.', details: processingError.message });
+            if (!res.headersSent) {
+                 res.status(500).json({ error: 'Webhook processed, but internal error occurred.', details: processingError.message });
+            }
         }
+        // --- END: Event Processing Logic ---
     }
 
     private async updateFirebaseClaims(userId: string, status: string, periodEnd: Date | null): Promise<void> {

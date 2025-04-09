@@ -52,18 +52,6 @@ router.post('/create-customer-portal-session', withAuth(async (req: Authenticate
   }
 }));
 
-// Handle webhook events
-router.post('/webhook', express.raw({ type: 'application/json' }), async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    await stripeService.handleWebhookEvent(req, res);
-  } catch (error) {
-    console.error('Error during webhook processing in route:', error);
-    if (!res.headersSent) {
-        next(error);
-    }
-  }
-});
-
 // Get subscription status
 router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   console.log('Subscription status request received');

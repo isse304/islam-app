@@ -4,7 +4,6 @@ import MongoStore from 'connect-mongo';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import { AuthenticatedRequest, withAuth } from './middleware/auth';
-import securityConfig from './middleware/security';
 import * as aiRouter from './routes/ai';
 import userRouter from './routes/user';
 import usageRouter from './routes/usage';
@@ -12,6 +11,8 @@ import quranRouter from './routes/quran';
 import subscriptionRouter from './routes/subscription';
 import tafsirRoutes from './routes/tafsir';
 import contactRouter from './routes/contact';
+import { EmailService } from './services/email.service';
+import { StripeService } from './services/stripe.service';
 import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
@@ -22,9 +23,6 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
-import bodyParser from 'body-parser';
-// import morgan from 'morgan'; // COMMENTED OUT
-// import cookieParser from 'cookie-parser'; // COMMENTED OUT
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -56,6 +54,21 @@ const logger = winston.createLogger({
 // Initialize Express app
 const app = express();
 
+// --- Instantiate Services ---
+const emailService = new EmailService();
+const stripeService = new StripeService(emailService);
+// --- End Instantiate Services ---
+
+// Configure raw body parsing for Stripe webhook BEFORE other middleware
+app.post('/api/subscription/webhook',
+  express.raw({ type: 'application/json' }),
+  (req, res, next) => {
+    // --- Direct call to handleWebhookEvent ---
+    stripeService.handleWebhookEvent(req, res);
+    // --- End Direct call ---
+  }
+);
+
 // Configure CORS with proper settings
 const allowedOrigins = [
   'http://localhost:4200',      // Local development
@@ -67,7 +80,7 @@ const allowedOrigins = [
   'https://nura-ai.onrender.com' // Additional render.com domain
 ];
 
-// CORS configuration
+// CORS configuration (after webhook route)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   const isDevelopment = process.env.NODE_ENV === 'development';
@@ -122,6 +135,25 @@ app.use((req, res, next) => {
   next();
 });
 
+// Configure body parsing AFTER webhook route
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/subscription/webhook') {
+    // Skip body parsing for webhook route
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
+
+app.use((req, res, next) => {
+  if (req.originalUrl === '/api/subscription/webhook') {
+    // Skip body parsing for webhook route
+    next();
+  } else {
+    express.urlencoded({ extended: true })(req, res, next);
+  }
+});
+
 // Configure timeouts with longer duration for production
 const TIMEOUT = process.env.NODE_ENV === 'production' ? 60000 : 30000; // 60 seconds in production
 app.use((req, res, next) => {
@@ -129,10 +161,6 @@ app.use((req, res, next) => {
   res.setTimeout(TIMEOUT);
   next();
 });
-
-// Parse JSON bodies
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
 // Configure compression
 app.use(compression());
