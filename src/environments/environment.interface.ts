@@ -24,4 +24,5 @@ export interface Environment {
   };
   // List of admin user IDs
   adminUsers: string[];
+  mushafImageBaseUrl: string;
 } 

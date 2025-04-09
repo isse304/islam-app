@@ -23,6 +23,7 @@ export const environment: Environment = {
   },
   stripeConfig: {
     publishableKey: 'pk_live_51R1nqsGYeNehzlUZyzM90JMO86nwlXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj',
-    priceId: 'price_1R1TPjGYeNehzlUZi71dNilr'
-  }
+    priceId: 'price_1R1SKuGYeNehzlUZPlVwt392r'
+  },
+  mushafImageBaseUrl: 'https://nuraai.s3.amazonaws.com/quran-pages/',
 }; 

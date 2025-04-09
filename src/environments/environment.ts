@@ -24,6 +24,7 @@ export const environment: Environment = {
     publishableKey: 'pk_test_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
     priceId: 'price_1R1SKuGYeNehzlUZPlVwt392'
   },
+  mushafImageBaseUrl: 'https://nuraai.s3.amazonaws.com/quran-pages/',
   adminUsers: ['test-admin-user']
 }; 
 

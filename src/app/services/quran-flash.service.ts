@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of, catchError, map } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 interface MushafPage {
   page: number;
@@ -12,7 +13,6 @@ interface MushafPage {
 })
 export class QuranFlashService {
   private readonly TOTAL_PAGES = 604;
-  readonly IMAGE_PATH = '/quran-pages/quran_Page_';
 
   // Updated surah page mapping with correct starting pages
   readonly surahPageMap: { [key: number]: number } = {
@@ -167,8 +167,8 @@ export class QuranFlashService {
 
   getPageImageUrl(page: number): string {
     const formattedPage = this.formatPageNumber(page);
-    const url = `${this.IMAGE_PATH}${formattedPage}.png`;
-    // // console.log('Generated URL:', url);
+    const url = `${environment.mushafImageBaseUrl}quran_Page_${formattedPage}.png`;
+    // // console.log('Generated Cloud URL:', url);
     return url;
   }
 
@@ -191,7 +191,8 @@ export class QuranFlashService {
   }
 
   private getImageUrlForPage(pageNumber: string): string {
-    const url = `${this.IMAGE_PATH}${pageNumber}.png`;
+    // Construct URL using the environment variable
+    const url = `${environment.mushafImageBaseUrl}quran_Page_${pageNumber}.png`;
     // // console.log('Generated URL:', url);
     return url;
   }

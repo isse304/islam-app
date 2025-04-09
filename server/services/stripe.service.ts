@@ -190,25 +190,28 @@ export class StripeService {
         const sig = req.headers['stripe-signature'] as string;
         let event: Stripe.Event;
 
-        // *** ADD LOGGING HERE ***
-        // console.log('[Webhook Debug] Received Headers:', JSON.stringify(req.headers, null, 2));
-        // console.log(`[Webhook Debug] Stripe Signature Header: ${sig}`);
-        // Log the body type and potentially a snippet (be careful logging full sensitive payloads)
-        // console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
-        if (Buffer.isBuffer(req.body)) {
-            // console.log(`[Webhook Debug] req.body is Buffer, length: ${req.body.length}`);
-            // // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 200)}...`); // Optional: Log snippet
+        // --- START TEMPORARY DEBUG LOGGING ---
+        console.log('[Webhook Debug] Received Webhook Request');
+        console.log(`[Webhook Debug] Stripe Signature Header: ${sig ? 'Present' : 'MISSING!'}`);
+        console.log(`[Webhook Debug] req.body type: ${typeof req.body}`);
+        if (req.body instanceof Buffer) {
+            console.log(`[Webhook Debug] req.body is Buffer. Length: ${req.body.length}`);
+            // Avoid logging full buffer in production, log snippet if necessary for deeper debug
+            // console.log(`[Webhook Debug] Raw Body Snippet: ${req.body.toString('utf8').substring(0, 100)}...`);
         } else {
-            // console.log('[Webhook Debug] req.body is NOT a Buffer. Body:', req.body);
+            console.error('[Webhook Debug] ERROR: req.body is NOT a Buffer! Body:', req.body);
         }
-        // *** END LOGGING ***
+        console.log(`[Webhook Debug] Webhook Secret used (type): ${typeof this.webhookSecret}`);
+        console.log(`[Webhook Debug] Webhook Secret used (length): ${this.webhookSecret?.length}`);
+        console.log(`[Webhook Debug] Webhook Secret used (starts with): ${this.webhookSecret?.substring(0, 8)}...`); // Log prefix (whsec_)
+        // --- END TEMPORARY DEBUG LOGGING ---
 
-        // console.log('[Webhook] Attempting to construct event...');
+        console.log('[Webhook] Attempting to construct event...'); // Keep this log
         try {
-            event = this.stripe.webhooks.constructEvent(req.body, sig, this.webhookSecret);
-            // console.log(`[Webhook] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`);
+            event = await this.constructWebhookEvent(req);
+            console.log(`[Webhook] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`); // Keep this log
         } catch (err: any) {
-            // console.error('[Webhook] Error verifying signature:', err.message);
+            console.error('[Webhook] Error constructing event (Signature Verification Failed?):', err.message);
             res.status(400).send(`Webhook Error: ${err.message}`);
             return;
         }
@@ -220,7 +223,7 @@ export class StripeService {
 
         try {
             // Process based on event type
-            // console.log(`[Webhook] Processing event type: ${event.type}`);
+            console.log(`[Webhook] Processing event type: ${event.type}`); // Keep this log
             switch (event.type) {
                 case 'checkout.session.completed':
                     const session = event.data.object as Stripe.Checkout.Session;
@@ -543,16 +546,16 @@ export class StripeService {
                 default:
                     // console.log(`[Webhook] Unhandled event type ${event.type}`);
             }
-        } catch (error) {
-            // console.error(`[Webhook] Internal error processing event ${event.type} (ID: ${event.id}):`, error);
-            // Avoid sending detailed errors back to Stripe
-            res.status(500).send('Internal Server Error during webhook processing.');
-            return; // Stop processing
-        }
+            // Send success response AFTER processing
+            console.log(`[Webhook] Finished processing event type: ${event.type}. Sending 200 OK.`);
+            res.status(200).json({ received: true });
 
-        // Send a 200 OK response to acknowledge receipt of the event
-        // console.log(`[Webhook] Finished processing event ${event.type} (ID: ${event.id}). Sending 200 OK.`);
-        res.json({ received: true });
+        } catch (processingError: any) {
+            // Catch errors during event processing AFTER successful construction
+            console.error(`[Webhook] Error processing event type ${event?.type || 'unknown'}:`, processingError);
+            // Send an error response, but maybe not 400 as the webhook itself was valid
+            res.status(500).json({ error: 'Webhook processed, but internal error occurred.', details: processingError.message });
+        }
     }
 
     private async updateFirebaseClaims(userId: string, status: string, periodEnd: Date | null): Promise<void> {
