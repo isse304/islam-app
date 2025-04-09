@@ -408,7 +408,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Helper to load initial content based on determined state
   private loadInitialContent(surah: number, verse: number, isMushaf: boolean): void {
     console.log(`[loadInitialContent] Called with S:${surah}, V:${verse}, Mushaf:${isMushaf}`);
-    this.showLoadingUI(); // Show loading indicators
+    //this.showLoadingUI(); // Show loading indicators
     this.changeDetector.markForCheck(); // Update UI for loading indicator
 
     // Reset previous verses if changing Surah or view mode
@@ -437,13 +437,13 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         })
       ).subscribe({
         next: () => {
-          this.hideLoadingUI();
+          //this.hideLoadingUI();
           console.log(`[loadInitialContent] Mushaf page ${this.currentPage} loaded.`);
           this.updateUrlParams(); // Update URL after successful load
           this.changeDetector.markForCheck();
         },
         error: (err) => {
-          this.hideLoadingUI();
+          //this.hideLoadingUI();
           console.error('[loadInitialContent] Error loading mushaf page:', err);
           this.changeDetector.markForCheck();
         }
@@ -455,7 +455,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.loadSurahSubscription = this.loadSurah(surah).pipe(
           // Ensure hideLoadingUI and change detection run even if loadSurah completes quickly from cache
           finalize(() => {
-              this.hideLoadingUI();
+              //this.hideLoadingUI();
               this.changeDetector.markForCheck();
               // Don't scroll here, let loadSecondaryData handle initial scroll
               console.log(`[loadInitialContent] Verse view loading finalized for Surah ${surah}.`);
@@ -476,7 +476,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Helper to load non-essential data (preferences, history, bookmarks)
   private async loadSecondaryData(): Promise<void> {
     console.log('[QuranReader] Loading secondary data...');
-    this.showLoadingUI(); // <-- Remove argument
+    //this.showLoadingUI(); // <-- Remove argument
 
     // Load preferences, bookmarks, history concurrently
     await Promise.all([ 
@@ -527,39 +527,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.setupViewMode();
 
     console.log('[QuranReader] Secondary data loading complete.');
-    this.hideLoadingUI(); // <-- Remove argument
+    //this.hideLoadingUI(); // <-- Remove argument
     this.changeDetector.markForCheck(); // Ensure UI reflects loaded data
   }
 
-  /**
-   * Show initial UI with loading indicators to improve perceived performance
-   */
-  private showLoadingUI() {
-    // Set default values for immediate display
-    this.isAudioLoading = true;
-    this.currentSurah = 1;
-    this.selectedSurah = 1;
-    this.verses = Array(7).fill({}).map((_, i) => ({ 
-      number: i + 1, 
-      surahNumber: 1,
-      text: 'Loading...', 
-      translation: 'Loading...',
-      transliteration: '',
-      audio: '',
-      words: []
-    } as QuranVerse));
-    
-    this.currentSurahDetails = {
-      number: 1,
-      name: 'Al-Fatiha',
-      englishName: 'Al-Fatiha',
-      englishNameTranslation: 'The Opening',
-      revelationType: 'Meccan',
-      numberOfAyahs: 7
-    } as Surah;
-    
-    this.showingTranslation = true;
-  }
+
 
   private scrollToVerse(verseNumber: number, maxAttempts: number = 5): boolean { // Reduced maxAttempts
       if (!verseNumber || this.isMushafView) return false; // Don't scroll in mushaf view
@@ -1455,9 +1427,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     localStorage.setItem('quran_view_mode', this.isMushafView ? 'mushaf' : 'translation');
   }
 
-  private hideLoadingUI() {
-    this.isAudioLoading = false;
-  }
+
 
   private async loadFonts(): Promise<boolean> {
     try {
