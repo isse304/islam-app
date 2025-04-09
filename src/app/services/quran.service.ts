@@ -211,8 +211,9 @@ export interface SurahData {
   providedIn: 'root'
 })
 export class QuranService {
-  private baseUrl = '/api/alquran';
-  private quranComUrl = '/api/quran';
+  // Update base URLs to use environment configuration
+  private baseUrl = `${environment.apiUrl}/api/alquran`;
+  private quranComUrl = `${environment.apiUrl}/api/quran`;
   private readonly CACHE_KEY = 'quran_cache';
   private readonly SURAH_CACHE_KEY = 'surah_cache';
   private selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir';
@@ -244,9 +245,14 @@ export class QuranService {
     private injector: Injector // Inject Injector
   ) {
     // Fetch surah list and push to BehaviorSubject
-    this.getSurahList().subscribe(
-      surahs => this._surahs$.next(surahs), // Push next value
-      error => { /* console.error("Failed to load initial surah list:", error) */ }
+    this.getSurahList().pipe(
+      retry(3), // Add retry logic
+      catchError(error => {
+        console.error("Failed to load initial surah list:", error);
+        return of([]); // Return empty array on error
+      })
+    ).subscribe(
+      surahs => this._surahs$.next(surahs)
     );
   }
 
