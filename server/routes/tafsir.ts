@@ -63,6 +63,45 @@ async function loadSurahThemes() {
 loadSurahThemes();
 // --- End Load Surah Themes ---
 
+// --- START: Manual Override for Surah 1:1 (Basmala) --- V2 (Longer, English Only)
+const BASMALA_EXPLANATIONS = {
+  'ibn-kathir': { // English, based on Ibn Kathir's focus, expanded
+    language: 'en',
+    text: `**In the Name of Allah, the Most Gracious, the Most Merciful.**
+
+*Tafsir Ibn Kathir Summary for Al-Fatihah 1:1 (Basmala):*
+
+1.  **Starting with Allah's Name:** Ibn Kathir emphasizes that beginning actions and sayings with "Bismillah" (In the Name of Allah) is highly recommended, following the Quran's example and the Prophet's (ﷺ) practice. It signifies seeking Allah's help and blessings.
+
+2.  **Allah (الله):** This is the greatest and most comprehensive name of God, unique to Him. It refers to the Lord, the Exalted, the one deserving of all worship. All other Divine Names are considered attributes of this primary Name.
+
+3.  **Ar-Rahman (الرحمن - The Most Gracious):** This name refers to Allah's vast and all-encompassing mercy that extends to *all* of creation in this world, regardless of their faith. It's a mercy inherent to His nature and is more specific to Allah than Ar-Rahim.
+
+4.  **Ar-Rahim (الرحيم - The Most Merciful):** This name refers to Allah's specific mercy exclusively for the *believers*, both in this world and especially in the Hereafter. It signifies a continuous and particular act of mercy.
+
+5.  **Significance:** Reciting the Basmala before reading the Quran (or any significant act) acknowledges Allah's sovereignty, seeks His assistance, invokes His boundless mercy, and sets a tone of reverence. It serves as a declaration of dependence on the Creator and a means of seeking protection from Shaytan.`
+  },
+  'tabari': { // English, based on Tabari's focus, expanded
+    language: 'en',
+    text: `**In the Name of Allah, the Most Gracious, the Most Merciful.**
+
+*Tafsir Al-Tabari Summary for Al-Fatihah 1:1 (Basmala):*
+
+1.  **Divine Instruction:** Al-Tabari highlights that Allah taught His Prophet Muhammad (ﷺ) to begin his actions by invoking Allah's beautiful names. This was established as a Sunnah (practice) for all creation to follow.
+
+2.  **Meaning of 'Bismillah':** Saying "Bismillah" means "I begin by naming Allah and remembering Him" or "I seek help through Allah's names." It's an act of seeking assistance and blessing before proceeding.
+
+3.  **Allah (الله):** Tabari emphasizes that 'Allah' is the unique proper name of the Lord, exclusive to Him. It encompasses all attributes of divinity and lordship.
+
+4.  **Ar-Rahman (الرحمن - The Most Gracious):** Interpreted by Tabari as possessing the quality of vast, universal mercy covering all creation in this life.
+
+5.  **Ar-Rahim (الرحيم - The Most Merciful):** Interpreted as possessing the specific mercy designated for the believers, particularly on the Day of Judgment.
+
+6.  **Purpose:** Starting with the Basmala is an act of seeking divine aid and blessing. Tabari notes its importance before reciting the Quran, signifying that the recitation is done by Allah's permission and with His help. It sets the intention and acknowledges reliance on Allah for the understanding and benefit derived from the reading.`
+  }
+};
+// --- END: Manual Override ---
+
 // Get raw tafsir from a specific source
 router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -236,16 +275,34 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
     const currentSurahName = surahThemesData[surahNumStr]?.name || `Surah ${surahNumStr}`;
     let tafsirContent = ''; // Initialize tafsirContent
     let hasTafsirContent = false; // Initialize flag
+    let isBasmalaOverride = false; // Flag for manual override
+
+    // --- START: Check for Surah 1:1 Override ---
+    const isSurah1Verse1 = (String(surah) === '1' && String(verse) === '1');
+    if (isSurah1Verse1) {
+      console.log(`[Tafsir Chat] Request is for Surah 1:1. Applying manual override.`);
+      const overrideKey = selectedTafsir === 'tabari' ? 'tabari' : 'ibn-kathir'; // Default to ibn-kathir if invalid selectedTafsir
+      const overrideData = BASMALA_EXPLANATIONS[overrideKey];
+      if (overrideData) {
+        tafsirContent = overrideData.text;
+        hasTafsirContent = true;
+        isBasmalaOverride = true;
+        console.log(`[Tafsir Chat] Using hardcoded Basmala explanation for ${overrideKey}.`);
+      } else {
+        console.warn(`[Tafsir Chat] Could not find Basmala override for key: ${overrideKey}. Proceeding without override.`);
+      }
+    }
+    // --- END: Check for Surah 1:1 Override ---
 
     // --- Determine if we need to fetch Tafsir content ---
-    // Only fetch if surah and verse are provided and it's not just a general theme question
-    if (surah && verse && !isGeneralSurahQuestion) {
+    // Only fetch if surah and verse are provided, it's not a general theme question, AND it's not the Basmala override case
+    if (surah && verse && !isGeneralSurahQuestion && !isBasmalaOverride) {
          console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
         tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
         hasTafsirContent = !!tafsirContent;
          console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
-    } else {
-        console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
+    } else if (!isBasmalaOverride) { // Log skipping only if not already handled by override
+        console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request or Basmala override active).");
     }
 
     console.log('[Tafsir Chat] Fetched Tafsir Content for Prompt:', tafsirContent ? tafsirContent.substring(0, 300) + '...' : 'None');
@@ -373,7 +430,9 @@ YOUR TASK & RESPONSE RULES:
 
     // Determine source based on whether tafsir was used or available
     let responseSource = 'ai_general_chat'; // Default for greetings, capabilities, general fallback
-     if (isGeneralSurahQuestion && !verse) {
+    if (isBasmalaOverride) {
+        responseSource = 'manual_override'; // Source for the hardcoded Basmala
+    } else if (isGeneralSurahQuestion && !verse) {
         responseSource = 'ai_surah_theme';
     } else if (surah && verse) {
         responseSource = hasTafsirContent ? 'tafsir_sources' : 'ai_fallback';
@@ -384,10 +443,12 @@ YOUR TASK & RESPONSE RULES:
       success: true,
       content: responseContent,
       source: responseSource, // Updated source based on logic
-      sources: (responseSource === 'tafsir_sources') ? [ // Only include sources if tafsir was used
+      sources: (responseSource === 'tafsir_sources' || responseSource === 'manual_override') ? [ // Include sources if tafsir/override was used
         {
           name: selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari',
-          language: tafsirSources[selectedTafsir].language
+          language: isBasmalaOverride 
+                      ? BASMALA_EXPLANATIONS[selectedTafsir as keyof typeof BASMALA_EXPLANATIONS]?.language || 'en' 
+                      : tafsirSources[selectedTafsir]?.language || 'en' // Fallback language
         }
       ] : []
     });
