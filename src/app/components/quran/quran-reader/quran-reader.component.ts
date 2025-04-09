@@ -408,13 +408,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     if (isMushaf) {
       // Determine page and load Mushaf
-      this.quranService.getPageBySurah(surah, verse).pipe(
+      this.quranFlash.getPageBySurah(surah).pipe(
         take(1),
-        map((response: any) => {
-          // Use page_number directly if available, fallback to verse.page_number
-          const displayPageNumber = response?.page_number ?? response?.verse?.page_number;
-          return displayPageNumber ? this.displayToActualPage(displayPageNumber) : this.FIRST_PAGE;
-        }),
         catchError(err => {
           console.error(`[loadInitialContent] Error fetching page for S${surah}:V${verse}:`, err);
           return of(this.FIRST_PAGE); // Default on error
