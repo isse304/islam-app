@@ -249,24 +249,27 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // Add the arrow function property for the unload handler
   private saveStateToLocalStorageOnUnload = (): void => {
+    console.log('[QuranReader] Saving state to localStorage before unload...');
+    const stateToSave = {
+      surah: this.currentSurah || 1,
+      verse: this.currentVerse || 1,
+      translation: this.selectedTranslation || '131',
+      reciterId: this.selectedReciter?.id || 1,
+      isMushafView: this.isMushafView, // <-- Save view state
+      page: this.displayPageNumber || 1, // Save current display page number
+      fontSize: this.fontSize,
+      arabicFontSize: this.arabicFontSize,
+      mushafZoom: this.mushafZoom,
+      isDoublePageView: this.isDoublePageView,
+      showingTranslation: this.showingTranslation
+    };
     try {
-      // console.log('[QuranReader] Saving state to localStorage on unload...'); // Optional log
-      // Save only essential state needed for restore
-      const stateToSave = {
-        surah: this.currentSurah || 1,
-        verse: this.currentVerse || 1,
-        mode: this.isMushafView ? 'mushaf' : 'translation',
-        // Add other minimal essential state if needed (e.g., reciter, translation)
-        translation: this.selectedTranslation,
-        reciter: this.selectedReciter?.id,
-        timestamp: new Date().toISOString() // Timestamp is useful for debugging
-      };
-      localStorage.setItem('quran_reader_state', JSON.stringify(stateToSave));
-      // console.log('[QuranReader] State saved on unload:', stateToSave); // Optional log
-    } catch (error) {
-      console.warn('[QuranReader] Error saving state to localStorage on unload:', error);
+      localStorage.setItem('quranReaderState', JSON.stringify(stateToSave));
+      console.log('[QuranReader] Saved state:', stateToSave);
+    } catch (e) {
+      console.error('[QuranReader] Failed to save state to localStorage:', e);
     }
-  }
+  };
 
   user: AppUser | null = null; // Add user property
   private destroy$ = new Subject<void>(); // Add destroy subject
@@ -471,49 +474,60 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** SIMPLIFIED HELPER METHOD ***
   // Helper to load non-essential data (preferences, history, bookmarks)
   private async loadSecondaryData(): Promise<void> {
-      console.log('[loadSecondaryData] Starting async load of preferences, bookmarks, history...');
-      // Load remaining data concurrently
-      const [prefsResult, bookmarksResult, historyResult] = await Promise.allSettled([
-          this.loadUserPreferences(), // Returns Promise<UserPreferences | null>, sets internal state
-          this.loadBookmarks(),       // Returns Promise<void>, sets internal state
-          this.loadReadingHistory()   // Returns Promise<void>, sets internal state
-      ]);
+    console.log('[QuranReader] Loading secondary data...');
+    this.showLoadingUI(); // <-- Remove argument
 
-      // Process preference results - Apply UI related preferences here
-      if (prefsResult.status === 'fulfilled') {
-           // Check if preferences were actually loaded (loadUserPreferences sets this.preferences)
-           if (this.preferences) {
-               this.selectedReciter = this.reciters.find(r => r.id === this.preferences?.selectedReciter) || this.selectedReciter;
-               this.selectedTranslation = this.preferences?.selectedTranslation || this.selectedTranslation;
-               this.fontSize = this.preferences?.fontSize || this.fontSize;
-               // Apply other UI-related prefs like dark mode, font etc. if needed
-               console.log('[loadSecondaryData] User preferences applied to UI.');
-               this.changeDetector.markForCheck(); // Update UI if prefs changed it
-           } else {
-               console.log('[loadSecondaryData] User preferences loading initiated, but no preference data found/applied.');
-           }
+    // Load preferences, bookmarks, history concurrently
+    await Promise.all([ 
+      this.loadUserPreferences(), 
+      this.loadBookmarks(), 
+      this.loadReadingHistory()
+    ]);
+
+    // --- Restore state from LocalStorage AFTER loading prefs/bookmarks/history --- 
+    try {
+      const savedStateString = localStorage.getItem('quranReaderState');
+      if (savedStateString) {
+        const savedState = JSON.parse(savedStateString);
+        console.log('[QuranReader] Found saved state in localStorage:', savedState);
+
+        // Restore view mode FIRST, if available, before potentially conflicting prefs
+        if (typeof savedState.isMushafView === 'boolean') {
+            this.isMushafView = savedState.isMushafView;
+            console.log('[QuranReader] Restored isMushafView from localStorage:', this.isMushafView);
+        }
+
+        // Restore other settings from localStorage if they exist
+        if (savedState.page) this.displayPageNumber = savedState.page;
+        if (savedState.fontSize) this.fontSize = savedState.fontSize;
+        if (savedState.arabicFontSize) this.arabicFontSize = savedState.arabicFontSize;
+        if (savedState.mushafZoom) this.mushafZoom = savedState.mushafZoom;
+        if (typeof savedState.isDoublePageView === 'boolean') this.isDoublePageView = savedState.isDoublePageView;
+        if (typeof savedState.showingTranslation === 'boolean') this.showingTranslation = savedState.showingTranslation;
+
+        // We might still override with DB prefs if they exist, but localStorage provides a quick fallback
+        // The logic in loadUserPreferences handles applying DB prefs over these defaults/localStorage values
+
+        console.log('[QuranReader] State after localStorage restore:', { 
+            isMushafView: this.isMushafView, 
+            page: this.displayPageNumber 
+            // Add other relevant state vars
+        });
 
       } else {
-          console.warn('[loadSecondaryData] Failed to initiate/complete user preferences loading:', prefsResult.reason);
-          // Defaults are already applied
+          console.log('[QuranReader] No state found in localStorage.');
       }
+    } catch (error) {
+      console.error('[QuranReader] Error loading state from localStorage:', error);
+    }
+    // --- End of localStorage restoration ---
 
-      // Log status for bookmarks and history (they set internal state)
-      if (bookmarksResult.status === 'fulfilled') {
-          console.log('[loadSecondaryData] Bookmarks loading initiated/completed successfully.');
-      } else {
-          console.warn('[loadSecondaryData] Failed to load bookmarks:', bookmarksResult.reason);
-      }
+    // Setup view mode based on the potentially restored state
+    this.setupViewMode();
 
-      if (historyResult.status === 'fulfilled') {
-          console.log('[loadSecondaryData] Reading history loading initiated/completed successfully.');
-      } else {
-          console.warn('[loadSecondaryData] Failed to load reading history:', historyResult.reason);
-      }
-
-      console.log('[loadSecondaryData] Secondary data loading process finished.');
-      // No need to reload content or scroll here, it was handled by loadInitialContent
-      this.changeDetector.markForCheck(); // Final check after async ops
+    console.log('[QuranReader] Secondary data loading complete.');
+    this.hideLoadingUI(); // <-- Remove argument
+    this.changeDetector.markForCheck(); // Ensure UI reflects loaded data
   }
 
   /**

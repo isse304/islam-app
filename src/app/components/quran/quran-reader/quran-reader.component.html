@@ -370,8 +370,8 @@
             <div class="flex justify-center" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
               <!-- Next Page (in double view) -->
               <div *ngIf="isDoublePageView" class="flex-shrink-0">
-                <img *ngIf="currentPage && currentPage < LAST_PAGE" 
-                     [src]="'/quran-pages/quran_Page_' + (currentPage + 1).toString().padStart(3, '0') + '.png'"
+                <img *ngIf="currentPage && currentPage < LAST_PAGE"
+                     [src]="'https://storage.googleapis.com/nura_ai_quran_pages/quran_Page_' + (currentPage + 1).toString().padStart(3, '0') + '.png'"
                      [alt]="'Quran Page ' + (currentPage + 1)"
                      class="w-full h-auto max-h-[700px] object-contain"
                      loading="lazy">
@@ -379,8 +379,8 @@
 
               <!-- Current Page -->
               <div class="flex-shrink-0">
-                <img *ngIf="currentPage" 
-                     [src]="'/quran-pages/quran_Page_' + currentPage.toString().padStart(3, '0') + '.png'" 
+                <img *ngIf="currentPage"
+                     [src]="'https://storage.googleapis.com/nura_ai_quran_pages/quran_Page_' + currentPage.toString().padStart(3, '0') + '.png'"
                      [alt]="'Quran Page ' + currentPage"
                      class="w-full h-auto max-h-[700px] object-contain"
                      loading="lazy">
