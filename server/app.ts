@@ -1,6 +1,5 @@
-import express from 'express';
+import express, { Request as ExpressRequest } from 'express';
 import cors from 'cors';
-import type { CorsOptions } from 'cors';
 import bodyParser from 'body-parser';
 import tafsirRoutes from './routes/tafsir';
 import userRoutes from './routes/user';
@@ -22,14 +21,21 @@ app.get('/ping', (req, res) => {
 
 // Log ALL incoming requests BEFORE any other middleware
 app.use((req, res, next) => {
+  // console.log(`[Request Logger] ${new Date().toISOString()} - ${req.method} ${req.originalUrl} from Origin: ${req.headers.origin || 'N/A'}`);
   next(); // Continue to next middleware
 });
 
 // ** Apply specific CORS configuration early **
-console.log('[Server] Applying specific CORS configuration...');
+// console.log('[Server] Applying specific CORS configuration...');
 
+const allowedOrigins = [
+    'http://localhost:4200',      // Local development
+    'https://www.nura-ai.app'       // Production frontend
+];
+
+// Define CORS options directly, letting TypeScript infer the type
 const corsOptions = {
-  origin: 'http://localhost:4200', // Exact origin instead of array
+  origin: allowedOrigins, // Use the array directly
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
@@ -39,10 +45,10 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Apply CORS configuration
+// Apply CORS configuration using the options object
 app.use(cors(corsOptions));
 
-// Handle preflight requests
+// Handle preflight requests explicitly using the same options
 app.options('*', cors(corsOptions));
 
 // Parse JSON bodies
