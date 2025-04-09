@@ -30,17 +30,31 @@ app.use((req, res, next) => {
 
 const allowedOrigins = [
     'http://localhost:4200',      // Local development
-    'https://www.nura-ai.app'       // Production frontend
+    'https://www.nura-ai.app',    // Production frontend
+    'https://nura-y6uq.onrender.com', // Backend URL
+    'https://nura-ai-frontend.onrender.com' // Frontend on render.com
 ];
 
 // Define CORS options directly, letting TypeScript infer the type
 const corsOptions = {
-  origin: allowedOrigins, // Use the array directly
+  origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.indexOf(origin) !== -1 || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
   exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600,
+  maxAge: 86400, // 24 hours
   preflightContinue: false,
   optionsSuccessStatus: 204
 };
@@ -50,6 +64,15 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests explicitly using the same options
 app.options('*', cors(corsOptions));
+
+// Add a middleware to log CORS issues
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && !allowedOrigins.includes(origin) && process.env.NODE_ENV !== 'development') {
+    console.warn(`[CORS Warning] Request from non-allowed origin: ${origin}`);
+  }
+  next();
+});
 
 // Parse JSON bodies
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -66,18 +89,28 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/usage', usageRoutes);
 
 // Serve static files from the Angular app build directory
-const clientBuildPath = path.join(__dirname, '../../dist/islam-app/browser');
+// const clientBuildPath = path.join(__dirname, '../../dist/islam-app/browser');
+const clientBuildPath = path.join(process.cwd(), 'dist/islam-app/browser'); // More robust path from project root
 app.use(express.static(clientBuildPath));
 
-// Serve the Angular index.html for all non-API routes
-app.get('*', (req, res) => {
+// Serve the Angular index.html for all non-API, non-file-like routes
+app.get('*', (req, res, next) => {
+  // If the request looks like a file path (e.g., contains a dot in the last segment), let static serve handle it or 404
+  if (path.extname(req.path)) {
+    // console.log(`[Catch-All] Request path ${req.path} looks like a file, skipping index.html serve.`);
+    return next(); // Pass to the next middleware (likely results in 404 if express.static didn't find it)
+  }
+
+  // console.log(`[Catch-All] Serving index.html for path: ${req.path}`);
   if (req.accepts('html')) {
     res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
       if (err) {
+        // console.error(`[Catch-All] Error sending index.html:`, err);
         res.status(500).send(err);
       }
     });
   } else {
+    // console.log(`[Catch-All] Request does not accept HTML, sending 404 for path: ${req.path}`);
     res.status(404).send('Not Found');
   }
 });
@@ -87,8 +120,8 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   // console.error("[Global Error Handler]:", err.stack);
 
   const origin = req.headers.origin;
-  // Use the allowedOrigins array defined earlier in the file
-  const isOriginAllowed = ['http://localhost:4200'].includes(origin || ''); 
+  // Use the full allowedOrigins array defined earlier
+  const isOriginAllowed = allowedOrigins.includes(origin || '');
 
   // Set CORS headers ONLY if origin is allowed and headers not sent
   if (isOriginAllowed && !res.headersSent) {
@@ -108,28 +141,21 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
   // Check if it's a CORS configuration error from the cors middleware itself
   if (err instanceof Error && err.message === 'Not allowed by CORS') {
-    // console.error(`[Global Error Handler] CORS Blocked Origin: ${origin}`);
-    // Headers should have been set above if the origin was allowed (edge case)
-    // Send the determined status code (403)
+    console.error(`[Global Error Handler] CORS Blocked Origin: ${origin}`);
     if (!res.headersSent) {
       res.status(statusCode).json({ error: errorType, details: errorDetails });
     }
-    return; // Stop further processing for this specific error
+    return;
   }
 
   // Check if headers have already been sent
   if (res.headersSent) {
-    // console.error('[Global Error Handler] Headers already sent, cannot send error response.');
-    // If next is not called here, the request might hang for the client.
-    // However, calling next(err) might lead to Express's default handler,
-    // which might send HTML, potentially undesirable for an API.
-    // Logging is often the best we can do here.
-    return; // Stop processing
+    console.error('[Global Error Handler] Headers already sent, cannot send error response.');
+    return;
   }
 
-  // Send the final error response (CORS headers should be set above if applicable)
-  // console.log(`[Global Error Handler] Sending final error response. Status: ${statusCode}, Type: ${errorType}, Details: ${errorDetails}`);
-  res.status(statusCode).json({ error: errorType, details: errorDetails }); 
+  // Send the final error response
+  res.status(statusCode).json({ error: errorType, details: errorDetails });
 });
 
-export default app; 
+export default app;
