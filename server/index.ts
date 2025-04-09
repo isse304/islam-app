@@ -59,38 +59,56 @@ const app = express();
 // Configure CORS with proper settings
 const allowedOrigins = [
   'http://localhost:4200',      // Local development
+  'http://localhost:3000',      // Local development API
   'https://www.nura-ai.app',    // Production frontend with www
   'https://nura-ai.app',        // Production frontend without www
   'https://nura-y6uq.onrender.com', // Backend URL
-  'https://nura-ai-frontend.onrender.com' // Frontend on render.com
+  'https://nura-ai-frontend.onrender.com', // Frontend on render.com
+  'https://nura-ai.onrender.com' // Additional render.com domain
 ];
 
 // CORS configuration
 app.use((req, res, next) => {
   const origin = req.headers.origin;
+  const isDevelopment = process.env.NODE_ENV === 'development';
   
+  // Log the actual request details
   logger.info('[CORS Check]', {
-    origin,
+    origin: origin || 'No Origin',
     method: req.method,
     path: req.path,
-    headers: req.headers,
     allowedOrigins,
-    isDevelopment: process.env.NODE_ENV === 'development'
+    isDevelopment,
+    host: req.headers.host,
+    referer: req.headers.referer
   });
   
-  // Check if origin is allowed
-  if (origin && (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development')) {
-    logger.info('[CORS] Setting headers for origin:', origin);
+  // In development, allow all origins
+  if (isDevelopment) {
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    }
+    logger.info('[CORS] Development mode: allowing all origins');
+  }
+  // In production, check against allowed origins
+  else if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Max-Age', '86400'); // 24 hours
+    logger.info('[CORS] Production mode: allowed origin:', origin);
   } else {
     logger.warn('[CORS] Origin not allowed:', {
-      origin,
+      origin: origin || 'No Origin',
       allowedOrigins,
-      isDevelopment: process.env.NODE_ENV === 'development'
+      isDevelopment,
+      host: req.headers.host,
+      referer: req.headers.referer
     });
   }
 
