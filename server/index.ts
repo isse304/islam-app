@@ -341,7 +341,12 @@ logger.info(`[Static Files Debug] Final Static Files Path: ${staticFilesPath}`);
 try {
   if (fs.existsSync(staticFilesPath)) {
     logger.info(`[Static Files] Directory exists. Serving static files from: ${staticFilesPath}`);
-    app.use(express.static(staticFilesPath));
+    logger.info('[Static Files] Adding express.static middleware.');
+    app.use(express.static(staticFilesPath, {
+      setHeaders: (res, filePath) => {
+        logger.debug(`[Static Files] Serving: ${path.basename(filePath)}`);
+      }
+    }));
 
     // SPA catch-all route ONLY if static path exists
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
@@ -357,10 +362,14 @@ try {
       }
 
       const indexPath = path.join(staticFilesPath, 'index.html');
-      logger.info(`[SPA Catch-all] Attempting to serve index.html from: ${indexPath} for path: ${req.path}`);
+      logger.info(`[SPA Catch-all] Attempting to serve index.html from: ${indexPath} for request path: ${req.path}`);
       res.sendFile(indexPath, (err) => {
         if (err) {
-          logger.error(`[SPA Catch-all] Error sending file ${indexPath}:`, err);
+          logger.error(`[SPA Catch-all] Error sending file ${indexPath}:`, {
+            message: (err as NodeJS.ErrnoException).message,
+            code: (err as NodeJS.ErrnoException).code,
+            path: (err as NodeJS.ErrnoException).path
+          });
           if (!res.headersSent) {
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
               res.status(404).send(`SPA index.html not found at ${indexPath}`);
@@ -369,7 +378,7 @@ try {
             }
           }
         } else {
-          logger.info(`[SPA Catch-all] Successfully sent index.html for path: ${req.path}`);
+          logger.info(`[SPA Catch-all] Successfully sent index.html for request path: ${req.path}`);
         }
       });
     });
