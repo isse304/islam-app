@@ -4,7 +4,7 @@
   "description": "Islamic Learning App with AI Features",
   "scripts": {
     "ng": "ng",
-    "start": "cross-env PORT=%PORT% npx serve -s dist/islam-app -l %PORT%",
+    "start": "serve -s dist/islam-app -l $PORT",
     "prebuild": "npm install --legacy-peer-deps",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
@@ -50,11 +50,12 @@
     "openai": "4.89.0",
     "postcss": "^8.4.32",
     "rxjs": "~7.8.0",
-    "serve": "^14.0.0",
+    "serve": "^14.2.1",
     "tailwindcss": "^3.4.0",
     "tslib": "^2.3.0",
     "typescript": "~5.1.6",
-    "zone.js": "~0.13.0"
+    "zone.js": "~0.13.0",
+    "cross-env": "^7.0.3"
   },
   "devDependencies": {
     "@types/connect-mongo": "3.1.6",
