@@ -231,66 +231,67 @@
     <ng-container *ngIf="!isAudioLoading">
       <!-- Translation View -->
       <div *ngIf="!isMushafView" class="pb-24">
-        <!-- ** Use Virtual Scrolling ** -->
-        <cdk-virtual-scroll-viewport itemSize="150" class="verse-scroll-viewport"> 
-          <div *cdkVirtualFor="let verse of verses" 
-               [id]="'verse-' + verse.number"
-               class="bg-white rounded-xl shadow-lg p-6 relative transition-colors duration-300 mb-6 verse-container verse-item" 
-               [class.bg-[#B7A57A15]]="verse.number === currentRecitingVerse"
-               [class.border-l-4]="verse.number === currentRecitingVerse"
-               [class.border-[#B7A57A]]="verse.number === currentRecitingVerse"
-               [class.highlight-verse]="verse.number === currentRecitingVerse"
-               (click)="toggleVerseTranslation($event, verse.number); $event.stopPropagation();">
-          
-            <!-- Verse Number -->
-            <div class="absolute top-4 right-4 text-[#B7A57A] font-semibold">
-              {{verse.number}}
-            </div>
+        <!-- Verse List -->
+        <ng-container *ngIf="!isMushafView && verses && verses.length > 0">
+          <!-- Remove <cdk-virtual-scroll-viewport> -->
+          <div class="verse-list-container px-4 md:px-8 lg:px-16 py-8 space-y-8">
+            <!-- Change *cdkVirtualFor back to *ngFor -->
+            <div *ngFor="let verse of verses; trackBy: trackVerse" 
+                 #verseItem 
+                 [id]="'verse-' + verse.number" 
+                 class="verse-card bg-white rounded-xl shadow-md p-6 transition-shadow hover:shadow-lg"
+                 [class.highlighted-verse]="currentRecitingVerse === verse.number">
+              <!-- Verse Number -->
+              <div class="absolute top-4 right-4 text-[#B7A57A] font-semibold">
+                {{verse.number}}
+              </div>
 
-            <!-- Arabic Text -->
-            <div class="verse-container">
-              <div class="verse-text" dir="rtl">
-                <span *ngFor="let word of verse.words" 
-                      class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
-                      (click)="showWordTranslation(word, $event)">
-                  {{word.text}}
-                  <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50">
-                    {{word.translation}}
-                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
-                  </div>
-                </span>
+              <!-- Arabic Text -->
+              <div class="verse-container">
+                <div class="verse-text" dir="rtl">
+                  <span *ngFor="let word of verse.words" 
+                        class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
+                        (click)="showWordTranslation(word, $event)">
+                    {{word.text}}
+                    <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50">
+                      {{word.translation}}
+                      <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
+                    </div>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Translation and Transliteration -->
+              <div class="verse-meaning space-y-3 mb-6">
+                <p class="translation text-gray-800 text-lg leading-relaxed">
+                  {{verse.translation}}
+                </p>
+                <p *ngIf="verse.transliteration" class="transliteration text-gray-600 italic leading-relaxed">
+                  {{verse.transliteration}}
+                </p>
+              </div>
+
+              <!-- Actions -->
+              <div class="flex gap-4">
+                <button (click)="playVerseAudio(verse); $event.stopPropagation(); $event.preventDefault()" class="text-[#B7A57A] hover:text-[#9b8a65]">
+                  <i class="fas" [class.fa-pause]="isPlaying && currentPlayingVerse === verse.number" [class.fa-play]="!isPlaying || currentPlayingVerse !== verse.number"></i>
+                  {{ isPlaying && currentPlayingVerse === verse.number ? 'Stop' : 'Play' }}
+                </button>
+                <button (click)="showTafsir(verse); $event.stopPropagation(); $event.preventDefault()"
+                        class="text-[#B7A57A] hover:text-[#9b8a65]">
+                  <i class="fas fa-book"></i> Tafsir
+                </button>
+                <button (click)="toggleBookmark(verse.number); $event.stopPropagation(); $event.preventDefault()"
+                        class="text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-2">
+                  <i class="fas" [class.fa-bookmark]="isBookmarked(verse.number)" 
+                     [class.fa-bookmark-o]="!isBookmarked(verse.number)"></i>
+                  {{ isBookmarked(verse.number) ? 'Remove Bookmark' : 'Add Bookmark' }}
+                </button>
               </div>
             </div>
-
-            <!-- Translation and Transliteration -->
-            <div class="verse-meaning space-y-3 mb-6">
-              <p class="translation text-gray-800 text-lg leading-relaxed">
-                {{verse.translation}}
-              </p>
-              <p *ngIf="verse.transliteration" class="transliteration text-gray-600 italic leading-relaxed">
-                {{verse.transliteration}}
-              </p>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex gap-4">
-              <button (click)="playVerseAudio(verse); $event.stopPropagation(); $event.preventDefault()" class="text-[#B7A57A] hover:text-[#9b8a65]">
-                <i class="fas" [class.fa-pause]="isPlaying && currentPlayingVerse === verse.number" [class.fa-play]="!isPlaying || currentPlayingVerse !== verse.number"></i>
-                {{ isPlaying && currentPlayingVerse === verse.number ? 'Stop' : 'Play' }}
-              </button>
-              <button (click)="showTafsir(verse); $event.stopPropagation(); $event.preventDefault()"
-                      class="text-[#B7A57A] hover:text-[#9b8a65]">
-                <i class="fas fa-book"></i> Tafsir
-              </button>
-              <button (click)="toggleBookmark(verse.number); $event.stopPropagation(); $event.preventDefault()"
-                      class="text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-2">
-                <i class="fas" [class.fa-bookmark]="isBookmarked(verse.number)" 
-                   [class.fa-bookmark-o]="!isBookmarked(verse.number)"></i>
-                {{ isBookmarked(verse.number) ? 'Remove Bookmark' : 'Add Bookmark' }}
-              </button>
-            </div>
           </div>
-        </cdk-virtual-scroll-viewport>
+          <!-- Remove closing </cdk-virtual-scroll-viewport> -->
+        </ng-container>
       </div>
 
       <!-- Mushaf View -->
@@ -365,13 +366,13 @@
         </div>
 
         <!-- Mushaf Display -->
-        <div *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
+        <ng-container *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
           <div class="bg-white rounded-xl shadow-lg overflow-hidden">
             <div class="flex justify-center" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
               <!-- Next Page (in double view) -->
               <div *ngIf="isDoublePageView" class="flex-shrink-0">
-                <img *ngIf="currentPage && currentPage < LAST_PAGE"
-                     [src]="'https://storage.googleapis.com/nura_ai_quran_pages/quran_Page_' + (currentPage + 1).toString().padStart(3, '0') + '.png'"
+                <img *ngIf="secondPageImageUrl" 
+                     [src]="secondPageImageUrl"
                      [alt]="'Quran Page ' + (currentPage + 1)"
                      class="w-full h-auto max-h-[700px] object-contain"
                      loading="lazy">
@@ -379,8 +380,8 @@
 
               <!-- Current Page -->
               <div class="flex-shrink-0">
-                <img *ngIf="currentPage"
-                     [src]="'https://storage.googleapis.com/nura_ai_quran_pages/quran_Page_' + currentPage.toString().padStart(3, '0') + '.png'"
+                <img *ngIf="pageImageUrl" 
+                     [src]="pageImageUrl" 
                      [alt]="'Quran Page ' + currentPage"
                      class="w-full h-auto max-h-[700px] object-contain"
                      loading="lazy">
@@ -392,7 +393,7 @@
               Page {{displayPageNumber}} of {{DISPLAY_TOTAL}}
             </div>
           </div>
-        </div>
+        </ng-container>
       </div>
     </ng-container>
 

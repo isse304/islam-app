@@ -1,31 +1,40 @@
 export {};
 
-import { Component, OnInit, OnDestroy, HostListener, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, NgZone, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
-import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject, debounceTime, EMPTY } from 'rxjs';
-import { takeUntil, filter } from 'rxjs/operators'; // Add takeUntil and filter
-import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
+import { DomSanitizer } from '@angular/platform-browser';
+import { Observable, Subscription, Subject, of, forkJoin, from, throwError, timer, combineLatest, EMPTY, firstValueFrom } from 'rxjs';
+import { catchError, map, switchMap, debounceTime, distinctUntilChanged, finalize, take, filter, tap, retry, takeUntil } from 'rxjs/operators';
+
+// Angular Material Modules (Cleaned up duplicates)
+import { MatSliderModule } from '@angular/material/slider';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatListModule } from '@angular/material/list';
+import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialogModule } from '@angular/material/dialog';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+
+// Removed ScrollingModule
+
+import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
 import { SttService } from '../../../services/stt.service';
 import { QuranFlashService } from '../../../services/quran-flash.service';
-import { Router, ActivatedRoute, Params, RouterModule } from '@angular/router';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { AppUser, FirebaseAuthService, UserPreferences, BookmarkResponse, ReadingHistoryResponse } from '../../../services/firebase-auth.service';
 import { ToastService } from '../../../services/toast.service';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
-import { MatSliderModule } from '@angular/material/slider';
-import { MatSelectModule } from '@angular/material/select';
-import { MatInputModule } from '@angular/material/input';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatMenuModule } from '@angular/material/menu';
-import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { HttpClient } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
-import { ScrollingModule } from '@angular/cdk/scrolling'; // Import ScrollingModule
+import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
+import { AppUser, FirebaseAuthService, UserPreferences, BookmarkResponse, ReadingHistoryResponse } from '../../../services/firebase-auth.service';
+
+// Removed duplicate Material imports that were added again
 
 interface SearchSuggestion {
   type: 'surah' | 'verse';
@@ -67,31 +76,30 @@ interface TimingData {
 }
 
 @Component({
-    selector: 'app-quran-reader',
-    templateUrl: './quran-reader.component.html',
-    styleUrls: ['./quran-reader.component.scss'],
-    standalone: true,
-    changeDetection: ChangeDetectionStrategy.OnPush,
-    imports: [
-        CommonModule,
-        FormsModule,
-        RouterModule,
-        MatTooltipModule,
-        MatProgressSpinnerModule,
-        MatButtonModule,
-        MatIconModule,
-        MatSliderModule,
-        MatSelectModule,
-        MatInputModule,
-        MatFormFieldModule,
-        MatMenuModule,
-        MatProgressBarModule,
-        ScrollingModule, // Add ScrollingModule here
-        ClickOutsideDirective
-    ],
-    host: {
-        '[class.mat-app-background]': 'true'
-    }
+  selector: 'app-quran-reader',
+  standalone: true,
+  // Removed ChangeDetectionStrategy.OnPush
+  imports: [
+    CommonModule,
+    RouterModule,
+    FormsModule,
+    // Material Modules
+    MatSliderModule,
+    MatIconModule,
+    MatButtonModule,
+    MatSelectModule,
+    MatFormFieldModule,
+    MatInputModule,
+    MatProgressSpinnerModule,
+    MatSlideToggleModule,
+    MatListModule,
+    MatMenuModule,
+    MatTooltipModule,
+    MatDialogModule
+    // ScrollingModule // Removed ScrollingModule
+  ],
+  templateUrl: './quran-reader.component.html',
+  styleUrls: ['./quran-reader.component.scss']
 })
 export class QuranReaderComponent implements OnInit, OnDestroy {
   @Input() selectedSurah: number = 1;
@@ -399,8 +407,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** UPDATED HELPER METHOD ***
   // Helper to load initial content based on determined state
   private loadInitialContent(surah: number, verse: number, isMushaf: boolean): void {
-    console.log(`[loadInitialContent] Loading content for FINAL state: S${surah}:V${verse}, Mushaf: ${isMushaf}`);
-    this.isAudioLoading = true; // Ensure loading indicator is on
+    console.log(`[loadInitialContent] Called with S:${surah}, V:${verse}, Mushaf:${isMushaf}`);
+    this.showLoadingUI(); // Show loading indicators
     this.changeDetector.markForCheck(); // Update UI for loading indicator
 
     // Reset previous verses if changing Surah or view mode
@@ -408,8 +416,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     if (isMushaf) {
       // Determine page and load Mushaf
-      this.quranFlash.getPageBySurah(surah).pipe(
+      // *** REVERTED: Use quranService service ***
+      this.quranService.getPageBySurah(surah, verse).pipe(
         take(1),
+        map((response: any) => {
+            // Use page_number directly if available, fallback to verse.page_number
+            const displayPageNumber = response?.page_number ?? response?.verse?.page_number;
+            return displayPageNumber ? this.displayToActualPage(displayPageNumber) : this.FIRST_PAGE;
+        }),
         catchError(err => {
           console.error(`[loadInitialContent] Error fetching page for S${surah}:V${verse}:`, err);
           return of(this.FIRST_PAGE); // Default on error
@@ -423,45 +437,37 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         })
       ).subscribe({
         next: () => {
-          this.isAudioLoading = false;
-          console.log(`[loadInitialContent] Mushaf view loaded for page ${this.displayPageNumber}.`);
-          this.updateUrlParams(); // Update URL after loading
-          this.changeDetector.markForCheck(); // Use markForCheck
+          this.hideLoadingUI();
+          console.log(`[loadInitialContent] Mushaf page ${this.currentPage} loaded.`);
+          this.updateUrlParams(); // Update URL after successful load
+          this.changeDetector.markForCheck();
         },
         error: (err) => {
-          console.error('[loadInitialContent] Error loading Mushaf page:', err);
-          this.isAudioLoading = false;
-          this.changeDetector.markForCheck(); // Use markForCheck
+          this.hideLoadingUI();
+          console.error('[loadInitialContent] Error loading mushaf page:', err);
+          this.changeDetector.markForCheck();
         }
       });
     } else {
-      // Load Translation view Surah
+      // Load Verse View
+      console.log(`[loadInitialContent] Loading verse view for S${surah}...`);
       this.loadSurahSubscription?.unsubscribe(); // Cancel previous load if any
-      this.loadSurahSubscription = this.loadSurah(surah).subscribe({
-        next: () => {
-          console.log(`[loadInitialContent] Surah ${surah} loaded for Translation view.`);
-          this.isAudioLoading = false;
-          this.changeDetector.markForCheck(); // Update UI first
-          if (verse > 1) {
-             // Ensure verses array is populated before scrolling
-             if (this.verses.length >= verse) {
-                requestAnimationFrame(() => {
-                  console.log(`[loadInitialContent] Queued scroll to verse ${verse}.`);
-                  this.scrollToVerse(verse, 3); // Fewer attempts initially
-                });
-             } else {
-                 console.warn(`[loadInitialContent] Cannot scroll, verse ${verse} not found in loaded surah.`);
-                 this.updateUrlParams(); // Update URL anyway
-             }
-          } else {
-             this.updateUrlParams(); // Update URL even if not scrolling
+      this.loadSurahSubscription = this.loadSurah(surah).pipe(
+          // Ensure hideLoadingUI and change detection run even if loadSurah completes quickly from cache
+          finalize(() => {
+              this.hideLoadingUI();
+              this.changeDetector.markForCheck();
+              // Don't scroll here, let loadSecondaryData handle initial scroll
+              console.log(`[loadInitialContent] Verse view loading finalized for Surah ${surah}.`);
+              // Update URL after successful load
+              this.updateUrlParams();
+          })
+      ).subscribe({
+          // next: handled by loadSurah
+          error: (err) => {
+              console.error(`[loadInitialContent] Error in loadSurah pipe for Surah ${surah}:`, err);
+              // No need to hideLoadingUI here, finalize handles it
           }
-        },
-        error: (err) => {
-          console.error('[loadInitialContent] Error loading Surah for Translation view:', err);
-          this.isAudioLoading = false;
-          this.changeDetector.markForCheck(); // Use markForCheck
-        }
       });
     }
   }
@@ -2033,9 +2039,13 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private loadReadingHistory(): Promise<void> {
-    return firstValueFrom(this.authService.getReadingHistory()).then(response => {
+    // Explicitly type the response
+    return firstValueFrom(this.authService.getReadingHistory()).then((response: { success: boolean; history: any[] }) => {
       if (response.success) {
         this.readingHistory = response.history;
+      } else {
+        // Handle the case where reading history is not successfully retrieved
+        console.error('Error retrieving reading history'); // Removed response.message
       }
     });
   }
@@ -2146,4 +2156,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   // --- End Event Handlers ---
+
+  // Add this function back
+  trackVerse(index: number, verse: QuranVerse): number {
+    return verse.number; // Track by verse number
+  }
 }
