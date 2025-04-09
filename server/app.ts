@@ -1,5 +1,4 @@
 import express, { Request, Response, NextFunction, ErrorRequestHandler, RequestHandler } from 'express';
-import bodyParser from 'body-parser';
 import tafsirRoutes from './routes/tafsir';
 import userRoutes from './routes/user';
 import dotenv from 'dotenv';
@@ -81,8 +80,8 @@ app.post('/api/subscription/webhook',
 
 // --- Apply JSON and URL-encoded body parsers AFTER the webhook route ---
 // --- These will apply to all subsequent routes                   ---
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ limit: '10mb', extended: true }));
 
 // --- Configure CORS, Security, Compression, Rate Limiting, Session AFTER body parsers ---
 // Re-add allowedOrigins definition
@@ -168,7 +167,7 @@ app.use(helmet({
 // Configure rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 1000 : 100,
+  max: process.env.NODE_ENV === 'production' ? 1000 : 2000, // Increased dev limit to 2000
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

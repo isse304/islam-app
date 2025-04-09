@@ -861,7 +861,11 @@ export class QuranService {
   }
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {
-    return this.http.get(`${this.quranComUrl}/verses/by_key/${surah}:${verse}`);
+    // Correctly use query parameter 'verse_key' for the backend call
+    const verseKey = `${surah}:${verse}`;
+    return this.http.get(`${this.quranComUrl}/verses/by_key`, { 
+      params: { verse_key: verseKey } 
+    });
   }
 
   // Method to get all available reciters

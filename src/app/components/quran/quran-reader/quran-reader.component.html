@@ -238,17 +238,17 @@
             <!-- Change *cdkVirtualFor back to *ngFor -->
             <div *ngFor="let verse of verses; trackBy: trackVerse" 
                  #verseItem 
-                 [id]="'verse-' + verse.number" 
-                 class="verse-card bg-white rounded-xl shadow-md p-6 transition-shadow hover:shadow-lg"
+                 [id]="'verse-' + verse.number"
+                 class="verse-card bg-white rounded-xl shadow-md p-6 transition-shadow hover:shadow-lg relative"
                  [class.highlighted-verse]="currentRecitingVerse === verse.number">
-              <!-- Verse Number -->
-              <div class="absolute top-4 right-4 text-[#B7A57A] font-semibold">
-                {{verse.number}}
+              <!-- Verse Number Moved here -->
+              <div class="verse-number text-lg font-semibold text-[#B7A57A] mb-3">
+                {{currentSurah}}:{{verse.number}}
               </div>
 
               <!-- Arabic Text -->
               <div class="verse-container">
-                <div class="verse-text" dir="rtl">
+                <div class="verse-text mb-4" dir="rtl">
                   <span *ngFor="let word of verse.words" 
                         class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
                         (click)="showWordTranslation(word, $event)">
