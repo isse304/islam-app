@@ -23,6 +23,7 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
+import fs from 'fs';
 
 // Load environment variables first
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -325,6 +326,62 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
 app.use((req: Request, res: Response) => {
   res.status(404).send('Not Found');
 });
+
+// --- Static Files & SPA Handling ---
+// Serve static files from the Angular build directory, relative to project root
+const staticFilesPath = path.join(__dirname, '..', '..', 'dist', 'islam-app');
+logger.info(`[Static Files] Calculated static files path: ${staticFilesPath}`);
+
+// Check if the directory exists
+try {
+  if (fs.existsSync(staticFilesPath)) {
+    logger.info(`[Static Files] Directory exists. Serving static files from: ${staticFilesPath}`);
+    app.use(express.static(staticFilesPath));
+
+    // SPA catch-all route ONLY if static path exists
+    app.get('*', (req: Request, res: Response, next: NextFunction) => {
+      // Skip API routes
+      if (req.originalUrl.startsWith('/api/')) {
+        return next();
+      }
+      
+      // Skip requests for files with extensions (like .css, .js)
+      if (path.extname(req.path)) {
+        return next();
+      }
+      
+      const indexPath = path.join(staticFilesPath, 'index.html');
+      logger.info(`[SPA Catch-all] Attempting to serve index.html from: ${indexPath} for path: ${req.path}`);
+      res.sendFile(indexPath, (err) => {
+        if (err) {
+          logger.error(`[SPA Catch-all] Error sending file ${indexPath}:`, err);
+          if (!res.headersSent) {
+            // Check the specific error code
+            if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+              res.status(404).send('index.html not found');
+            } else {
+              res.status(500).send('Error serving application.');
+            }
+          }
+        } else {
+          logger.info(`[SPA Catch-all] Successfully sent index.html for path: ${req.path}`);
+        }
+      });
+    });
+  } else {
+    logger.warn(`[Static Files] Directory NOT FOUND: ${staticFilesPath}. Static file serving and SPA routing skipped.`);
+    // Optionally, add a fallback route if static files aren't found
+    app.get('*', (req, res, next) => {
+       if (req.originalUrl.startsWith('/api/')) {
+         return next();
+       }
+       res.status(404).send('Application files not found. Check build process.');
+    });
+  }
+} catch (error) {
+   logger.error(`[Static Files] Error checking directory ${staticFilesPath}:`, error);
+}
+// --- End Static Files & SPA Handling ---
 
 // Start server function
 const startServer = async () => {
