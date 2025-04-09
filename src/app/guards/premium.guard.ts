@@ -13,17 +13,17 @@ export const premiumGuard: CanActivateFn =
     // const subscriptionService = inject(SubscriptionService); // Removed if not needed
     const featureName = route.data['feature'] || 'Premium Feature';
 
-    console.log('[PremiumGuard] Running...'); // ADD LOG
+    // console.log('[PremiumGuard] Running...'); // ADD LOG
 
     return from(authService.waitForAuthReady()).pipe(
       switchMap(() => from(authService.isPremiumUser())), // Convert promise to observable
       map((hasActivePremium: boolean): boolean | UrlTree => {
-        console.log(`[PremiumGuard] isPremiumUser result: ${hasActivePremium}`); // ADD LOG
+        // console.log(`[PremiumGuard] isPremiumUser result: ${hasActivePremium}`); // ADD LOG
         if (hasActivePremium) {
-          console.log('[PremiumGuard] Access granted, returning true.'); // ADD LOG
+          // console.log('[PremiumGuard] Access granted, returning true.'); // ADD LOG
           return true;
         } else {
-          console.log(`[PremiumGuard] Access denied. Creating UrlTree to redirect to /subscription for feature: ${featureName}`); // ADD LOG
+          // console.log(`[PremiumGuard] Access denied. Creating UrlTree to redirect to /subscription for feature: ${featureName}`); // ADD LOG
           // Use createUrlTree for redirection
           return router.createUrlTree(['/subscription'], { queryParams: { feature: featureName } }); // RETURN UrlTree
         }

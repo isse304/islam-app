@@ -325,7 +325,7 @@ export class FirebaseAuthService {
           history: from(this.getReadingHistoryInternal()).pipe(
             timeout(30000), // Increase timeout to 30 seconds
             catchError(err => {
-              console.warn('[handleUserSignedIn] Timeout or error fetching history, proceeding with empty history:', err);
+              // console.warn('[handleUserSignedIn] Timeout or error fetching history, proceeding with empty history:', err);
               return of([]); // Return empty array on timeout or error
             })
           )
@@ -817,7 +817,7 @@ export class FirebaseAuthService {
       // console.log("Checking for redirect result...");
       const result = await getRedirectResult(this.auth);
       if (result) {
-        console.log("Redirect result found:", result.user.uid);
+        // console.log("Redirect result found:", result.user.uid);
         // Successfully authenticated via redirect.
         // We DON'T call handleUserSignedIn here anymore.
         // The onAuthStateChanged listener will fire shortly and handle it.

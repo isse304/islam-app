@@ -1703,38 +1703,52 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // Navigation methods
   public selectSurah(surahNumber: number): void {
-    if (!surahNumber) return;
-    this.selectedSurah = surahNumber;
-    this.currentSurah = surahNumber;
-    
-    // If in mushaf view, update page number based on surah
-    if (this.isMushafView) {
-        const surahStartPage = this.quranFlash.surahPageMap[surahNumber];
-        if (surahStartPage) {
-            this.currentPage = surahStartPage;
-            this.displayPageNumber = this.actualToDisplayPage(surahStartPage);
-            
-            // *** ADDED: Load the mushaf page after determining it ***
-            this.loadMushafPage(this.currentPage);
+    if (!surahNumber || surahNumber === this.currentSurah) return; // Don't reload if same surah
 
-            // *** REMOVED: Redundant URL update (handled by loadMushafPage) ***
-            // this.router.navigate([], {
-            //     relativeTo: this.route,
-            //     queryParams: {
-            //         mode: 'mushaf',
-            //         page: this.displayPageNumber,
-            //         translation: this.selectedTranslation,
-            //         reciter: this.selectedReciter?.id,
-            //         surah: surahNumber
-            //     },
-            //     queryParamsHandling: 'merge'
-            // });
-            return; // Exit after loading mushaf page
-        }
+    console.log(`[selectSurah] Changing to Surah ${surahNumber}`);
+
+    // --- Immediate State Updates ---
+    this.currentSurah = surahNumber;
+    this.selectedSurah = surahNumber; // Ensure dropdown selection is updated
+    this.currentVerse = 1; // Reset verse to 1 when changing surah
+
+    // Stop any ongoing audio playback
+    this.stopAndCloseAudioPlayer(); 
+    // --- End Immediate State Updates ---
+
+    // --- Update URL Immediately ---
+    // Use setTimeout 0 to push URL update slightly after current execution context
+    // but before async data loading might interfere further.
+    setTimeout(() => this.updateUrlParams(), 0);
+    // --- End URL Update ---
+
+    // --- Load Content Based on View Mode ---
+    if (this.isMushafView) {
+      console.log(`[selectSurah] Loading Mushaf view for Surah ${surahNumber}`);
+      const surahStartPage = this.quranFlash.surahPageMap[surahNumber];
+      if (surahStartPage) {
+        this.currentPage = surahStartPage;
+        this.displayPageNumber = this.actualToDisplayPage(surahStartPage);
+        // Load the mushaf page (this will also handle URL update for page number)
+        this.loadMushafPage(this.currentPage); 
+      } else {
+         console.warn(`[selectSurah] No page mapping found for Surah ${surahNumber}, defaulting.`);
+         this.currentPage = this.FIRST_PAGE;
+         this.displayPageNumber = 1;
+         this.loadMushafPage(this.currentPage);
+      }
+    } else {
+      // For translation view, load the verses
+      console.log(`[selectSurah] Loading Translation view for Surah ${surahNumber}`);
+      this.loadSurah(surahNumber).subscribe({
+          // Optional: Add next/error handlers if specific actions needed after load
+          next: () => console.log(`[selectSurah] Translation view loaded for Surah ${surahNumber}`),
+          error: (err) => console.error(`[selectSurah] Error loading translation view for Surah ${surahNumber}:`, err)
+      });
     }
     
-    // For translation view or if no page mapping found
-    this.loadSurah(surahNumber).subscribe();
+    // Trigger change detection after initiating load
+    this.changeDetector.markForCheck();
   }
 
   public goToVerse(verseNumber: number, surahNumber?: number): void {
