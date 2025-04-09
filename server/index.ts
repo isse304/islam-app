@@ -55,6 +55,10 @@ const logger = winston.createLogger({
 // Initialize Express app
 const app = express();
 
+// --- Trust Proxy --- 
+// Required for express-rate-limit behind reverse proxies (like Render)
+app.set('trust proxy', 1);
+
 // --- Instantiate Services ---
 const emailService = new EmailService();
 const stripeService = new StripeService(emailService);
@@ -341,7 +345,7 @@ logger.info(`[Static Files Debug] Final Static Files Path: ${staticFilesPath}`);
 try {
   if (fs.existsSync(staticFilesPath)) {
     logger.info(`[Static Files] Directory exists. Serving static files from: ${staticFilesPath}`);
-    logger.info('[Static Files] Adding express.static middleware.');
+    logger.info('[Middleware Setup] Applying express.static middleware...');
     app.use(express.static(staticFilesPath, {
       setHeaders: (res, filePath) => {
         logger.debug(`[Static Files] Serving: ${path.basename(filePath)}`);
@@ -349,6 +353,7 @@ try {
     }));
 
     // SPA catch-all route ONLY if static path exists
+    logger.info('[Middleware Setup] Applying SPA catch-all route...');
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
       // Skip API routes
       if (req.originalUrl.startsWith('/api/')) {
