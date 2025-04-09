@@ -56,20 +56,18 @@ const logger = winston.createLogger({
 const app = express();
 
 // Configure CORS with proper settings
-const allowedOrigins: (string | undefined)[] = [
+const allowedOrigins = [
   'http://localhost:4200',      // Local development
   'https://www.nura-ai.app',    // Production frontend
   'https://nura-y6uq.onrender.com', // Backend URL
   'https://nura-ai-frontend.onrender.com', // Frontend on render.com
-  'https://nura-ai.app',         // Production frontend without www
-  undefined, // Allow undefined origin for local testing
-  'null'     // Allow null origin for local file testing
+  'https://nura-ai.app'         // Production frontend without www
 ];
 
 const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // Allow requests with no origin (like mobile apps, curl requests, etc)
-    if (!origin || origin === 'null') {
+    if (!origin) {
       callback(null, true);
       return;
     }
@@ -90,48 +88,17 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware before other middleware
+// Apply CORS middleware
 app.use(cors(corsOptions));
 
-// Handle preflight requests explicitly
+// Handle preflight requests
 app.options('*', cors(corsOptions));
 
 // Configure timeouts
 app.use((req, res, next) => {
-  // Increase timeout for long-running requests
-  const timeout = 120000; // 120 seconds
-  const timeoutHandler = () => {
-    const err: any = new Error('Request timeout');
-    err.status = 504;
-    err.code = 'ETIMEDOUT';
-    next(err);
-  };
-
-  // Set both request and response timeouts
-  req.setTimeout(timeout, timeoutHandler);
-  res.setTimeout(timeout, timeoutHandler);
-
-  // Set a timer to ensure the entire request-response cycle doesn't exceed timeout
-  const timer = setTimeout(() => {
-    timeoutHandler();
-  }, timeout);
-
-  // Clear the timer when the response is sent
-  res.on('finish', () => {
-    clearTimeout(timer);
-  });
-
-  // Add error handling for aborted requests
-  req.on('error', (error) => {
-    clearTimeout(timer);
-    next(error);
-  });
-
-  // Handle client disconnects
-  req.on('close', () => {
-    clearTimeout(timer);
-  });
-
+  // Set server timeout to 30 seconds
+  req.setTimeout(30000);
+  res.setTimeout(30000);
   next();
 });
 
@@ -148,7 +115,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", ...(allowedOrigins.filter((origin): origin is string => !!origin))],
+      connectSrc: ["'self'", ...allowedOrigins],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", "data:", "https:"],
@@ -157,23 +124,17 @@ app.use(helmet({
   }
 }));
 
-// Configure rate limiting with higher limits
+// Configure rate limiting with higher limits for production
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 2000 : 200, // Increased limits
+  max: process.env.NODE_ENV === 'production' ? 1000 : 100, // Higher limit for production
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  handler: (req: RateLimitRequest, res: Response) => {
-    res.status(429).json({
-      error: 'Too many requests, please try again later.',
-      retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() - Date.now()) / 1000
-    });
-  }
 });
 
-// Apply rate limiting to all routes
-app.use(limiter);
+// Apply rate limiting to specific routes instead of globally
+app.use('/api/user', limiter);
 
 // Session configuration
 const sessionConfig = {
@@ -225,7 +186,7 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
 // Centralized Error Handling Middleware (MUST be last)
 app.use(errorHandler);
 
-// Add CORS headers to error responses
+// Error handling middleware
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   const isOriginAllowed = origin && allowedOrigins.includes(origin);
@@ -240,6 +201,15 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     res.setHeader('Vary', 'Origin');
   }
 
+  // Log error
+  logger.error('[Error Handler]', {
+    error: err.message,
+    stack: err.stack,
+    origin,
+    path: req.path,
+    method: req.method
+  });
+
   // Handle specific error types
   if (err.message === 'Not allowed by CORS') {
     return res.status(403).json({
@@ -248,7 +218,25 @@ app.use((err: any, req: Request, res: Response, next: NextFunction) => {
     });
   }
 
-  next(err);
+  // Handle timeout errors
+  if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+    return res.status(504).json({
+      error: 'Gateway Timeout',
+      message: 'The request took too long to process'
+    });
+  }
+
+  // Handle other errors
+  const statusCode = err.status || 500;
+  const errorMessage = err.message || 'Internal Server Error';
+
+  if (!res.headersSent) {
+    res.status(statusCode).json({
+      error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {})
+    });
+  }
 });
 
 // 404 handler
@@ -275,9 +263,9 @@ const startServer = async () => {
         logger.info('MongoDB connected');
 
         // Start server
-        const PORT = parseInt(process.env.PORT || '3000', 10);
-        app.listen(PORT, '0.0.0.0', () => {
-            logger.info(`Server running on port ${PORT}`);
+        const PORT = process.env['PORT'] || 3000;
+        app.listen(PORT, () => {
+            // console.log(`✅ Server running on port ${PORT}`);
         });
     } catch (error) {
         logger.error('Failed to start server:', error);
