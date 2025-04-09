@@ -702,4 +702,21 @@ router.post('/send-welcome', async (req: express.Request, res: Response, next: N
   }
 });
 
+// Test route for timeouts
+router.get('/:userId/reading-history', async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const delay = req.query.delay ? parseInt(req.query.delay as string) : undefined;
+    
+    if (delay) {
+        // Simulate a delayed response
+        await new Promise(resolve => setTimeout(resolve, delay));
+    }
+    
+    try {
+        // Your normal route logic here
+        res.json({ message: 'Reading history retrieved' });
+    } catch (error) {
+        next(error);
+    }
+});
+
 export default router; 

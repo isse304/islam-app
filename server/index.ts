@@ -55,68 +55,140 @@ const logger = winston.createLogger({
 // Initialize Express app
 const app = express();
 
-// Configure CORS with development settings
-const isDevelopment = process.env['NODE_ENV'] === 'development';
-const allowedOrigins = isDevelopment 
-    ? ['http://localhost:4200', 'http://localhost:3000']
-    : process.env['CORS_ORIGIN']?.split(',') || [];
+// Configure CORS with proper settings
+const allowedOrigins: (string | undefined)[] = [
+  'http://localhost:4200',      // Local development
+  'https://www.nura-ai.app',    // Production frontend
+  'https://nura-y6uq.onrender.com', // Backend URL
+  'https://nura-ai-frontend.onrender.com', // Frontend on render.com
+  'https://nura-ai.app',         // Production frontend without www
+  undefined, // Allow undefined origin for local testing
+  'null'     // Allow null origin for local file testing
+];
 
-logger.info(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // Allow requests with no origin (like mobile apps, curl requests, etc)
+    if (!origin || origin === 'null') {
+      callback(null, true);
+      return;
+    }
 
-app.use(cors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-}));
+    if (allowedOrigins.includes(origin) || process.env.NODE_ENV === 'development') {
+      callback(null, true);
+    } else {
+      logger.warn(`[CORS] Blocked request from non-allowed origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
 
-// Add request logging middleware (use standard morgan format)
-// app.use(morgan(isDevelopment ? 'dev' : 'combined')); // COMMENTED OUT
+// Apply CORS middleware before other middleware
+app.use(cors(corsOptions));
 
-// Apply security middleware
-app.use(helmet());
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
+
+// Configure timeouts
+app.use((req, res, next) => {
+  const timeout = 30000; // 30 seconds
+  const timeoutHandler = () => {
+    const err: any = new Error('Request timeout');
+    err.status = 504;
+    err.code = 'ETIMEDOUT';
+    next(err);
+  };
+
+  // Set both request and response timeouts
+  req.setTimeout(timeout, timeoutHandler);
+  res.setTimeout(timeout, timeoutHandler);
+
+  // Set a timer to ensure the entire request-response cycle doesn't exceed timeout
+  const timer = setTimeout(() => {
+    timeoutHandler();
+  }, timeout);
+
+  // Clear the timer when the response is sent
+  res.on('finish', () => {
+    clearTimeout(timer);
+  });
+
+  next();
+});
+
+// Configure body parser with increased limits
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Configure compression
 app.use(compression());
 
-// Configure express to handle raw body for Stripe webhooks
-app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
-// Use JSON parsing for all other routes
-app.use(express.json());
+// Configure security headers
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      connectSrc: ["'self'", ...(allowedOrigins.filter((origin): origin is string => !!origin))],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:"],
+      fontSrc: ["'self'", "https:", "data:"],
+    }
+  }
+}));
 
-// Rate limiting
+// Configure rate limiting
+interface RateLimitInfo {
+  resetTime: Date;
+}
+
+interface RateLimitRequest extends Request {
+  rateLimit: RateLimitInfo;
+}
+
 const limiter = rateLimit({
-    windowMs: parseInt(process.env['RATE_LIMIT_WINDOW_MS'] || '900000'), // 15 minutes
-    max: parseInt(process.env['RATE_LIMIT_MAX_REQUESTS'] || '100')
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 1000 : 100, // limit each IP
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: RateLimitRequest, res: Response) => {
+    res.status(429).json({
+      error: 'Too many requests, please try again later.',
+      retryAfter: Math.ceil(req.rateLimit.resetTime.getTime() - Date.now()) / 1000
+    });
+  }
 });
-// app.use(limiter); // Commented out global limiter
 
-// Apply security headers
-app.use(securityConfig.securityHeaders);
+// Apply rate limiting to all routes
+app.use(limiter);
 
 // Session configuration
 const sessionConfig = {
-    secret: process.env['SESSION_SECRET'] || 'dev_secret',
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({
-        mongoUrl: process.env['MONGODB_URI'] || '',
-        ttl: 24 * 60 * 60 // 1 day
-    }),
-    cookie: {
-        secure: process.env['NODE_ENV'] === 'production',
-        maxAge: 24 * 60 * 60 * 1000 // 1 day
-    }
+  secret: process.env['SESSION_SECRET'] || 'dev_secret',
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({
+    mongoUrl: process.env['MONGODB_URI'] || '',
+    ttl: 24 * 60 * 60, // 1 day
+    touchAfter: 24 * 3600 // Only update session once per day
+  }),
+  cookie: {
+    secure: process.env['NODE_ENV'] === 'production',
+    maxAge: 24 * 60 * 60 * 1000, // 1 day
+    sameSite: process.env['NODE_ENV'] === 'production' ? 'none' : 'lax'
+  }
 } as const;
-app.use(session(sessionConfig));
 
-// Apply additional security middleware
-app.use(securityConfig.helmet);
-// Remove duplicate CORS middleware
-// app.use(cors());
-// app.use(morganMiddleware);
-// app.use(securityConfig.rateLimiter);
-// app.use(cookieParser()); // COMMENTED OUT
-app.use(express.json({ limit: '10mb' })); // Allow larger payloads
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(session(sessionConfig));
 
 // API Routes
 app.use('/api/ai', aiRouter.default || aiRouter);
@@ -149,13 +221,30 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
 // Centralized Error Handling Middleware (MUST be last)
 app.use(errorHandler);
 
-// Error handling middleware
+// Add CORS headers to error responses
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  // console.error('[Global Error Handler]', err);
-  res.status(err.status || 500).json({
-    message: err.message || 'An unexpected error occurred',
-    error: process.env.NODE_ENV === 'development' ? err : {}
-  });
+  const origin = req.headers.origin;
+  const isOriginAllowed = origin && allowedOrigins.includes(origin);
+
+  // Always set CORS headers for errors if origin is allowed
+  if (isOriginAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+  }
+
+  // Handle specific error types
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'CORS policy violation'
+    });
+  }
+
+  next(err);
 });
 
 // 404 handler
@@ -178,7 +267,7 @@ const startServer = async () => {
         logger.info('Firebase Admin SDK initialized');
 
         // Connect to MongoDB
-        await connectDatabase(logger);
+        await connectDatabase();
         logger.info('MongoDB connected');
 
         // Start server

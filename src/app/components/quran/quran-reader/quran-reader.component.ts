@@ -4,7 +4,7 @@ import { Component, OnInit, OnDestroy, HostListener, Input, Output, EventEmitter
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
-import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject } from 'rxjs';
+import { Observable, forkJoin, firstValueFrom, Subscription, map, from, of, catchError, tap, throwError, switchMap, take, Subject, debounceTime } from 'rxjs';
 import { takeUntil, filter } from 'rxjs/operators'; // Add takeUntil and filter
 import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -860,8 +860,13 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         console.warn('Error loading bookmarks from localStorage:', error);
     }
 
-    // Then load from server and merge
-    (this.authService.bookmarks$ as Observable<string[] | undefined>).subscribe({
+    // Then load from server and merge with debouncing
+    (this.authService.bookmarks$ as Observable<string[] | undefined>).pipe(
+        // Add debounceTime to prevent rapid requests
+        debounceTime(300),
+        // Take only until component is destroyed
+        takeUntil(this.destroy$)
+    ).subscribe({
         next: (serverBookmarks) => {
             if (Array.isArray(serverBookmarks)) {
                 // Merge with existing bookmarks to avoid losing local changes

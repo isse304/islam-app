@@ -4,12 +4,15 @@
   "description": "Islamic Learning App with AI Features",
   "scripts": {
     "ng": "ng",
-    "start": "npx serve -s dist/islam-app",
+    "start": "npx serve -s dist/islam-app -l 3000",
     "prebuild": "npm install --legacy-peer-deps",
     "build": "ng build --configuration production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
-    "compile:scripts": "tsc -p tsconfig.scripts.json && tsc-alias -p tsconfig.scripts.json && powershell -ExecutionPolicy Bypass -File ./rename-scripts.ps1 -DirPath dist/server/scripts"
+    "compile:scripts": "tsc -p tsconfig.scripts.json && tsc-alias -p tsconfig.scripts.json && powershell -ExecutionPolicy Bypass -File ./rename-scripts.ps1 -DirPath dist/server/scripts",
+    "test:cors": "ts-node server/tests/cors-test.ts",
+    "test:local": "cross-env NODE_ENV=development npm run test:cors",
+    "test:prod": "cross-env NODE_ENV=production npm run test:cors"
   },
   "private": true,
   "dependencies": {
@@ -63,6 +66,7 @@
     "@types/marked": "6.0.0",
     "@types/morgan": "1.9.9",
     "copyfiles": "2.4.1",
+    "cross-env": "7.0.3",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",
     "karma-chrome-launcher": "~3.2.0",
