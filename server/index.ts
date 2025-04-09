@@ -58,10 +58,10 @@ const app = express();
 // Configure CORS with proper settings
 const allowedOrigins = [
   'http://localhost:4200',      // Local development
-  'https://www.nura-ai.app',    // Production frontend
+  'https://www.nura-ai.app',    // Production frontend with www
+  'https://nura-ai.app',        // Production frontend without www
   'https://nura-y6uq.onrender.com', // Backend URL
-  'https://nura-ai-frontend.onrender.com', // Frontend on render.com
-  'https://nura-ai.app'         // Production frontend without www
+  'https://nura-ai-frontend.onrender.com' // Frontend on render.com
 ];
 
 const corsOptions = {
@@ -88,17 +88,31 @@ const corsOptions = {
   optionsSuccessStatus: 204
 };
 
-// Apply CORS middleware
+// Apply CORS middleware BEFORE other middleware
 app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
 
-// Configure timeouts
+// Add custom CORS error handling
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  if (err.message === 'Not allowed by CORS') {
+    const origin = req.headers.origin;
+    logger.error(`[CORS Error] ${origin} not allowed`);
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'CORS policy violation',
+      origin: origin
+    });
+  }
+  next(err);
+});
+
+// Configure timeouts with longer duration for production
+const TIMEOUT = process.env.NODE_ENV === 'production' ? 60000 : 30000; // 60 seconds in production
 app.use((req, res, next) => {
-  // Set server timeout to 30 seconds
-  req.setTimeout(30000);
-  res.setTimeout(30000);
+  req.setTimeout(TIMEOUT);
+  res.setTimeout(TIMEOUT);
   next();
 });
 
@@ -186,7 +200,7 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
 // Centralized Error Handling Middleware (MUST be last)
 app.use(errorHandler);
 
-// Error handling middleware
+// Error handling middleware - Update to always include CORS headers
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   const isOriginAllowed = origin && allowedOrigins.includes(origin);
