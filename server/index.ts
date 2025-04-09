@@ -328,11 +328,16 @@ app.use((req: Request, res: Response) => {
 });
 
 // --- Static Files & SPA Handling ---
-// Serve static files from the Angular build directory, relative to project root
-const staticFilesPath = path.join(__dirname, '..', '..', 'dist', 'islam-app');
-logger.info(`[Static Files] Calculated static files path: ${staticFilesPath}`);
+// Calculate path relative to the server's execution directory
+const serverRootDir = process.cwd(); // Should be /opt/render/project/src/server
+const projectRoot = path.resolve(serverRootDir, '..'); // Should be /opt/render/project/src
+const staticFilesPath = path.join(projectRoot, 'dist', 'islam-app');
 
-// Check if the directory exists
+logger.info(`[Static Files Debug] Server Root Dir (cwd): ${serverRootDir}`);
+logger.info(`[Static Files Debug] Calculated Project Root: ${projectRoot}`);
+logger.info(`[Static Files Debug] Final Static Files Path: ${staticFilesPath}`);
+
+// Check if the directory exists and serve files
 try {
   if (fs.existsSync(staticFilesPath)) {
     logger.info(`[Static Files] Directory exists. Serving static files from: ${staticFilesPath}`);
@@ -344,21 +349,21 @@ try {
       if (req.originalUrl.startsWith('/api/')) {
         return next();
       }
-      
+
       // Skip requests for files with extensions (like .css, .js)
       if (path.extname(req.path)) {
-        return next();
+         logger.debug(`[SPA Catch-all] Skipping file request: ${req.path}`);
+         return next(); // Let express.static handle or 404
       }
-      
+
       const indexPath = path.join(staticFilesPath, 'index.html');
       logger.info(`[SPA Catch-all] Attempting to serve index.html from: ${indexPath} for path: ${req.path}`);
       res.sendFile(indexPath, (err) => {
         if (err) {
           logger.error(`[SPA Catch-all] Error sending file ${indexPath}:`, err);
           if (!res.headersSent) {
-            // Check the specific error code
             if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-              res.status(404).send('index.html not found');
+              res.status(404).send(`SPA index.html not found at ${indexPath}`);
             } else {
               res.status(500).send('Error serving application.');
             }
@@ -370,16 +375,24 @@ try {
     });
   } else {
     logger.warn(`[Static Files] Directory NOT FOUND: ${staticFilesPath}. Static file serving and SPA routing skipped.`);
-    // Optionally, add a fallback route if static files aren't found
+    // Fallback for non-API routes if static dir not found
     app.get('*', (req, res, next) => {
        if (req.originalUrl.startsWith('/api/')) {
          return next();
        }
-       res.status(404).send('Application files not found. Check build process.');
+       logger.warn(`[Static Files Fallback] Sending 404 for ${req.path} as static directory was not found.`);
+       res.status(404).send('Application files not found. Build process may have failed.');
     });
   }
 } catch (error) {
-   logger.error(`[Static Files] Error checking directory ${staticFilesPath}:`, error);
+   logger.error(`[Static Files] Error checking or setting up static file serving for ${staticFilesPath}:`, error);
+   // Generic fallback if setup fails
+   app.get('*', (req, res, next) => {
+      if (req.originalUrl.startsWith('/api/')) {
+        return next();
+      }
+      res.status(500).send('Server error during static file setup.');
+   });
 }
 // --- End Static Files & SPA Handling ---
 
