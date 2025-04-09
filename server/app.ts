@@ -19,15 +19,43 @@ app.use((req, res, next) => {
   next();
 });
 
-// Parse JSON bodies
+// --- IMPORTANT: Define the Stripe webhook route BEFORE global body parsers ---
+// The raw body parser is handled within the subscription route itself.
+app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // We need to import the service here or pass it down
+  // For simplicity, let's assume the subscriptionRoutes handles its own service instance
+  // and the actual logic is inside stripeService.handleWebhookEvent
+  // We are essentially re-routing this specific path before the subscriptionRoutes router gets it.
+  // This avoids the global bodyParser.json() interfering.
+  // Note: This requires the `stripeService` instance to be accessible or re-instantiated.
+  // A better long-term solution might involve refactoring how routes/middleware are applied.
+  try {
+    // Temporarily import or get the service instance. Refactor needed for cleaner approach.
+    const { StripeService } = await import('./services/stripe.service');
+    const { EmailService } = await import('./services/email.service');
+    const emailServiceInstance = new EmailService();
+    const stripeServiceInstance = new StripeService(emailServiceInstance);
+    await stripeServiceInstance.handleWebhookEvent(req, res);
+  } catch (error) {
+    console.error('[Webhook Route Override] Error during webhook processing:', error);
+    if (!res.headersSent) {
+        next(error);
+    }
+  }
+});
+// ------------------------------------------------------------------------
+
+// Parse JSON bodies for OTHER routes
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ limit: '10mb', extended: true }));
 
-// Add routes
+// Add other routes
 app.use('/api/tafsir', tafsirRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/quran', quranRoutes);
+// Mount the subscription router for OTHER routes like /create-checkout, /status etc.
+// The webhook route defined above will catch '/api/subscription/webhook' before this router does.
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/usage', usageRoutes);
 

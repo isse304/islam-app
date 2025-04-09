@@ -716,3 +716,13 @@ select option {
   }
 }
 
+.verse-scroll-viewport {
+  height: 70vh; /* Adjust as needed, make it fill the space */
+}
+
+.verse-item {
+  /* Ensure items have a defined height or use autosize strategy */
+  /* The itemSize="150" in the template helps, but CSS can refine */
+  contain: content; /* Optimization hint for the browser */
+}
+

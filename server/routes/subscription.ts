@@ -69,44 +69,59 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response, 
   console.log('Subscription status request received');
   try {
     const userId = req.auth!.uid;
-    console.log('Getting subscription status for user:', userId);
+    console.log('[GET /status] Getting subscription status for user:', userId);
 
-    // 1. Fetch Firebase custom claims
-    let claims: any = {};
-    try {
-      const userRecord = await auth.getUser(userId);
-      claims = userRecord.customClaims || {};
-      console.log(`[GET /status] Fetched claims for ${userId}:`, claims);
-    } catch (claimError) {
-      console.error(`[GET /status] Error fetching claims for ${userId}:`, claimError);
-      // Decide if we should proceed without claims or return an error
-      // For now, proceed and rely on DB status
-    }
-
-    // 2. Fetch status from MongoDB (as fallback or for comparison)
+    // 1. Fetch status from MongoDB FIRST (Primary Source of Truth)
     const dbStatus = await stripeService.getSubscriptionStatus(userId);
     console.log(`[GET /status] Fetched DB status for ${userId}:`, dbStatus);
 
-    // 3. Determine effective status (prioritize claims)
-    const isPremiumClaim = claims.premium === true || claims.subscriptionStatus === 'active';
-    const effectiveStatus = isPremiumClaim ? 'active' : (dbStatus || 'inactive');
-    console.log(`[GET /status] Effective status for ${userId}: ${effectiveStatus} (Claim: ${isPremiumClaim}, DB: ${dbStatus})`);
+    // 2. Fetch Firebase custom claims (Secondary/Confirmation)
+    let claims: any = {};
+    let claimsStatus = 'unknown';
+    try {
+      const userRecord = await auth.getUser(userId);
+      claims = userRecord.customClaims || {};
+      claimsStatus = claims.subscriptionStatus || 'not_set';
+      console.log(`[GET /status] Fetched claims for ${userId}:`, { premium: claims.premium, status: claimsStatus });
+    } catch (claimError) {
+      console.error(`[GET /status] Error fetching claims for ${userId}:`, claimError);
+      // Non-critical error, proceed with DB status
+    }
+
+    // 3. Determine effective status (Prioritize DB status)
+    // Use DB status primarily. If DB is inactive, double-check claims just in case.
+    let effectiveStatus = dbStatus || 'inactive'; 
+    const isPremiumDB = effectiveStatus === 'active' || effectiveStatus === 'trialing';
+    const isPremiumClaim = claims.premium === true || claimsStatus === 'active' || claimsStatus === 'trialing';
+
+    // If DB says inactive but claims say active, trust claims (potential DB update lag?)
+    if (!isPremiumDB && isPremiumClaim) {
+        console.warn(`[GET /status] Discrepancy for ${userId}: DB status is '${effectiveStatus}' but claims indicate premium (${claimsStatus}). Trusting claims.`);
+        effectiveStatus = claimsStatus; // Use the status from claims if it indicates active
+    } else if (isPremiumDB && !isPremiumClaim) {
+        console.warn(`[GET /status] Discrepancy for ${userId}: DB status is '${effectiveStatus}' but claims do NOT indicate premium (${claimsStatus}). Trusting DB.`);
+        // Keep effectiveStatus as is (from DB)
+    }
+    
+    console.log(`[GET /status] Effective status for ${userId}: ${effectiveStatus} (DB: ${dbStatus}, Claim Status: ${claimsStatus})`);
 
     // 4. Construct response based on effective status
+    const isEffectivelyPremium = effectiveStatus === 'active' || effectiveStatus === 'trialing';
+
     res.json({
       success: true,
       status: effectiveStatus,
-      plan: effectiveStatus === 'active' ? 'premium' : 'free',
+      plan: isEffectivelyPremium ? 'premium' : 'free',
       features: {
-        emotionalDuaSearch: effectiveStatus === 'active',
-        aiTafsirChat: effectiveStatus === 'active',
-        duaInsights: effectiveStatus === 'active'
+        emotionalDuaSearch: isEffectivelyPremium,
+        aiTafsirChat: isEffectivelyPremium,
+        duaInsights: isEffectivelyPremium
         // Add other features if they depend on premium status
       }
     });
 
   } catch (error) {
-    console.error('Error getting subscription status:', error);
+    console.error('[GET /status] Error getting subscription status:', error);
     next(error);
   }
 }));
