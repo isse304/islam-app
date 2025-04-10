@@ -170,67 +170,67 @@ app.use((req, res, next) => {
 // Configure compression
 app.use(compression());
 
-// Configure security headers
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" },
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      connectSrc: [
-        "'self'", 
-        ...allowedOrigins, 
-        "https://securetoken.googleapis.com", 
-        "https://firestore.googleapis.com",
-        "https://*.googleapis.com",
-        "https://api.qurancdn.com", // Allow QuranCDN API
-        "https://fonts.gstatic.com", // Allow Google Fonts connection
-        "https://fonts.googleapis.com" // Allow Google Fonts API connection
-      ],
-      scriptSrc: [
-        "'self'", 
-        "'unsafe-inline'", 
-        "'unsafe-eval'",
-        "https://js.stripe.com", 
-        "https://apis.google.com"
-      ],
-      // Explicitly define script-src-elem
-      scriptSrcElem: [
-        "'self'", 
-        "'unsafe-inline'", // Often needed for framework/library scripts loaded dynamically
-        "https://js.stripe.com", 
-        "https://apis.google.com"        
-      ],
-      scriptSrcAttr: ["'unsafe-inline'"], // Keep allowing inline event handlers
-      styleSrc: [
-        "'self'", 
-        "'unsafe-inline'",
-        "https://cdnjs.cloudflare.com" 
-      ],
-      // Explicitly define style-src-elem
-      styleSrcElem: [
-        "'self'",
-        "'unsafe-inline'", // Allow inline styles
-        "https://cdnjs.cloudflare.com" // Allow FontAwesome styles
-      ],
-      imgSrc: ["'self'", "data:", "https:"], 
-      fontSrc: [
-        "'self'", 
-        "https:", 
-        "data:", 
-        "https://cdnjs.cloudflare.com",
-        "https://fonts.gstatic.com", // Explicitly allow Google Fonts static
-        "https://fonts.googleapis.com" // Explicitly allow Google Fonts API
-      ],
-      frameSrc: [
-        "'self'", 
-        "https://js.stripe.com", 
-        "https://hooks.stripe.com",
-        "https://*.firebaseapp.com" // Allow Firebase Auth helper frames
-      ], 
-      workerSrc: ["'self'"] 
-    }
-  }
-}));
+// // Configure security headers
+// app.use(helmet({
+//   crossOriginResourcePolicy: { policy: "cross-origin" },
+//   contentSecurityPolicy: {
+//     directives: {
+//       defaultSrc: ["'self'"],
+//       connectSrc: [
+//         "'self'", 
+//         ...allowedOrigins, 
+//         "https://securetoken.googleapis.com", 
+//         "https://firestore.googleapis.com",
+//         "https://*.googleapis.com",
+//         "https://api.qurancdn.com", // Allow QuranCDN API
+//         "https://fonts.gstatic.com", // Allow Google Fonts connection
+//         "https://fonts.googleapis.com" // Allow Google Fonts API connection
+//       ],
+//       scriptSrc: [
+//         "'self'", 
+//         "'unsafe-inline'", 
+//         "'unsafe-eval'",
+//         "https://js.stripe.com", 
+//         "https://apis.google.com"
+//       ],
+//       // Explicitly define script-src-elem
+//       scriptSrcElem: [
+//         "'self'", 
+//         "'unsafe-inline'", // Often needed for framework/library scripts loaded dynamically
+//         "https://js.stripe.com", 
+//         "https://apis.google.com"        
+//       ],
+//       scriptSrcAttr: ["'unsafe-inline'"], // Keep allowing inline event handlers
+//       styleSrc: [
+//         "'self'", 
+//         "'unsafe-inline'",
+//         "https://cdnjs.cloudflare.com" 
+//       ],
+//       // Explicitly define style-src-elem
+//       styleSrcElem: [
+//         "'self'",
+//         "'unsafe-inline'", // Allow inline styles
+//         "https://cdnjs.cloudflare.com" // Allow FontAwesome styles
+//       ],
+//       imgSrc: ["'self'", "data:", "https:"], 
+//       fontSrc: [
+//         "'self'", 
+//         "https:", 
+//         "data:", 
+//         "https://cdnjs.cloudflare.com",
+//         "https://fonts.gstatic.com", // Explicitly allow Google Fonts static
+//         "https://fonts.googleapis.com" // Explicitly allow Google Fonts API
+//       ],
+//       frameSrc: [
+//         "'self'", 
+//         "https://js.stripe.com", 
+//         "https://hooks.stripe.com",
+//         "https://*.firebaseapp.com" // Allow Firebase Auth helper frames
+//       ], 
+//       workerSrc: ["'self'"] 
+//     }
+//   }
+// }));
 
 // Configure rate limiting with higher limits for production
 const limiter = rateLimit({
