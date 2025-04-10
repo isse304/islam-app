@@ -182,7 +182,8 @@ app.use(helmet({
         "https://securetoken.googleapis.com", 
         "https://firestore.googleapis.com",
         "https://*.googleapis.com",
-        "https://api.qurancdn.com" // Allow QuranCDN API
+        "https://api.qurancdn.com", // Allow QuranCDN API
+        "https://fonts.gstatic.com" // Allow Google Fonts connection
       ],
       scriptSrc: [
         "'self'", 
@@ -191,16 +192,27 @@ app.use(helmet({
         "https://js.stripe.com", 
         "https://apis.google.com"
       ],
-      // Add script-src-attr to allow inline event handlers (e.g., onclick)
-      scriptSrcAttr: ["'unsafe-inline'"], 
+      // Explicitly define script-src-elem
+      scriptSrcElem: [
+        "'self'", 
+        "'unsafe-inline'", // Often needed for framework/library scripts loaded dynamically
+        "https://js.stripe.com", 
+        "https://apis.google.com"        
+      ],
+      scriptSrcAttr: ["'unsafe-inline'"], // Keep allowing inline event handlers
       styleSrc: [
         "'self'", 
         "'unsafe-inline'",
         "https://cdnjs.cloudflare.com" 
       ],
+      // Explicitly define style-src-elem
+      styleSrcElem: [
+        "'self'",
+        "'unsafe-inline'", // Allow inline styles
+        "https://cdnjs.cloudflare.com" // Allow FontAwesome styles
+      ],
       imgSrc: ["'self'", "data:", "https:"], 
       fontSrc: ["'self'", "https:", "data:", "https://cdnjs.cloudflare.com"],
-      // Allow frames from Stripe and Firebase Auth helpers
       frameSrc: [
         "'self'", 
         "https://js.stripe.com", 
