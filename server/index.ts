@@ -176,11 +176,36 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      connectSrc: ["'self'", ...allowedOrigins],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      fontSrc: ["'self'", "https:", "data:"],
+      // Allow connections to self, allowed origins, Firebase auth, and potentially other Google APIs
+      connectSrc: [
+        "'self'", 
+        ...allowedOrigins, 
+        "https://securetoken.googleapis.com", 
+        "https://firestore.googleapis.com", // Add if using Firestore directly
+        "https://*.googleapis.com" // Broaden Google API access if needed
+      ],
+      // Allow scripts from self, Stripe, Google APIs, and allow inline/eval (use with caution)
+      scriptSrc: [
+        "'self'", 
+        "'unsafe-inline'", 
+        "'unsafe-eval'", // Needed by Angular sometimes, review if possible to remove
+        "https://js.stripe.com", 
+        "https://apis.google.com"
+      ],
+      // Allow styles from self, cloudflare (FontAwesome), and inline styles
+      styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", // Allow inline styles
+        "https://cdnjs.cloudflare.com" 
+      ],
+      // Allow images from self, data URIs, and any https source
+      imgSrc: ["'self'", "data:", "https:"], 
+      // Allow fonts from self, https sources (like Google Fonts), data URIs, and cloudflare (FontAwesome)
+      fontSrc: ["'self'", "https:", "data:", "https://cdnjs.cloudflare.com"],
+      // Allow frames from Stripe for payment elements
+      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"], 
+      // Allow service workers
+      workerSrc: ["'self'"] 
     }
   }
 }));
