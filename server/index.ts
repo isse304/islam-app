@@ -183,7 +183,8 @@ app.use(helmet({
         "https://firestore.googleapis.com",
         "https://*.googleapis.com",
         "https://api.qurancdn.com", // Allow QuranCDN API
-        "https://fonts.gstatic.com" // Allow Google Fonts connection
+        "https://fonts.gstatic.com", // Allow Google Fonts connection
+        "https://fonts.googleapis.com" // Allow Google Fonts API connection
       ],
       scriptSrc: [
         "'self'", 
@@ -212,7 +213,14 @@ app.use(helmet({
         "https://cdnjs.cloudflare.com" // Allow FontAwesome styles
       ],
       imgSrc: ["'self'", "data:", "https:"], 
-      fontSrc: ["'self'", "https:", "data:", "https://cdnjs.cloudflare.com"],
+      fontSrc: [
+        "'self'", 
+        "https:", 
+        "data:", 
+        "https://cdnjs.cloudflare.com",
+        "https://fonts.gstatic.com", // Explicitly allow Google Fonts static
+        "https://fonts.googleapis.com" // Explicitly allow Google Fonts API
+      ],
       frameSrc: [
         "'self'", 
         "https://js.stripe.com", 
