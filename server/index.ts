@@ -270,68 +270,7 @@ app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Res
     }
 }));
 
-// Centralized Error Handling Middleware (MUST be last)
-app.use(errorHandler);
-
-// Error handling middleware - Update to always include CORS headers
-app.use((err: any, req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin;
-  const isOriginAllowed = origin && allowedOrigins.includes(origin);
-
-  // Always set CORS headers for errors if origin is allowed
-  if (isOriginAllowed) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
-    res.setHeader('Access-Control-Max-Age', '86400');
-    res.setHeader('Vary', 'Origin');
-  }
-
-  // Log error
-  logger.error('[Error Handler]', {
-    error: err.message,
-    stack: err.stack,
-    origin,
-    path: req.path,
-    method: req.method
-  });
-
-  // Handle specific error types
-  if (err.message === 'Not allowed by CORS') {
-    return res.status(403).json({
-      error: 'Forbidden',
-      message: 'CORS policy violation'
-    });
-  }
-
-  // Handle timeout errors
-  if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
-    return res.status(504).json({
-      error: 'Gateway Timeout',
-      message: 'The request took too long to process'
-    });
-  }
-
-  // Handle other errors
-  const statusCode = err.status || 500;
-  const errorMessage = err.message || 'Internal Server Error';
-
-  if (!res.headersSent) {
-    res.status(statusCode).json({
-      error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
-      message: errorMessage,
-      ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {})
-    });
-  }
-});
-
-// 404 handler
-app.use((req: Request, res: Response) => {
-  res.status(404).send('Not Found');
-});
-
-// --- Static Files & SPA Handling ---
+// --- START: Moved Static Files & SPA Handling ---
 // Calculate path relative to the server's execution directory
 const serverRootDir = process.cwd(); // Should be /opt/render/project/src/server
 const projectRoot = path.resolve(serverRootDir, '..'); // Should be /opt/render/project/src
@@ -408,7 +347,68 @@ try {
       res.status(500).send('Server error during static file setup.');
    });
 }
-// --- End Static Files & SPA Handling ---
+// --- END: Moved Static Files & SPA Handling ---
+
+// Centralized Error Handling Middleware (MUST be last)
+app.use(errorHandler);
+
+// Error handling middleware - Update to always include CORS headers
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
+  const isOriginAllowed = origin && allowedOrigins.includes(origin);
+
+  // Always set CORS headers for errors if origin is allowed
+  if (isOriginAllowed) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    res.setHeader('Vary', 'Origin');
+  }
+
+  // Log error
+  logger.error('[Error Handler]', {
+    error: err.message,
+    stack: err.stack,
+    origin,
+    path: req.path,
+    method: req.method
+  });
+
+  // Handle specific error types
+  if (err.message === 'Not allowed by CORS') {
+    return res.status(403).json({
+      error: 'Forbidden',
+      message: 'CORS policy violation'
+    });
+  }
+
+  // Handle timeout errors
+  if (err.code === 'ETIMEDOUT' || err.code === 'ESOCKETTIMEDOUT') {
+    return res.status(504).json({
+      error: 'Gateway Timeout',
+      message: 'The request took too long to process'
+    });
+  }
+
+  // Handle other errors
+  const statusCode = err.status || 500;
+  const errorMessage = err.message || 'Internal Server Error';
+
+  if (!res.headersSent) {
+    res.status(statusCode).json({
+      error: statusCode === 403 ? 'Forbidden' : 'Internal Server Error',
+      message: errorMessage,
+      ...(process.env.NODE_ENV === 'development' ? { stack: err.stack } : {})
+    });
+  }
+});
+
+// 404 handler
+app.use((req: Request, res: Response) => {
+  res.status(404).send('Not Found');
+});
 
 // Start server function
 const startServer = async () => {
