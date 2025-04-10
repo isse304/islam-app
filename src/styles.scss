@@ -11,6 +11,10 @@ html, body {
   height: 100%;
   margin: 0;
   font-family: Roboto, "Helvetica Neue", sans-serif;
+  /* Prevent automatic text size adjustment on mobile */
+  -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 /* Material Icons fix */
@@ -116,8 +120,4 @@ html, body {
 .success-snackbar {
   background-color: #4CAF50; /* Green */
   color: white;
-}
-
-.success-snackbar .mdc-snackbar__action { /* Material v15+ syntax */
-  color: #c8e6c9; /* Light Green for action */
 } 

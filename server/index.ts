@@ -228,7 +228,12 @@ app.use(helmet({
         "https://hooks.stripe.com",
         "https://*.firebaseapp.com" // Allow Firebase Auth helper frames
       ], 
-      workerSrc: ["'self'"] 
+      workerSrc: ["'self'"], 
+      // Add media-src directive
+      mediaSrc: [
+        "'self'",
+        "https://cdn.islamic.network" // Allow audio from islamic.network CDN
+      ]
     }
   }
 }));

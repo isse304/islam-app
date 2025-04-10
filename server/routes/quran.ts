@@ -105,6 +105,25 @@ router.get('/juzs', async (req: Request, res: Response) => {
   }
 });
 
+// Search Quran (NEW ROUTE)
+router.get('/search', async (req: Request, res: Response) => {
+  try {
+    console.log('[Quran Search] Received search request with query:', req.query);
+    const response = await axios.get(`${QURAN_API_BASE}/search`, {
+      params: req.query // Pass along query params like q, size, page
+    });
+    console.log('[Quran Search] API response status:', response.status);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('[Quran Search] Error during search:', error.response?.data || error.message);
+    // Forward the status code from the external API if available
+    res.status(error.response?.status || 500).json({
+      error: 'Quran search failed',
+      details: error.response?.data || error.message
+    });
+  }
+});
+
 // Get pages
 router.get('/pages', async (req: Request, res: Response) => {
   try {

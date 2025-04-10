@@ -581,9 +581,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                   el.classList.remove('highlighted-verse');
               });
               verseElement.classList.add('highlighted-verse');
-              const headerOffset = 80;
+              const headerOffset = 80; // Standard header offset
+              const mobileOffsetAdjustment = this.isMobile ? -20 : 0; // Add -20px offset for mobile
               const elementPosition = verseElement.getBoundingClientRect().top;
-              const offsetPosition = elementPosition + window.scrollY - headerOffset;
+              const offsetPosition = elementPosition + window.scrollY - headerOffset + mobileOffsetAdjustment; // Apply adjustment
 
               // Update state *before* scrolling
               this.currentVerse = verseNumber;
@@ -1730,25 +1731,33 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.currentPage = surahStartPage;
         this.displayPageNumber = this.actualToDisplayPage(surahStartPage);
         // Load the mushaf page (this will also handle URL update for page number)
-        this.loadMushafPage(this.currentPage); 
+        this.loadMushafPage(this.currentPage);
+        this.changeDetector.markForCheck(); // Mark for check after initiating load
       } else {
          console.warn(`[selectSurah] No page mapping found for Surah ${surahNumber}, defaulting.`);
          this.currentPage = this.FIRST_PAGE;
          this.displayPageNumber = 1;
          this.loadMushafPage(this.currentPage);
+         this.changeDetector.markForCheck(); // Mark for check after initiating load
       }
     } else {
       // For translation view, load the verses
       console.log(`[selectSurah] Loading Translation view for Surah ${surahNumber}`);
       this.loadSurah(surahNumber).subscribe({
           // Optional: Add next/error handlers if specific actions needed after load
-          next: () => console.log(`[selectSurah] Translation view loaded for Surah ${surahNumber}`),
-          error: (err) => console.error(`[selectSurah] Error loading translation view for Surah ${surahNumber}:`, err)
+          next: () => {
+            console.log(`[selectSurah] Translation view loaded for Surah ${surahNumber}`);
+            this.changeDetector.markForCheck(); // Mark for check after async load completes
+          },
+          error: (err) => {
+            console.error(`[selectSurah] Error loading translation view for Surah ${surahNumber}:`, err);
+            this.changeDetector.markForCheck(); // Mark for check even on error to update UI state
+          }
       });
     }
     
-    // Trigger change detection after initiating load
-    this.changeDetector.markForCheck();
+    // REMOVED: Trigger change detection after initiating load
+    // this.changeDetector.markForCheck(); 
   }
 
   public goToVerse(verseNumber: number, surahNumber?: number): void {
