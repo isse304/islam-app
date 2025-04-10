@@ -176,35 +176,37 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      // Allow connections to self, allowed origins, Firebase auth, and potentially other Google APIs
       connectSrc: [
         "'self'", 
         ...allowedOrigins, 
         "https://securetoken.googleapis.com", 
-        "https://firestore.googleapis.com", // Add if using Firestore directly
-        "https://*.googleapis.com" // Broaden Google API access if needed
+        "https://firestore.googleapis.com",
+        "https://*.googleapis.com",
+        "https://api.qurancdn.com" // Allow QuranCDN API
       ],
-      // Allow scripts from self, Stripe, Google APIs, and allow inline/eval (use with caution)
       scriptSrc: [
         "'self'", 
         "'unsafe-inline'", 
-        "'unsafe-eval'", // Needed by Angular sometimes, review if possible to remove
+        "'unsafe-eval'",
         "https://js.stripe.com", 
         "https://apis.google.com"
       ],
-      // Allow styles from self, cloudflare (FontAwesome), and inline styles
+      // Add script-src-attr to allow inline event handlers (e.g., onclick)
+      scriptSrcAttr: ["'unsafe-inline'"], 
       styleSrc: [
         "'self'", 
-        "'unsafe-inline'", // Allow inline styles
+        "'unsafe-inline'",
         "https://cdnjs.cloudflare.com" 
       ],
-      // Allow images from self, data URIs, and any https source
       imgSrc: ["'self'", "data:", "https:"], 
-      // Allow fonts from self, https sources (like Google Fonts), data URIs, and cloudflare (FontAwesome)
       fontSrc: ["'self'", "https:", "data:", "https://cdnjs.cloudflare.com"],
-      // Allow frames from Stripe for payment elements
-      frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"], 
-      // Allow service workers
+      // Allow frames from Stripe and Firebase Auth helpers
+      frameSrc: [
+        "'self'", 
+        "https://js.stripe.com", 
+        "https://hooks.stripe.com",
+        "https://*.firebaseapp.com" // Allow Firebase Auth helper frames
+      ], 
       workerSrc: ["'self'"] 
     }
   }
