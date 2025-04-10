@@ -46,25 +46,17 @@
   }
   
   .arabic-text {
-    font-family: 'KFGQPC HAFS Uthmanic Script', 'Amiri', serif;
+    font-family: 'Traditional Arabic', serif;
     font-size: 2.8rem;
-    line-height: 2.5;
-    direction: rtl;
+    line-height: 1.6;
     text-align: right;
-    color: #1F2937;
-    letter-spacing: 0;
-    word-spacing: 0;
-    overflow-wrap: break-word;
+    color: #2c3e50;
     max-width: 100%;
-    word-break: keep-all;
-    margin-bottom: 1rem;
-  }
-  
-  .verse-meaning {
-    background: linear-gradient(to right, #FAF3E0, #FFF);
-    border-radius: 1rem;
-    border-left: 4px solid #B7A57A;
-    padding: 1.5rem;
+    direction: rtl;
+
+    @media (max-width: 768px) {
+      font-size: 2rem;
+    }
   }
   
   .translation {

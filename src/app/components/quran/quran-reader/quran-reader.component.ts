@@ -575,7 +575,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       const attemptScroll = (attempts: number = 0) => {
           const verseElement = document.getElementById(`verse-${verseNumber}`);
           if (verseElement) {
-              // console.log(`[scrollToVerse] Found element for verse ${verseNumber}. Scrolling...`); // Optional log
+              console.log(`[Scroll attempt ${attempts + 1}] Found element for verse ${verseNumber}. Preparing to scroll...`);
               // Existing highlight and scroll logic...
               document.querySelectorAll('.highlighted-verse').forEach(el => {
                   el.classList.remove('highlighted-verse');
