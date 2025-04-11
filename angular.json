@@ -54,7 +54,7 @@
                 "node_modules"
               ]
             },
-            "serviceWorker": true,
+            "serviceWorker": false,
             "ngswConfigPath": "ngsw-config.json"
           },
           "configurations": {
