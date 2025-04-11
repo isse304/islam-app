@@ -7,6 +7,7 @@ import { ApiService } from './api.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 export interface QuranVerse {
+  surahNumber?: number;
   number: number;
   text: string;
   translation: string;
@@ -861,11 +862,19 @@ export class QuranService {
   }
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {
-    // Correctly use query parameter 'verse_key' for the backend call
+    // Construct the verse key
     const verseKey = `${surah}:${verse}`;
-    return this.http.get(`${this.quranComUrl}/verses/by_key`, { 
-      params: { verse_key: verseKey } 
-    });
+    // Correct the URL to use the verseKey as a query parameter
+    const url = `${this.quranComUrl}/verses/by_key?verse_key=${verseKey}`;
+    // console.log(`[QuranService] getPageBySurah: Fetching from URL: ${url}`); // Log the constructed URL
+    return this.http.get(url).pipe(
+      catchError(error => {
+        console.error(`[QuranService] Error fetching page data for ${verseKey} from ${url}:`, error);
+        // Return an observable that emits an error or a default value
+        return throwError(() => new Error(`Failed to fetch page data for ${verseKey}`)); 
+        // Or return of({ verse: { page: 1 } }); // Provide a default page number if appropriate
+      })
+    );
   }
 
   // Method to get all available reciters

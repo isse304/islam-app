@@ -178,6 +178,7 @@ $text-medium: #4A5568;
     width: 100%;
     max-width: 1200px;
     margin-bottom: 20px;
+    border-color: #b7a57a;
   }
 
   .navigation-controls {
@@ -636,44 +637,49 @@ select option {
   background-color: white;
 }
 
-// Audio player controls
-.fixed.bottom-0 {
-  .container {
-    .fas {
-      display: inline-block;
-      font-size: 1.2rem;
-      
-      &.fa-play, 
-      &.fa-pause,
-      &.fa-forward-step,
-      &.fa-backward-step,
-      &.fa-repeat,
-      &.fa-times {
-        color: #B7A57A;
-        
-        &:hover {
-          color: #9b8a65;
-        }
-      }
-    }
-    
-    button {
-      &.w-12.h-12 {
-        .fas {
-          color: white;
-        }
-      }
-    }
+// Styles for the new minimized bubble button
+.control-bubble {
+  // Uses Tailwind classes for most positioning/styling
+  // Add any specific overrides or base styles here if needed
+  width: 50px;  // Example fixed size
+  height: 50px; // Example fixed size
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem; // Adjust icon size
+}
+
+// Optional: Style the main container when minimized 
+// (e.g., reduce padding or height if needed)
+.fixed.bottom-0.left-0.right-0 {
+  // Keep base styles like position, z-index, background, shadow if desired
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 50; // Keep z-index from original HTML
+  // Ensure smooth transitions for opacity and transform
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out, background-color 0.3s ease-in-out, box-shadow 0.3s ease-in-out, padding 0.3s ease-in-out;
+
+  // Styles applied conditionally via [class] bindings in HTML
+  // Example:
+  // &.opacity-0 { opacity: 0; }
+  // &.translate-y-full { transform: translateY(100%); }
+  // &.bg-transparent { background-color: transparent; }
+
+  &.minimized {
+    // Styles when the player is just a bubble (managed by bindings)
+    // padding: 0; 
+    // box-shadow: none; 
+    // background-color: transparent; 
   }
-  
-  input[type="range"] {
-    accent-color: #B7A57A;
-    height: 4px;
-    
-    &::-webkit-slider-thumb {
-      background: #B7A57A;
-    }
-  }
+}
+
+// Keep the padding rule for main content - ADJUST VALUE if needed!
+.verse-list-container,
+.mushaf-container {
+  // This padding needs to be enough to clear the EXPANDED player height
+  padding-bottom: 150px; // Adjust based on expanded control bar height + buffer
 }
 
 .font-arabic {
@@ -726,3 +732,76 @@ select option {
   contain: content; /* Optimization hint for the browser */
 }
 
+// Add other specific styles as needed
+
+// Styles for the audio player bubble
+.audio-player-bubble {
+  // Uses Tailwind for positioning/base style
+  // Add any specific overrides here if needed
+  width: 50px; // Example size
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem; // Adjust icon size
+}
+
+// +++ Styles for the NEW main controls bubble +++
+.main-control-bubble {
+  // Uses Tailwind for positioning/base style
+  // Add any specific overrides here if needed
+  width: 45px; // Example size
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem; // Adjust icon size
+}
+
+// Optional: Adjust the main controls container when minimized
+.bg-white.rounded-xl.shadow-lg.mb-8 {
+  // Tailwind applies base styles
+  // Add transition for smooth padding/height changes if desired
+  transition: padding 0.3s ease-in-out, height 0.3s ease-in-out;
+
+  // No specific styles needed for the minimized state itself
+  // as the content is hidden by *ngIf and padding is handled conditionally
+  // Unless you want to explicitly set a smaller height:
+  // &.p-2 { // When minimized (has p-2 class from HTML binding)
+  //   height: 60px; // Example fixed height 
+  // }
+}
+
+// Keep the padding rule for main content
+// ... padding styles for .verse-list-container, .mushaf-container ...
+
+// ... rest of the styles ...
+
+.controls-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  backdrop-filter: blur(2px);
+}
+
+// Styles for the controls popup container
+.controls-popup {
+  position: fixed;
+  left: 50%;
+  top: 50%; // Center vertically
+  transform: translate(-50%, -50%);
+  width: 90%; // Responsive width
+  max-width: 700px; // Max width
+  max-height: 85vh; // Limit height
+  overflow-y: auto; // Allow scrolling within popup
+  z-index: 1000; // Above backdrop
+  background-color: white;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  border-radius: 0.75rem;
+  padding: 1.5rem; // Keep padding
+  padding-top: 2.5rem; // Add extra top padding for close button
+}

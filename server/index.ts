@@ -241,7 +241,7 @@ app.use(helmet({
 // Configure rate limiting with higher limits for production
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 1000 : 100, // Higher limit for production
+  max: process.env.NODE_ENV === 'production' ? 1000 : 500, // Increase dev limit from 100 to 500
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
