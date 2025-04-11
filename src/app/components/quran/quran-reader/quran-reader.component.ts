@@ -2049,71 +2049,56 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   private async loadMushafPage(pageNumber: number) {
-    this.isAudioLoading = true;
-    this.pageImageUrl = ''; // Reset image URLs
-    this.secondPageImageUrl = ''; 
-    const previousScrollY = window.scrollY; // Store current scroll position
-    history.scrollRestoration = 'manual'; // Prevent browser auto-scroll
-    
+    console.log(`[loadMushafPage] Loading page: ${pageNumber}`);
+    if (pageNumber < this.FIRST_PAGE || pageNumber > this.LAST_PAGE) {
+      console.warn(`[loadMushafPage] Attempted to load invalid page number: ${pageNumber}. Clamping to bounds.`);
+      pageNumber = Math.max(this.FIRST_PAGE, Math.min(pageNumber, this.LAST_PAGE));
+    }
+
+    this.isAudioLoading = true; // Show loading indicator
+    this.changeDetector.markForCheck(); // Mark for check early
+
     try {
-      if (pageNumber < this.FIRST_PAGE || pageNumber > this.LAST_PAGE) {
-        pageNumber = this.FIRST_PAGE;
-      }
-      
-      this.currentPage = pageNumber;
-      this.displayPageNumber = this.actualToDisplayPage(pageNumber);
-      // Set the main page image URL
+      // Calculate display page number for consistency
+      const displayPage = this.actualToDisplayPage(pageNumber);
+      this.displayPageNumber = displayPage;
+      this.pageInput = displayPage;
+
+      // Determine image URLs
       this.pageImageUrl = this.quranFlash.getPageImageUrl(pageNumber);
-
-      // Handle double page view
-      if (this.isDoublePageView) {
-          const secondPageActualNumber = pageNumber - 1;
-          if (secondPageActualNumber >= this.FIRST_PAGE) {
-              this.secondPageImageUrl = this.quranFlash.getPageImageUrl(secondPageActualNumber);
-          }
-      }
-      
-      // Preload images
-      const preloadPromises: Promise<void>[] = [];
-      if (this.pageImageUrl) {
-          preloadPromises.push(this.preloadImage(this.pageImageUrl));
-      }
-      if (this.secondPageImageUrl) {
-          preloadPromises.push(this.preloadImage(this.secondPageImageUrl));
-      }
-
-      // Only proceed if there are images to load
-      if (preloadPromises.length > 0) {
-        await Promise.all(preloadPromises);
-      } else if (this.pageImageUrl) {
-        // Fallback for single image load just in case (though covered by above)
-        await this.preloadImage(this.pageImageUrl);
+      if (this.isDoublePageView && pageNumber > this.FIRST_PAGE) {
+        this.secondPageImageUrl = this.quranFlash.getPageImageUrl(pageNumber - 1);
       } else {
-         console.warn(`[loadMushafPage] No image URL generated for page ${pageNumber}`);
-         // Potentially throw an error or handle the case where no image could be determined
+        this.secondPageImageUrl = '';
       }
-      
+
+      console.log(`[loadMushafPage] Image URLs set:`, { main: this.pageImageUrl, second: this.secondPageImageUrl });
+
+      // Preload images for smoother transition
+      const preloadPromises = [this.preloadImage(this.pageImageUrl)];
+      if (this.secondPageImageUrl) {
+        preloadPromises.push(this.preloadImage(this.secondPageImageUrl));
+      }
+      await Promise.all(preloadPromises);
+      console.log(`[loadMushafPage] Images preloaded for page ${pageNumber}.`);
+
+      // Update current Surah based on the new page
       this.updateCurrentSurah(pageNumber);
+
+      this.currentPage = pageNumber; // Update currentPage AFTER successful load/preload
       
-      this.router.navigate([], {
-        relativeTo: this.route,
-        queryParams: {
-          mode: 'mushaf',
-          page: this.displayPageNumber
-        },
-        replaceUrl: true
-      });
-      
+      // Save state and update URL AFTER successful load
+      this.savePreferences(); // Persist the current page
+      this.updateUrlParams();
+
     } catch (error) {
-      console.error('Error loading mushaf page:', error);
-      this.toastService.show('Error loading Quran page');
+      console.error(`[loadMushafPage] Error loading page ${pageNumber}:`, error);
+      // Handle error appropriately, maybe show a toast
+      this.toastService.showError(`Failed to load page ${this.actualToDisplayPage(pageNumber)}.`);
     } finally {
       this.isAudioLoading = false;
-      // Restore scroll position *after* potential layout shifts
-      requestAnimationFrame(() => {
-        window.scrollTo({ top: previousScrollY, behavior: 'instant' });
-        history.scrollRestoration = 'auto'; // Restore default behavior
-      });
+      this.changeDetector.markForCheck(); // Mark for check again after loading finishes
+      console.log(`[loadMushafPage] Finished loading page ${pageNumber}.`);
     }
   }
 

@@ -195,9 +195,100 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
   // Log entry into the main handler
   console.log(`[Tafsir Chat Route] Handler entered for user ${req.auth?.uid}. Question: "${req.body?.question}"`);
   try {
-    const { surah, verse, question, isFirstResponse = false, selectedTafsir = 'ibn-kathir' } = req.body;
+    // Add type annotations for req.body properties
+    const { 
+      surah, 
+      verse, 
+      question, 
+      isFirstResponse = false, 
+      selectedTafsir = 'ibn-kathir' 
+    }: { 
+      surah?: number | string, 
+      verse?: number | string, 
+      question?: string, 
+      isFirstResponse?: boolean, 
+      selectedTafsir?: string 
+    } = req.body;
+
     const userId = req.auth!.uid;
     
+    // --- START Conditional Hardcoded Response for General Ibn Kathir 1:1 Questions ---
+    if (String(surah) === '1' && String(verse) === '1' && selectedTafsir === 'ibn-kathir') {
+      const lowerCaseQuestion = (question || '').toLowerCase().trim();
+      // Define keywords/phrases indicating a general request for explanation
+      const generalKeywords = [
+        'explain this verse',
+        'tell me about this verse',
+        'what is this verse about',
+        'meaning of this verse',
+        'summarize this verse',
+        'tafsir of this verse',
+        'explanation for',
+        'general meaning',
+        'overall meaning'
+      ];
+      // Check if the question seems general
+      const isGeneralQuery = generalKeywords.some(keyword => lowerCaseQuestion.includes(keyword)) || lowerCaseQuestion === 'explain' || lowerCaseQuestion === 'what is it';
+
+      if (isGeneralQuery) {
+        console.log(`[Tafsir Chat] Returning hardcoded response for GENERAL Ibn Kathir 1:1 query for user ${userId}.`);
+        const hardcodedResponse = `
+📚 Tafsir Ibn Kathir – Explanation of 1:1:
+Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by discussing the Basmala (Bismillāh al-Raḥmān al-Raḥīm), its wording, meaning, and its status in the Qur'an.
+
+1.  **Is Bismillah Part of Surah Al-Fatiha?**
+    Ibn Kathir states:
+
+    > According to Imam Ash-Shafi'i and the reciters of Makkah and Kufa, "Bismillāh al-Raḥmān al-Raḥīm" is counted as a verse in Surah Al-Fātiḥah.
+
+    This is based on authentic reports and recitations from the Sahabah (رضي الله عنهم).
+
+    Other scholars, like Imam Malik, did not count it as a verse of the Surah, but Ibn Kathir follows the Shafi'i view, which includes it as the first verse.
+
+2.  **Meaning of the Words:**
+    *   **"بِسْمِ اللَّهِ" – "In the Name of Allah"**
+        The word "Allah" is the greatest name of God. All of His other names refer back to it.
+        "Bismillah" implies beginning an act with seeking help, blessing, and guidance from Allah.
+        It is a reminder to start all actions with the intention to please Allah.
+
+    *   **"الرَّحْمَٰنِ" – "The Most Gracious"**
+        Ibn Kathir explains that "Ar-Raḥmān" refers to Allah's vast and all-encompassing mercy, which extends to all creation: believers, disbelievers, humans, animals, etc.
+        It is derived from *rahmah* (mercy), but used in a more intensive form here, showing the greatness of Allah's mercy.
+
+    *   **"الرَّحِيمِ" – "The Most Merciful"**
+        "Ar-Raḥīm" refers to Allah's special mercy that is directed specifically to the believers.
+        Ibn Kathir, citing earlier scholars like Abu 'Aliyah and others, says that "Ar-Raḥmān" is general, while "Ar-Raḥīm" is specific.
+
+3.  **Why Begin with Bismillah?**
+    Ibn Kathir mentions the practice of the Prophets who would begin their writings or actions with the name of Allah.
+    He refers to the letter of Sulayman (عليه السلام) to the Queen of Sheba, which began with:
+
+    > "إِنَّهُ مِن سُلَيْمَانَ وَإِنَّهُ بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ"
+    > "Indeed, it is from Sulayman, and it reads: In the Name of Allah, the Most Gracious, the Most Merciful." (Surah An-Naml 27:30)
+
+    This shows the noble tradition of beginning all good with the name of Allah.
+
+🧠 **Summary:**
+| Phrase     | Meaning (according to Ibn Kathir)                       |
+|------------|---------------------------------------------------------|
+| Bismillah  | Seeking Allah's name and help before any action.        |
+| Allah      | The personal name of God, to which all His other names return. |
+| Ar-Rahman  | Allah's mercy for all creation, general and vast.       |
+| Ar-Raheem  | Allah's mercy for the believers, special and specific. |
+`;
+        return res.json({
+          success: true,
+          content: hardcodedResponse.trim(),
+          source: 'hardcoded_ibn_kathir_1_1' // Clear source identifier
+        });
+      } else {
+        console.log(`[Tafsir Chat] Specific question detected for Ibn Kathir 1:1. Proceeding to AI generation.`);
+        // If the question is specific, we fall through to the normal AI flow below,
+        // which already skips fetching external content for 1:1.
+      }
+    }
+    // --- END Conditional Hardcoded Response ---
+
     // --- Handle General Questions or Greetings FIRST --- 
     // Basic check for non-tafsir related questions BEFORE any DB calls or complex logic
     const lowerCaseQuestion = question?.toLowerCase() || ''; // Handle potential undefined question
@@ -239,12 +330,21 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
 
     // --- Determine if we need to fetch Tafsir content ---
     // Only fetch if surah and verse are provided and it's not just a general theme question
-    if (surah && verse && !isGeneralSurahQuestion) {
+    let fetchTafsir = surah && verse && !isGeneralSurahQuestion;
+    // +++ START Specific check for 1:1 +++
+    if (String(surah) === '1' && String(verse) === '1') {
+        console.log("[Tafsir Chat] Skipping tafsir content fetch for 1:1, will use AI's internal knowledge.");
+        fetchTafsir = false; // Do not fetch content for 1:1
+        hasTafsirContent = false; // Ensure flag is false
+    }
+    // +++ END Specific check for 1:1 +++
+
+    if (fetchTafsir) {
          console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
         tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
         hasTafsirContent = !!tafsirContent;
          console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
-    } else {
+    } else if (!(String(surah) === '1' && String(verse) === '1')) { // Avoid duplicate log for 1:1
         console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
     }
 
@@ -296,8 +396,13 @@ YOUR TASK & RESPONSE RULES:
         *   Respond directly to the user's question about the verse, incorporating the extracted details.
 
 5.  **TAFSIR REQUESTED BUT TEXT UNAVAILABLE:**
-    *   If the user asks about a SPECIFIC verse (${surah}:${verse}) BUT 'Tafsir Text' is 'Not Available':
-        *   **Usage Check:** (This happens *before* this step in the code).
+    *   If the user asks about **Surah 1, Verse 1 (Al-Fatiha 1:1)** AND 'Tafsir Text' is 'Not Available' (because we skipped fetching it):
+        *   **Usage Check:** (Handled before this step).
+        *   Explain the meaning of "Bismillah al-Rahman al-Rahim" (Verse 1:1) based on your general Islamic knowledge. Focus on the components: 'Bismillah', 'Allah', 'Ar-Rahman', 'Ar-Rahim'.
+        *   **Do NOT mention Isti'adhah (seeking refuge)** unless the user specifically asks about the *practice* of starting recitation. Focus solely on the meaning of the Basmala itself.
+        *   Do NOT mention the unavailable external text.
+    *   If the user asks about **any other SPECIFIC verse (${surah}:${verse})** BUT 'Tafsir Text' is 'Not Available':
+        *   **Usage Check:** (Handled before this step).
         *   State clearly: "Unfortunately, ${scholarName}'s detailed tafsir text is not available in our database for verse ${surah}:${verse}."
         *   Address the user's question generally based on your knowledge of the Quran and the Surah's theme (${currentSurahTheme}), if applicable. Mention the theme connection cautiously.
         *   Avoid speculation presented as fact. Offer alternatives: "Perhaps we could discuss the general meaning, or look at another verse?"

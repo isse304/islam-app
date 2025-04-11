@@ -420,8 +420,12 @@
 
         <!-- Mushaf Display -->
         <ng-container *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden">
-            <div class="flex justify-center" [style.transform]="'scale(' + mushafZoom + ')'" [style.transform-origin]="'top center'">
+          <div class="bg-white rounded-xl shadow-lg overflow-hidden" 
+               (swipeleft)="nextPage()" 
+               (swiperight)="previousPage()">
+            <div class="flex justify-center" 
+                 [style.transform]="'scale(' + mushafZoom + ')'" 
+                 [style.transform-origin]="'top center'">
               <!-- Next Page (in double view) -->
               <div *ngIf="isDoublePageView" class="flex-shrink-0">
                 <img *ngIf="secondPageImageUrl" 

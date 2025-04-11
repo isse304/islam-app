@@ -12,6 +12,7 @@ import { environment } from './environments/environment';
 import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { enableProdMode } from '@angular/core';
+import 'hammerjs'; // Import HammerJS
 
 // Import the provider functions
 import { FirebaseAuthService } from './app/services/firebase-auth.service';
