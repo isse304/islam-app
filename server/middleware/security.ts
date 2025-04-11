@@ -37,18 +37,10 @@ const securityHeaders = (req: Request, res: Response, next: NextFunction) => {
 // Production security configuration
 const securityConfig = {
     helmet: helmet({
+        // Provide empty directives to effectively disable Helmet's default restrictive CSP 
+        // while satisfying TypeScript types. The actual CSP will come from the meta tag.
         contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
-                styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-                imgSrc: ["'self'", "data:", "https:"],
-                connectSrc: ["'self'", "http://localhost:3000", "https://api.openai.com", "https://api.elevenlabs.io"],
-                fontSrc: ["'self'", "https:", "data:"],
-                objectSrc: ["'none'"],
-                mediaSrc: ["'self'"],
-                frameSrc: ["'none'"],
-            },
+            directives: {},
         },
         crossOriginEmbedderPolicy: false,
         crossOriginResourcePolicy: { policy: "cross-origin" },

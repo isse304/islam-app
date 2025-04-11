@@ -284,6 +284,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // +++ ADD Method to toggle the main controls minimized state +++
   public toggleMainControlsView(source: 'bubble' | 'minimizeButton' | 'backdrop' | 'internalPopupMinimize' = 'minimizeButton'): void {
+    // +++ Add check to prevent changes on mobile +++
+    if (this.isMobile) return;
+    
     if (source === 'bubble') {
       // Clicking bubble opens popup if minimized
       if (this.isMainControlsMinimized) {
@@ -553,7 +556,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         verseElement.classList.add('highlighted-verse');
         
         // ++ Adjusted Offset Calculation ++ 
-        const headerOffset = 75; // Reduced offset from 100 back down to 75
+        const headerOffset = 100; // Increased base offset
         // const mobileOffsetAdjustment = this.isMobile ? -20 : 0; // Temporarily removed mobile adjustment
         const elementPosition = verseElement.getBoundingClientRect().top;
         const offsetPosition = elementPosition + window.scrollY - headerOffset; // Simplified offset
@@ -1055,14 +1058,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       
       // Load and play the new audio element
       await this.audioPlayer.load(); // Explicitly load the new source
-      // -- Reverted detailed logging --
       await this.audioPlayer.play();
-      this.isPlaying = true; // Assuming play succeeds for now
-      this.isAudioLoading = false; // Reset loading after attempt
+      this.isPlaying = true;
 
-      // --- Restore scroll position AFTER playback starts attempt --- 
-      // requestAnimationFrame(() => { ... }); // Keep if needed
-      // --- End Scroll Restore ---
+      // --- Restore scroll position AFTER playback starts ---
+      requestAnimationFrame(() => {
+          // Check if scroll position changed significantly (e.g., > 5px)
+          if (Math.abs(window.scrollY - currentScrollY) > 5) {
+              // console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
+              window.scrollTo({ top: currentScrollY, behavior: 'instant' }); // Use 'instant' to avoid visual jump
+          }
+      });
+      // ------------------------------------------------------
 
       // Set timeout for loading indicator
       clearTimeout(this.audioLoadingTimeout);
@@ -2222,6 +2229,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     const st = window.scrollY || document.documentElement.scrollTop;
     const scrollDifference = st - this.lastScrollTop;
 
+    // Close popup on scroll (Applies only on desktop due to *ngIf on popup)
     if (this.isPopupOpen) {
         if (Math.abs(scrollDifference) > 5) { // Close popup on any significant scroll
             this.ngZone.run(() => {
@@ -2229,7 +2237,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                 this.changeDetector.markForCheck();
             });
         }
-    } else if (!this.isMushafView && Math.abs(scrollDifference) > this.scrollThreshold) {
+    // Minimize controls on scroll down (Only applies on DESKTOP)
+    } else if (!this.isMobile && !this.isMushafView && Math.abs(scrollDifference) > this.scrollThreshold) {
       // Only minimize/handle verse tracking if NOT in Mushaf view and scroll is significant
       if (scrollDifference > 0 && !this.isMainControlsMinimized) {
           // Scrolling Down & Controls are Expanded In-Flow -> Minimize
@@ -2240,7 +2249,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
       // --- End Control Minimization ---
       
-      // --- Debounced Verse Detection --- 
+      // --- Debounced Verse Detection (Runs on both desktop/mobile if not mushaf) --- 
       clearTimeout(this.scrollDebounceTimer);
       this.scrollDebounceTimer = setTimeout(() => {
         this.detectAndUpdateCurrentVerse();

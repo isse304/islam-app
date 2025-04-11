@@ -1,7 +1,7 @@
 <div class="bg-[#FAF3E0] flex flex-col min-h-0">
 
-  <!-- ++ BUBBLE: Fixed, shown when minimized ++ -->
-  <button *ngIf="!isMushafView && isMainControlsMinimized && !isPopupOpen"
+  <!-- ++ BUBBLE: Shown only on DESKTOP when minimized ++ -->
+  <button *ngIf="!isMobile && !isMushafView && isMainControlsMinimized && !isPopupOpen"
           (click)="toggleMainControlsView('bubble')"
           class="main-control-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed top-28 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-20">
     <i class="fas fa-cog"></i>
@@ -12,11 +12,12 @@
       Quran Reader
     </h1>
 
-    <!-- ++ IN-FLOW Controls: Shown initially, hidden when minimized or popup open ++ -->
-    <div *ngIf="!isMushafView && !isMainControlsMinimized && !isPopupOpen" 
+    <!-- ++ UPDATED: Controls: Always visible on mobile (if !mushaf), conditionally on desktop ++ -->
+    <div *ngIf="(!isMushafView && isMobile) || (!isMobile && !isMainControlsMinimized && !isPopupOpen)" 
          class="relative bg-white rounded-xl shadow-lg p-6 mb-8">
-      <!-- Minimize Button (for in-flow controls) -->
-      <button (click)="toggleMainControlsView('minimizeButton')"
+      <!-- Minimize Button: Only shown on DESKTOP -->
+      <button *ngIf="!isMobile" 
+              (click)="toggleMainControlsView('minimizeButton')"
               class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 z-10 p-1">
         <i class="fas fa-compress-alt"></i>
       </button>
@@ -498,8 +499,8 @@
 
   </div> <!-- End Main Content Container -->
 
-  <!-- ++ POPUP Structure: Shown only when isPopupOpen is true ++ -->
-  <ng-container *ngIf="isPopupOpen">
+  <!-- ++ POPUP Structure: Shown only on DESKTOP when isPopupOpen is true ++ -->
+  <ng-container *ngIf="!isMobile && isPopupOpen">
     <!-- Backdrop -->
     <div class="controls-backdrop"
          (click)="toggleMainControlsView('backdrop')">
