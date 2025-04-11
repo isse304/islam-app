@@ -753,61 +753,23 @@ export class FirebaseAuthService {
 
   // Sign in with Google
   async signInWithGoogle(): Promise<UserCredential> {
+    const provider = new GoogleAuthProvider();
+    console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
     try {
-      const provider = new GoogleAuthProvider();
-      
-      // Add scopes for better profile access
-      provider.addScope('profile');
-      provider.addScope('email');
-      provider.addScope('openid');
-      
-      // Configure provider settings
-      provider.setCustomParameters({
-        prompt: 'select_account'
-      });
-      
-      // Save current URL for redirect back
-      const currentUrl = this.router.url;
-      if (currentUrl !== '/auth/login') {
-        localStorage.setItem('returnUrl', currentUrl);
+      const credential = await signInWithPopup(this.auth, provider);
+      console.log('[AuthService] signInWithPopup successful.'); // Log success
+      // No need to call handleUserSignedIn here, onAuthStateChanged will handle it.
+      return credential;
+    } catch (error: any) { // Add type annotation to error
+      console.error('[AuthService] signInWithPopup error:', error);
+      // Handle specific errors if needed
+      if (error.code === 'auth/popup-closed-by-user') {
+        // Handle popup closed specifically, maybe just log or return null/reject differently
+        console.log('[AuthService] Google Sign-In popup closed by user.');
+      } else if (error.code === 'auth/cancelled-popup-request') {
+        console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
       }
-
-      // console.log('Starting Google sign-in process...');
-      
-      try {
-        // Try popup first
-        // console.log('Attempting popup sign-in...');
-        const result = await signInWithPopup(this.auth, provider);
-        
-        // Force token refresh and handle sign in
-        await this.handleUserSignedIn(result.user);
-        
-        // Navigate inside NgZone
-        this.ngZone.run(() => {
-          const returnUrl = localStorage.getItem('returnUrl');
-          if (returnUrl) {
-            // console.log('Navigating to:', returnUrl);
-            localStorage.removeItem('returnUrl');
-            this.router.navigate([returnUrl]);
-          }
-        });
-        
-        return result;
-      } catch (popupError: any) {
-        // console.warn('Popup sign-in failed:', popupError);
-        
-        if (popupError.code === 'auth/popup-blocked' || 
-            popupError.code === 'auth/popup-closed-by-user') {
-          // console.log('Popup blocked or closed, trying redirect...');
-          await signInWithRedirect(this.auth, provider);
-          return {} as UserCredential; // Redirect will refresh the page
-        }
-        
-        throw popupError;
-      }
-    } catch (error: any) {
-      // console.error('Google sign-in error:', error);
-      throw error;
+      throw error; // Re-throw the error for the component to catch
     }
   }
 
