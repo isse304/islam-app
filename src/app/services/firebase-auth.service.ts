@@ -813,23 +813,34 @@ export class FirebaseAuthService {
 
   // Handle redirect result
   private async handleRedirectResult(): Promise<void> {
+    console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
+    this._isLoading.next(true);
     try {
-      // console.log("Checking for redirect result...");
-      const result = await getRedirectResult(this.auth);
-      if (result) {
-        // console.log("Redirect result found:", result.user.uid);
-        // Successfully authenticated via redirect.
-        // We DON'T call handleUserSignedIn here anymore.
-        // The onAuthStateChanged listener will fire shortly and handle it.
-        // We might store the credential if needed for linking later, but not essential now.
-        // const credential = GoogleAuthProvider.credentialFromResult(result); // or FacebookAuthProvider
+      const credential = await getRedirectResult(this.auth);
+      console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
+      if (credential) {
+        console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
+        const user = await this.handleUserSignedIn(credential.user);
+        if (user) {
+          // Navigate only if a user was successfully processed from redirect
+          console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
+          this.ngZone.run(() => {
+             this.router.navigateByUrl(this.redirectUrl || '/home').catch(err => {
+               console.error('[AuthService] handleRedirectResult: Navigation failed after redirect:', err);
+               this.router.navigate(['/home']); // Fallback
+             });
+          });
+        } else {
+            console.warn('[AuthService] handleRedirectResult: Redirect credential processed, but handleUserSignedIn resulted in null user.');
+        }
       } else {
-        // console.log("No redirect result found.");
+        console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
       }
-    } catch (error) {
-      // console.error("Error getting redirect result:", error);
-      // Let onAuthStateChanged handle the state (likely null user)
-      // and signal authReady.
+    } catch (error: any) {
+      console.error('[AuthService] handleRedirectResult: Error processing redirect result:', error); // Log error
+      // Avoid navigating on error, let the normal auth state handle it
+    } finally {
+      this._isLoading.next(false);
     }
   }
 

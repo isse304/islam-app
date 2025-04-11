@@ -179,37 +179,53 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   loginWithGoogle(): void {
-    if (this.isLoading) return;
+    if (this.isLoading) {
+      console.log('[LoginComponent] loginWithGoogle called while already loading. Aborting.');
+      return;
+    }
+    console.log('[LoginComponent] loginWithGoogle initiated.'); // Log start
     this.isLoading = true;
-    this.authService.signInWithGoogle()
-      .then(async (credential) => { // Check if credential is valid (not from redirect)
-        if (credential && credential.user) {
-          this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
-          await this.navigateOnLoginSuccess(); // Wait for navigation logic
-        } else {
-          // If credential is null/empty, it likely means a redirect was initiated
-          // Don't show snackbar, don't navigate yet. Wait for page reload.
-          console.log('[LoginComponent] Google sign-in initiated redirect.');
-          // isLoading will be reset on page reload
-        }
-      })
-      .catch(error => {
-        // Error handling: Only show error if it wasn't a redirect scenario
-        // Check for specific redirect-related codes if necessary, otherwise assume error
-        // Check if it's a common popup error before deciding it's a failure
-        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') { 
-           this.snackBar.open('Google login failed. Please try again.', 'Close', {
-              duration: 5000,
-              panelClass: ['error-snackbar']
-           });
-           console.error('Google sign-in error:', error);
-           this.zone.run(() => { this.isLoading = false; }); // Turn off loading only on actual error
-        } else {
-           // If it was just popup closed, reset loading silently
-           this.zone.run(() => { this.isLoading = false; }); 
-        }
-      });
-       // No finally block needed here 
+    this.cdr.markForCheck(); // Update UI for loading state
+
+    // Run the Firebase call outside Angular zone
+    this.zone.runOutsideAngular(() => {
+      this.authService.signInWithGoogle()
+        .then(async (credential) => { // Make the success handler async
+          // Bring the result handling back into the Angular zone
+          this.zone.run(async () => {
+            console.log('[LoginComponent] signInWithGoogle promise resolved. Credential:', credential); // Log credential
+            if (credential && credential.user) {
+              console.log('[LoginComponent] Valid credential received from popup.');
+              this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
+              await this.navigateOnLoginSuccess(); // Wait for navigation logic
+            } else {
+              console.warn('[LoginComponent] signInWithGoogle resolved but credential/user is null/undefined. Redirect might be happening or popup closed.');
+              // If popup closed early or redirect happened, we might need to reset loading state carefully.
+              // Let's reset loading state here if no user credential was received.
+              this.isLoading = false;
+              this.cdr.markForCheck();
+            }
+          });
+        })
+        .catch(error => {
+          // Bring error handling back into the Angular zone
+          this.zone.run(() => {
+            console.error('[LoginComponent] signInWithGoogle promise rejected. Error:', error); // Log error
+            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') { 
+              this.snackBar.open('Google login failed. Please try again.', 'Close', {
+                  duration: 5000,
+                  panelClass: ['error-snackbar']
+              });
+            } else {
+              console.log('[LoginComponent] Google Sign-In popup closed by user.');
+            }
+            // Always reset loading state on error or popup close
+            this.isLoading = false;
+            this.cdr.markForCheck(); // Update UI
+          });
+        });
+    });
+       // No finally block here, handle isLoading in then/catch inside the zone
   }
 
   private startAutoRotate() {

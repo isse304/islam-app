@@ -9,9 +9,9 @@ import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { environment } from './environments/environment';
-import { provideServiceWorker } from '@angular/service-worker';
 import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { DatePipe } from '@angular/common';
+import { enableProdMode } from '@angular/core';
 
 // Import the provider functions
 import { FirebaseAuthService } from './app/services/firebase-auth.service';
@@ -66,6 +66,10 @@ export function initializeAppFactory(
   };
 }
 
+// if (environment.production) {
+//   enableProdMode();
+// }
+
 bootstrapApplication(AppComponent, {
   ...appConfig, // Spread existing app config
   providers: [
@@ -78,10 +82,6 @@ bootstrapApplication(AppComponent, {
       provideAuth(() => getAuth()),
       provideFirestore(() => getFirestore())
     ),
-    provideServiceWorker('ngsw-worker.js', {
-      enabled: !isDevMode(),
-      registrationStrategy: 'registerWhenStable:30000'
-    }),
     // Provide your services
     FirebaseAuthService,
     PreferencesService,
@@ -92,4 +92,18 @@ bootstrapApplication(AppComponent, {
     { provide: APP_INITIALIZER, useFactory: initializeAppFactory, deps: [FirebaseAuthService, PreferencesService, SubscriptionService, ToastService], multi: true }
   ]
 })
-// .catch((err) => console.error(err)); // Commented out main bootstrap catch
+.catch((err) => console.error(err));
+
+// Commenting out the standalone bootstrap with SW provider
+// bootstrapApplication(AppComponent, {
+//   providers: [
+//     provideRouter(routes, withComponentInputBinding()),
+//     provideAnimations(),
+//     provideHttpClient(withInterceptors([authInterceptorFn])),
+//     provideServiceWorker('ngsw-worker.js', {
+//       enabled: !isDevMode(),
+//       registrationStrategy: 'registerWhenStable:30000'
+//     })
+//   ]
+// })
+//   .catch(err => console.error(err));
