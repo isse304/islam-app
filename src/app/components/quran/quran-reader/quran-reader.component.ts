@@ -1055,18 +1055,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       
       // Load and play the new audio element
       await this.audioPlayer.load(); // Explicitly load the new source
+      // -- Reverted detailed logging --
       await this.audioPlayer.play();
-      this.isPlaying = true;
+      this.isPlaying = true; // Assuming play succeeds for now
+      this.isAudioLoading = false; // Reset loading after attempt
 
-      // --- Restore scroll position AFTER playback starts ---
-      requestAnimationFrame(() => {
-          // Check if scroll position changed significantly (e.g., > 5px)
-          if (Math.abs(window.scrollY - currentScrollY) > 5) {
-              // console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
-              window.scrollTo({ top: currentScrollY, behavior: 'instant' }); // Use 'instant' to avoid visual jump
-          }
-      });
-      // ------------------------------------------------------
+      // --- Restore scroll position AFTER playback starts attempt --- 
+      // requestAnimationFrame(() => { ... }); // Keep if needed
+      // --- End Scroll Restore ---
 
       // Set timeout for loading indicator
       clearTimeout(this.audioLoadingTimeout);

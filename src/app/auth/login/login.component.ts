@@ -182,20 +182,34 @@ export class LoginComponent implements OnInit, OnDestroy {
     if (this.isLoading) return;
     this.isLoading = true;
     this.authService.signInWithGoogle()
-      .then(async () => { // Make the success handler async
-        this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
-         await this.navigateOnLoginSuccess(); // Wait for navigation logic
+      .then(async (credential) => { // Check if credential is valid (not from redirect)
+        if (credential && credential.user) {
+          this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
+          await this.navigateOnLoginSuccess(); // Wait for navigation logic
+        } else {
+          // If credential is null/empty, it likely means a redirect was initiated
+          // Don't show snackbar, don't navigate yet. Wait for page reload.
+          console.log('[LoginComponent] Google sign-in initiated redirect.');
+          // isLoading will be reset on page reload
+        }
       })
       .catch(error => {
-        // Error handling remains the same
-        this.snackBar.open('Google login failed. Please try again.', 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
-        // console.error('Google sign-in error:', error);
-         this.zone.run(() => { this.isLoading = false; }); // Turn off loading on error
+        // Error handling: Only show error if it wasn't a redirect scenario
+        // Check for specific redirect-related codes if necessary, otherwise assume error
+        // Check if it's a common popup error before deciding it's a failure
+        if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') { 
+           this.snackBar.open('Google login failed. Please try again.', 'Close', {
+              duration: 5000,
+              panelClass: ['error-snackbar']
+           });
+           console.error('Google sign-in error:', error);
+           this.zone.run(() => { this.isLoading = false; }); // Turn off loading only on actual error
+        } else {
+           // If it was just popup closed, reset loading silently
+           this.zone.run(() => { this.isLoading = false; }); 
+        }
       });
-       // No finally block needed here as navigateOnLoginSuccess handles it
+       // No finally block needed here 
   }
 
   private startAutoRotate() {
