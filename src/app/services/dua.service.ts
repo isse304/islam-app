@@ -576,12 +576,12 @@ export class DuaService {
   }
 
   getDuaInsights(duaId: string): Observable<ResponseType> {
-    console.log(`Getting insights for dua ${duaId}`);
+    // console.log(`Getting insights for dua ${duaId}`);
     
     // Check local insights first
     const localInsights = this.getLocalInsights(duaId);
     if (localInsights) {
-        console.log('Found local insights, using those');
+        // console.log('Found local insights, using those');
         return of(localInsights);
     }
 
@@ -602,7 +602,7 @@ export class DuaService {
                 // Set a timeout of 30 seconds
                 timeoutId = setTimeout(() => {
                     if (!hasEmittedData) {
-                        console.log('Request timed out, checking cache...');
+                        // console.log('Request timed out, checking cache...');
                         const cachedInsights = this.aiInsightsCache[duaId];
                         if (cachedInsights) {
                             try {
@@ -626,40 +626,40 @@ export class DuaService {
                 xhr.setRequestHeader('Accept', 'text/event-stream');
 
                 xhr.onreadystatechange = () => {
-                    console.log(`ReadyState changed to: ${xhr.readyState}`);
+                    // console.log(`ReadyState changed to: ${xhr.readyState}`);
                     
                     if (xhr.readyState === 3 || xhr.readyState === 4) {  // Loading/Streaming or Complete
                         const newData = xhr.responseText.substring(seenBytes);
                         seenBytes = xhr.responseText.length;
 
                         if (xhr.readyState === 4) {
-                            console.log('Request completed. Status:', xhr.status);
-                            console.log('Final response:', xhr.responseText);
+                            // console.log('Request completed. Status:', xhr.status);
+                            // console.log('Final response:', xhr.responseText);
                         }
 
                         if (!newData && xhr.readyState === 4 && !hasEmittedData) {
-                            console.log('No new data received, checking alternatives...');
+                            // console.log('No new data received, checking alternatives...');
                             // Try to get insights from local data first
                             const localInsights = this.getLocalInsights(duaId);
                             if (localInsights) {
-                                console.log('Found local insights, using those');
+                                // console.log('Found local insights, using those');
                                 observer.next(localInsights);
                                 hasEmittedData = true;
                             } else {
                                 // If no local insights, try cache
                                 const cachedInsights = this.aiInsightsCache[duaId];
                                 if (cachedInsights) {
-                                    console.log('Found cached insights, using those');
+                                    // console.log('Found cached insights, using those');
                                     try {
                                         const parsedInsights = JSON.parse(cachedInsights);
                                         observer.next(parsedInsights);
                                         hasEmittedData = true;
                                     } catch (error) {
-                                        console.error('Failed to parse cached insights:', error);
+                                        // console.error('Failed to parse cached insights:', error);
                                         observer.error(new Error('Failed to parse cached insights'));
                                     }
                                 } else if (!hasEmittedData) {
-                                    console.error('No insights available from any source');
+                                    // console.error('No insights available from any source');
                                     observer.error(new Error('No insights available'));
                                 }
                             }
@@ -672,7 +672,7 @@ export class DuaService {
                             if (event.startsWith('data: ')) {
                                 try {
                                     const data = JSON.parse(event.substring(6)) as ResponseType;
-                                    console.log('Received data:', data);
+                                    // console.log('Received data:', data);
                                     
                                     if (this.isStreamingResponse(data)) {
                                         if (data.data?.duaId === parseInt(duaId)) {
@@ -693,7 +693,7 @@ export class DuaService {
                                         this.aiInsightsCache[duaId] = JSON.stringify(data);
                                     }
                                 } catch (error) {
-                                    console.error('Error parsing SSE message:', error);
+                                    // console.error('Error parsing SSE message:', error);
                                     if (!hasEmittedData) {
                                         // Try local insights before giving up
                                         const localInsights = this.getLocalInsights(duaId);
@@ -712,7 +712,7 @@ export class DuaService {
                 };
 
                 xhr.onerror = (error) => {
-                    console.error('XHR error:', error);
+                    // console.error('XHR error:', error);
                     clearTimeout(timeoutId);
                     if (!hasEmittedData) {
                         const localInsights = this.getLocalInsights(duaId);
@@ -749,7 +749,7 @@ export class DuaService {
                         }
                     }));
                 } catch (error) {
-                    console.error('Error sending request:', error);
+                    // console.error('Error sending request:', error);
                     clearTimeout(timeoutId);
                     // Try local insights before giving up
                     const localInsights = this.getLocalInsights(duaId);
@@ -773,10 +773,10 @@ export class DuaService {
 
 private getLocalInsights(duaId: string): ResponseType | null {
     try {
-        console.log('Looking for local insights in duaInsightsData');
+        // console.log('Looking for local insights in duaInsightsData');
         const duaInsight = duaInsightsData.find((insight: any) => insight.duaId === parseInt(duaId));
         if (duaInsight) {
-            console.log('Found local insights for dua:', duaId);
+            // console.log('Found local insights for dua:', duaId);
             
             // Return the insights directly since they're already in the correct format
             return {
@@ -796,7 +796,7 @@ private getLocalInsights(duaId: string): ResponseType | null {
                 spiritual_advice: duaInsight.spiritual_advice || {}
             };
         }
-        console.log('No local insights found for dua:', duaId);
+        // console.log('No local insights found for dua:', duaId);
         return null;
     } catch (error) {
         console.error('Error loading local insights:', error);
@@ -1086,7 +1086,7 @@ private getFromCache(key: string): any {
     */
     
     // Return the enhanced static fallback directly:
-    console.warn(`[DuaService] Using enhanced static fallback response for emotion: ${emotion}`);
+    // console.warn(`[DuaService] Using enhanced static fallback response for emotion: ${emotion}`);
     return this.getFallbackResponse(emotion);
   }
 

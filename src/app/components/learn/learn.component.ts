@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef 
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router } from '@angular/router';
-import { firstValueFrom, Subscription, switchMap, tap, catchError, of } from 'rxjs';
+import { firstValueFrom, Subscription, switchMap, tap, catchError, of, take, from } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -17,8 +17,8 @@ import { TafsirDatabaseService, TafsirEntry } from '../../services/tafsir-databa
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ApiService } from '../../services/api.service';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
-import { take, from } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
+import { Title, Meta } from '@angular/platform-browser';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -116,10 +116,18 @@ export class LearnComponent implements OnInit, OnDestroy {
     private apiService: ApiService,
     private http: HttpClient,
     public router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private titleService: Title,
+    private metaService: Meta
   ) {}
 
   ngOnInit() {
+    this.titleService.setTitle('Learn Quran & AI Tafsir Chat | Nura AI');
+    this.metaService.addTags([
+      { name: 'description', content: 'Learn Quran interactively. Select Surah/Verse, view translation, and chat with Nura AI for Tafsir explanations from Ibn Kathir or Tabari.' },
+      { name: 'keywords', content: 'learn quran, tafsir, quran explanation, ibn kathir, tabari, ai tafsir, quran chat, islamic learning' }
+    ]);
+
     this.initialPremiumCheckComplete = false;
     this.isLoading = true;
     // Restore state synchronously first
@@ -140,7 +148,6 @@ export class LearnComponent implements OnInit, OnDestroy {
         this.isPremium = isPremiumResult; // Store the result
         this.initialPremiumCheckComplete = true; // Mark initial check as done
         this.isLoading = false; // Stop loading AFTER checks
-        // console.log('[LearnComponent] Initialization sequence complete. Premium:', this.isPremium);
         if (this.isPremium) {
              this.setupAuthCheck(); // Only setup periodic check if initially premium
         }
@@ -436,7 +443,7 @@ export class LearnComponent implements OnInit, OnDestroy {
         // Only include surah/verse if it's NOT determined to be a general query
         ...( !isGeneralQuery && { surah: this.selectedSurah, verse: this.selectedVerse } )
       };
-      console.log('[LearnComponent] Sending payload:', payload); // Log the payload being sent
+      // console.log('[LearnComponent] Sending payload:', payload); // Log the payload being sent
 
       // Call the backend API service directly using HttpClient
       const response = await firstValueFrom(this.http.post<TafsirChatResponse>('/api/tafsir/chat', payload).pipe(

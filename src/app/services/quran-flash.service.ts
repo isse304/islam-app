@@ -13,6 +13,9 @@ interface MushafPage {
 })
 export class QuranFlashService {
   private readonly TOTAL_PAGES = 604;
+  private readonly V1_BASE_PATH = '/assets/quran-images/v1';
+  private readonly V2_BASE_PATH = '/assets/quran-images/v2';
+  private bucketName = 'your-gcs-bucket-name';
 
   // Updated surah page mapping with correct starting pages
   readonly surahPageMap: { [key: number]: number } = {
@@ -193,6 +196,21 @@ export class QuranFlashService {
   private getImageUrlForPage(pageNumber: string): string {
     // Construct URL using the environment variable
     const url = `${environment.mushafImageBaseUrl}quran_Page_${pageNumber}.png`;
+    // // console.log('Generated URL:', url);
+    return url;
+  }
+
+  getCloudPageImageUrl(pageNumber: number): string {
+    const formattedPage = pageNumber.toString().padStart(3, '0');
+    const url = `https://storage.googleapis.com/${this.bucketName}/${formattedPage}.png`;
+    // // console.log('Generated Cloud URL:', url);
+    return url;
+  }
+
+  getCloudPageImageUrlMin(pageNumber: number): string {
+    const formattedPage = pageNumber.toString().padStart(3, '0');
+    // Assuming 'min' folder exists in the bucket
+    const url = `https://storage.googleapis.com/${this.bucketName}/min/${formattedPage}.png`; 
     // // console.log('Generated URL:', url);
     return url;
   }

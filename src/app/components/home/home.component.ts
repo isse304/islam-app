@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
+import { Title, Meta } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-home',
@@ -189,6 +190,19 @@ import { RouterModule } from '@angular/router';
     RouterModule
   ]
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit {
   currentYear = new Date().getFullYear();
+
+  constructor(
+    private titleService: Title,
+    private metaService: Meta
+  ) {}
+
+  ngOnInit(): void {
+    this.titleService.setTitle('Nura AI - Your Intelligent Islamic Assistant | Home');
+    this.metaService.addTags([
+      { name: 'description', content: 'Welcome to Nura AI, your spiritual companion for Quran, Duas, and AI-powered Islamic learning. Explore Quran reader, Dua collection, and interactive learning tools.' },
+      { name: 'keywords', content: 'islamic app, quran reader, dua collection, islamic learning, ai assistant, nura ai, islam' }
+    ]);
+  }
 } 

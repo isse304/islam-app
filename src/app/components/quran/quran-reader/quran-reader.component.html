@@ -1,507 +1,572 @@
 <div class="bg-[#FAF3E0] flex flex-col min-h-0">
 
-  <!-- ++ BUBBLE: Shown only on DESKTOP when minimized ++ -->
-  <button *ngIf="!isMobile && !isMushafView && isMainControlsMinimized && !isPopupOpen"
-          (click)="toggleMainControlsView('bubble')"
-          class="main-control-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed top-28 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-20">
-    <i class="fas fa-cog"></i>
-  </button>
+  <!-- Wrap all desktop translation controls -->
+  <ng-container *ngIf="!isMushafView">
+    <!-- ++ BUBBLE: Shown only on DESKTOP when minimized ++ -->
+    <button *ngIf="!isMobile && isMainControlsMinimized && !isPopupOpen"
+            (click)="toggleMainControlsView('bubble')"
+            class="main-control-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed top-28 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-20">
+      <i class="fas fa-cog"></i>
+    </button>
 
-  <div class="container mx-auto px-4 py-8 flex-1">
-    <h1 class="text-3xl font-bold text-[#B7A57A] text-center mb-8">
-      Quran Reader
-    </h1>
+    <div class="container mx-auto px-4 py-8 flex-1">
+      <h1 class="text-3xl font-bold text-[#B7A57A] text-center mb-8">
+        Quran Reader
+      </h1>
 
-    <!-- ++ UPDATED: Controls: Always visible on mobile (if !mushaf), conditionally on desktop ++ -->
-    <div *ngIf="(!isMushafView && isMobile) || (!isMobile && !isMainControlsMinimized && !isPopupOpen)" 
-         class="relative bg-white rounded-xl shadow-lg p-6 mb-8">
-      <!-- Minimize Button: Only shown on DESKTOP -->
-      <button *ngIf="!isMobile" 
-              (click)="toggleMainControlsView('minimizeButton')"
-              class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 z-10 p-1">
-        <i class="fas fa-compress-alt"></i>
-      </button>
-      <!-- Search Bar -->
-      <div class="mb-6 relative" clickOutside (clickOutside)="showSuggestions = false">
-        <div class="relative">
-          <div class="search-container" #searchContainer>
-            <input type="text" 
-                   [(ngModel)]="searchQuery"
-                   (input)="onSearchInput()"
-                   placeholder="Search by surah name or verse content..."
-                   class="w-full p-6 pl-12 rounded-lg border-gray-300 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-          </div>
-          <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-          <div *ngIf="isSearching" class="absolute right-4 top-1/2 transform -translate-y-1/2">
-            <div class="animate-spin rounded-full h-5 w-5 border-2 border-[#B7A57A] border-t-transparent"></div>
-          </div>
-        </div>
-        
-        <!-- Suggestions Dropdown -->
-        <div *ngIf="showSuggestions && searchSuggestions.length > 0" 
-             class="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
-          
-          <!-- Surah Suggestions -->
-          <div *ngFor="let suggestion of searchSuggestions" 
-               (click)="suggestion.type === 'surah' && suggestion.number ? selectSurah(suggestion.number) : goToVerse(+suggestion.verseNumber!, +suggestion.surahNumber!)"
-               class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
-            
-            <!-- Surah Result -->
-            <div *ngIf="suggestion.type === 'surah'" class="flex justify-between items-center">
-              <div>
-                <i class="fas fa-book-open text-[#B7A57A] mr-2"></i>
-                <span class="font-semibold text-[#B7A57A]">{{suggestion.name}}</span>
-                <span class="text-gray-600 mx-2">-</span>
-                <span class="text-gray-600">{{suggestion.translation}}</span>
-              </div>
-              <div class="text-gray-500 text-sm">
-                Surah {{suggestion.number}}
-              </div>
-            </div>
-
-            <!-- Verse Result -->
-            <div *ngIf="suggestion.type === 'verse'" class="flex flex-col">
-              <div class="flex justify-between items-center mb-2">
-                <span class="font-semibold text-[#B7A57A]">
-                  <i class="fas fa-bookmark text-[#B7A57A] mr-2"></i>
-                  Surah {{suggestion.surahNumber}}, Verse {{suggestion.verseNumber}}
-                </span>
-              </div>
-              <p class="text-gray-600 text-sm" [innerHTML]="suggestion.highlightedText"></p>
-              <p class="text-gray-500 text-sm mt-1">{{suggestion.translation}}</p>
-            </div>
-
-          </div>
-        </div>
-      </div>
-
-      <!-- Main Controls Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        <!-- Surah Selection -->
-        <div class="space-y-3">
-          <label class="text-gray-700 font-medium block">Surah</label>
-          <select [(ngModel)]="selectedSurah"
-                  (ngModelChange)="selectSurah($event)"
-                  class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-            <option *ngFor="let surah of surahs" [ngValue]="surah.number">
-              {{surah.number}}. {{surah.englishName}} ({{surah.name}})
-            </option>
-          </select>
-        </div>
-
-        <!-- Translation Selection -->
-        <div class="space-y-3">
-          <label class="text-gray-700 font-medium block">Translation</label>
+      <!-- ++ UPDATED: Controls: Always visible on mobile (if !mushaf), conditionally on desktop ++ -->
+      <div *ngIf="((!isMushafView && isMobile) || (!isMobile && !isMainControlsMinimized && !isPopupOpen))" 
+           class="relative bg-white rounded-xl shadow-lg p-6 mb-8">
+        <!-- Minimize Button: Only shown on DESKTOP -->
+        <button *ngIf="!isMobile" 
+                (click)="toggleMainControlsView('minimizeButton')"
+                class="absolute top-2 right-2 text-gray-400 hover:text-gray-600 z-10 p-1">
+          <i class="fas fa-compress-alt"></i>
+        </button>
+        <!-- Search Bar -->
+        <div class="mb-6 relative" clickOutside (clickOutside)="showSuggestions = false">
           <div class="relative">
-            <select [(ngModel)]="selectedTranslation"
-                    (ngModelChange)="selectTranslation($event)"
-                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
-                    [disabled]="isAudioLoading">
-              <option *ngFor="let trans of quranService.translations" 
-                     [value]="trans.id.toString()">
-                {{trans.name}}
+            <div class="search-container" #searchContainer>
+              <input type="text" 
+                     [(ngModel)]="searchQuery"
+                     (input)="onSearchInput()"
+                     placeholder="Search by surah name or verse content..."
+                     class="w-full p-6 pl-12 rounded-lg border-gray-300 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+            </div>
+            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+            <div *ngIf="isSearching" class="absolute right-4 top-1/2 transform -translate-y-1/2">
+              <div class="animate-spin rounded-full h-5 w-5 border-2 border-[#B7A57A] border-t-transparent"></div>
+            </div>
+          </div>
+          
+          <!-- Suggestions Dropdown -->
+          <div *ngIf="showSuggestions && searchSuggestions.length > 0" 
+               class="absolute z-50 w-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 max-h-96 overflow-y-auto">
+            
+            <!-- Surah Suggestions -->
+            <div *ngFor="let suggestion of searchSuggestions" 
+                 (click)="suggestion.type === 'surah' && suggestion.number ? selectSurah(suggestion.number) : goToVerse(+suggestion.verseNumber!, +suggestion.surahNumber!)"
+                 class="p-3 hover:bg-gray-50 cursor-pointer border-b border-gray-100">
+              
+              <!-- Surah Result -->
+              <div *ngIf="suggestion.type === 'surah'" class="flex justify-between items-center">
+                <div>
+                  <i class="fas fa-book-open text-[#B7A57A] mr-2"></i>
+                  <span class="font-semibold text-[#B7A57A]">{{suggestion.name}}</span>
+                  <span class="text-gray-600 mx-2">-</span>
+                  <span class="text-gray-600">{{suggestion.translation}}</span>
+                </div>
+                <div class="text-gray-500 text-sm">
+                  Surah {{suggestion.number}}
+                </div>
+              </div>
+
+              <!-- Verse Result -->
+              <div *ngIf="suggestion.type === 'verse'" class="flex flex-col">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-semibold text-[#B7A57A]">
+                    <i class="fas fa-bookmark text-[#B7A57A] mr-2"></i>
+                    Surah {{suggestion.surahNumber}}, Verse {{suggestion.verseNumber}}
+                  </span>
+                </div>
+                <p class="text-gray-600 text-sm" [innerHTML]="suggestion.highlightedText"></p>
+                <p class="text-gray-500 text-sm mt-1">{{suggestion.translation}}</p>
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Controls Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <!-- Surah Selection -->
+          <div class="space-y-3">
+            <label class="text-gray-700 font-medium block">Surah</label>
+            <select [(ngModel)]="selectedSurah"
+                    (ngModelChange)="selectSurah($event)"
+                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+              <option *ngFor="let surah of surahs" [ngValue]="surah.number">
+                {{surah.number}}. {{surah.englishName}} ({{surah.name}})
               </option>
             </select>
           </div>
-          <!-- Debug Display -->
-          <!-- <div class="text-xs text-gray-500 mt-1">
-            Current translation: {{selectedTranslation}}
-          </div> -->
-        </div>
 
-        <!-- Reciter Selection -->
-        <div class="space-y-2">
-          <label class="text-gray-700 font-medium block">Reciter</label>
-          <select [ngModel]="selectedReciter.id"
-                  (change)="onReciterChange($event)"
-                  class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-            <option *ngFor="let reciter of reciters" [value]="reciter.id">
-              {{reciter.name}}
-            </option>
-          </select>
-        </div>
+          <!-- Translation Selection -->
+          <div class="space-y-3">
+            <label class="text-gray-700 font-medium block">Translation</label>
+            <div class="relative">
+              <select [(ngModel)]="selectedTranslation"
+                      (ngModelChange)="selectTranslation($event)"
+                      class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
+                      [disabled]="isAudioLoading">
+                <option *ngFor="let trans of quranService.translations" 
+                       [value]="trans.id.toString()">
+                  {{trans.name}}
+                </option>
+              </select>
+            </div>
+            <!-- Debug Display -->
+            <!-- <div class="text-xs text-gray-500 mt-1">
+              Current translation: {{selectedTranslation}}
+            </div> -->
+          </div>
 
-        <!-- Tafsir Selection -->
-        <div class="space-y-2">
-          <label class="text-gray-700 font-medium block">Tafsir</label>
-          <select [(ngModel)]="selectedTafsir"
-                  (ngModelChange)="selectedTafsir = $event"
-                  class="w-full rounded-lg border-gray-300 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
-            <option value="en.tafsir-ibn-kathir">Ibn Kathir (English)</option>
-            <option value="ar.tafsir-ibn-kathir">Ibn Kathir (Arabic)</option>
-          </select>
-        </div>
+          <!-- Reciter Selection -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">Reciter</label>
+            <select [ngModel]="selectedReciter.id"
+                    (change)="onReciterChange($event)"
+                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+              <option *ngFor="let reciter of reciters" [value]="reciter.id">
+                {{reciter.name}}
+              </option>
+            </select>
+          </div>
 
-        <!-- Audio Controls -->
-        <div class="space-y-2">
-          <label class="text-gray-700 font-medium block">Audio Controls</label>
-          <div class="flex gap-3">
-            <button (click)="playFullSurah()"
-                    *ngIf="!isPlayingFullSurah"
-                    class="flex-1 bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65] transition-colors">
-              <i class="fas fa-play-circle mr-2"></i> Play Full Surah
-            </button>
-            <button (click)="stopFullSurah()"
-                    *ngIf="isPlayingFullSurah"
-                    class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
-              <i class="fas fa-stop-circle mr-2"></i> Stop Playback
+          <!-- Tafsir Selection -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">Tafsir</label>
+            <select [(ngModel)]="selectedTafsir"
+                    (ngModelChange)="selectedTafsir = $event"
+                    class="w-full rounded-lg border-gray-300 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+              <option value="en.tafsir-ibn-kathir">Ibn Kathir (English)</option>
+              <option value="ar.tafsir-ibn-kathir">Ibn Kathir (Arabic)</option>
+            </select>
+          </div>
+
+          <!-- Audio Controls -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">Audio Controls</label>
+            <div class="flex gap-3">
+              <button (click)="playFullSurah()"
+                      *ngIf="!isPlayingFullSurah"
+                      class="flex-1 bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65] transition-colors">
+                <i class="fas fa-play-circle mr-2"></i> Play Full Surah
+              </button>
+              <button (click)="stopFullSurah()"
+                      *ngIf="isPlayingFullSurah"
+                      class="flex-1 bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors">
+                <i class="fas fa-stop-circle mr-2"></i> Stop Playback
+              </button>
+            </div>
+          </div>
+
+          <!-- View Mode Toggle (Added) -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">View Mode</label>
+            <button (click)="toggleView()"
+                    class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] font-medium transition-colors flex items-center justify-center gap-2"
+                    [class.bg-[#B7A57A]]="isMushafView"
+                    [class.text-white]="isMushafView"
+                    [class.hover:bg-[#f8f4eb]]="!isMushafView"
+                    [class.hover:bg-[#9b8a65]]="isMushafView"
+                    [class.text-[#B7A57A]]="!isMushafView">
+              <i class="fas" [class.fa-book-open]="isMushafView" [class.fa-list-alt]="!isMushafView"></i>
+              {{ isMushafView ? 'Translation View' : 'Mushaf View' }}
             </button>
           </div>
-        </div>
 
-        <!-- View Mode Toggle (Added) -->
-        <div class="space-y-2">
-          <label class="text-gray-700 font-medium block">View Mode</label>
-          <button (click)="toggleView()"
-                  class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] font-medium transition-colors flex items-center justify-center gap-2"
-                  [class.bg-[#B7A57A]]="isMushafView"
-                  [class.text-white]="isMushafView"
-                  [class.hover:bg-[#f8f4eb]]="!isMushafView"
-                  [class.hover:bg-[#9b8a65]]="isMushafView"
-                  [class.text-[#B7A57A]]="!isMushafView">
-            <i class="fas" [class.fa-book-open]="isMushafView" [class.fa-list-alt]="!isMushafView"></i>
-            {{ isMushafView ? 'Translation View' : 'Mushaf View' }}
-          </button>
-        </div>
+          <!-- Page View Toggle (Mushaf Mode Only) -->
+          <div *ngIf="isMushafView" class="space-y-2">
+            <label class="text-gray-700 font-medium block">Page View</label>
+            <div class="flex gap-3">
+              <button (click)="togglePageView()" 
+                      [disabled]="isMobile"
+                      [matTooltip]="isMobile ? 'Double page view disabled on mobile' : (isDoublePageView ? 'Single Page View' : 'Double Page View')"
+                      class="flex-1 border-2 border-[#B7A57A] px-4 py-2 rounded-lg hover:bg-[#B7A57A]/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      [class.bg-[#B7A57A]]="isDoublePageView"
+                      [class.text-white]="isDoublePageView"
+                      [class.text-[#B7A57A]]="!isDoublePageView">
+                <i class="fas" [class.fa-book-open]="isDoublePageView" [class.fa-file-alt]="!isDoublePageView"></i>
+                {{ isDoublePageView ? 'Single' : 'Double' }}
+              </button>
+            </div>
+          </div>
 
+        </div>
       </div>
     </div>
+  </ng-container> <!-- End wrapper for desktop translation controls -->
 
-    <!-- Enhanced Audio Player -->
-    <div 
-         class="fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out"
-         [class.bg-white]="!isAudioPlayerMinimized"
-         [class.shadow-lg]="!isAudioPlayerMinimized"
-         [class.p-4]="!isAudioPlayerMinimized"
-         [class.bg-transparent]="isAudioPlayerMinimized" 
-         [class.shadow-none]="isAudioPlayerMinimized" 
-         [class.pointer-events-none]="isAudioPlayerMinimized || !(isPlaying || isPlayingFullSurah)"
-         [class.opacity-100]="(isPlaying || isPlayingFullSurah)"
-         [class.opacity-0]="!(isPlaying || isPlayingFullSurah)"
-         [class.translate-y-0]="(isPlaying || isPlayingFullSurah)"
-         [class.translate-y-full]="!(isPlaying || isPlayingFullSurah)"
-         >
+  <!-- Enhanced Audio Player -->
+  <div 
+       class="fixed bottom-0 left-0 right-0 z-50 transition-all duration-300 ease-in-out"
+       [class.bg-white]="!isAudioPlayerMinimized"
+       [class.shadow-lg]="!isAudioPlayerMinimized"
+       [class.p-4]="!isAudioPlayerMinimized"
+       [class.bg-transparent]="isAudioPlayerMinimized" 
+       [class.shadow-none]="isAudioPlayerMinimized" 
+       [class.pointer-events-none]="isAudioPlayerMinimized || !(isPlaying || isPlayingFullSurah)"
+       [class.opacity-100]="(isPlaying || isPlayingFullSurah)"
+       [class.opacity-0]="!(isPlaying || isPlayingFullSurah)"
+       [class.translate-y-0]="(isPlaying || isPlayingFullSurah)"
+       [class.translate-y-full]="!(isPlaying || isPlayingFullSurah)"
+       >
 
-      <!-- ++ Audio Player Bubble (shown when minimized AND playing) ++ -->
-      <button *ngIf="isAudioPlayerMinimized && (isPlaying || isPlayingFullSurah)"
-              (click)="toggleAudioPlayerView()"
-              class="audio-player-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed bottom-4 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-10 pointer-events-auto">
-        <i class="fas fa-music"></i>
-      </button>
+    <!-- ++ Audio Player Bubble (shown when minimized AND playing) ++ -->
+    <button *ngIf="isAudioPlayerMinimized && (isPlaying || isPlayingFullSurah)"
+            (click)="toggleAudioPlayerView()"
+            class="audio-player-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed bottom-4 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-10 pointer-events-auto">
+      <i class="fas fa-music"></i>
+    </button>
 
-      <!-- ++ Full Audio Player Container (shown when NOT minimized AND playing) ++ -->
-      <ng-container *ngIf="!isAudioPlayerMinimized && (isPlaying || isPlayingFullSurah)">
-        <div class="container mx-auto pointer-events-auto">
-          <!-- Player Header -->
-          <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2">
-              <i class="fas fa-quran text-[#B7A57A] text-xl"></i>
-              <div class="text-gray-700">
-                <div class="font-semibold">
-                  Surah {{currentSurahDetails?.englishName}} ({{currentSurahDetails?.name}})
-                </div>
-                <div class="text-sm text-gray-500">
-                  {{currentlyPlaying}} • {{selectedReciter.name}}
-                </div>
+    <!-- ++ Full Audio Player Container (shown when NOT minimized AND playing) ++ -->
+    <ng-container *ngIf="!isAudioPlayerMinimized && (isPlaying || isPlayingFullSurah)">
+      <div class="container mx-auto pointer-events-auto">
+        <!-- Player Header -->
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-2">
+            <i class="fas fa-quran text-[#B7A57A] text-xl"></i>
+            <div class="text-gray-700">
+              <div class="font-semibold">
+                Surah {{currentSurahDetails?.englishName}} ({{currentSurahDetails?.name}})
               </div>
-            </div>
-            <div class="flex items-center gap-3">
-              <!-- Repeat Button -->
-              <button (click)="toggleRepeat()" 
-                      class="text-gray-600 hover:text-[#B7A57A]"
-                      [class.text-[#B7A57A]]="isRepeatEnabled">
-                <i class="fas fa-repeat"></i>
-              </button>
-              <!-- ++ Minimize Button ++ -->
-              <button (click)="toggleAudioPlayerView()"
-                      class="text-gray-500 hover:text-gray-700">
-                <i class="fas fa-chevron-down"></i>
-              </button>
-              <!-- Close Button -->
-              <button (click)="stopAndCloseAudioPlayer()"
-                      class="text-gray-500 hover:text-red-600">
-                <i class="fas fa-times"></i>
-              </button>
+              <div class="text-sm text-gray-500">
+                {{currentlyPlaying}} • {{selectedReciter.name}}
+              </div>
             </div>
           </div>
+          <div class="flex items-center gap-3">
+            <!-- Repeat Button -->
+            <button (click)="toggleRepeat()" 
+                    class="text-gray-600 hover:text-[#B7A57A]"
+                    [class.text-[#B7A57A]]="isRepeatEnabled">
+              <i class="fas fa-repeat"></i>
+            </button>
+            <!-- ++ Minimize Button ++ -->
+            <button (click)="toggleAudioPlayerView()"
+                    class="text-gray-500 hover:text-gray-700">
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <!-- Close Button -->
+            <button (click)="stopAndCloseAudioPlayer()"
+                    class="text-gray-500 hover:text-red-600">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        </div>
 
-          <!-- Progress Bar and Controls -->
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-3">
-              <span class="text-sm text-gray-600 w-12">{{currentTime}}</span>
-              <div class="flex-1 relative">
-                <input type="range" 
-                       [value]="progress" 
-                       (input)="seekAudio($event)"
-                       class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                <div class="absolute left-0 top-0 h-2 bg-[#B7A57A] rounded-lg"
-                     [style.width]="progress + '%'"></div>
-              </div>
-              <span class="text-sm text-gray-600 w-12">{{duration}}</span>
+        <!-- Progress Bar and Controls -->
+        <div class="flex flex-col gap-2">
+          <div class="flex items-center gap-3">
+            <span class="text-sm text-gray-600 w-12">{{currentTime}}</span>
+            <div class="flex-1 relative">
+              <input type="range" 
+                     [value]="progress" 
+                     (input)="seekAudio($event)"
+                     class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+              <div class="absolute left-0 top-0 h-2 bg-[#B7A57A] rounded-lg"
+                   [style.width]="progress + '%'"></div>
             </div>
-            <div class="flex items-center justify-center gap-6">
-              <button (click)="skipBackward()" class="text-gray-600 hover:text-[#B7A57A]">
-                <i class="fas fa-backward-step"></i>
-                <span class="text-xs ml-1">-10s</span>
+            <span class="text-sm text-gray-600 w-12">{{duration}}</span>
+          </div>
+          <div class="flex items-center justify-center gap-6">
+            <button (click)="skipBackward()" class="text-gray-600 hover:text-[#B7A57A]">
+              <i class="fas fa-backward-step"></i>
+              <span class="text-xs ml-1">-10s</span>
+            </button>
+            <button (click)="togglePlay()" class="w-12 h-12 rounded-full bg-[#B7A57A] text-white flex items-center justify-center hover:bg-[#9b8a65]">
+              <i class="fas" [class.fa-pause]="!audioPaused" [class.fa-play]="audioPaused"></i>
+            </button>
+            <button (click)="skipForward()" class="text-gray-600 hover:text-[#B7A57A]">
+              <i class="fas fa-forward-step"></i>
+              <span class="text-xs ml-1">+10s</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+  </div>
+
+  <!-- Search Results -->
+  <div *ngIf="searchResults.length > 0" class="bg-white rounded-xl shadow-lg p-6 mb-8">
+    <h2 class="text-xl font-semibold text-[#B7A57A] mb-4">Search Results</h2>
+    <div class="space-y-4">
+      <div *ngFor="let result of searchResults" 
+           (click)="selectSearchResult(result); $event.stopPropagation()"
+           class="cursor-pointer hover:bg-gray-100 p-2 rounded">
+        <p class="text-[#B7A57A] font-semibold mb-2">Surah {{result.surah}}, Verse {{result.verse}}</p>
+        <p class="text-gray-700">{{result.text}}</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <ng-container *ngIf="!isAudioLoading">
+    <!-- Translation View -->
+    <div *ngIf="!isMushafView" class="pb-24">
+      <!-- Verse List -->
+      <ng-container *ngIf="!isMushafView && verses && verses.length > 0">
+        <div class="verse-list-container px-4 md:px-8 lg:px-16 py-8 space-y-8">
+          <div *ngFor="let verse of verses; trackBy: trackVerse" 
+               #verseItem 
+               [id]="'verse-' + verse.number"
+               class="verse-card bg-white rounded-xl shadow-md p-6 transition-shadow hover:shadow-lg relative"
+               [class.highlighted-verse]="currentRecitingVerse === verse.number">
+            <!-- Verse Number Moved here -->
+            <div class="verse-number text-lg font-semibold text-[#B7A57A] mb-3">
+              {{currentSurah}}:{{verse.number}}
+            </div>
+
+            <!-- Arabic Text -->
+            <div class="verse-container">
+              <div class="verse-text mb-4" dir="rtl">
+                <span *ngFor="let word of verse.words" 
+                      class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
+                      (click)="showWordTranslation(word, $event)">
+                  {{word.text}}
+                  <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50">
+                    {{word.translation}}
+                    <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
+                  </div>
+                </span>
+              </div>
+            </div>
+
+            <!-- Translation and Transliteration -->
+            <div class="verse-meaning space-y-3 mb-6">
+              <p class="translation text-gray-800 text-lg leading-relaxed">
+                {{verse.translation}}
+              </p>
+              <p *ngIf="verse.transliteration" class="transliteration text-gray-600 italic leading-relaxed">
+                {{verse.transliteration}}
+              </p>
+            </div>
+
+            <!-- Actions -->
+            <div class="flex gap-4">
+              <button (click)="playVerseAudio(verse); $event.stopPropagation(); $event.preventDefault()" class="text-[#B7A57A] hover:text-[#9b8a65]">
+                <i class="fas" [class.fa-pause]="isPlaying && currentPlayingVerse === verse.number" [class.fa-play]="!isPlaying || currentPlayingVerse !== verse.number"></i>
+                {{ isPlaying && currentPlayingVerse === verse.number ? 'Stop' : 'Play' }}
               </button>
-              <button (click)="togglePlay()" class="w-12 h-12 rounded-full bg-[#B7A57A] text-white flex items-center justify-center hover:bg-[#9b8a65]">
-                <i class="fas" [class.fa-pause]="!audioPaused" [class.fa-play]="audioPaused"></i>
+              <button (click)="showTafsir(verse); $event.stopPropagation(); $event.preventDefault()"
+                      class="text-[#B7A57A] hover:text-[#9b8a65]">
+                <i class="fas fa-book"></i> Tafsir
               </button>
-              <button (click)="skipForward()" class="text-gray-600 hover:text-[#B7A57A]">
-                <i class="fas fa-forward-step"></i>
-                <span class="text-xs ml-1">+10s</span>
+              <button (click)="toggleBookmark(verse.number); $event.stopPropagation(); $event.preventDefault()"
+                      class="text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-2">
+                <i class="fas" [class.fa-bookmark]="isBookmarked(verse.number)" 
+                   [class.fa-bookmark-o]="!isBookmarked(verse.number)"></i>
+                {{ isBookmarked(verse.number) ? 'Remove Bookmark' : 'Add Bookmark' }}
               </button>
             </div>
           </div>
         </div>
       </ng-container>
-
     </div>
 
-    <!-- Search Results -->
-    <div *ngIf="searchResults.length > 0" class="bg-white rounded-xl shadow-lg p-6 mb-8">
-      <h2 class="text-xl font-semibold text-[#B7A57A] mb-4">Search Results</h2>
-      <div class="space-y-4">
-        <div *ngFor="let result of searchResults" 
-             (click)="selectSearchResult(result); $event.stopPropagation()"
-             class="cursor-pointer hover:bg-gray-100 p-2 rounded">
-          <p class="text-[#B7A57A] font-semibold mb-2">Surah {{result.surah}}, Verse {{result.verse}}</p>
-          <p class="text-gray-700">{{result.text}}</p>
+    <!-- Mushaf View -->
+    <div *ngIf="isMushafView" class="mushaf-container bg-[#FAF3E0] min-h-screen">
+      <!-- Enhanced Mushaf Controls -->
+      <div class="bg-white shadow-lg sticky top-0 z-50 mb-6">
+        <div class="container mx-auto max-w-7xl px-4 py-4">
+          <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Page Navigation -->
+            <div class="flex items-center gap-3">
+              <button (click)="nextPage()" 
+                      [disabled]="displayPageNumber <= 1 || isAudioLoading"
+                      class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              
+              <div class="flex items-center gap-2">
+                <input type="number" 
+                       [(ngModel)]="displayPageNumber" 
+                       min="1" 
+                       [max]="DISPLAY_TOTAL"
+                       (keyup.enter)="goToPage()"
+                       (focus)="isMobileMushafBarVisible = true"
+                       class="w-24 px-4 py-2 border-2 border-[#B7A57A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B7A57A]"
+                       placeholder="Page...">
+              </div>
+
+              <button (click)="previousPage()" 
+                      [disabled]="displayPageNumber >= DISPLAY_TOTAL || isAudioLoading"
+                      class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <!-- Surah Selection -->
+            <div class="flex-1 max-w-md">
+              <select [(ngModel)]="selectedSurah" 
+                      (ngModelChange)="selectSurah($event)"
+                      class="w-full px-4 py-2 border-2 border-[#B7A57A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B7A57A]">
+                <option value="">Select Surah</option>
+                <option *ngFor="let surah of surahs" [ngValue]="surah.number">
+                  {{surah.number}}. {{surah.englishName}} ({{surah.name}})
+                </option>
+              </select>
+            </div>
+
+            <!-- View Controls -->
+            <div class="flex items-center gap-4">
+              <button (click)="playCurrentSurah()" 
+                      class="px-6 py-2 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center gap-2">
+                <i class="fas" [class.fa-pause]="isPlayingFullSurah" [class.fa-play]="!isPlayingFullSurah"></i>
+                {{ isPlayingFullSurah ? 'Pause Surah' : 'Play Surah' }}
+              </button>
+              <button (click)="togglePageView()" 
+                      class="px-6 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors flex items-center gap-2">
+                <i class="fas" [class.fa-book-open]="isDoublePageView" [class.fa-book]="!isDoublePageView"></i>
+                {{isDoublePageView ? 'Single Page' : 'Double Page'}}
+              </button>
+              <div class="flex items-center gap-2">
+                <button (click)="zoomMushaf(-0.1)" 
+                        class="px-3 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors">
+                  <i class="fas fa-minus"></i>
+                </button>
+                <span class="text-[#B7A57A] font-medium">{{(mushafZoom * 100).toFixed(0)}}%</span>
+                <button (click)="zoomMushaf(0.1)" 
+                        class="px-3 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors">
+                  <i class="fas fa-plus"></i>
+                </button>
+              </div>
+
+              <!-- ++ PASTE the standalone button div here ++ -->
+              <div class="flex justify-end">
+                <button (click)="toggleView()" 
+                        class="px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-[#B7A57A] text-white hover:bg-[#9b8a65]">
+                  <i class="fas fa-list-alt mr-2"></i> <!-- Changed icon -->
+                  Translation View
+                </button>
+              </div>
+              <!-- ++ End PASTE ++ -->
+
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div *ngIf="isMushafView" class="flex justify-end mb-4">
-      <button (click)="toggleView()" 
-              class="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-              [class.bg-[#B7A57A]]="isMushafView"
-              [class.text-white]="isMushafView"
-              [class.bg-gray-200]="!isMushafView"
-              [class.text-gray-700]="!isMushafView">
-        <i class="fas fa-book-open mr-2"></i>
-        Translation View
+      <!-- Mushaf Display -->
+      <ng-container *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden" 
+             (swipeleft)="nextPage()" 
+             (swiperight)="previousPage()">
+          <div class="flex justify-center" 
+               [style.transform]="'scale(' + mushafZoom + ')'" 
+               [style.transform-origin]="'top center'">
+            <!-- Current Page (Lower page number, appears on the RIGHT in R-T-L) -->
+            <div class="flex-shrink-0">
+              <img *ngIf="pageImageUrl" 
+                   [src]="pageImageUrl" 
+                   [alt]="'Quran Page ' + currentPage"
+                   class="w-full h-auto max-h-[700px] object-contain"
+                   loading="lazy">
+            </div>
+
+            <!-- Previous Page (Higher page number, appears on the LEFT in R-T-L) -->
+            <div *ngIf="isDoublePageView" class="flex-shrink-0">
+              <img *ngIf="secondPageImageUrl" 
+                   [src]="secondPageImageUrl"
+                   [alt]="'Quran Page ' + (currentPage - 1)"
+                   class="w-full h-auto max-h-[700px] object-contain"
+                   loading="lazy">
+            </div>
+          </div>
+
+          <!-- Page Info -->
+          <div class="mt-4 text-center text-[#B7A57A] font-medium pb-4">
+            Page {{displayPageNumber}} of {{DISPLAY_TOTAL}}
+          </div>
+        </div>
+      </ng-container>
+    </div>
+  </ng-container>
+
+  <!-- Tafsir Modal -->
+  <div *ngIf="selectedVerse" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl max-w-2xl w-full p-6">
+      <h3 class="text-xl font-semibold text-[#B7A57A] mb-4">
+        Tafsir - Verse {{selectedVerse.number}}
+      </h3>
+      <div class="prose max-h-96 overflow-y-auto mb-4">
+        {{tafsir}}
+      </div>
+      <button (click)="selectedVerse = undefined"
+              class="bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65]">
+        Close
       </button>
     </div>
+  </div>
 
-    <!-- Main Content -->
-    <ng-container *ngIf="!isAudioLoading">
-      <!-- Translation View -->
-      <div *ngIf="!isMushafView" class="pb-24">
-        <!-- Verse List -->
-        <ng-container *ngIf="!isMushafView && verses && verses.length > 0">
-          <div class="verse-list-container px-4 md:px-8 lg:px-16 py-8 space-y-8">
-            <div *ngFor="let verse of verses; trackBy: trackVerse" 
-                 #verseItem 
-                 [id]="'verse-' + verse.number"
-                 class="verse-card bg-white rounded-xl shadow-md p-6 transition-shadow hover:shadow-lg relative"
-                 [class.highlighted-verse]="currentRecitingVerse === verse.number">
-              <!-- Verse Number Moved here -->
-              <div class="verse-number text-lg font-semibold text-[#B7A57A] mb-3">
-                {{currentSurah}}:{{verse.number}}
-              </div>
+  <!-- Add a mobile-friendly translation popup -->
+  <div *ngIf="selectedWord" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+       (click)="selectedWord = null">
+    <div class="bg-white rounded-xl p-4 max-w-sm w-full text-center"
+         (click)="$event.stopPropagation()">
+      <p class="text-2xl mb-2">{{selectedWord.text}}</p>
+      <p class="text-gray-600">{{selectedWord.translation}}</p>
+    </div>
+  </div>
 
-              <!-- Arabic Text -->
-              <div class="verse-container">
-                <div class="verse-text mb-4" dir="rtl">
-                  <span *ngFor="let word of verse.words" 
-                        class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
-                        (click)="showWordTranslation(word, $event)">
-                    {{word.text}}
-                    <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50">
-                      {{word.translation}}
-                      <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
-                    </div>
-                  </span>
-                </div>
-              </div>
-
-              <!-- Translation and Transliteration -->
-              <div class="verse-meaning space-y-3 mb-6">
-                <p class="translation text-gray-800 text-lg leading-relaxed">
-                  {{verse.translation}}
-                </p>
-                <p *ngIf="verse.transliteration" class="transliteration text-gray-600 italic leading-relaxed">
-                  {{verse.transliteration}}
-                </p>
-              </div>
-
-              <!-- Actions -->
-              <div class="flex gap-4">
-                <button (click)="playVerseAudio(verse); $event.stopPropagation(); $event.preventDefault()" class="text-[#B7A57A] hover:text-[#9b8a65]">
-                  <i class="fas" [class.fa-pause]="isPlaying && currentPlayingVerse === verse.number" [class.fa-play]="!isPlaying || currentPlayingVerse !== verse.number"></i>
-                  {{ isPlaying && currentPlayingVerse === verse.number ? 'Stop' : 'Play' }}
-                </button>
-                <button (click)="showTafsir(verse); $event.stopPropagation(); $event.preventDefault()"
-                        class="text-[#B7A57A] hover:text-[#9b8a65]">
-                  <i class="fas fa-book"></i> Tafsir
-                </button>
-                <button (click)="toggleBookmark(verse.number); $event.stopPropagation(); $event.preventDefault()"
-                        class="text-[#B7A57A] hover:text-[#9b8a65] flex items-center gap-2">
-                  <i class="fas" [class.fa-bookmark]="isBookmarked(verse.number)" 
-                     [class.fa-bookmark-o]="!isBookmarked(verse.number)"></i>
-                  {{ isBookmarked(verse.number) ? 'Remove Bookmark' : 'Add Bookmark' }}
-                </button>
-              </div>
-            </div>
-          </div>
-        </ng-container>
+  <!-- Word Details Modal -->
+  <div *ngIf="selectedWordDetails" 
+       class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div class="bg-white rounded-xl p-6 max-w-lg w-full">
+      <h3 class="text-xl font-semibold text-[#B7A57A] mb-4">Word Details</h3>
+      <div class="space-y-2">
+        <p><span class="font-semibold">Arabic:</span> {{selectedWordDetails.text_uthmani}}</p>
+        <p><span class="font-semibold">Translation:</span> {{selectedWordDetails.translation.text}}</p>
+        <p><span class="font-semibold">Transliteration:</span> {{selectedWordDetails.transliteration.text}}</p>
+        <p><span class="font-semibold">Root:</span> {{selectedWordDetails.root.text}}</p>
+        <p><span class="font-semibold">Grammar:</span> {{selectedWordDetails.grammar.tag}}</p>
       </div>
+      <button (click)="selectedWordDetails = null" 
+              class="mt-4 bg-[#B7A57A] text-white px-4 py-2 rounded-lg">
+        Close
+      </button>
+    </div>
+  </div>
 
-      <!-- Mushaf View -->
-      <div *ngIf="isMushafView" class="mushaf-container bg-[#FAF3E0] min-h-screen">
-        <!-- Enhanced Mushaf Controls -->
-        <div class="bg-white shadow-lg sticky top-0 z-50 mb-6">
-          <div class="container mx-auto max-w-7xl px-4 py-4">
-            <div class="flex flex-col md:flex-row items-center justify-between gap-4">
-              <!-- Page Navigation -->
-              <div class="flex items-center gap-3">
-                <button (click)="nextPage()" 
-                        [disabled]="displayPageNumber <= 1 || isAudioLoading"
-                        class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
-                  <i class="fas fa-chevron-left"></i>
-                </button>
-                
-                <div class="flex items-center gap-2">
-                  <input type="number" 
-                         [(ngModel)]="displayPageNumber" 
-                         min="1" 
-                         [max]="DISPLAY_TOTAL"
-                         (keyup.enter)="goToPage()"
-                         class="w-24 px-4 py-2 border-2 border-[#B7A57A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B7A57A]"
-                         placeholder="Page...">
-                </div>
+  <!-- ++ MOBILE MUSHAF CONTROLS BAR ++ -->
+  <div *ngIf="isMushafView && isMobile"
+       class="fixed bottom-0 left-0 right-0 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-[0_-2px_10px_rgba(0,0,0,0.1)] dark:shadow-[0_-2px_10px_rgba(0,0,0,0.2)] p-3 transition-transform duration-300 ease-in-out z-[60] flex items-center justify-between gap-3"
+       [class.translate-y-full]="!isMobileMushafBarVisible"
+       [class.translate-y-0]="isMobileMushafBarVisible">
 
-                <button (click)="previousPage()" 
-                        [disabled]="displayPageNumber >= DISPLAY_TOTAL || isAudioLoading"
-                        class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
-                  <i class="fas fa-chevron-right"></i>
-                </button>
-              </div>
+    <!-- Prev Page Button -->
+    <button (click)="previousPage()"
+            [disabled]="displayPageNumber <= 1 || isAudioLoading"
+            class="p-2 rounded-full bg-[#B7A57A]/10 text-[#B7A57A] hover:bg-[#B7A57A]/20 disabled:opacity-50 transition-colors flex-shrink-0">
+      <i class="fas fa-chevron-left"></i>
+    </button>
 
-              <!-- Surah Selection -->
-              <div class="flex-1 max-w-md">
-                <select [(ngModel)]="selectedSurah" 
-                        (ngModelChange)="selectSurah($event)"
-                        class="w-full px-4 py-2 border-2 border-[#B7A57A] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#B7A57A]">
-                  <option value="">Select Surah</option>
-                  <option *ngFor="let surah of surahs" [ngValue]="surah.number">
-                    {{surah.number}}. {{surah.englishName}} ({{surah.name}})
-                  </option>
-                </select>
-              </div>
-
-              <!-- View Controls -->
-              <div class="flex items-center gap-4">
-                <button (click)="playCurrentSurah()" 
-                        class="px-6 py-2 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors flex items-center gap-2">
-                  <i class="fas" [class.fa-pause]="isPlayingFullSurah" [class.fa-play]="!isPlayingFullSurah"></i>
-                  {{ isPlayingFullSurah ? 'Pause Surah' : 'Play Surah' }}
-                </button>
-                <button (click)="togglePageView()" 
-                        class="px-6 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors flex items-center gap-2">
-                  <i class="fas" [class.fa-book-open]="isDoublePageView" [class.fa-book]="!isDoublePageView"></i>
-                  {{isDoublePageView ? 'Single Page' : 'Double Page'}}
-                </button>
-                <div class="flex items-center gap-2">
-                  <button (click)="zoomMushaf(-0.1)" 
-                          class="px-3 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors">
-                    <i class="fas fa-minus"></i>
-                  </button>
-                  <span class="text-[#B7A57A] font-medium">{{(mushafZoom * 100).toFixed(0)}}%</span>
-                  <button (click)="zoomMushaf(0.1)" 
-                          class="px-3 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors">
-                    <i class="fas fa-plus"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Mushaf Display -->
-        <ng-container *ngIf="!isAudioLoading" class="container mx-auto max-w-7xl px-4 pb-8">
-          <div class="bg-white rounded-xl shadow-lg overflow-hidden" 
-               (swipeleft)="nextPage()" 
-               (swiperight)="previousPage()">
-            <div class="flex justify-center" 
-                 [style.transform]="'scale(' + mushafZoom + ')'" 
-                 [style.transform-origin]="'top center'">
-              <!-- Next Page (in double view) -->
-              <div *ngIf="isDoublePageView" class="flex-shrink-0">
-                <img *ngIf="secondPageImageUrl" 
-                     [src]="secondPageImageUrl"
-                     [alt]="'Quran Page ' + (currentPage + 1)"
-                     class="w-full h-auto max-h-[700px] object-contain"
-                     loading="lazy">
-              </div>
-
-              <!-- Current Page -->
-              <div class="flex-shrink-0">
-                <img *ngIf="pageImageUrl" 
-                     [src]="pageImageUrl" 
-                     [alt]="'Quran Page ' + currentPage"
-                     class="w-full h-auto max-h-[700px] object-contain"
-                     loading="lazy">
-              </div>
-            </div>
-
-            <!-- Page Info -->
-            <div class="mt-4 text-center text-[#B7A57A] font-medium pb-4">
-              Page {{displayPageNumber}} of {{DISPLAY_TOTAL}}
-            </div>
-          </div>
-        </ng-container>
+    <!-- Page Input & Surah Info -->
+    <div class="flex-1 flex flex-col items-center text-center">
+      <div class="flex items-center gap-2">
+        <input type="number"
+               [(ngModel)]="displayPageNumber"
+               min="1"
+               [max]="DISPLAY_TOTAL"
+               (keyup.enter)="goToPage()"
+               (focus)="isMobileMushafBarVisible = true"
+               class="w-14 px-2 py-1 border border-[#B7A57A]/50 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#B7A57A] text-center bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+               placeholder="Page">
+        <span class="text-sm text-gray-500 dark:text-gray-400">/ {{DISPLAY_TOTAL}}</span>
       </div>
-    </ng-container>
-
-    <!-- Tafsir Modal -->
-    <div *ngIf="selectedVerse" 
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div class="bg-white rounded-xl max-w-2xl w-full p-6">
-        <h3 class="text-xl font-semibold text-[#B7A57A] mb-4">
-          Tafsir - Verse {{selectedVerse.number}}
-        </h3>
-        <div class="prose max-h-96 overflow-y-auto mb-4">
-          {{tafsir}}
-        </div>
-        <button (click)="selectedVerse = undefined"
-                class="bg-[#B7A57A] text-white px-4 py-2 rounded-lg hover:bg-[#9b8a65]">
-          Close
-        </button>
+      <div class="text-xs text-[#B7A57A] mt-1 truncate">
+        {{currentSurahDetails?.englishName}} ({{currentSurahDetails?.number}})
       </div>
     </div>
 
-    <!-- Add a mobile-friendly translation popup -->
-    <div *ngIf="selectedWord" 
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
-         (click)="selectedWord = null">
-      <div class="bg-white rounded-xl p-4 max-w-sm w-full text-center"
-           (click)="$event.stopPropagation()">
-        <p class="text-2xl mb-2">{{selectedWord.text}}</p>
-        <p class="text-gray-600">{{selectedWord.translation}}</p>
-      </div>
-    </div>
+    <!-- Next Page Button -->
+    <button (click)="nextPage()"
+            [disabled]="displayPageNumber >= DISPLAY_TOTAL || isAudioLoading"
+            class="p-2 rounded-full bg-[#B7A57A]/10 text-[#B7A57A] hover:bg-[#B7A57A]/20 disabled:opacity-50 transition-colors flex-shrink-0">
+      <i class="fas fa-chevron-right"></i>
+    </button>
 
-    <!-- Word Details Modal -->
-    <div *ngIf="selectedWordDetails" 
-         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-xl p-6 max-w-lg w-full">
-        <h3 class="text-xl font-semibold text-[#B7A57A] mb-4">Word Details</h3>
-        <div class="space-y-2">
-          <p><span class="font-semibold">Arabic:</span> {{selectedWordDetails.text_uthmani}}</p>
-          <p><span class="font-semibold">Translation:</span> {{selectedWordDetails.translation.text}}</p>
-          <p><span class="font-semibold">Transliteration:</span> {{selectedWordDetails.transliteration.text}}</p>
-          <p><span class="font-semibold">Root:</span> {{selectedWordDetails.root.text}}</p>
-          <p><span class="font-semibold">Grammar:</span> {{selectedWordDetails.grammar.tag}}</p>
-        </div>
-        <button (click)="selectedWordDetails = null" 
-                class="mt-4 bg-[#B7A57A] text-white px-4 py-2 rounded-lg">
-          Close
-        </button>
-      </div>
-    </div>
-
-  </div> <!-- End Main Content Container -->
+    <!-- Toggle View Button -->
+    <button (click)="toggleView()"
+            class="p-2 rounded-full bg-[#B7A57A]/10 text-[#B7A57A] hover:bg-[#B7A57A]/20 transition-colors flex-shrink-0">
+      <i class="fas fa-list-alt"></i>
+    </button>
+  </div>
+  <!-- ++ END MOBILE MUSHAF CONTROLS BAR ++ -->
 
   <!-- ++ POPUP Structure: Shown only on DESKTOP when isPopupOpen is true ++ -->
   <ng-container *ngIf="!isMobile && isPopupOpen">

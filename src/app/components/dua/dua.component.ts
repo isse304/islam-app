@@ -20,6 +20,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { EmotionalDuaResponse } from '../../types/dua.types';
+import { Title, Meta } from '@angular/platform-browser';
 
 interface Verse {
   reference: string;
@@ -114,7 +115,9 @@ export class DuaComponent implements OnInit, OnDestroy {
     private duaService: DuaService,
     public firebaseAuthService: FirebaseAuthService,
     public subscriptionService: SubscriptionService,
-    private cd: ChangeDetectorRef
+    private cd: ChangeDetectorRef,
+    private titleService: Title,
+    private metaService: Meta
   ) {
     this.subscriptions.add(
       this.firebaseAuthService.user$.subscribe(
@@ -127,6 +130,12 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit() {
+    this.titleService.setTitle('Daily Duas & Emotional Guidance | Nura AI');
+    this.metaService.addTags([
+      { name: 'description', content: 'Explore daily Islamic duas (morning, evening, protection, etc.) and find AI-powered guidance based on your emotions. Learn meanings, virtues, and applications.' },
+      { name: 'keywords', content: 'dua, supplication, islamic prayer, daily duas, morning dua, evening dua, emotional guidance, islam, nura ai' }
+    ]);
+
     this.loadDuas();
     this.spiritualAdvice = this.getSpiritualAdvice();
   }
@@ -210,7 +219,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   async searchByFeeling(feeling: string) {
     if (!feeling) {
-      console.log('No feeling provided');
+      // console.log('No feeling provided');
       return;
     }
 
@@ -686,8 +695,8 @@ export class DuaComponent implements OnInit, OnDestroy {
   }
 
   async loadDuaInsights(dua: Dua) {
-    if (!dua || !dua.id) {
-      console.log('No dua provided for insights');
+    if (!dua) {
+      // console.log('No dua provided for insights');
       return;
     }
 
@@ -701,34 +710,40 @@ export class DuaComponent implements OnInit, OnDestroy {
 
     try {
       const response = await firstValueFrom(this.duaService.getDuaInsights(dua.id.toString()));
-      console.log('Received insights:', response);
+      // console.log('Received insights:', response);
 
       if (response) {
-        const insights = response as any; // Type assertion since we know the response structure
-        this.aiInsights = JSON.stringify({
-          understanding: insights.content || '',
-          quranic_guidance: insights.quranic_guidance || [],
-          prophetic_example: insights.prophetic_example || '',
-          practical_steps: insights.practical_steps || [],
-          related_verses_hadith: insights.related_verses_hadith || {
-            verses: [],
-            hadith: []
-          },
-          reflection_points: insights.reflection_points || [],
-          spiritual_advice: insights.spiritual_advice || {
-            understanding: '',
-            duas: [],
-            dhikr: [],
-            scholarly_guidance: [],
-            spiritual_remedies: []
-          },
-          historical_context: insights.prophetic_example || ''
-        });
+        // console.log('Received insights:', response);
+        if ('chunk' in response) {
+          // Handle streaming response
+          // ... existing code ...
+        } else {
+          const insights = response as any; // Type assertion since we know the response structure
+          this.aiInsights = JSON.stringify({
+            understanding: insights.content || '',
+            quranic_guidance: insights.quranic_guidance || [],
+            prophetic_example: insights.prophetic_example || '',
+            practical_steps: insights.practical_steps || [],
+            related_verses_hadith: insights.related_verses_hadith || {
+              verses: [],
+              hadith: []
+            },
+            reflection_points: insights.reflection_points || [],
+            spiritual_advice: insights.spiritual_advice || {
+              understanding: '',
+              duas: [],
+              dhikr: [],
+              scholarly_guidance: [],
+              spiritual_remedies: []
+            },
+            historical_context: insights.prophetic_example || ''
+          });
 
-        // Update spiritual advice
-        this.spiritualAdvice = this.getSpiritualAdvice();
-        
-        this.showResults = true;
+          // Update spiritual advice
+          this.spiritualAdvice = this.getSpiritualAdvice();
+          
+          this.showResults = true;
+        }
       }
     } catch (error) {
       console.error('Error loading insights:', error);

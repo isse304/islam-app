@@ -47,6 +47,12 @@ export interface Juz {
   };
 }
 
+interface SurahResponse {
+  verse?: {
+    page: number;
+  };
+}
+
 interface QuranComResponse {
   verses: {
     text_uthmani: string;
@@ -316,10 +322,11 @@ export class QuranService {
 
   getSurah(surahNumber: number, translationId: string = '131', reciterId: number = 1): Observable<QuranVerse[]> {
     // Check cache first
-    const cacheKey = `${surahNumber}_${translationId}`;
-    if (this.cache.surahs[cacheKey]) {
+    const cacheKey = `${surahNumber}_${translationId}_${reciterId}`;
+    const cachedData = this.cache.surahs[cacheKey];
+    if (cachedData) {
       // console.log('Returning cached surah data for:', cacheKey);
-      return of(this.cache.surahs[cacheKey]);
+      return of(cachedData);
     }
 
     // Ensure the translationId is a string
@@ -358,13 +365,9 @@ export class QuranService {
         return verses;
       }),
       catchError(error => {
-        console.error('QuranService: Error fetching surah:', error);
-        // If we have cached data, return it as fallback
-        if (this.cache.surahs[cacheKey]) {
-          // console.log('Returning cached data as fallback after error');
-          return of(this.cache.surahs[cacheKey]);
-        }
-        throw error;
+        // console.error('Error fetching surah data:', error);
+        // console.log('Returning cached data as fallback after error');
+        return of(cachedData || []);
       }),
       retry({
         count: 3,
@@ -824,54 +827,34 @@ export class QuranService {
 
   // Modify getVerseCount to use the BehaviorSubject
   getVerseCount(surahNumber: number): Observable<SurahData> {
-    return this.surahs$.pipe( // Use the public observable
-      filter(surahs => surahs.length > 0), // Wait for the list to be populated
-      take(1), // Take the first non-empty list
+    return this.surahs$.pipe(
       map(surahs => {
         // console.log(`[QuranService] getVerseCount - Searching for Surah: ${surahNumber} (Type: ${typeof surahNumber}) in list of length ${surahs.length}`);
         
-        let foundSurah: Surah | undefined = undefined;
-        for (const s of surahs) {
-            // Detailed log for debugging comparison
-            // if (Number(surahNumber) === 12) { // Only log extensively when searching for 12
-            //      console.log(`[QuranService] Comparing Input ${surahNumber} with Surah #: ${s.number} (Type: ${typeof s.number}), Name: ${s.englishName}. Match: ${Number(s.number) === Number(surahNumber)}`);
-            // }
-            if (Number(s.number) === Number(surahNumber)) {
-                foundSurah = s;
-                break; // Stop searching once found
-            }
+        const foundSurah = surahs.find(s => {
+             // // console.log(`[QuranService] Comparing Input ${surahNumber} with Surah #: ${s.number} (Type: ${typeof s.number}), Name: ${s.englishName}. Match: ${Number(s.number) === Number(surahNumber)}`);
+             return Number(s.number) === Number(surahNumber); // Ensure comparison handles different types
+        });
+        
+        if (!foundSurah) {
+          // console.warn(`[QuranService] Surah ${surahNumber} not found in the list. Returning default count.`);
+          return { numberOfAyahs: 1 }; // Or throw an error, or return a specific error object
         }
-
-        if (foundSurah && typeof foundSurah.numberOfAyahs === 'number') {
-          // console.log(`[QuranService] Found verse count for Surah ${surahNumber}:`, foundSurah.numberOfAyahs);
-          return { numberOfAyahs: foundSurah.numberOfAyahs };
-        } else {
-          console.error(`[QuranService] Data for Surah ${surahNumber} not found after searching list (length: ${surahs.length}).`);
-          // Log first few surah numbers from the list to see their format
-          if(surahs.length > 5) {
-            console.error(`[QuranService] First 5 surah numbers in list: ${surahs.slice(0,5).map(s => s.number).join(', ')}`);
-          }
-          throw new Error(`Data for Surah ${surahNumber} not found`);
-        }
-      }),
-      catchError(error => {
-          console.error(`[QuranService] Error in getVerseCount pipe for surah ${surahNumber}:`, error);
-          return throwError(() => new Error(`Failed to get verse count for Surah ${surahNumber}`));
+        
+        // console.log(`[QuranService] Found verse count for Surah ${surahNumber}:`, foundSurah.numberOfAyahs);
+        return { numberOfAyahs: foundSurah.numberOfAyahs };
       })
     );
   }
 
   getPageBySurah(surah: number, verse: number = 1): Observable<any> {
-    // Construct the verse key
-    const verseKey = `${surah}:${verse}`;
-    // Correct the URL to use the verseKey as a query parameter
-    const url = `${this.quranComUrl}/verses/by_key?verse_key=${verseKey}`;
+    const url = `${this.quranComUrl}/verses/by_key/${surah}:${verse}`;
     // console.log(`[QuranService] getPageBySurah: Fetching from URL: ${url}`); // Log the constructed URL
-    return this.http.get(url).pipe(
+    return this.http.get<SurahResponse>(url).pipe(
       catchError(error => {
-        console.error(`[QuranService] Error fetching page data for ${verseKey} from ${url}:`, error);
+        console.error(`[QuranService] Error fetching page data for ${surah}:${verse} from ${url}:`, error);
         // Return an observable that emits an error or a default value
-        return throwError(() => new Error(`Failed to fetch page data for ${verseKey}`)); 
+        return throwError(() => new Error(`Failed to fetch page data for ${surah}:${verse}`)); 
         // Or return of({ verse: { page: 1 } }); // Provide a default page number if appropriate
       })
     );
@@ -949,10 +932,7 @@ export class QuranService {
   }
 
   clearCache() {
-    this.cache = {
-      tafsirExplanations: {},
-      surahs: {}
-    };
+    this.cache = this.initializeCache();
     this.saveCache();
     // console.log('QuranService cache cleared');
   }

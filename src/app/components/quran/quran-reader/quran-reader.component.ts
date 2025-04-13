@@ -8,6 +8,7 @@ import { FormsModule } from '@angular/forms';
 import { DomSanitizer } from '@angular/platform-browser';
 import { Observable, Subscription, Subject, of, forkJoin, from, throwError, timer, combineLatest, EMPTY, firstValueFrom } from 'rxjs';
 import { catchError, map, switchMap, debounceTime, distinctUntilChanged, finalize, take, filter, tap, retry, takeUntil } from 'rxjs/operators';
+import { Title, Meta } from '@angular/platform-browser'; // Import Title and Meta
 
 // Angular Material Modules (Cleaned up duplicates)
 import { MatSliderModule } from '@angular/material/slider';
@@ -273,7 +274,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // ++ NEW State for Audio Player ++ 
   public isAudioPlayerMinimized = false; 
 
+  // ++ NEW State for Mobile Mushaf Bottom Bar ++
+  public isMobileMushafBarVisible = true; // Added this line
+  private mobileBarHideTimeout: any = null;
+
   private routeParamsSub: Subscription | null = null; // Subscription for query params
+  // initialModeDetermined: boolean = false; // <<< REMOVE this flag
 
   // Method to toggle the minimized state
   public toggleControlsView(): void {
@@ -322,32 +328,52 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private changeDetector: ChangeDetectorRef, // Use changeDetector consistently
     private http: HttpClient,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private titleService: Title, // Inject Title
+    private metaService: Meta    // Inject Meta
   ) {
     // Don't set reciters here, wait for ngOnInit
   }
 
   async ngOnInit() {
-    console.log('[ngOnInit] Starting...');
+    // Set initial Title and Meta (keep this)
+    this.titleService.setTitle('Quran Reader | Nura AI');
+    this.metaService.addTags([
+      { name: 'description', content: 'Read and listen to the Holy Quran online with Nura AI. Features translations, tafsir, word-by-word, Mushaf view, and audio recitations.' },
+      { name: 'keywords', content: 'quran reader, read quran, listen quran, quran online, quran translation, quran tafsir, mushaf, islamic app, nura ai' }
+    ]);
+
+    // --- REMOVED Initial Synchronous Guess for View Mode ---
+    // try {
+    //   const initialMode = this.route.snapshot.queryParamMap.get('mode');
+    //   this.isMushafView = initialMode === 'mushaf';
+    //   // console.log(`[ngOnInit Initial Guess] isMushafView set to: ${this.isMushafView} based on snapshot`);
+    // } catch (e) {
+    //    // console.warn('[ngOnInit Initial Guess] Error reading snapshot queryParams:', e);
+    //    this.isMushafView = false; // Default to false on error
+    // }
+    // --- End REMOVED Initial Guess ---
+
+    // console.log('[ngOnInit] Starting async initializations...');
     this.isAudioLoading = true;
     this.loadSurahSubscription?.unsubscribe();
 
     // Subscribe to user changes
     this.authService.user$.pipe(takeUntil(this.destroy$)).subscribe((u: AppUser | null) => {
-      console.log('[QuranReader] User state update received.');
+      // console.log('[QuranReader] User state update received.');
       this.user = u;
       // Avoid detectChanges here if possible, let other initial loads handle it
     });
 
     try {
       // --- Load Essential Data ---
-      console.log('[ngOnInit] Loading essential data...');
+      // console.log('[ngOnInit] Loading essential data...');
       await Promise.all([
         this.loadSurahs(),
         this.loadTranslationsData(),
         this.loadRecitersData(),
       ]);
-      console.log('[ngOnInit] Essential data loading complete.');
+      // console.log('[ngOnInit] Essential data loading complete.');
 
       // --- Apply Default UI Settings ---
       this.checkDarkMode();
@@ -359,7 +385,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.routeParamsSub = this.route.queryParams.pipe(
         takeUntil(this.destroy$) // Auto-unsubscribe
       ).subscribe(params => {
-        console.log('[ngOnInit] Query Params changed:', params);
+        // console.log('[ngOnInit] Query Params changed:', params);
         
         // --- Determine State based on Params (URL > localStorage > Default) ---
         let finalSurah = 1;
@@ -404,7 +430,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           }
           stateSource = 'URL';
         } else {
-          console.log('[ngOnInit] URL params incomplete or invalid, potentially using localStorage/default.');
+          // console.log('[ngOnInit] URL params incomplete or invalid, potentially using localStorage/default.');
         }
 
         // Determine finalPageNumber specifically for Mushaf mode
@@ -418,30 +444,32 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           }
         }
         
-        console.log(`[ngOnInit QueryParams Sub] State determined from ${stateSource}: S${finalSurah}:V${finalVerse}, Mode: ${finalIsMushaf ? 'mushaf' : 'translation'}, Page: ${finalPageNumber}`);
+        // console.log(`[ngOnInit QueryParams Sub] State determined from ${stateSource}: S${finalSurah}:V${finalVerse}, Mode: ${finalIsMushaf ? 'mushaf' : 'translation'}, Page: ${finalPageNumber}`);
 
         // --- Apply Final State to Component --- 
         // Check if state actually changed to prevent unnecessary reloads
         const stateChanged = this.currentSurah !== finalSurah || 
                              this.currentVerse !== finalVerse || 
-                             this.isMushafView !== finalIsMushaf || 
+                             this.isMushafView !== finalIsMushaf || // Correct check here
                              (finalIsMushaf && this.displayPageNumber !== finalPageNumber);
                              
-        if (stateChanged || !this.verses.length) { // Reload if state changed OR initial load
-          console.log(`[ngOnInit QueryParams Sub] State changed or initial load detected. Reloading content.`);
+        if (stateChanged || !this.verses.length || this.isMushafView !== finalIsMushaf) { // Add explicit check for mode change
+          // console.log(`[ngOnInit QueryParams Sub] State changed or initial load detected. Reloading content.`);
           this.currentSurah = finalSurah;
           this.selectedSurah = finalSurah;
           this.currentVerse = finalVerse;
-          this.isMushafView = finalIsMushaf;
+          this.isMushafView = finalIsMushaf; // <<< Ensure this is set based on FINAL determination
           if (finalIsMushaf) {
              this.displayPageNumber = finalPageNumber;
              this.currentPage = this.displayToActualPage(finalPageNumber);
+             this.titleService.setTitle(`Mushaf Page ${finalPageNumber} | Nura AI`);
+             this.metaService.updateTag({ name: 'description', content: `View page ${finalPageNumber} of the Holy Quran Mushaf. Explore the Uthmani script online with Nura AI.` });
           }
           
           // --- Load Content Based on Final State --- 
           this.loadInitialContent(finalSurah, finalVerse, finalIsMushaf, finalIsMushaf ? finalPageNumber : undefined);
         } else {
-           console.log(`[ngOnInit QueryParams Sub] State unchanged. Skipping content reload.`);
+           // console.log(`[ngOnInit QueryParams Sub] State unchanged. Skipping content reload.`);
            // Ensure URL is updated even if content doesn't reload
            this.updateUrlParams(); 
         }
@@ -458,7 +486,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** UPDATED HELPER METHOD ***
   // Helper to load initial content based on determined state
   private loadInitialContent(surah: number, verse: number, isMushaf: boolean, targetDisplayPage?: number): void { 
-    console.log(`[loadInitialContent] Called with S:${surah}, V:${verse}, Mushaf:${isMushaf}, TargetPage:${targetDisplayPage}`);
+    // console.log(`[loadInitialContent] Called with S:${surah}, V:${verse}, Mushaf:${isMushaf}, TargetPage:${targetDisplayPage}`);
     // Reset state and show loading indicators
     this.isAudioLoading = true;
     this.verses = []; // Clear previous verses immediately
@@ -480,7 +508,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
               this.isAudioLoading = false;
               this.updateUrlParams(); 
               this.changeDetector.markForCheck();
-              console.log(`[loadInitialContent] Mushaf loading finalized for page ${this.currentPage}.`);
+              // console.log(`[loadInitialContent] Mushaf loading finalized for page ${this.currentPage}.`);
               // +++ Load secondary data AFTER content is loaded +++
               this.loadSecondaryData(); 
           })
@@ -488,7 +516,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     } else {
       // Load Verse View
-      console.log(`[loadInitialContent] Loading verse view for S${surah}...`);
+      // console.log(`[loadInitialContent] Loading verse view for S${surah}...`);
       this.loadSurahSubscription?.unsubscribe(); 
       this.loadSurahSubscription = this.loadSurah(surah).pipe(
           finalize(() => {
@@ -499,7 +527,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                 // Pass the verse we INTENDED to load
                 this.scrollToVerse(verse); 
               }, 150); 
-              console.log(`[loadInitialContent] Verse view loading finalized for Surah ${surah}. Will attempt scroll to V:${verse}.`);
+              // console.log(`[loadInitialContent] Verse view loading finalized for Surah ${surah}. Will attempt scroll to V:${verse}.`);
               this.updateUrlParams();
               // +++ Load secondary data AFTER content is loaded +++
               this.loadSecondaryData();
@@ -511,7 +539,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** SIMPLIFIED HELPER METHOD ***
   // Helper to load non-essential data (preferences, history, bookmarks)
   private async loadSecondaryData(): Promise<void> {
-    console.log('[QuranReader] Loading secondary data...');
+    // console.log('[QuranReader] Loading secondary data...');
     //this.showLoadingUI(); // <-- Remove argument
 
     // Load preferences, history (async), and bookmarks (observable)
@@ -531,7 +559,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Setup view mode based on the potentially restored state
     this.setupViewMode();
 
-    console.log('[QuranReader] Secondary data loading complete.');
+    // console.log('[QuranReader] Secondary data loading complete.');
     //this.hideLoadingUI(); // <-- Remove argument
     this.changeDetector.markForCheck(); // Ensure UI reflects loaded data (final check)
   }
@@ -540,16 +568,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private scrollToVerse(verseNumber: number, maxAttempts: number = 5): boolean {
     if (!verseNumber || this.isMushafView) return false;
-    console.log(`[scrollToVerse] Called with verseNumber: ${verseNumber}`);
+    // console.log(`[scrollToVerse] Called with verseNumber: ${verseNumber}`);
 
     let scrolledSuccessfully = false;
 
     const attemptScroll = (attempts: number = 0) => {
       const verseElement = document.getElementById(`verse-${verseNumber}`);
-      console.log(`[scrollToVerse Attempt ${attempts + 1}] Element lookup for 'verse-${verseNumber}':`, verseElement ? 'Found' : 'NOT Found');
+      // console.log(`[scrollToVerse Attempt ${attempts + 1}] Element lookup for 'verse-${verseNumber}':`, verseElement ? 'Found' : 'NOT Found');
 
       if (verseElement) {
-        console.log(`[Scroll attempt ${attempts + 1}] Found element for verse ${verseNumber}. Preparing to scroll...`);
+        // console.log(`[Scroll attempt ${attempts + 1}] Found element for verse ${verseNumber}. Preparing to scroll...`);
         document.querySelectorAll('.highlighted-verse').forEach(el => {
           el.classList.remove('highlighted-verse');
         });
@@ -578,7 +606,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       } else if (attempts < maxAttempts) {
         setTimeout(() => attemptScroll(attempts + 1), 100 + attempts * 50);
       } else {
-        console.warn(`[scrollToVerse] Failed to find verse element ${verseNumber} after ${maxAttempts} attempts.`);
+        // console.warn(`[scrollToVerse] Failed to find verse element ${verseNumber} after ${maxAttempts} attempts.`);
         // If scroll fails, still try to update URL to reflect the intended verse
         // this.updateUrlParams(); // Consider if this is desired on failure
       }
@@ -1075,7 +1103,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       clearTimeout(this.audioLoadingTimeout);
       this.audioLoadingTimeout = setTimeout(() => {
         if (this.isAudioLoading) {
-          console.warn('Audio loading timed out.');
+          // console.warn('Audio loading timed out.');
           this.handleAudioError('Audio loading timed out');
           this.isAudioLoading = false;
         }
@@ -1158,7 +1186,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.audioPaused = false;
       } else if (this.isPlayingFullSurah) {
         // Optionally handle ending of full surah playback
-        console.log('Full surah playback ended.');
+        // console.log('Full surah playback ended.');
         this.isPlayingFullSurah = false; // Reset flag
       }
     });
@@ -1469,7 +1497,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next(); // Signal completion for observables
     this.destroy$.complete();
-    console.log('[QuranReader] Destroying component...');
+    // console.log('[QuranReader] Destroying component...');
     // REMOVE listener for unload handler if it was removed
     // window.removeEventListener('beforeunload', this.saveStateToLocalStorageOnUnload); 
     this.loadSurahSubscription?.unsubscribe();
@@ -1486,7 +1514,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.urlUpdateTimeoutId) clearTimeout(this.urlUpdateTimeoutId);
     // REMOVE scrollDebounceTimer clearing
     // if (this.scrollDebounceTimer) clearTimeout(this.scrollDebounceTimer); 
-    console.log('[QuranReader] Cleanup complete.');
+    // console.log('[QuranReader] Cleanup complete.');
   }
 
   // === Initialization & State Management ===
@@ -1587,6 +1615,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
       this.lastUrlUpdateTime = Date.now(); 
       this.urlUpdateTimeoutId = null;
+
+      // Update title/meta based on current state
+      if (this.isMushafView) {
+        this.titleService.setTitle(`Mushaf Page ${this.actualToDisplayPage(this.currentPage)} | Nura AI`);
+        this.metaService.updateTag({ name: 'description', content: `View page ${this.actualToDisplayPage(this.currentPage)} of the Holy Quran Mushaf. Explore the Uthmani script online with Nura AI.` });
+      } else {
+        const surahName = this.currentSurahDetails?.englishName || `Surah ${this.currentSurah}`;
+        this.titleService.setTitle(`${surahName} (Surah ${this.currentSurah}) - Verse ${this.currentVerse} | Nura AI`);
+        this.metaService.updateTag({ name: 'description', content: `Read and listen to ${surahName} (Surah ${this.currentSurah}), Verse ${this.currentVerse} with translation, tafsir, and audio recitation.` });
+      }
     }, debounceTime);
   }
 
@@ -1785,12 +1823,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurahSubscription = this.loadSurah(surahNumber).subscribe({
       next: () => {
         // Optional: Add logic after surah change load completes
-        // console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`); // Removed log
+        // console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
         this.updateUrlParams(); // Update URL after successful load
         // Ensure isLoading is handled within loadSurah itself
       },
       error: (err) => {
-        // console.error(`[Handler for line 1656] Error loading surah ${surahNumber}:`, err); // Keep this error log
+        // console.error(`[Handler for line 1656] Error loading surah ${surahNumber}:`, err);
         // Ensure isLoading is handled within loadSurah itself
       }
     });
@@ -1869,10 +1907,17 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         params.page = 1;
       }
       params.surah = this.currentSurah;
-      this.loadMushafPage(this.currentPage);
+      this.loadMushafPage(this.currentPage, true); // Pass true for toggleView
     } else {
       // When switching to translation view
+      this.updateCurrentSurah(this.currentPage); // <<< ADD THIS LINE to update surah based on last mushaf page
+      this.selectedSurah = this.currentSurah; // <<< FIX: Update dropdown selection
       params.surah = this.currentSurah;
+      // Pass the verse number that corresponds to the start of the Mushaf page if possible, otherwise 1
+      // This requires a mapping from page to verse, which might not be readily available.
+      // Defaulting to verse 1 for now.
+      params.verse = 1; // Default to verse 1 when switching to translation
+      this.currentVerse = 1; // Reset verse state
       this.loadSurah(this.currentSurah || 1).subscribe();
     }
 
@@ -1905,26 +1950,53 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // Page navigation methods
   public nextPage(): void {
-    if (this.displayPageNumber > 1) {
-      this.loadMushafPage(this.displayToActualPage(this.displayPageNumber - 1));
+    if (this.currentPage < this.LAST_PAGE) { 
+      this.loadMushafPage(this.currentPage + 1, false); // Pass false
+    } else {
+      console.log("Already on the first page (numerically highest).");
     }
   }
 
   public previousPage(): void {
-    if (this.displayPageNumber < this.DISPLAY_TOTAL) {
-      this.loadMushafPage(this.displayToActualPage(this.displayPageNumber + 1));
+    if (this.currentPage > this.FIRST_PAGE) { 
+      this.loadMushafPage(this.currentPage - 1, false); // Pass false
+    } else {
+      console.log("Already on the last page (numerically lowest).");
     }
   }
 
   public goToPage(): void {
-    if (this.displayPageNumber >= 1 && this.displayPageNumber <= this.DISPLAY_TOTAL) {
-      this.loadMushafPage(this.displayToActualPage(this.displayPageNumber));
+    const targetActualPage = this.displayToActualPage(this.displayPageNumber);
+    if (targetActualPage >= this.FIRST_PAGE && targetActualPage <= this.LAST_PAGE) {
+      this.loadMushafPage(targetActualPage, true); // Pass true for goToPage (potential view disruption)
+    } else {
+        // Optionally clamp the value or show an error
+        console.warn(`Invalid page input: ${this.displayPageNumber}. Clamping or ignoring.`);
+        // Clamp example:
+        // const clampedPage = Math.max(1, Math.min(this.displayPageNumber, this.DISPLAY_TOTAL));
+        // this.loadMushafPage(this.displayToActualPage(clampedPage), true);
     }
   }
 
   // View control methods
   public togglePageView(): void {
+    // Prevent enabling double page view on mobile
+    if (this.isMobile && !this.isDoublePageView) {
+      this.toastService.showInfo("Double page view is not available on mobile devices.");
+      return;
+    }
     this.isDoublePageView = !this.isDoublePageView;
+    // When switching back to single view, ensure the right page is loaded if needed
+    if (!this.isDoublePageView) {
+      this.loadMushafPage(this.currentPage, true); // Pass true when switching view
+      this.changeDetector.markForCheck(); // <<< Add markForCheck here
+    } else {
+       // If switching TO double view, need to load potentially
+       this.loadMushafPage(this.currentPage, true); // Pass true here too
+       this.changeDetector.markForCheck(); // <<< Add markForCheck here too
+    }
+    // Save preference (optional)
+    // this.debouncedSavePreferences(); 
   }
 
   public zoomMushaf(delta: number): void {
@@ -1941,7 +2013,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   public logTranslationChange(event: any): void {
-    console.log('Translation changed:', event);
+    // console.log('Translation changed:', event);
   }
 
   public selectTranslation(translationId: string): void {
@@ -2001,10 +2073,24 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   private setupKeyboardNavigation(): void {
     // Setup keyboard navigation handlers
     document.addEventListener('keydown', (event: KeyboardEvent) => {
-      if (event.key === 'ArrowRight') {
-        this.navigateToNextVerse();
-      } else if (event.key === 'ArrowLeft') {
-        this.navigateToPreviousVerse();
+      // Ignore keyboard events if an input element is focused
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement || event.target instanceof HTMLSelectElement) {
+        return;
+      }
+      if (this.isMushafView) {
+        // Mushaf View: Arrow keys change page
+        if (event.key === 'ArrowRight') {
+          this.nextPage();
+        } else if (event.key === 'ArrowLeft') {
+          this.previousPage();
+        }
+      } else {
+        // Translation View: Arrow keys change verse
+        if (event.key === 'ArrowRight') {
+          this.navigateToNextVerse();
+        } else if (event.key === 'ArrowLeft') {
+          this.navigateToPreviousVerse();
+        }
       }
     });
   }
@@ -2034,7 +2120,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.readingHistory = response.history;
       } else {
         // Handle the case where reading history is not successfully retrieved
-        console.error('Error retrieving reading history'); // Removed response.message
+        // console.error('Error retrieving reading history'); // Removed response.message
       }
     });
   }
@@ -2048,57 +2134,96 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     return displayPage + 9;
   }
 
-  private async loadMushafPage(pageNumber: number) {
-    console.log(`[loadMushafPage] Loading page: ${pageNumber}`);
+  private async loadMushafPage(pageNumber: number, isViewChange: boolean = false) {
+    // console.log(`[loadMushafPage] Loading page: ${pageNumber}, isViewChange: ${isViewChange}`);
     if (pageNumber < this.FIRST_PAGE || pageNumber > this.LAST_PAGE) {
-      console.warn(`[loadMushafPage] Attempted to load invalid page number: ${pageNumber}. Clamping to bounds.`);
+      // console.warn(`[loadMushafPage] Attempted to load invalid page number: ${pageNumber}. Clamping to bounds.`);
       pageNumber = Math.max(this.FIRST_PAGE, Math.min(pageNumber, this.LAST_PAGE));
     }
 
-    this.isAudioLoading = true; // Show loading indicator
-    this.changeDetector.markForCheck(); // Mark for check early
+    const displayPage = this.actualToDisplayPage(pageNumber);
 
-    try {
-      // Calculate display page number for consistency
-      const displayPage = this.actualToDisplayPage(pageNumber);
+    if (!isViewChange) {
+      // --- Minimal update path for simple page turns --- 
+      // console.log(`[loadMushafPage] Performing minimal update for page turn to ${pageNumber}`);
+      // Update state directly
+      this.currentPage = pageNumber;
       this.displayPageNumber = displayPage;
       this.pageInput = displayPage;
-
-      // Determine image URLs
       this.pageImageUrl = this.quranFlash.getPageImageUrl(pageNumber);
-      if (this.isDoublePageView && pageNumber > this.FIRST_PAGE) {
-        this.secondPageImageUrl = this.quranFlash.getPageImageUrl(pageNumber - 1);
-      } else {
-        this.secondPageImageUrl = '';
-      }
-
-      console.log(`[loadMushafPage] Image URLs set:`, { main: this.pageImageUrl, second: this.secondPageImageUrl });
-
-      // Preload images for smoother transition
-      const preloadPromises = [this.preloadImage(this.pageImageUrl)];
-      if (this.secondPageImageUrl) {
-        preloadPromises.push(this.preloadImage(this.secondPageImageUrl));
-      }
-      await Promise.all(preloadPromises);
-      console.log(`[loadMushafPage] Images preloaded for page ${pageNumber}.`);
-
-      // Update current Surah based on the new page
+      this.secondPageImageUrl = (this.isDoublePageView && pageNumber > this.FIRST_PAGE) 
+                                  ? this.quranFlash.getPageImageUrl(pageNumber - 1) 
+                                  : '';
       this.updateCurrentSurah(pageNumber);
-
-      this.currentPage = pageNumber; // Update currentPage AFTER successful load/preload
+      this.selectedSurah = this.currentSurah;
       
-      // Save state and update URL AFTER successful load
-      this.savePreferences(); // Persist the current page
+      // Persist state and update URL
+      this.savePreferences(); 
       this.updateUrlParams();
+      // NO change detection or loading flags here - let binding update the src
+      // console.log(`[loadMushafPage] Minimal update complete for page ${pageNumber}.`);
 
-    } catch (error) {
-      console.error(`[loadMushafPage] Error loading page ${pageNumber}:`, error);
-      // Handle error appropriately, maybe show a toast
-      this.toastService.showError(`Failed to load page ${this.actualToDisplayPage(pageNumber)}.`);
-    } finally {
-      this.isAudioLoading = false;
-      this.changeDetector.markForCheck(); // Mark for check again after loading finishes
-      console.log(`[loadMushafPage] Finished loading page ${pageNumber}.`);
+    } else {
+      // --- Full update path for view changes or direct navigation --- 
+      // console.log(`[loadMushafPage] Performing full update/preload for page ${pageNumber}`);
+      const previousZoom = this.mushafZoom;
+      const previousIsDouble = this.isDoublePageView;
+
+      this.isAudioLoading = true; // Show loading indicator (briefly)
+      this.changeDetector.markForCheck(); // Mark for check early
+
+      try {
+        this.displayPageNumber = displayPage;
+        this.pageInput = displayPage;
+
+        const newPageImageUrl = this.quranFlash.getPageImageUrl(pageNumber);
+        let newSecondPageImageUrl = '';
+        if (this.isDoublePageView && pageNumber > this.FIRST_PAGE) {
+          newSecondPageImageUrl = this.quranFlash.getPageImageUrl(pageNumber - 1);
+        }
+
+        const preloadPromises = [];
+        // Always preload on view change, as src *might* be the same but view context changed
+        if (newPageImageUrl) {
+            this.pageImageUrl = newPageImageUrl;
+            preloadPromises.push(this.preloadImage(this.pageImageUrl));
+        }
+        if (newSecondPageImageUrl) {
+            this.secondPageImageUrl = newSecondPageImageUrl;
+            preloadPromises.push(this.preloadImage(this.secondPageImageUrl));
+        } else {
+            this.secondPageImageUrl = ''; // Ensure it's cleared if not needed
+        }
+        
+        if (preloadPromises.length > 0) {
+            // console.log(`[loadMushafPage] Preloading ${preloadPromises.length} image(s) for page ${pageNumber} (view change).`);
+            await Promise.all(preloadPromises);
+            // console.log(`[loadMushafPage] Images preloaded for page ${pageNumber} (view change).`);
+        } else {
+             // console.log(`[loadMushafPage] No images to preload for page ${pageNumber} (view change).`);
+             // Ensure URLs are set even if no preload happened
+             this.pageImageUrl = newPageImageUrl;
+             this.secondPageImageUrl = newSecondPageImageUrl;
+        }
+        
+        this.updateCurrentSurah(pageNumber);
+        this.selectedSurah = this.currentSurah;
+
+        this.currentPage = pageNumber; 
+        
+        this.savePreferences();
+        this.updateUrlParams();
+
+      } catch (error) {
+        // console.error(`[loadMushafPage] Error loading page ${pageNumber}:`, error);
+        this.toastService.showError(`Failed to load page ${displayPage}.`);
+      } finally {
+        this.mushafZoom = previousZoom; // Restore zoom state potentially changed during load
+        this.isDoublePageView = previousIsDouble; // Restore view state
+        this.isAudioLoading = false;
+        this.changeDetector.markForCheck(); // Mark for check again after loading finishes
+        // console.log(`[loadMushafPage] Finished full update/load for page ${pageNumber}.`);
+      }
     }
   }
 
@@ -2108,7 +2233,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       img.onload = () => resolve();
       img.onerror = (errorEvent) => {
           // More detailed error logging
-          console.error(`Failed to load image. URL: ${url}. Error:`, errorEvent);
+          // console.error(`Failed to load image. URL: ${url}. Error:`, errorEvent);
           reject(new Error(`Failed to load image: ${url}`));
       };
       img.src = url;
@@ -2132,14 +2257,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Renamed from attemptPlayback for clarity
   private startPlaybackWhenReady(): void {
     if (this.audioPlayer && !this.isPlaying && this.isAudioLoading) { // Only play if loading and not already playing
-        console.log('Attempting to play audio now that it is ready...');
+        // console.log('Attempting to play audio now that it is ready...');
         this.audioPlayer.play()
             .then(() => {
-                console.log('Audio play() promise resolved after ready.');
+                // console.log('Audio play() promise resolved after ready.');
                 // isPlaying and isAudioLoading state will be updated by 'play' and 'canplay' event handlers
             })
             .catch(err => {
-                console.error('Error starting playback after ready:', err);
+                // console.error('Error starting playback after ready:', err);
                 this.handleAudioError('Could not start audio playback.');
             });
     }
@@ -2163,7 +2288,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // this.changeDetector.detectChanges(); 
       },
       error: (err) => {
-        // console.error(`[loadVerseTimings] Error loading timings for Surah ${surahNumber}:`, err); // Keep this error log for debugging
+        // console.error(`[loadVerseTimings] Error loading timings for Surah ${surahNumber}:`, err); // Commented out
         this.verseTimings = []; // Clear timings on error
       }
     });
@@ -2290,7 +2415,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         
         // Update currentVerse and URL only if it has changed
         if (this.currentVerse !== detectedVerseNumber) {
-           console.log(`[Scroll Listener] Detected verse change: ${this.currentVerse} -> ${detectedVerseNumber}`);
+           // console.log(`[Scroll Listener] Detected verse change: ${this.currentVerse} -> ${detectedVerseNumber}`);
            this.ngZone.run(() => { // Run updates within NgZone
                this.currentVerse = detectedVerseNumber;
                this.updateUrlParams(); // Update URL with the new verse
@@ -2306,4 +2431,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.isAudioPlayerMinimized = !this.isAudioPlayerMinimized;
     this.changeDetector.markForCheck();
   }
+
+  // ++ NEW Method to handle tapping on the Mushaf view (show controls) ++
+  public toggleMushafControls(): void {
+    this.isControlsMinimized = !this.isControlsMinimized;
+    this.changeDetector.markForCheck();
+  }
 }
+

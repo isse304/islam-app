@@ -23,9 +23,9 @@ const TEST_USER_PASSWORD = 'Naruto73203';
 
 async function getAuthToken() {
     try {
-        console.log('Attempting to sign in with test user...');
+        // console.log('Attempting to sign in with test user...');
         const userCredential = await signInWithEmailAndPassword(auth, TEST_USER_EMAIL, TEST_USER_PASSWORD);
-        console.log('Successfully signed in');
+        // console.log('Successfully signed in');
         
         const token = await userCredential.user.getIdToken();
         if (!token) {
@@ -34,15 +34,12 @@ async function getAuthToken() {
 
         // Get token result to check claims
         const tokenResult = await userCredential.user.getIdTokenResult();
-        console.log('Token claims:', {
-            premium: tokenResult.claims.premium,
-            features: tokenResult.claims.features,
-            subscriptionStatus: tokenResult.claims.subscriptionStatus,
-            exp: tokenResult.expirationTime,
-            auth_time: tokenResult.authTime
-        });
+        // console.log('Token claims:', {
+        //     uid: tokenResult.claims.user_id,
+        //     premium: tokenResult.claims.premium
+        // });
         
-        console.log('Successfully got ID token');
+        // console.log('Successfully got ID token');
         return token;
     } catch (error) {
         console.error('Error getting auth token:', error.code, error.message);
@@ -58,7 +55,7 @@ async function getAuthToken() {
 }
 
 async function testEmotionalDuas(token) {
-    console.log('\nTesting emotional dua search endpoint...');
+    // console.log('\nTesting emotional dua search endpoint...');
     try {
         const response = await fetch('http://localhost:3000/api/ai/dua/emotional-search', {
             method: 'POST',
@@ -72,18 +69,18 @@ async function testEmotionalDuas(token) {
             })
         });
 
-        console.log('Response status:', response.status);
+        // console.log('Response status:', response.status);
         const responseText = await response.text();
         
         try {
             const data = JSON.parse(responseText);
-            console.log('\n🔍 Detailed Response Analysis:');
-            console.log('1. Basic Response Structure:');
-            console.log('- Success:', data.success);
-            console.log('- Has Content:', !!data.content);
-            console.log('- Content Preview:', data.content ? data.content.substring(0, 100) + '...' : 'No content');
+            // console.log('\n🔍 Detailed Response Analysis:');
+            // console.log('1. Basic Response Structure:');
+            // console.log('- Success:', data.success);
+            // console.log('- Has Content:', !!data.content);
+            // console.log('- Content Preview:', data.content ? data.content.substring(0, 100) + '...' : 'No content');
             
-            console.log('\n2. Required Sections Check:');
+            // console.log('\n2. Required Sections Check:');
             const requiredSections = {
                 'Spiritual Advice': data.spiritual_advice?.understanding?.length > 0,
                 'Related Verses': data.related_verses_hadith?.verses?.length > 0,
@@ -94,23 +91,22 @@ async function testEmotionalDuas(token) {
                 'Reflection Points': data.reflection_points?.length > 0
             };
 
-            console.log('Section Status:');
+            // console.log('Section Status:');
+            const sectionStatus = {};
+            let allPresent = true;
             Object.entries(requiredSections).forEach(([section, exists]) => {
-                console.log(`- ${section}: ${exists ? '✅ Present' : '❌ Missing'}`);
+                sectionStatus[section] = exists;
+                if (!exists) allPresent = false;
             });
 
-            const missingRequiredSections = Object.entries(requiredSections)
-                .filter(([_, exists]) => !exists)
-                .map(([section]) => section);
-
-            if (missingRequiredSections.length > 0) {
-                console.warn('\n⚠️ Warning: Missing Required Sections:', missingRequiredSections.join(', '));
+            if (allPresent) {
+                // console.log('\n✅ All required sections are present');
             } else {
-                console.log('\n✅ All required sections are present');
+                // console.warn('\n⚠️ Warning: Missing Required Sections:', missingRequiredSections.join(', '));
             }
             
-            console.log('\n3. Raw Response Data:');
-            console.log(JSON.stringify(data, null, 2));
+            // console.log('\n3. Raw Response Data:');
+            // console.log(JSON.stringify(data, null, 2));
             
         } catch (e) {
             console.error('Error parsing response:', e);
@@ -124,7 +120,7 @@ async function testEmotionalDuas(token) {
 }
 
 async function testDuaInsights(token) {
-    console.log('\nTesting dua insights endpoint...');
+    // console.log('\nTesting dua insights endpoint...');
     try {
         const response = await fetch('http://localhost:3000/api/ai/dua/insights', {
             method: 'POST',
@@ -144,7 +140,7 @@ async function testDuaInsights(token) {
             })
         });
 
-        console.log('Response status:', response.status);
+        // console.log('Response status:', response.status);
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -154,7 +150,7 @@ async function testDuaInsights(token) {
 
         // Get the raw text response
         const text = await response.text();
-        console.log('\nRaw response:', text);
+        // console.log('\nRaw response:', text);
 
         // Process each SSE message
         const messages = text.split('\n\n').filter(msg => msg.trim());
@@ -163,12 +159,12 @@ async function testDuaInsights(token) {
             if (message.startsWith('data: ')) {
                 try {
                     const data = JSON.parse(message.slice(6));
-                    console.log('\nProcessed SSE message:', {
-                        status: data.status,
-                        hasData: !!data.data,
-                        hasError: !!data.error,
-                        details: data.details || null
-                    });
+                    // console.log('\nProcessed SSE message:', {
+                    //     status: data.status,
+                    //     hasData: !!data.data,
+                    //     hasError: !!data.error,
+                    //     details: data.details || null
+                    // });
 
                     if (data.status === 'error') {
                         console.error('Server error:', {
@@ -179,33 +175,33 @@ async function testDuaInsights(token) {
                     }
 
                     if (data.status === 'complete' && data.data) {
-                        console.log('\n🔍 Analyzing complete response:');
+                        // console.log('\n🔍 Analyzing complete response:');
                         const insights = data.data;
                         
-                        console.log('1. Basic Response Structure:');
-                        console.log('- Success:', insights.success);
-                        console.log('- Has Content:', !!insights.content);
+                        // console.log('1. Basic Response Structure:');
+                        // console.log('- Success:', insights.success);
+                        // console.log('- Has Content:', !!insights.content);
                         
-                        console.log('\n2. Spiritual Advice Section Check:');
+                        // console.log('\n2. Spiritual Advice Section Check:');
                         const spiritualAdvice = insights.spiritual_advice || {};
-                        console.log('Understanding:', spiritualAdvice.understanding ? '✅ Present' : '❌ Missing');
-                        console.log('Duas:', spiritualAdvice.duas?.length ? `✅ Present (${spiritualAdvice.duas.length} items)` : '❌ Missing');
-                        console.log('Dhikr:', spiritualAdvice.dhikr?.length ? `✅ Present (${spiritualAdvice.dhikr.length} items)` : '❌ Missing');
-                        console.log('Scholarly Guidance:', spiritualAdvice.scholarly_guidance?.length ? `✅ Present (${spiritualAdvice.scholarly_guidance.length} items)` : '❌ Missing');
-                        console.log('Spiritual Remedies:', spiritualAdvice.spiritual_remedies?.length ? `✅ Present (${spiritualAdvice.spiritual_remedies.length} items)` : '❌ Missing');
+                        // console.log('Understanding:', spiritualAdvice.understanding ? '✅ Present' : '❌ Missing');
+                        // console.log('Duas:', spiritualAdvice.duas?.length ? `✅ Present (${spiritualAdvice.duas.length} items)` : '❌ Missing');
+                        // console.log('Dhikr:', spiritualAdvice.dhikr?.length ? `✅ Present (${spiritualAdvice.dhikr.length} items)` : '❌ Missing');
+                        // console.log('Scholarly Guidance:', spiritualAdvice.scholarly_guidance?.length ? `✅ Present (${spiritualAdvice.scholarly_guidance.length} items)` : '❌ Missing');
+                        // console.log('Spiritual Remedies:', spiritualAdvice.spiritual_remedies?.length ? `✅ Present (${spiritualAdvice.spiritual_remedies.length} items)` : '❌ Missing');
 
-                        console.log('\n3. Sample Content Check:');
+                        // console.log('\n3. Sample Content Check:');
                         if (spiritualAdvice.duas?.[0]) {
-                            console.log('\nFirst Dua:');
-                            console.log(JSON.stringify(spiritualAdvice.duas[0], null, 2));
+                            // console.log('\nFirst Dua:');
+                            // console.log(JSON.stringify(spiritualAdvice.duas[0], null, 2));
                         }
                         if (spiritualAdvice.dhikr?.[0]) {
-                            console.log('\nFirst Dhikr:');
-                            console.log(JSON.stringify(spiritualAdvice.dhikr[0], null, 2));
+                            // console.log('\nFirst Dhikr:');
+                            // console.log(JSON.stringify(spiritualAdvice.dhikr[0], null, 2));
                         }
                         if (spiritualAdvice.scholarly_guidance?.[0]) {
-                            console.log('\nFirst Scholar Quote:');
-                            console.log(JSON.stringify(spiritualAdvice.scholarly_guidance[0], null, 2));
+                            // console.log('\nFirst Scholar Quote:');
+                            // console.log(JSON.stringify(spiritualAdvice.scholarly_guidance[0], null, 2));
                         }
                     }
                 } catch (e) {
@@ -221,7 +217,7 @@ async function testDuaInsights(token) {
 }
 
 async function testAITafsirChat(token) {
-    console.log('\nTesting AI tafsir chat endpoint...');
+    // console.log('\nTesting AI tafsir chat endpoint...');
     try {
         const response = await fetch('http://localhost:3000/api/ai/tafsir/chat', {
             method: 'POST',
@@ -236,18 +232,18 @@ async function testAITafsirChat(token) {
             })
         });
 
-        console.log('Response status:', response.status);
+        // console.log('Response status:', response.status);
         const responseText = await response.text();
         
         try {
             const data = JSON.parse(responseText);
-            console.log('AI tafsir chat response:', {
-                success: data.success,
-                hasContent: !!data.content,
-                messageLength: data.content ? data.content.length : 0
-            });
+            // console.log('AI tafsir chat response:', {
+            //     success: data.success,
+            //     hasContent: !!data.content,
+            //     messageLength: data.content ? data.content.length : 0
+            // });
         } catch (e) {
-            console.log('Raw response:', responseText);
+            // console.log('Raw response:', responseText);
         }
     } catch (error) {
         console.error('Error testing AI tafsir chat:', error);
@@ -256,13 +252,13 @@ async function testAITafsirChat(token) {
 
 async function testEndpoints() {
     try {
-        console.log('Getting auth token...');
+        // console.log('Getting auth token...');
         const token = await getAuthToken();
         if (!token) {
             console.error('Failed to get auth token');
             return;
         }
-        console.log('Got token:', token.substring(0, 20) + '...');
+        // console.log('Got token:', token.substring(0, 20) + '...');
 
         // Test dua insights endpoint with Ayatul Kursi
         await testDuaInsights(token);

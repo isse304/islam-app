@@ -1,0 +1,19 @@
+# Allow all user agents to crawl the entire site
+User-agent: *
+Allow: /
+
+# Allow specific bots if needed
+# User-agent: Googlebot
+# Allow: /
+
+# Disallow specific paths if needed (e.g., admin areas)
+# Disallow: /admin/
+
+# Disallow access to node_modules if it were ever exposed (shouldn't be)
+Disallow: /node_modules/
+
+# Disallow access to potential source map files in production (optional but good practice)
+Disallow: /*.map$
+
+# Add the path to your sitemap (update if you create one)
+Sitemap: https://www.nura-ai.app/sitemap.xml

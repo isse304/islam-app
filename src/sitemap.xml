@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+  <!-- Homepage -->
+  <url>
+    <loc>https://www.nura-ai.app/</loc>
+    <lastmod>2024-07-28</lastmod> <!-- Update this date periodically -->
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+
+  <!-- Quran Reader -->
+  <url>
+    <loc>https://www.nura-ai.app/quran</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- Dua Collection -->
+  <url>
+    <loc>https://www.nura-ai.app/dua</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Learn Quran -->
+  <url>
+    <loc>https://www.nura-ai.app/learn</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- AI Chat (If this is a main page) -->
+  <!-- Uncomment if /chat is a distinct page 
+  <url>
+    <loc>https://www.nura-ai.app/chat</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url> 
+  -->
+
+  <!-- Subscription Page -->
+  <url>
+    <loc>https://www.nura-ai.app/subscription</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Contact Page -->
+   <url>
+    <loc>https://www.nura-ai.app/contact</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  
+  <!-- About Page -->
+   <url>
+    <loc>https://www.nura-ai.app/about</loc>
+    <lastmod>2024-07-28</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+</urlset>

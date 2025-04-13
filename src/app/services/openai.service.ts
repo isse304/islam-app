@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, from, map, firstValueFrom, timeout, catchError, throwError } from 'rxjs';
+import { Observable, from, map, firstValueFrom, timeout, catchError, throwError, switchMap } from 'rxjs';
 import { environment } from '../../environments/environment';
 import { Dua } from './dua.service';
 import { ApiService } from './api.service';
@@ -376,32 +376,16 @@ export class OpenAIService {
   }
 
   private async getCombinedCompletion(corePrompt: AIRequestPrompt, dynamicPrompt: AIRequestPrompt): Promise<AIResponse> {
-    try {
-      // Get both responses in parallel
-      const [coreResponse, dynamicResponse] = await Promise.all([
-        this.getCompletion(corePrompt),
-        this.getCompletion(dynamicPrompt)
-      ]);
-
-      // Combine the responses
-      return {
-        content: coreResponse.explanation || '',
-        explanation: coreResponse.explanation,
-        relatedVerses: coreResponse.relatedVerses,
-        historicalContext: coreResponse.historicalContext,
-        reflectionPoints: dynamicResponse.reflectionPoints,
-        modernApplication: dynamicResponse.modernApplication
-      };
-    } catch (error) {
-      // console.error('Error in combined completion:', error);
-      throw error;
-    }
+    // TODO: Call API for both prompts, combine results
+    // For now, just return a placeholder
+    return { content: 'Combined AI response placeholder' };
   }
 
   private async getCompletion(prompt: AIRequestPrompt): Promise<AIResponse> {
+    // // console.log('Getting auth token...');
+    let token: string | null = null;
     try {
-      // console.log('Getting auth token...');
-      const token = await this.authService.getToken();
+      token = await this.authService.getToken();
       
       if (!token) {
         // console.error('Failed to get authentication token for AI request');
@@ -413,7 +397,7 @@ export class OpenAIService {
         'Content-Type': 'application/json'
       };
 
-      // console.log('Making API request with token...');
+      // // console.log('Making API request with token...');
       const response = await firstValueFrom(this.http.post<AIGenerateResponse>(
         this.apiUrl, 
         prompt, 
@@ -430,7 +414,7 @@ export class OpenAIService {
           throw new Error('Invalid response structure from AI service.');
       }
 
-      // console.log('Successfully received API response');
+      // // console.log('Successfully received API response');
       return this.parseAIResponse(response.content);
     } catch (error: any) {
       // console.error('Error calling OpenAI service:', error);
@@ -614,7 +598,33 @@ export class OpenAIService {
   }
 
   private generateAIResponse(prompt: AIRequestPrompt): Observable<AIResponse> {
-    return from(this.getCompletion(prompt));
+    // // console.log('Getting auth token...');
+    const token$ = from(this.authService.getToken());
+
+    return token$.pipe(
+      switchMap(token => {
+        // // console.log('Making API request with token...');
+        const requestOptions = {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        };
+
+        return this.http.post<AIGenerateResponse>(this.apiUrl, prompt, requestOptions).pipe(
+          map(response => {
+            // Ensure response is not null/undefined and has a content property
+            if (!response || typeof response.content !== 'string') {
+              // console.warn('Invalid response structure from API', response);
+              throw new Error('Invalid response structure from API');
+            }
+            // // console.log('Successfully received API response');
+            return this.parseAIResponse(response.content);
+          }),
+          catchError(err => {
+            // console.error('Error in generateAIResponse:', err);
+            return throwError(() => new Error('AI service request failed.'));
+          })
+        );
+      })
+    );
   }
 
   // Keeping makeApiRequest commented out as getCompletion seems to handle the logic now
