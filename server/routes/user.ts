@@ -321,22 +321,21 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
         }
 
         if (surahNum < 1 || surahNum > 114 || verseNum < 1) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid input: surah must be between 1 and 114, verse must be positive.' 
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid input: surah must be between 1 and 114, verse must be positive.'
             });
         }
 
-        // Find existing entry for this surah
+        // --- REVERT: Restore findOne and update logic FOR HISTORY ONLY ---
         let historyEntry = await ReadingHistory.findOne({ userId, surah: surahNum });
-        
+
         if (historyEntry) {
-            // Update existing entry
             historyEntry.verse = verseNum;
             historyEntry.timestamp = new Date();
             await historyEntry.save();
+            console.log(`[History POST ${userId}] Updated existing history entry: S:${surahNum} V:${verseNum}`);
         } else {
-            // Create new entry if none exists
             historyEntry = new ReadingHistory({
                 userId,
                 surah: surahNum,
@@ -344,50 +343,31 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
                 timestamp: new Date()
             });
             await historyEntry.save();
+            console.log(`[History POST ${userId}] Saved new history entry: S:${surahNum} V:${verseNum}`);
         }
+        // --- END REVERT FOR HISTORY ONLY ---
 
-        // Get or create user preferences with default values
+        // --- REMOVE UserPreferences Update Logic ---
+        /*
         let userPrefs = await UserPreferences.findOne({ userId });
         if (!userPrefs) {
-            // console.log(`[History Post ${userId}] No preferences found, creating new document.`);
-            // Create new preferences ONLY IF they don't exist, INCLUDE userId
-            userPrefs = new UserPreferences({
-                userId: userId, // **Explicitly add userId here**
-                preferences: getDefaultPreferences(),
-                // Add other default fields if needed by the schema
-            });
+           // ... (create userPrefs) ...
         }
-
-        // Update lastState within the existing or newly created preferences
         if (!userPrefs.preferences) {
-            // This case should technically be covered by the creation step above,
-            // but as a safeguard, initialize if somehow still missing.
-            // console.log(`[History Post ${userId}] Preferences object missing, initializing.`);
-            userPrefs.preferences = getDefaultPreferences();
+           // ... (initialize preferences) ...
         }
-
         if (!userPrefs.preferences.lastState) {
-            userPrefs.preferences.lastState = {
-                isMushafView: false,
-                lastSurah: surahNum,
-                lastVerse: verseNum,
-                lastPage: 1,
-                timestamp: new Date()
-            };
+           // ... (initialize lastState) ...
         } else {
-            userPrefs.preferences.lastState = {
-                ...userPrefs.preferences.lastState,
-                lastSurah: surahNum,
-                lastVerse: verseNum,
-                timestamp: new Date()
-            };
+           // ... (update lastState) ...
         }
-
         await userPrefs.save();
+        */
+        // --- END REMOVAL ---
 
-        res.json({ 
-            success: true, 
-            entry: historyEntry,
+        res.json({
+            success: true,
+            entry: historyEntry, // Return the history entry
             message: 'Reading history updated successfully'
         });
     } catch (error) {

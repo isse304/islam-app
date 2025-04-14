@@ -1023,8 +1023,11 @@ export class FirebaseAuthService {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
+        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] User: ${userId}, Entry: S:${entry.surah} V:${entry.verse}`); // Log call details
         const token = await this.getToken(true); // Get fresh token for each attempt potentially needed
         if (!token) throw new Error('Authentication token unavailable for saving history.');
+
+        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] Got token. Making POST request...`); // Log before POST
 
         // console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
         await firstValueFrom(
@@ -1034,6 +1037,8 @@ export class FirebaseAuthService {
             { headers: { 'Authorization': `Bearer ${token}` } }
           )
         );
+
+        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] POST request successful.`); // Log success
 
         // Server call successful, the optimistic update is now confirmed.
         // console.log('[AuthService] Reading history saved successfully on server.');
@@ -1545,22 +1550,51 @@ export class FirebaseAuthService {
   async clearHistory(): Promise<void> {
     const user = this.auth.currentUser;
     if (!user) throw new Error('No user logged in');
+    const userId = user.uid; // Get userId for cache key
 
+    // --- Remove Optimistic Update ---
+    /*
     // Update state immediately
     const current = this.userDataSubject.getValue();
     this.userDataSubject.next({ ...current, history: [] });
+    */
 
-    // Clear on server
-    const token = await user.getIdToken();
-    await this.http.delete<any>(
-      `${environment.apiUrl}/api/user/${user.uid}/reading-history`,
-          {
-            headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+    // Clear on server first
+    try {
+      const token = await user.getIdToken();
+      await this.http.delete<any>(
+        `${environment.apiUrl}/api/user/${userId}/reading-history`,
+            {
+              headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
         }
+      ).toPromise();
+
+      // --- Update State AFTER Successful Deletion --- 
+      console.log(`[AuthService clearHistory] Backend deletion successful for ${userId}. Updating local state.`);
+      const current = this.userDataSubject.getValue();
+      // Ensure 'current' is not null before spreading
+      if (current) {
+           this.userDataSubject.next({ ...current, history: [] });
+      } else {
+           // If current somehow null, maybe just emit default with empty history?
+           // Or handle based on expected application logic
+           console.warn('[AuthService clearHistory] userDataSubject was null, cannot spread. State might be inconsistent.');
       }
-    ).toPromise();
+
+      // --- Clear Cache AFTER Successful Deletion ---
+      const cacheKey = `reading_history_${userId}`;
+      console.log(`[AuthService clearHistory] Clearing cache key: ${cacheKey}`);
+      localStorage.removeItem(cacheKey); // Assuming simple localStorage cache for history
+      // If using a more complex cache service, call its clear method here.
+
+    } catch (error) {
+        console.error('[AuthService clearHistory] Error deleting history on server:', error);
+        // Re-throw the error so the caller (ProfileComponent) can catch it
+        throw error; 
+    }
   }
 
   // Bookmark methods

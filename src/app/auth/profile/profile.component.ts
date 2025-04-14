@@ -457,15 +457,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
   
   async clearHistory(): Promise<void> {
-    this.authService.clearHistory()
-      .then(() => {
-          this.readingHistory = [];
-        this.cdr.detectChanges(); // Update UI
-        this.snackBar.open('Reading history cleared', 'Close', { duration: 3000 });
-      })
-      .catch((error: any) => {
-        this.snackBar.open(`Error clearing history: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
-      });
+    try {
+      await this.authService.clearHistory();
+      // No need to manually update this.readingHistory here,
+      // the subscription to authService.history$ will handle it.
+      this.snackBar.open('Reading history cleared', 'Close', { duration: 3000 });
+    } catch (error: any) {
+      this.snackBar.open(`Error clearing history: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
+    }
+    // No need for manual change detection here, async pipe/subscription handles it.
+    // this.cdr.detectChanges();
   }
   
   getSurahName(surahNumber: string | number): string {
