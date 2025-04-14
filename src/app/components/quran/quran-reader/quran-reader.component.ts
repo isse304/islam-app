@@ -1896,7 +1896,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // UI interaction methods
   public toggleView(): void {
     this.isMushafView = !this.isMushafView;
-    
+
     // Prepare query parameters
     const params: any = {
       mode: this.isMushafView ? 'mushaf' : 'translation',
@@ -1920,26 +1920,40 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.loadMushafPage(this.currentPage, true); // Pass true for toggleView
     } else {
       // When switching to translation view
-      this.updateCurrentSurah(this.currentPage); // <<< ADD THIS LINE to update surah based on last mushaf page
-      this.selectedSurah = this.currentSurah; // <<< FIX: Update dropdown selection
-      params.surah = this.currentSurah;
-      // Pass the verse number that corresponds to the start of the Mushaf page if possible, otherwise 1
-      // This requires a mapping from page to verse, which might not be readily available.
-      // Defaulting to verse 1 for now.
-      params.verse = 1; // Default to verse 1 when switching to translation
+      this.updateCurrentSurah(this.currentPage); // Determine the new surah based on the last Mushaf page
+      const targetSurah = this.currentSurah;    // <<< Capture the determined surah number
+
+      // *** Explicitly update both currentSurah and the dropdown model (selectedSurah) ***
+      this.currentSurah = targetSurah;
+      this.selectedSurah = targetSurah; // <-- Ensure dropdown syncs
+      
+      // *** ADD Change Detection ***
+      this.changeDetector.markForCheck(); // Trigger change detection for the dropdown
+
+      params.surah = targetSurah; // Use captured targetSurah for params
+      params.verse = 1; // Always default to verse 1 when switching to translation
       this.currentVerse = 1; // Reset verse state
-      this.loadSurah(this.currentSurah || 1).subscribe();
+
+      // *** Load the surah data AFTER state is updated using the captured targetSurah ***
+      this.loadSurah(targetSurah || 1).subscribe({
+         next: () => { /* Optional: console.log or scroll logic */ },
+         error: (err) => { console.error(`Error loading Surah ${targetSurah} on view toggle:`, err); }
+      });
     }
 
     // Save preferences (debounced) after view toggle
     this.debouncedSavePreferences();
 
-    // Update URL parameters
-    this.router.navigate([], {
-      relativeTo: this.route,
-      queryParams: params,
-      replaceUrl: true
-    });
+    // Update URL parameters using setTimeout to ensure it runs after state updates and potential load start
+    setTimeout(() => {
+      this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: params,
+        queryParamsHandling: 'merge', // Merge to keep other params like translation/reciter
+        replaceUrl: true
+      });
+      this.changeDetector.markForCheck(); // Ensure change detection runs after async navigation/load start
+    }, 0);
   }
 
   public toggleVerseTranslation(event: Event, verseNumber: number): void {
