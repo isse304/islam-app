@@ -2,8 +2,8 @@
     <div class="container mx-auto p-4 sm:p-6 md:p-8 prose">
         <!-- Main Content Area (Render only AFTER initial premium check AND if user IS premium) -->
         <div class="grid lg:grid-cols-2 gap-8" *ngIf="initialPremiumCheckComplete && isPremium">
-            <!-- Current Verse Section (Now just the display) -->
-            <div class="bg-white rounded-xl shadow-lg p-6 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
+            <!-- Left Column: Current Verse Section (Hidden on small screens) -->
+            <div class="hidden lg:block bg-white rounded-xl shadow-lg p-6 max-h-[calc(100vh-4rem)] overflow-y-auto custom-scrollbar">
                 <!-- Verse Selection Controls MOVED OUTSIDE -->
                 
                 <div class="verse-meaning space-y-6">
@@ -62,7 +62,7 @@
               </div>
 
               <!-- Chat Interface -->
-              <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[600px]"> <!-- Adjusted height if needed -->
+              <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col h-[calc(100vh-16rem)] md:h-[600px] max-h-[80vh]">
                  <div class="flex justify-between items-center mb-6">
                   <div class="flex items-center gap-4">
                     <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">
