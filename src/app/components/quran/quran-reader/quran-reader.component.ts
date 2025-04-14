@@ -387,27 +387,34 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       ).subscribe(params => {
         // console.log('[ngOnInit] Query Params changed:', params);
         
-        // --- Determine State based on Params (URL > localStorage > Default) ---
-        let finalSurah = 1;
-        let finalVerse = 1;
-        let finalIsMushaf = false;
-        let finalPageNumber = 1;
+        // --- Determine TARGET State based on Params (URL > localStorage > Default) ---
+        // Use temporary variables to hold the state determined for THIS navigation event
+        let targetSurah = 1;
+        let targetVerse = 1;
+        let targetIsMushaf = false;
+        let targetDisplayPage = 1; // Use display page for consistency here
         let stateSource = 'Default';
         let restoredState: any = null;
         
         // 1. Check localStorage (only as a fallback if URL is incomplete)
         try {
-          const stateJson = localStorage.getItem('quranReaderState');
+          const stateJson = localStorage.getItem(this.quranReaderStateKey); // Use specific key
           if (stateJson) restoredState = JSON.parse(stateJson);
         } catch (e) { /* Handle error */ }
 
+        // Apply localStorage state as initial fallback
         if (restoredState && restoredState.surah) {
-             finalSurah = parseInt(restoredState.surah, 10) || finalSurah;
-             finalVerse = parseInt(restoredState.verse, 10) || finalVerse;
-             finalIsMushaf = !!restoredState.isMushafView;
+             targetSurah = parseInt(restoredState.surah, 10) || targetSurah;
+             targetVerse = parseInt(restoredState.verse, 10) || targetVerse;
+             targetIsMushaf = restoredState.mode === 'mushaf';
+             targetDisplayPage = parseInt(restoredState.page, 10) || targetDisplayPage;
+             // Apply non-navigational prefs directly if desired, or handle in loadSecondaryData
              this.selectedTranslation = restoredState.translation || this.selectedTranslation;
-             const restoredReciter = this.reciters.find(r => r.id === restoredState.reciterId);
-             if (restoredReciter) this.selectedReciter = restoredReciter;
+             const restoredReciterId = parseInt(restoredState.reciter, 10);
+             if (!isNaN(restoredReciterId)) {
+                const restoredReciter = this.reciters.find(r => r.id === restoredReciterId);
+                if (restoredReciter) this.selectedReciter = restoredReciter;
+             }
              stateSource = 'localStorage';
         }
         
@@ -419,10 +426,22 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         const urlReciter = parseInt(params['reciter'], 10);
         const urlPage = parseInt(params['page'], 10);
 
-        if (urlSurah >= 1 && urlSurah <= 114) {
-          finalSurah = urlSurah;
-          finalVerse = (urlVerse >= 1) ? urlVerse : 1;
-          finalIsMushaf = urlMode === 'mushaf';
+        // Determine if URL provides valid primary navigation info (Surah or Mushaf Page)
+        const hasValidUrlNav = (urlSurah >= 1 && urlSurah <= 114) || (urlMode === 'mushaf' && urlPage >= 1 && urlPage <= this.DISPLAY_TOTAL);
+
+        if (hasValidUrlNav) {
+          targetIsMushaf = urlMode === 'mushaf'; // Prioritize URL mode
+          if (targetIsMushaf) {
+            targetDisplayPage = (urlPage >= 1 && urlPage <= this.DISPLAY_TOTAL) ? urlPage : (this.quranFlash.surahPageMap[urlSurah] ? this.actualToDisplayPage(this.quranFlash.surahPageMap[urlSurah]) : 1); // Page from URL, fallback to surah start, then 1
+            targetSurah = urlSurah || this.currentSurah; // Keep surah if provided, else maybe derive from page later if needed
+            targetVerse = 1; // Reset verse in Mushaf mode
+          } else {
+            targetSurah = (urlSurah >= 1 && urlSurah <= 114) ? urlSurah : 1;
+            targetVerse = (urlVerse >= 1) ? urlVerse : 1;
+            targetDisplayPage = 1; // Reset page in Translation mode
+          }
+          
+          // Apply non-navigational URL params
           if (urlTranslation) this.selectedTranslation = urlTranslation;
           if (!isNaN(urlReciter)) {
             const foundReciter = this.reciters.find(r => r.id === urlReciter);
@@ -430,48 +449,39 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           }
           stateSource = 'URL';
         } else {
-          // console.log('[ngOnInit] URL params incomplete or invalid, potentially using localStorage/default.');
-        }
-
-        // Determine finalPageNumber specifically for Mushaf mode
-        if (finalIsMushaf) {
-          if (urlPage >= 1 && urlPage <= this.DISPLAY_TOTAL) {
-            finalPageNumber = urlPage;
-          } else if (restoredState?.page >= 1 && restoredState.page <= this.DISPLAY_TOTAL) {
-            finalPageNumber = restoredState.page;
-          } else {
-            finalPageNumber = 1; // Default
-          }
+          // console.log('[ngOnInit] URL params invalid/incomplete for navigation, using localStorage/default state.');
+          // State remains as determined from localStorage/default
         }
         
-        // console.log(`[ngOnInit QueryParams Sub] State determined from ${stateSource}: S${finalSurah}:V${finalVerse}, Mode: ${finalIsMushaf ? 'mushaf' : 'translation'}, Page: ${finalPageNumber}`);
-
-        // --- Apply Final State to Component --- 
-        // Check if state actually changed to prevent unnecessary reloads
-        const stateChanged = this.currentSurah !== finalSurah || 
-                             this.currentVerse !== finalVerse || 
-                             this.isMushafView !== finalIsMushaf || // Correct check here
-                             (finalIsMushaf && this.displayPageNumber !== finalPageNumber);
+        // --- Compare TARGET state with CURRENT component state --- 
+        const stateChanged = 
+          this.currentSurah !== targetSurah || 
+          (this.isMushafView !== targetIsMushaf) || // Check mode change first
+          (!targetIsMushaf && this.currentVerse !== targetVerse) || 
+          (targetIsMushaf && this.displayPageNumber !== targetDisplayPage);
                              
-        if (stateChanged || !this.verses.length || this.isMushafView !== finalIsMushaf) { // Add explicit check for mode change
-          // console.log(`[ngOnInit QueryParams Sub] State changed or initial load detected. Reloading content.`);
-          this.currentSurah = finalSurah;
-          this.selectedSurah = finalSurah;
-          this.currentVerse = finalVerse;
-          this.isMushafView = finalIsMushaf; // <<< Ensure this is set based on FINAL determination
-          if (finalIsMushaf) {
-             this.displayPageNumber = finalPageNumber;
-             this.currentPage = this.displayToActualPage(finalPageNumber);
-             this.titleService.setTitle(`Mushaf Page ${finalPageNumber} | Nura AI`);
-             this.metaService.updateTag({ name: 'description', content: `View page ${finalPageNumber} of the Holy Quran Mushaf. Explore the Uthmani script online with Nura AI.` });
-          }
+        // --- Apply State and Load Content --- 
+        if (stateChanged || !this.verses.length) { // Reload if state changed OR verses aren't loaded yet
+          // console.log(`[ngOnInit QueryParams Sub] State change (${stateSource}) detected. Reloading. Target: S${targetSurah} V${targetVerse} Mode:${targetIsMushaf} Page:${targetDisplayPage}`);
           
-          // --- Load Content Based on Final State --- 
-          this.loadInitialContent(finalSurah, finalVerse, finalIsMushaf, finalIsMushaf ? finalPageNumber : undefined);
+          // **Crucially, update component state based on TARGET variables BEFORE loading**
+          this.currentSurah = targetSurah;
+          this.selectedSurah = targetSurah; // Keep dropdown in sync
+          this.currentVerse = targetVerse;
+          this.isMushafView = targetIsMushaf;
+          this.displayPageNumber = targetDisplayPage; // Use display page
+          this.currentPage = this.displayToActualPage(targetDisplayPage); // Update actual page too
+
+          // Call loadInitialContent with the TARGET state determined for this event
+          this.loadInitialContent(targetSurah, targetVerse, targetIsMushaf, targetDisplayPage);
+
         } else {
-           // console.log(`[ngOnInit QueryParams Sub] State unchanged. Skipping content reload.`);
-           // Ensure URL is updated even if content doesn't reload
-           this.updateUrlParams(); 
+          // console.log(`[ngOnInit QueryParams Sub] State unchanged (${stateSource}). Skipping content reload.`);
+          // Ensure URL reflects the current state even if no content reload
+          this.updateUrlParams(); 
+          // Still load secondary data if it hasn't been loaded yet
+          // Check a flag or condition if needed, e.g., !this.readingHistory.length
+          this.loadSecondaryData(); 
         }
       });
 
