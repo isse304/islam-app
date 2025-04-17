@@ -188,7 +188,7 @@ export class FirebaseAuthService {
     private snackBar: MatSnackBar,
     private injector: Injector // Inject Injector
   ) {
-    // console.log('[AuthService] Constructor called');
+    // // console.log('[AuthService] Constructor called');
     // Initialize authPromise but don't await here
     this.authPromise = this.initializeAuth();
     this.setupAuthStateListener();
@@ -238,7 +238,7 @@ export class FirebaseAuthService {
   // Helper to signal auth readiness only once
   private signalAuthReady(): void {
     if (!this.hasSignaledAuthReady) {
-        // console.log('[FirebaseAuthService] Signaling authReady (true).');
+        // // console.log('[FirebaseAuthService] Signaling authReady (true).');
         this.hasSignaledAuthReady = true; // Set flag immediately
         this.authReady.next(true); // Emit true
     }
@@ -249,7 +249,7 @@ export class FirebaseAuthService {
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
       this.tokenRefreshTimer = null;
-      // console.log('[Timer] Token refresh timer cleared.');
+      // // console.log('[Timer] Token refresh timer cleared.');
     }
   }
 
@@ -261,19 +261,19 @@ export class FirebaseAuthService {
       localStorage.removeItem(this.PREMIUM_TIMESTAMP_KEY);
       localStorage.removeItem(this.TOKEN_CACHE_KEY); // Also clear token from storage
       // Clear other relevant cache keys if any
-      // console.log('[Cache] User cache cleared.');
+      // // console.log('[Cache] User cache cleared.');
   }
 
   // Centralized method to clear all auth data on sign-out or error
   private clearAuthData(): void {
-      // console.log('[clearAuthData] Clearing auth data...');
+      // // console.log('[clearAuthData] Clearing auth data...');
       this._user.next(null);
       this.userDataSubject.next(null); // Clear user data observable
       this.cachedToken = null;
       this.clearTokenRefreshTimer(); // Call implemented method
       this.clearUserCache(); // Call implemented method
       // Reset any other relevant state (e.g., loading flags if necessary)
-      // console.log('[clearAuthData] Auth data cleared.');
+      // // console.log('[clearAuthData] Auth data cleared.');
   }
 
   // Define or ensure getDefaultPreferences exists
@@ -300,19 +300,19 @@ export class FirebaseAuthService {
 
   // Handles processing after a user is signed in (Firebase Auth level)
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<AppUser | null> {
-    // console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
+    // // console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
     const startTime = Date.now();
     let appUser: AppUser | null = null;
 
     try {
       // Force refresh token to get latest claims
       const tokenResult = await firebaseUser.getIdTokenResult(true);
-      // console.log(`[handleUserSignedIn] Fetched token & claims for ${firebaseUser.uid}`);
+      // // console.log(`[handleUserSignedIn] Fetched token & claims for ${firebaseUser.uid}`);
 
       // Map Firebase user + claims to AppUser
       appUser = this.mapFirebaseUser(firebaseUser, tokenResult);
 
-      // console.log(`[handleUserSignedIn] Constructed AppUser. Time: ${Date.now() - startTime}ms`);
+      // // console.log(`[handleUserSignedIn] Constructed AppUser. Time: ${Date.now() - startTime}ms`);
 
       // Update the main user BehaviorSubject FIRST to make user ID available
       this._user.next(appUser);
@@ -361,7 +361,7 @@ export class FirebaseAuthService {
         this.cachedToken = { token: tokenResult.token, timestamp: Date.now() };
         localStorage.setItem(this.TOKEN_CACHE_KEY, JSON.stringify(this.cachedToken));
         await this.cacheUserData(appUser);
-        // console.log(`[handleUserSignedIn] State updated and data cached.`);
+        // // console.log(`[handleUserSignedIn] State updated and data cached.`);
 
         // Schedule next token refresh
         this.scheduleTokenRefresh();
@@ -385,7 +385,7 @@ export class FirebaseAuthService {
   private setupAuthStateListener(): void {
     onAuthStateChanged(this.auth, async (firebaseUser) => {
       this.ngZone.run(async () => { // Ensure operations run within Angular's zone
-        // console.log('[onAuthStateChanged] Auth state changed. User:', firebaseUser ? firebaseUser.uid : 'null');
+        // // console.log('[onAuthStateChanged] Auth state changed. User:', firebaseUser ? firebaseUser.uid : 'null');
         if (firebaseUser) {
           // User is signed in
           this._isLoading.next(true); // Start loading
@@ -393,11 +393,11 @@ export class FirebaseAuthService {
           this._isLoading.next(false); // Stop loading
         } else {
           // User is signed out
-          // console.log('[onAuthStateChanged] User signed out.');
+          // // console.log('[onAuthStateChanged] User signed out.');
           this.clearAuthData(); // Clear local state
           // Navigate to login only if not already on an auth page
           if (!this.router.url.includes('/auth')) {
-              // console.log('[onAuthStateChanged] Redirecting to login due to sign out.');
+              // // console.log('[onAuthStateChanged] Redirecting to login due to sign out.');
               this.router.navigate(['/auth/login']);
           }
         }
@@ -482,15 +482,15 @@ export class FirebaseAuthService {
   }
 
   async isAuthenticated(): Promise<boolean> {
-    // console.log('🔒 Checking authentication...');
+    // // console.log('🔒 Checking authentication...');
     await this.waitForAuthReady(); // Ensure listener has processed initial state
     const user = this._user.getValue();
-    // console.log('🔒 Auth check result:', { isAuthenticated: !!user, user });
+    // // console.log('🔒 Auth check result:', { isAuthenticated: !!user, user });
     return !!user;
   }
 
   async refreshSubscriptionStatus(): Promise<boolean> {
-    // console.log('Starting subscription status refresh...');
+    // // console.log('Starting subscription status refresh...');
     
     try {
         const user = this.auth.currentUser;
@@ -504,7 +504,7 @@ export class FirebaseAuthService {
         if (lastRefreshTime) {
             const timeSinceLastRefresh = Date.now() - parseInt(lastRefreshTime);
             if (timeSinceLastRefresh < 5 * 60 * 1000) { // Less than 5 minutes
-                // console.log('Using cached subscription status');
+                // // console.log('Using cached subscription status');
                 return true;
             }
         }
@@ -535,7 +535,7 @@ export class FirebaseAuthService {
                 localStorage.setItem('premium_status_timestamp', Date.now().toString());
                 localStorage.setItem('subscription_refresh_timestamp', Date.now().toString());
                 
-                // console.log('Subscription status refreshed:', { isPremium, features });
+                // // console.log('Subscription status refreshed:', { isPremium, features });
             }
 
             return true;
@@ -572,15 +572,15 @@ export class FirebaseAuthService {
         const userId = user.uid;
 
         // Check cache first
-        // console.log(`[AuthService] getUserPreferences: Checking cache for user ${userId}...`);
+        // // console.log(`[AuthService] getUserPreferences: Checking cache for user ${userId}...`);
         const cachedData = this.getCachedData(`${this.USER_CACHE_KEY}_${userId}`);
         if (cachedData && cachedData.preferences) {
-          // console.log(`[AuthService] getUserPreferences: Cache hit for user ${userId}.`);
+          // // console.log(`[AuthService] getUserPreferences: Cache hit for user ${userId}.`);
           this.preferencesSubject.next(cachedData.preferences);
           return cachedData.preferences;
         }
 
-        // console.log(`[AuthService] getUserPreferences: Cache miss or stale for user ${userId}. Fetching from API...`);
+        // // console.log(`[AuthService] getUserPreferences: Cache miss or stale for user ${userId}. Fetching from API...`);
         this.lastPreferencesRequest = Date.now();
 
         // Fetch from API if not cached or cache expired
@@ -605,7 +605,7 @@ export class FirebaseAuthService {
         const preferencesToCache = response?.preferences || this.getDefaultPreferences();
 
         // --- Update Cache ---
-        // console.log(`[AuthService] getUserPreferences: Caching new data for ${userId}`);
+        // // console.log(`[AuthService] getUserPreferences: Caching new data for ${userId}`);
         this.setCachedData(`${this.USER_CACHE_KEY}_${userId}`, { preferences: preferencesToCache });
         // --- End Update Cache ---
 
@@ -702,7 +702,7 @@ export class FirebaseAuthService {
         // Silently handle 404 errors for admin endpoint - this is expected in development
         const httpError = error as any;
         if (httpError?.status === 404) {
-          // console.log('Admin status endpoint not available, defaulting to non-admin');
+          // // console.log('Admin status endpoint not available, defaulting to non-admin');
         } else {
           // console.warn('Could not check admin status');
         }
@@ -710,7 +710,7 @@ export class FirebaseAuthService {
         return false;
       }
     } catch (error) {
-      // console.log('Error in admin status check, defaulting to non-admin');
+      // // console.log('Error in admin status check, defaulting to non-admin');
       return false;
     }
   }
@@ -731,12 +731,12 @@ export class FirebaseAuthService {
       .then(async (userCredential) => {
         // User created successfully
         const firebaseUser = userCredential.user;
-        // console.log('[AuthService] User created successfully:', firebaseUser.uid);
+        // // console.log('[AuthService] User created successfully:', firebaseUser.uid);
 
         // Send verification email immediately after creation
         try {
           await sendEmailVerification(firebaseUser);
-          // console.log('[AuthService] Verification email sent to:', firebaseUser.email);
+          // // console.log('[AuthService] Verification email sent to:', firebaseUser.email);
         } catch (verificationError) {
           // console.error('[AuthService] Error sending verification email:', verificationError);
           // Decide how to handle this - maybe log it, but don't fail the signup
@@ -754,10 +754,10 @@ export class FirebaseAuthService {
   // Sign in with Google
   async signInWithGoogle(): Promise<UserCredential> {
     const provider = new GoogleAuthProvider();
-    console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
+    // console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
     try {
       const credential = await signInWithPopup(this.auth, provider);
-      console.log('[AuthService] signInWithPopup successful.'); // Log success
+      // console.log('[AuthService] signInWithPopup successful.'); // Log success
       // No need to call handleUserSignedIn here, onAuthStateChanged will handle it.
       return credential;
     } catch (error: any) { // Add type annotation to error
@@ -765,9 +765,9 @@ export class FirebaseAuthService {
       // Handle specific errors if needed
       if (error.code === 'auth/popup-closed-by-user') {
         // Handle popup closed specifically, maybe just log or return null/reject differently
-        console.log('[AuthService] Google Sign-In popup closed by user.');
+        // console.log('[AuthService] Google Sign-In popup closed by user.');
       } else if (error.code === 'auth/cancelled-popup-request') {
-        console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
+        // console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
       }
       throw error; // Re-throw the error for the component to catch
     }
@@ -775,17 +775,17 @@ export class FirebaseAuthService {
 
   // Handle redirect result
   private async handleRedirectResult(): Promise<void> {
-    console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
+    // console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
     this._isLoading.next(true);
     try {
       const credential = await getRedirectResult(this.auth);
-      console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
+      // console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
       if (credential) {
-        console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
+        // console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
         const user = await this.handleUserSignedIn(credential.user);
         if (user) {
           // Navigate only if a user was successfully processed from redirect
-          console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
+          // console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
           this.ngZone.run(() => {
              this.router.navigateByUrl(this.redirectUrl || '/home').catch(err => {
                console.error('[AuthService] handleRedirectResult: Navigation failed after redirect:', err);
@@ -796,7 +796,7 @@ export class FirebaseAuthService {
             console.warn('[AuthService] handleRedirectResult: Redirect credential processed, but handleUserSignedIn resulted in null user.');
         }
       } else {
-        console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
+        // console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
       }
     } catch (error: any) {
       console.error('[AuthService] handleRedirectResult: Error processing redirect result:', error); // Log error
@@ -808,14 +808,14 @@ export class FirebaseAuthService {
 
   // Sign out
   async signOut(): Promise<void> {
-    console.log('[FirebaseAuthService] signOut called.');
+    // console.log('[FirebaseAuthService] signOut called.');
     this._isLoading.next(true);
     try {
       // Cancel any ongoing operations if necessary (e.g., token refresh timer)
       if (this.tokenRefreshTimer) {
         clearTimeout(this.tokenRefreshTimer);
         this.tokenRefreshTimer = null;
-        // console.log('[FirebaseAuthService] Token refresh timer cleared.');
+        // // console.log('[FirebaseAuthService] Token refresh timer cleared.');
       }
 
       // Clear local state immediately
@@ -843,7 +843,7 @@ export class FirebaseAuthService {
 
       // Sign out from Firebase Auth
       await signOut(this.auth);
-      // console.log('[FirebaseAuthService] Firebase sign-out successful.');
+      // // console.log('[FirebaseAuthService] Firebase sign-out successful.');
 
       // Clear any service-specific state if needed (e.g., in QuranService, etc.)
       // Example: this.quranService.clearUserState();
@@ -874,7 +874,7 @@ export class FirebaseAuthService {
 
     } finally {
       this._isLoading.next(false);
-      // console.log('[FirebaseAuthService] signOut finished.');
+      // // console.log('[FirebaseAuthService] signOut finished.');
 
       // Force a full page reload to the login page to ensure clean state
       // Use window.location.assign for cleaner history than window.location.href
@@ -1012,8 +1012,8 @@ export class FirebaseAuthService {
             const originalHistory: ReadingHistoryEntry[] = originalData.history ?? [];
             const optimisticallyUpdatedHistory = this.addOrUpdateHistoryEntry(originalHistory, entry);
             this.userDataSubject.next({ ...originalData, history: optimisticallyUpdatedHistory });
-            // console.log('[AuthService] userDataSubject emitted after optimistic update:', updatedUserData);
-            // console.log('[AuthService] Optimistically updated history:', entry);
+            // // console.log('[AuthService] userDataSubject emitted after optimistic update:', updatedUserData);
+            // // console.log('[AuthService] Optimistically updated history:', entry);
         } catch (optimisticError) {
             // console.error('[AuthService] Error during optimistic history update:', optimisticError);
             // If optimistic update fails, maybe don't proceed? For now, let server call attempt.
@@ -1023,13 +1023,13 @@ export class FirebaseAuthService {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] User: ${userId}, Entry: S:${entry.surah} V:${entry.verse}`); // Log call details
+        // console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] User: ${userId}, Entry: S:${entry.surah} V:${entry.verse}`); // Log call details
         const token = await this.getToken(true); // Get fresh token for each attempt potentially needed
         if (!token) throw new Error('Authentication token unavailable for saving history.');
 
-        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] Got token. Making POST request...`); // Log before POST
+        // console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] Got token. Making POST request...`); // Log before POST
 
-        // console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
+        // // console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
         await firstValueFrom(
           this.http.post<any>(
             `${environment.apiUrl}/api/user/${userId}/reading-history`, 
@@ -1038,10 +1038,10 @@ export class FirebaseAuthService {
           )
         );
 
-        console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] POST request successful.`); // Log success
+        // console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] POST request successful.`); // Log success
 
         // Server call successful, the optimistic update is now confirmed.
-        // console.log('[AuthService] Reading history saved successfully on server.');
+        // // console.log('[AuthService] Reading history saved successfully on server.');
         return; // Exit loop on success
 
       } catch (error: any) {
@@ -1051,7 +1051,7 @@ export class FirebaseAuthService {
         if (!reverted) {
             // console.warn('[AuthService] Reverting optimistic history update due to server error.');
             this.userDataSubject.next(originalData); // Restore original state
-            // console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
+            // // console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
             reverted = true;
             // Optionally show a snackbar/message to the user about the failure
         }
@@ -1231,7 +1231,7 @@ export class FirebaseAuthService {
     await this.authReady.pipe(take(1)).toPromise(); // Wait for auth state to be ready
     const user = this._user.getValue();
     if (!user) {
-      // console.log('[isPremiumUser] No user logged in.');
+      // // console.log('[isPremiumUser] No user logged in.');
       return false;
     }
 
@@ -1243,7 +1243,7 @@ export class FirebaseAuthService {
         // For client-side check, simple check is okay
         const decoded: any = JSON.parse(atob(token.split('.')[1]));
         if (decoded.premium === true) {
-           // console.log('[isPremiumUser] Determined premium status from token claim.');
+           // // console.log('[isPremiumUser] Determined premium status from token claim.');
           return true;
         }
       } catch (e) {
@@ -1252,7 +1252,7 @@ export class FirebaseAuthService {
     }
 
     // Fallback: Check the AppUser object's isPremium field (updated by handleUserSignedIn)
-     // console.log(`[isPremiumUser] Falling back to AppUser object check. isPremium: ${user.isPremium}`);
+     // // console.log(`[isPremiumUser] Falling back to AppUser object check. isPremium: ${user.isPremium}`);
     return user.isPremium;
   }
 
@@ -1262,7 +1262,7 @@ export class FirebaseAuthService {
     if (user) {
       try {
         await sendEmailVerification(user);
-        // console.log('Verification email sent successfully.');
+        // // console.log('Verification email sent successfully.');
         // Optionally show a success message to the user
       } catch (error) {
         // console.error('Error sending verification email:', error);
@@ -1315,7 +1315,7 @@ export class FirebaseAuthService {
       if (Date.now() - timestamp < this.REQUEST_CACHE_DURATION) {
         return data;
       }
-      // console.log(`[AuthService] Cache expired for key: ${key}`);
+      // // console.log(`[AuthService] Cache expired for key: ${key}`);
       localStorage.removeItem(key); // Remove expired cache item
       return null;
     } catch (error) {
@@ -1338,19 +1338,19 @@ export class FirebaseAuthService {
 
   // User data management
   private async loadUserData(userId: string): Promise<void> {
-    // console.log(`[AuthService] loadUserData called for ${userId}`);
+    // // console.log(`[AuthService] loadUserData called for ${userId}`);
     // --- Add Caching Logic ---
     const cacheKey = `user_data_${userId}`;
     const cachedUserData = this.getCachedData(cacheKey); // Uses helper with REQUEST_CACHE_DURATION
     if (cachedUserData) {
-        // console.log(`[AuthService] loadUserData: Returning cached data for ${userId}`);
+        // // console.log(`[AuthService] loadUserData: Returning cached data for ${userId}`);
         this.userDataSubject.next(cachedUserData);
         this.preferencesSubject.next(cachedUserData.preferences || this.getDefaultPreferences()); // Update prefs too
         return; // Exit if cache is valid
     }
     // --- End Caching Logic ---
 
-    // console.log(`[AuthService] loadUserData: Cache miss or stale for ${userId}. Fetching from API...`);
+    // // console.log(`[AuthService] loadUserData: Cache miss or stale for ${userId}. Fetching from API...`);
 
     try {
         // Fetch combined user data from the backend profile endpoint
@@ -1371,7 +1371,7 @@ export class FirebaseAuthService {
         ));
 
         if (userData) {
-          // console.log(`[AuthService] loadUserData: Successfully fetched data for ${userId}.`);
+          // // console.log(`[AuthService] loadUserData: Successfully fetched data for ${userId}.`);
 
           // Ensure preferences object exists before caching/emitting
           if (!userData.preferences) {
@@ -1573,7 +1573,7 @@ export class FirebaseAuthService {
       ).toPromise();
 
       // --- Update State AFTER Successful Deletion --- 
-      console.log(`[AuthService clearHistory] Backend deletion successful for ${userId}. Updating local state.`);
+      // console.log(`[AuthService clearHistory] Backend deletion successful for ${userId}. Updating local state.`);
       const current = this.userDataSubject.getValue();
       // Ensure 'current' is not null before spreading
       if (current) {
@@ -1586,7 +1586,7 @@ export class FirebaseAuthService {
 
       // --- Clear Cache AFTER Successful Deletion ---
       const cacheKey = `reading_history_${userId}`;
-      console.log(`[AuthService clearHistory] Clearing cache key: ${cacheKey}`);
+      // console.log(`[AuthService clearHistory] Clearing cache key: ${cacheKey}`);
       localStorage.removeItem(cacheKey); // Assuming simple localStorage cache for history
       // If using a more complex cache service, call its clear method here.
 
@@ -1777,7 +1777,7 @@ export class FirebaseAuthService {
   public async waitForAuthReady(): Promise<void> {
     // Wait for the authReady ReplaySubject to emit true
     await firstValueFrom(this.authReady$);
-    // console.log('[waitForAuthReady] Auth is ready.'); // Log confirmation
+    // // console.log('[waitForAuthReady] Auth is ready.'); // Log confirmation
   }
 
   private initTokenFromCache() {
@@ -1890,11 +1890,11 @@ export class FirebaseAuthService {
     const firebaseUser = getAuth(this.firebaseApp).currentUser;
     if (firebaseUser) {
       try {
-        // console.log(`[FirebaseAuthService] Reloading user state for ${firebaseUser.uid}...`);
+        // // console.log(`[FirebaseAuthService] Reloading user state for ${firebaseUser.uid}...`);
         await firebaseUser.reload();
         const refreshedFirebaseUser = getAuth(this.firebaseApp).currentUser; // Get the reloaded user
         if (refreshedFirebaseUser) {
-          // console.log(`[FirebaseAuthService] User state reloaded. emailVerified: ${refreshedFirebaseUser.emailVerified}. Updating internal state...`);
+          // // console.log(`[FirebaseAuthService] User state reloaded. emailVerified: ${refreshedFirebaseUser.emailVerified}. Updating internal state...`);
           // Re-process the user state to update the BehaviorSubject and potentially claims
           // Assuming handleUserSignedIn fetches/processes claims and returns the full AppUser
           const processedUser = await this.handleUserSignedIn(refreshedFirebaseUser); 
@@ -1911,7 +1911,7 @@ export class FirebaseAuthService {
         return this._user.getValue(); 
       }
     } else {
-      // console.log('[FirebaseAuthService] reloadCurrentUser called but no user is logged in.');
+      // // console.log('[FirebaseAuthService] reloadCurrentUser called but no user is logged in.');
       return null;
     }
   }
@@ -1923,10 +1923,10 @@ export class FirebaseAuthService {
     // Refresh slightly before the 1-hour expiry (e.g., 55 minutes)
     const refreshInterval = this.TOKEN_CACHE_DURATION; // Use defined duration
     this.tokenRefreshTimer = setTimeout(async () => {
-      // console.log('[Timer] Token refresh timer triggered. Forcing refresh...');
+      // // console.log('[Timer] Token refresh timer triggered. Forcing refresh...');
       try {
         await this.getToken(true); // Force refresh
-        // console.log('[Timer] Token refreshed successfully.');
+        // // console.log('[Timer] Token refreshed successfully.');
         this.startTokenRefreshTimer(); // Restart the timer for the next interval
       } catch (error) {
         // console.error('[Timer] Failed to refresh token automatically:', error);
@@ -1934,17 +1934,17 @@ export class FirebaseAuthService {
       }
     }, refreshInterval);
     this.refreshTimerStarted = true; // Mark timer as started
-    // console.log(`[Timer] Token refresh timer started. Interval: ${refreshInterval / 60000} minutes.`);
+    // // console.log(`[Timer] Token refresh timer started. Interval: ${refreshInterval / 60000} minutes.`);
   }
 
   // Method to schedule the next token refresh
   private scheduleTokenRefresh(): void {
-    // console.log('[scheduleTokenRefresh] Attempting to schedule token refresh...');
+    // // console.log('[scheduleTokenRefresh] Attempting to schedule token refresh...');
     this.clearTokenRefreshTimer(); // Clear any existing timer first
 
     const user = this._user.getValue();
     if (!user || !this.cachedToken) {
-      // console.log('[scheduleTokenRefresh] No user or cached token found. Cannot schedule refresh.');
+      // // console.log('[scheduleTokenRefresh] No user or cached token found. Cannot schedule refresh.');
       return;
     }
 
@@ -1972,12 +1972,12 @@ export class FirebaseAuthService {
         // return; // Or simply don't schedule if already expired
     }
 
+    // // console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
+
     // console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
 
-    console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
-
     this.tokenRefreshTimer = setTimeout(async () => {
-        console.log('[Timer] Token refresh timer triggered.');
+        // console.log('[Timer] Token refresh timer triggered.');
         try {
             await this.refreshToken(true); // Force refresh
         } catch (error) {
@@ -2011,17 +2011,17 @@ export class FirebaseAuthService {
     try {
       const user = this.getCurrentUser();
       if (!user) {
-        // console.log('[getReadingHistoryInternal] No current user, returning empty history');
+        // // console.log('[getReadingHistoryInternal] No current user, returning empty history');
         return [];
       }
 
-      // console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
-      // console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
+      // // console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
+      // // console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
 
       // Create AbortController for the request
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.log('[getReadingHistoryInternal] Request timeout reached, aborting...');
+        // console.log('[getReadingHistoryInternal] Request timeout reached, aborting...');
         abortController.abort();
       }, 10000); // 10 second timeout
 
@@ -2033,10 +2033,10 @@ export class FirebaseAuthService {
         // Clear timeout since request completed
         clearTimeout(timeoutId);
 
-        // console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
+        // // console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
         
         if (response && response.success && Array.isArray(response.history)) {
-          // console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
+          // // console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
           return response.history;
         } else {
           // console.warn('[getReadingHistoryInternal] Invalid response format:', response);
@@ -2061,7 +2061,7 @@ export class FirebaseAuthService {
 
   // Refreshes the Firebase ID token
   public async refreshToken(forceRefresh: boolean = false): Promise<string | null> {
-    console.log(`[refreshToken] Called. Force refresh: ${forceRefresh}`);
+    // console.log(`[refreshToken] Called. Force refresh: ${forceRefresh}`);
     const firebase = await this.authPromise; // Ensure Firebase Auth is initialized
     const currentUser = firebase.currentUser;
 
@@ -2072,9 +2072,9 @@ export class FirebaseAuthService {
     }
 
     try {
-        console.log(`[refreshToken] Getting ID token for user: ${currentUser.uid}`);
+        // console.log(`[refreshToken] Getting ID token for user: ${currentUser.uid}`);
         const token = await currentUser.getIdToken(forceRefresh);
-        console.log(`[refreshToken] Successfully obtained new token for ${currentUser.uid}.`);
+        // console.log(`[refreshToken] Successfully obtained new token for ${currentUser.uid}.`);
 
         // Update cache
         this.cachedToken = { token: token, timestamp: Date.now() };
@@ -2108,18 +2108,18 @@ export class FirebaseAuthService {
   // --- Initialization ---
   private async initializeAuth(): Promise<Auth> {
     if (this.isAuthInitialized) {
-        // console.log('[initializeAuth] Auth already initialized.');
+        // // console.log('[initializeAuth] Auth already initialized.');
         // Return the existing promise which resolves to the Auth instance
         return getAuth(initializeApp(environment.firebase)); 
     }
-    // console.log('[initializeAuth] Initializing Firebase Auth...');
+    // // console.log('[initializeAuth] Initializing Firebase Auth...');
     try {
         // Initialize Firebase App (idempotent)
         const app = initializeApp(environment.firebase);
         // Get Auth instance
         const auth = getAuth(app);
         this.isAuthInitialized = true;
-        // console.log('[initializeAuth] Firebase Auth initialized successfully.');
+        // // console.log('[initializeAuth] Firebase Auth initialized successfully.');
         return auth; // Resolve the promise with the Auth instance
     } catch (error) {
         // console.error('[initializeAuth] Error initializing Firebase:', error);

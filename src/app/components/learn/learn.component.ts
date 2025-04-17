@@ -364,7 +364,7 @@ export class LearnComponent implements OnInit, OnDestroy {
       });
     } finally {
       this.isLoading = false; // Ensure loading is false after completion or error
-      this.scrollToBottom(); // Scroll after potential new messages (like errors)
+      this.scrollToLatestMessage(); // Scroll after potential new messages (like errors)
     }
   }
 
@@ -394,15 +394,34 @@ export class LearnComponent implements OnInit, OnDestroy {
     }
   }
 
-  private scrollToBottom(): void {
+  private scrollToLatestMessage(role: 'user' | 'assistant' = 'assistant'): void { 
     try {
       setTimeout(() => {
         if (this.chatContainer) {
-          this.chatContainer.nativeElement.scrollTop = this.chatContainer.nativeElement.scrollHeight;
+          const messages = this.chatContainer.nativeElement.querySelectorAll('.flex.flex-col');
+          if (messages.length > 0) {
+            // Find the last message, prioritizing assistant messages if specified
+            let targetMessageIndex = messages.length - 1;
+            if (role === 'assistant') {
+              // Search backwards for the last assistant message
+              for (let i = messages.length - 1; i >= 0; i--) {
+                // Check the class of the inner div to determine role
+                const innerDiv = messages[i].querySelector('div > div'); // Get the div holding the ngClass
+                if (innerDiv && innerDiv.classList.contains('mr-auto')) { // 'mr-auto' indicates assistant
+                  targetMessageIndex = i;
+                  break;
+                }
+              }
+            }
+            const lastMessageElement = messages[targetMessageIndex];
+            if (lastMessageElement) {
+              lastMessageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }
         }
-      }, 100); // Small delay to ensure content is rendered
+      }, 150); // Increased delay slightly to ensure rendering
     } catch (err) {
-      console.error('Error scrolling to bottom:', err);
+      console.error('Error scrolling to latest message:', err);
     }
   }
 
@@ -422,7 +441,7 @@ export class LearnComponent implements OnInit, OnDestroy {
       type: 'conversation'
     });
     this.userQuestion = ''; // Clear input
-    this.scrollToBottom(); // Scroll after adding user message
+    this.scrollToLatestMessage('user'); // Scroll user message into view
     this.cdr.detectChanges(); // Update UI to show user message & loading spinner
 
     try {
@@ -502,7 +521,7 @@ export class LearnComponent implements OnInit, OnDestroy {
     } finally {
        // --- FINALLY BLOCK (executes on success OR error) --- 
       this.isLoading = false; // STOP loading
-      this.scrollToBottom(); // Scroll after adding response or error
+      this.scrollToLatestMessage('assistant'); // Scroll new assistant response/error into view
       this.cdr.detectChanges(); // Ensure UI updates after loading stops
       // --- END FINALLY BLOCK ---
     }

@@ -52,9 +52,9 @@ async function loadSurahThemes() {
     const filePath = path.join(__dirname, '../data/surah-themes.json');
     const data = await fs.readFile(filePath, 'utf8');
     surahThemesData = JSON.parse(data);
-    console.log('Successfully loaded Surah themes data.');
+    // console.log('Successfully loaded Surah themes data.');
   } catch (error) {
-    console.error('Error loading Surah themes data:', error);
+    // console.error('Error loading Surah themes data:', error);
     // Continue without themes if loading fails
   }
 }
@@ -67,11 +67,11 @@ loadSurahThemes();
 router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { source, surah, verse } = req.params;
-    console.log('Fetching tafsir for:', { source, surah, verse });
+    // console.log('Fetching tafsir for:', { source, surah, verse });
 
     const sourceConfig = tafsirSources[source as keyof typeof tafsirSources];
     if (!sourceConfig) {
-      console.warn('Invalid tafsir source requested:', source);
+      // console.warn('Invalid tafsir source requested:', source);
       return res.status(400).json({ 
         error: 'Invalid tafsir source',
         text: 'This tafsir source is not available.'
@@ -82,7 +82,7 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
     const surahNum = parseInt(surah);
     const verseNum = parseInt(verse);
     if (isNaN(surahNum) || isNaN(verseNum) || surahNum < 1 || surahNum > 114 || verseNum < 1) {
-      console.warn('Invalid surah or verse number:', { surah, verse });
+      // console.warn('Invalid surah or verse number:', { surah, verse });
       return res.status(400).json({
         error: 'Invalid surah or verse number',
         text: 'Please provide valid surah and verse numbers.'
@@ -90,7 +90,7 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
     }
 
     const url = `${sourceConfig.baseUrl}/by_ayah/${surah}:${verse}`;
-    console.log('Making request to QuranCDN:', url);
+    // console.log('Making request to QuranCDN:', url);
     
     try {
       const response = await axios.get(url, {
@@ -101,15 +101,15 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
         }
       });
 
-      console.log('QuranCDN response:', {
-        status: response.status,
-        hasData: !!response.data,
-        hasTafsir: !!response.data?.tafsir,
-        hasText: !!response.data?.tafsir?.text
-      });
+      // console.log('QuranCDN response:', {
+      //   status: response.status,
+      //   hasData: !!response.data,
+      //   hasTafsir: !!response.data?.tafsir,
+      //   hasText: !!response.data?.tafsir?.text
+      // });
 
       if (!response.data?.tafsir?.text) {
-        console.warn('No tafsir content found:', { source, surah, verse });
+        // console.warn('No tafsir content found:', { source, surah, verse });
         return res.status(404).json({
           error: 'Tafsir not found',
           text: 'Tafsir is not available for this verse.',
@@ -141,12 +141,12 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
           .join('\n\n');
       }
 
-      console.log('Successfully fetched and cleaned tafsir text:', {
-        source,
-        surah,
-        verse,
-        textLength: cleanText.length
-      });
+      // console.log('Successfully fetched and cleaned tafsir text:', {
+      //   source,
+      //   surah,
+      //   verse,
+      //   textLength: cleanText.length
+      // });
 
       return res.json({
         text: cleanText,
@@ -158,16 +158,16 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
       });
 
     } catch (apiError: any) {
-      console.error('QuranCDN API error:', {
-        source,
-        surah,
-        verse,
-        url,
-        status: apiError.response?.status,
-        statusText: apiError.response?.statusText,
-        error: apiError.message,
-        data: apiError.response?.data
-      });
+      // console.error('QuranCDN API error:', {
+      //   source,
+      //   surah,
+      //   verse,
+      //   url,
+      //   status: apiError.response?.status,
+      //   statusText: apiError.response?.statusText,
+      //   error: apiError.message,
+      //   data: apiError.response?.data
+      // });
 
       // Return a more graceful error response
       return res.status(404).json({
@@ -181,10 +181,10 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
       });
     }
   } catch (error: any) {
-    console.error('Server error in tafsir route:', {
-      error: error.message,
-      stack: error.stack
-    });
+    // console.error('Server error in tafsir route:', {
+    //   error: error.message,
+    //   stack: error.stack
+    // });
     
     next(error);
   }
@@ -193,7 +193,7 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
 // Tafsir chat endpoint (Requires Auth AND Premium)
 router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   // Log entry into the main handler
-  console.log(`[Tafsir Chat Route] Handler entered for user ${req.auth?.uid}. Question: "${req.body?.question}"`);
+  // console.log(`[Tafsir Chat Route] Handler entered for user ${req.auth?.uid}. Question: "${req.body?.question}"`);
   try {
     // Add type annotations for req.body properties
     const { 
@@ -231,7 +231,7 @@ router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response
       const isGeneralQuery = generalKeywords.some(keyword => lowerCaseQuestion.includes(keyword)) || lowerCaseQuestion === 'explain' || lowerCaseQuestion === 'what is it';
 
       if (isGeneralQuery) {
-        console.log(`[Tafsir Chat] Returning hardcoded response for GENERAL Ibn Kathir 1:1 query for user ${userId}.`);
+        // console.log(`[Tafsir Chat] Returning hardcoded response for GENERAL Ibn Kathir 1:1 query for user ${userId}.`);
         const hardcodedResponse = `
 📚 Tafsir Ibn Kathir – Explanation of 1:1:
 Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by discussing the Basmala (Bismillāh al-Raḥmān al-Raḥīm), its wording, meaning, and its status in the Qur'an.
@@ -282,7 +282,7 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
           source: 'hardcoded_ibn_kathir_1_1' // Clear source identifier
         });
       } else {
-        console.log(`[Tafsir Chat] Specific question detected for Ibn Kathir 1:1. Proceeding to AI generation.`);
+        // console.log(`[Tafsir Chat] Specific question detected for Ibn Kathir 1:1. Proceeding to AI generation.`);
         // If the question is specific, we fall through to the normal AI flow below,
         // which already skips fetching external content for 1:1.
       }
@@ -308,7 +308,7 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
         // it might be a greeting/capability question OR an invalid tafsir request.
         // Let the AI handle greetings/capabilities based on the unified prompt.
         // If it was an invalid tafsir request (e.g., "explain verse 5"), the AI should state it needs more info.
-        console.log("[Tafsir Chat] Proceeding without surah/verse (likely greeting, capability, or general question).");
+        // console.log("[Tafsir Chat] Proceeding without surah/verse (likely greeting, capability, or general question).");
     } else if (!isGeneralSurahQuestion && (!surah || !verse)) {
         // If it's NOT a general surah question, but surah or verse IS missing, it's an invalid tafsir request.
         return res.status(400).json({
@@ -333,22 +333,22 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
     let fetchTafsir = surah && verse && !isGeneralSurahQuestion;
     // +++ START Specific check for 1:1 +++
     if (String(surah) === '1' && String(verse) === '1') {
-        console.log("[Tafsir Chat] Skipping tafsir content fetch for 1:1, will use AI's internal knowledge.");
+        // console.log("[Tafsir Chat] Skipping tafsir content fetch for 1:1, will use AI's internal knowledge.");
         fetchTafsir = false; // Do not fetch content for 1:1
         hasTafsirContent = false; // Ensure flag is false
     }
     // +++ END Specific check for 1:1 +++
 
     if (fetchTafsir) {
-         console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
+         // console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
         tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
         hasTafsirContent = !!tafsirContent;
-         console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
+         // console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
     } else if (!(String(surah) === '1' && String(verse) === '1')) { // Avoid duplicate log for 1:1
-        console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
+        // console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
     }
 
-    console.log('[Tafsir Chat] Fetched Tafsir Content for Prompt:', tafsirContent ? tafsirContent.substring(0, 300) + '...' : 'None');
+    // console.log('[Tafsir Chat] Fetched Tafsir Content for Prompt:', tafsirContent ? tafsirContent.substring(0, 300) + '...' : 'None');
 
     // --- Unified System Prompt ---
     systemMessage = `You are NuraAI, a knowledgeable, respectful, and friendly Muslim AI assistant specializing in the Quran. Your primary goal is to help users understand the Quran and engage in relevant, respectful conversation.
@@ -384,15 +384,14 @@ YOUR TASK & RESPONSE RULES:
     *   If the user asks about a SPECIFIC verse (${surah}:${verse}) AND the relevant 'Tafsir Text' IS AVAILABLE above:
         *   **Usage Check:** (This happens *before* this step in the code).
         *   Your primary goal is to **faithfully convey the relevant details from that specific source** in response to the user's question.
-        *   Follow these rules STRICTLY:
-            *   Base your answer **primarily and strictly** on the provided '[${scholarName}'s Tafsir for Verse ${surah}:${verse}]'.
-            *   When answering, **extract and present the following details *if they are mentioned in the provided source text***: Context (Sabab an-Nuzul), Main Interpretation(s) offered by the scholar, specific Linguistic points discussed, and any Relevant Hadith/Narrations cited *within the source*. **Prefer close paraphrasing or direct quotes (use sparingly and attribute clearly) from the source** over high-level summaries.
-            *   **Resist the urge to simply summarize.** Instead, focus on presenting the specific arguments, evidence, and explanations found in the provided text that directly address the user's query.
-            *   Attribute clearly: Start relevant extractions/paraphrases with "According to ${scholarName}..." or similar. Use direct quotes sparingly: '[Source: ${scholarName}] As stated: "..."'.
-            *   If a point is NOT in the source: '[Note: This point is not detailed in the provided ${scholarName} text for this verse.]'.
-            *   Verse Context: Focus ONLY on ${surah}:${verse} unless explicitly comparing. Clearly mark other verse references.
-            *   Authenticity: NEVER state interpretations not found in the provided source text. If asked something not covered, state: "${scholarName} does not cover this specific point in the available text for verse ${surah}:${verse}."
-            *   Theme Connection: **Only weave in the Surah theme (${currentSurahTheme}) if it directly clarifies the verse's interpretation from the source in response to the user's question.** Do not add a separate theme section unless asked.
+        *   Follow these rules **ABSOLUTELY STRICTLY**:
+            *   Your answer **MUST** be based **SOLELY** on the provided '[${scholarName}'s Tafsir for Verse ${surah}:${verse}]' text when it is available.
+            *   **DO NOT** introduce external information, interpretations, or context (like generic Bismillah explanations, Isti'adha details, common knowledge about the Surah, etc.) if they are not **explicitly discussed within the provided Tafsir text for the specific verse ${surah}:${verse}**. Your knowledge source for the answer is **ONLY** the text provided here.
+            *   Focus on extracting the **specific points** (like context, interpretations, linguistic notes, cited hadith) made by ${scholarName} regarding verse ${surah}:${verse} **as presented in the provided text**.
+            *   **AVOID SUMMARIZATION.** Present the scholar's specific arguments and evidence that directly address the user's query, using close paraphrasing or brief, attributed quotes from the source text.
+            *   Attribute clearly: Start relevant extractions/paraphrases with "According to ${scholarName} in the provided text..." or similar.
+            *   If the user asks about something **not covered in the provided text for ${surah}:${verse}**: State clearly: "${scholarName} does not cover this specific point in the provided text for verse ${surah}:${verse}." Do not attempt to answer using external knowledge.
+            *   Theme Connection: Only mention the Surah theme (${currentSurahTheme}) if the **provided text itself** explicitly links the verse to it. Do not add it otherwise.
         *   Respond directly to the user's question about the verse, incorporating the extracted details.
 
 5.  **TAFSIR REQUESTED BUT TEXT UNAVAILABLE:**
@@ -423,7 +422,7 @@ YOUR TASK & RESPONSE RULES:
     if ((isGeneralSurahQuestion && !verse) || (surah && verse)) {
         // Increment usage ONLY if it's a specific theme question OR a specific verse question (regardless of whether tafsir text was found)
         // This avoids incrementing for greetings, capability questions, or invalid requests handled by the AI prompt.
-        console.log(`[Tafsir Chat] AI call required for specific theme/tafsir. Checking usage for user ${userId}...`);
+        // console.log(`[Tafsir Chat] AI call required for specific theme/tafsir. Checking usage for user ${userId}...`);
         let userUsage;
         try {
             userUsage = await usageService.getOrCreateUsage(userId);
@@ -436,25 +435,25 @@ YOUR TASK & RESPONSE RULES:
                     used: userUsage.aiRequests.count
                 });
             }
-             console.log(`[Tafsir Chat] Usage check passed for user ${userId}. Proceeding with AI call.`);
+             // console.log(`[Tafsir Chat] Usage check passed for user ${userId}. Proceeding with AI call.`);
             shouldIncrementUsage = true; // Mark that usage should be incremented AFTER the AI call succeeds.
 
         } catch (usageError) {
-            console.error('Error managing user usage in tafsir/chat:', usageError);
+            // console.error('Error managing user usage in tafsir/chat:', usageError);
             return next(usageError);
         }
     } else {
-         console.log(`[Tafsir Chat] AI call is likely for greeting/capability/general chat. Skipping usage check/increment for user ${userId}.`);
+         // console.log(`[Tafsir Chat] AI call is likely for greeting/capability/general chat. Skipping usage check/increment for user ${userId}.`);
     }
     // --- End Usage Check Logic ---
 
 
     // --- Generate AI Response ---
-    console.log(`[Tafsir Chat] Generating AI response for user ${userId}. Should increment usage: ${shouldIncrementUsage}`);
-    console.log(`[Tafsir Chat] PRE-AI_CALL: About to call openai.generateResponse for user ${userId}`);
+    // console.log(`[Tafsir Chat] Generating AI response for user ${userId}. Should increment usage: ${shouldIncrementUsage}`);
+    // console.log(`[Tafsir Chat] PRE-AI_CALL: About to call openai.generateResponse for user ${userId}`);
     const responseContent = await openai.generateResponse(systemMessage);
-    console.log(`[Tafsir Chat] POST-AI_CALL: Received response from openai.generateResponse for user ${userId}. Content length: ${responseContent?.length}`);
-    console.log(`[Tafsir Chat] AI response generated for user ${userId}.`);
+    // console.log(`[Tafsir Chat] POST-AI_CALL: Received response from openai.generateResponse for user ${userId}. Content length: ${responseContent?.length}`);
+    // console.log(`[Tafsir Chat] AI response generated for user ${userId}.`);
     // --- End Generate AI Response ---
 
     // --- Increment Usage (if applicable) ---
@@ -463,14 +462,14 @@ YOUR TASK & RESPONSE RULES:
             // We already retrieved userUsage in the check block
             const userUsage = await UserUsage.findOne({ userId }); // Re-fetch or use variable from check scope if possible/safe
             if (userUsage) {
-                 console.log(`[Tafsir Chat] Incrementing AI request count for user ${userId}.`);
+                 // console.log(`[Tafsir Chat] Incrementing AI request count for user ${userId}.`);
                 await userUsage.incrementAIRequestCount();
-                 console.log(`[Tafsir Chat] Incremented AI request count for user ${userId}.`);
+                 // console.log(`[Tafsir Chat] Incremented AI request count for user ${userId}.`);
             } else {
-                 console.warn(`[Tafsir Chat] Could not find userUsage record to increment count for user ${userId} after AI call.`);
+                 // console.warn(`[Tafsir Chat] Could not find userUsage record to increment count for user ${userId} after AI call.`);
             }
         } catch (incrementError) {
-             console.error(`[Tafsir Chat] Error incrementing usage count for user ${userId} after AI call:`, incrementError);
+             // console.error(`[Tafsir Chat] Error incrementing usage count for user ${userId} after AI call:`, incrementError);
              // Decide if this should be fatal. Usually, we still want to return the response.
         }
     }
@@ -484,7 +483,7 @@ YOUR TASK & RESPONSE RULES:
         responseSource = hasTafsirContent ? 'tafsir_sources' : 'ai_fallback';
     }
 
-    console.log(`[Tafsir Chat] PRE-JSON_RESPONSE: About to send final JSON response. Source: ${responseSource}`);
+    // console.log(`[Tafsir Chat] PRE-JSON_RESPONSE: About to send final JSON response. Source: ${responseSource}`);
     return res.json({
       success: true,
       content: responseContent,
@@ -498,7 +497,7 @@ YOUR TASK & RESPONSE RULES:
     });
 
   } catch (error: any) {
-    console.error('Error in tafsir chat route:', error);
+    // console.error('Error in tafsir chat route:', error);
     next(error);
   }
 }));
@@ -576,13 +575,13 @@ function processTafsirContent(content: string, maxTokens: number = 6000, isArabi
 // Modified getTafsirContent function with improved Arabic handling and error logging
 async function getTafsirContent(source: string, surah: string, verse: string): Promise<string> {
   try {
-    console.log('Getting tafsir content for:', { source, surah, verse });
+    // console.log('Getting tafsir content for:', { source, surah, verse });
     
     // Try to get from cache first
     const cacheKey = `${source}-${surah}-${verse}`;
     const cachedContent = await tafsirCacheService.get(cacheKey);
     if (cachedContent) {
-      console.log('Found cached content:', { source, contentLength: cachedContent.length });
+      // console.log('Found cached content:', { source, contentLength: cachedContent.length });
       const sourceConfig = tafsirSources[source];
       const isArabic = sourceConfig?.language === 'ar';
       return processTafsirContent(cachedContent, 6000, isArabic);
@@ -591,13 +590,13 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
     // If not in cache, fetch from API
     const sourceConfig = tafsirSources[source];
     if (!sourceConfig) {
-      console.error('Invalid tafsir source:', source);
+      // console.error('Invalid tafsir source:', source);
       return '';
     }
 
     const isArabic = sourceConfig.language === 'ar';
     const url = `${sourceConfig.baseUrl}/by_ayah/${surah}:${verse}`;
-    console.log('Fetching from API:', { url, language: sourceConfig.language });
+    // console.log('Fetching from API:', { url, language: sourceConfig.language });
     
     const response = await axios.get(url, {
       timeout: 10000,
@@ -607,17 +606,17 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
       }
     });
 
-    console.log('API Response:', {
-      status: response.status,
-      hasData: !!response.data,
-      hasTafsir: !!response.data?.tafsir,
-      hasText: !!response.data?.tafsir?.text,
-      contentLength: response.data?.tafsir?.text?.length,
-      isArabic
-    });
+    // console.log('API Response:', {
+    //   status: response.status,
+    //   hasData: !!response.data,
+    //   hasTafsir: !!response.data?.tafsir,
+    //   hasText: !!response.data?.tafsir?.text,
+    //   contentLength: response.data?.tafsir?.text?.length,
+    //   isArabic
+    // });
 
     if (!response.data?.tafsir?.text) {
-      console.warn('No tafsir content found:', { source, surah, verse });
+      // console.warn('No tafsir content found:', { source, surah, verse });
       return '';
     }
 
@@ -631,21 +630,21 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
       .replace(/\n\s*\n/g, '\n\n')
       .trim();
 
-    console.log('Initial cleaning:', { 
-      source,
-      originalLength: response.data.tafsir.text.length,
-      cleanedLength: cleanText.length,
-      isArabic
-    });
+    // console.log('Initial cleaning:', { 
+    //   source,
+    //   originalLength: response.data.tafsir.text.length,
+    //   cleanedLength: cleanText.length,
+    //   isArabic
+    // });
 
     // Special handling for Arabic text
     if (isArabic) {
       try {
-        console.log('Processing Arabic text:', { 
-          source,
-          beforeLength: cleanText.length,
-          containsArabic: /[\u0600-\u06FF]/.test(cleanText)
-        });
+        // console.log('Processing Arabic text:', { 
+        //   source,
+        //   beforeLength: cleanText.length,
+        //   containsArabic: /[\u0600-\u06FF]/.test(cleanText)
+        // });
 
         // Normalize Arabic text
         cleanText = cleanText
@@ -669,51 +668,51 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
           .replace(/\n\s*\n\s*\n/g, '\n\n')
           .trim();
 
-        console.log('Arabic processing complete:', { 
-          source,
-          afterLength: cleanText.length,
-          sections: cleanText.split('\n\n').length
-        });
+        // console.log('Arabic processing complete:', { 
+        //   source,
+        //   afterLength: cleanText.length,
+        //   sections: cleanText.split('\n\n').length
+        // });
 
       } catch (error) {
-        console.error('Error processing Arabic text:', {
-          source,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
-        });
+        // console.error('Error processing Arabic text:', {
+        //   source,
+        //   error: error instanceof Error ? error.message : String(error),
+        //   stack: error instanceof Error ? error.stack : undefined
+        // });
         // Return the original cleaned text if Arabic processing fails
         return cleanText;
       }
     }
 
     // Process content before saving to cache
-    console.log('Processing final content:', { source, length: cleanText.length, isArabic });
+    // console.log('Processing final content:', { source, length: cleanText.length, isArabic });
     const processedContent = processTafsirContent(cleanText, 6000, isArabic);
-    console.log('Content processed:', { 
-      source,
-      originalLength: cleanText.length,
-      processedLength: processedContent.length,
-      sections: processedContent.split('\n\n').length,
-      isArabic
-    });
+    // console.log('Content processed:', { 
+    //   source,
+    //   originalLength: cleanText.length,
+    //   processedLength: processedContent.length,
+    //   sections: processedContent.split('\n\n').length,
+    //   isArabic
+    // });
     
     // Only cache if we have valid content
     if (processedContent) {
       await tafsirCacheService.set(cacheKey, processedContent);
-      console.log('Content cached:', { source, cacheKey });
+      // console.log('Content cached:', { source, cacheKey });
     }
     
     return processedContent;
 
   } catch (error) {
-    console.error('Error in getTafsirContent:', {
-      source,
-      surah,
-      verse,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      response: error instanceof Error && 'response' in error ? (error as any).response?.data : undefined
-    });
+    // console.error('Error in getTafsirContent:', {
+    //   source,
+    //   surah,
+    //   verse,
+    //   error: error instanceof Error ? error.message : String(error),
+    //   stack: error instanceof Error ? error.stack : undefined,
+    //   response: error instanceof Error && 'response' in error ? (error as any).response?.data : undefined
+    // });
     return '';
   }
 }
