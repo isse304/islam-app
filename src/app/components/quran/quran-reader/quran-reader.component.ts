@@ -297,19 +297,15 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // +++ ADD Method to toggle the main controls minimized state +++
   public toggleMainControlsView(source: 'bubble' | 'minimizeButton' | 'backdrop' | 'internalPopupMinimize' = 'minimizeButton'): void {
-    // +++ Add check to prevent changes on mobile +++
-    if (this.isMobile) return;
-    
     if (source === 'bubble') {
-      // Clicking bubble opens popup if minimized
-      if (this.isMainControlsMinimized) {
-        this.isPopupOpen = true;
-        // Keep isMainControlsMinimized = true conceptually, popup covers minimized state
-      }
+      // Clicking the bubble (mobile or desktop minimized) ALWAYS opens the popup.
+      this.isPopupOpen = true;
     } else if (source === 'minimizeButton') {
-      // Clicking minimize in the *in-flow* controls
-      this.isMainControlsMinimized = true;
-      this.isPopupOpen = false;
+      // Clicking minimize in the *in-flow* controls (DESKTOP ONLY)
+      if (!this.isMobile) { // Add safety check
+        this.isMainControlsMinimized = true;
+        this.isPopupOpen = false;
+      }
     } else if (source === 'internalPopupMinimize' || source === 'backdrop') {
       // Clicking minimize *inside* the popup, or the backdrop
       this.isPopupOpen = false;
@@ -665,6 +661,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           lastSurah: this.currentSurah || 1,
           lastVerse: this.currentVerse || 1,
           isMushafView: this.isMushafView,
+          isMainControlsMinimized: this.isMainControlsMinimized, // <-- Save this state
           timestamp: new Date().toISOString()
         }
       };
@@ -1283,6 +1280,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                 lastSurah: this.currentSurah || 1,
                 lastVerse: this.currentVerse || 1,
                 isMushafView: this.isMushafView,
+                isMainControlsMinimized: this.isMainControlsMinimized, // <-- Save this state
                 timestamp: new Date().toISOString()
             },
             // Save URL state
@@ -2614,6 +2612,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
          if (prefs.fontSize) {
              this.fontSize = prefs.fontSize;
              // console.log(`[loadUserPreferences] Applied font size pref: ${this.fontSize}`);
+         }
+
+         // Apply isMainControlsMinimized state (regardless of initialLoad? Check logic)
+         if (prefs.lastState && typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
+             this.isMainControlsMinimized = prefs.lastState.isMainControlsMinimized;
+             // console.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
          }
 
          // Apply Primary State ONLY if NOT initial load

@@ -2,8 +2,8 @@
 
   <!-- Wrap all desktop translation controls -->
   <ng-container *ngIf="!isMushafView">
-    <!-- ++ BUBBLE: Shown only on DESKTOP when minimized ++ -->
-    <button *ngIf="!isMobile && isMainControlsMinimized && !isPopupOpen"
+    <!-- ++ BUBBLE: Correct visibility for Mobile / Desktop (minimized) ++ -->
+    <button *ngIf="!isMushafView && !isPopupOpen && (isMobile || (!isMobile && isMainControlsMinimized))"
             (click)="toggleMainControlsView('bubble')"
             class="main-control-bubble p-3 rounded-full bg-[#B7A57A] text-white fixed top-28 right-4 shadow-lg hover:bg-[#9b8a65] transition-colors z-20">
       <i class="fas fa-cog"></i>
@@ -84,7 +84,7 @@
             <label class="text-gray-700 font-medium block">Surah</label>
             <select [(ngModel)]="selectedSurah"
                     (ngModelChange)="selectSurah($event)"
-                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+                    class="rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 w-32 md:w-full">
               <option *ngFor="let surah of surahs" [ngValue]="surah.number">
                 {{surah.number}}. {{surah.englishName}} ({{surah.name}})
               </option>
@@ -97,7 +97,7 @@
             <div class="relative">
               <select [(ngModel)]="selectedTranslation"
                       (ngModelChange)="selectTranslation($event)"
-                      class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
+                      class="rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10 w-48 md:w-full"
                       [disabled]="isAudioLoading">
                 <option *ngFor="let trans of quranService.translations" 
                        [value]="trans.id.toString()">
@@ -527,8 +527,8 @@
     </div>
   </div>
 
-  <!-- ++ POPUP Structure: Shown only on DESKTOP when isPopupOpen is true ++ -->
-  <ng-container *ngIf="!isMobile && isPopupOpen">
+  <!-- ++ POPUP Structure: Now shown when isPopupOpen is true (Mobile & Desktop) ++ -->
+  <ng-container *ngIf="isPopupOpen">
     <!-- Backdrop -->
     <div class="controls-backdrop"
          (click)="toggleMainControlsView('backdrop')">
@@ -601,7 +601,7 @@
           <label class="text-gray-700 font-medium block">Surah</label>
           <select [(ngModel)]="selectedSurah"
                   (ngModelChange)="selectSurah($event)"
-                  class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50">
+                  class="rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 w-48 md:w-full">
             <option *ngFor="let surah of surahs" [ngValue]="surah.number">
               {{surah.number}}. {{surah.englishName}} ({{surah.name}})
             </option>
@@ -614,7 +614,7 @@
           <div class="relative">
             <select [(ngModel)]="selectedTranslation"
                     (ngModelChange)="selectTranslation($event)"
-                    class="w-full rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10"
+                    class="rounded-lg border-gray-900 focus:border-[#B7A57A] focus:ring-[#B7A57A] bg-gray-50 pr-10 w-32 md:w-full"
                     [disabled]="isAudioLoading">
               <option *ngFor="let trans of quranService.translations" 
                      [value]="trans.id.toString()">
