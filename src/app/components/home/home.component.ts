@@ -21,7 +21,7 @@ import { Title, Meta } from '@angular/platform-browser';
               Welcome to <span class="text-[#B7A57A]">Nura AI</span>
             </h1>
             <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-              Your spiritual companion for Quran, Duas, and Islamic learning. Begin your journey of faith and knowledge.
+              Your spiritual companion for Quran, Duas, and Islamic learning. Explore Quran reader, Dua collection, and AI Tafsir Chat.
             </p>
           </div>
 
@@ -48,10 +48,10 @@ import { Title, Meta } from '@angular/platform-browser';
                 <i class="fas fa-graduation-cap text-4xl"></i>
               </div>
               <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-4">
-                Learn Quran
+                AI Tafsir Chat
               </h2>
               <p class="text-gray-600 dark:text-gray-300 mb-6">
-                Interactive lessons to help you learn and understand the Quran. Track your progress and earn achievements.
+                Improve your Quran knowledge by asking Nura AI any question about the verses of the Holy Quran and receive a detailed explanation.
               </p>
               <a routerLink="/learn" 
                  class="inline-block px-6 py-3 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors duration-300">
@@ -67,7 +67,7 @@ import { Title, Meta } from '@angular/platform-browser';
                 Daily Duas
               </h2>
               <p class="text-gray-600 dark:text-gray-300 mb-6">
-                Collection of authentic duas for various occasions. Save your favorites and set reminders.
+                Collection of authentic duas for various occasions. Dive deeper into each dua with AI powered insights or get detailed islamic advice based on your feelings with emotional dua search.
               </p>
               <a routerLink="/dua" 
                  class="inline-block px-6 py-3 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors duration-300">
@@ -149,7 +149,7 @@ import { Title, Meta } from '@angular/platform-browser';
                 <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Quick Links</h4>
                 <ul class="space-y-2">
                   <li><a routerLink="/quran" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Quran Reader</a></li>
-                  <li><a routerLink="/learn" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Learn Quran</a></li>
+                  <li><a routerLink="/learn" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">AI Tafsir Chat</a></li>
                   <li><a routerLink="/dua" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">Daily Duas</a></li>
                   <li><a routerLink="/profile" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">My Profile</a></li>
                   <li><a routerLink="/about" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">About</a></li>
