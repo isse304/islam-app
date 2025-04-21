@@ -345,8 +345,22 @@ export class DuaComponent implements OnInit, OnDestroy {
     try {
       const insights = JSON.parse(this.aiInsights || '{}');
       const verses = insights.related_verses_hadith?.verses || [];
-      return verses.map((v: any) => `${v.reference}\n${v.text}\n${v.relevance}`);
+      return verses.map((v: any) => {
+        if (typeof v === 'string') {
+          return v; // Return the string directly if it's from the fallback
+        } else if (v && typeof v === 'object' && v.reference && v.text) {
+          // Handle the object structure from the JSON
+          // Ensure relevance is handled gracefully
+          return `${v.reference}\n${v.text}${v.relevance ? '\nRelevance: ' + v.relevance : ''}`;
+        } else if (v && typeof v === 'object' && v.content) {
+            // Handle potential alternative object structures gracefully
+            return v.content;
+        }
+        // console.warn('Unexpected verse format:', v);
+        return 'Invalid verse format'; // Fallback for unexpected format
+      });
     } catch (e) {
+      console.error("Error parsing related verses:", e);
       return [];
     }
   }
@@ -559,8 +573,23 @@ export class DuaComponent implements OnInit, OnDestroy {
     try {
       const insights = JSON.parse(this.aiInsights || '{}');
       const hadith = insights.related_verses_hadith?.hadith || [];
-      return hadith.map((h: any) => `${h.source} (${h.grade})\n${h.text}\n${h.relevance}`);
+      return hadith.map((h: any) => {
+        if (typeof h === 'string') {
+          return h; // Return the string directly if it's from the fallback
+        } else if (h && typeof h === 'object' && h.text) {
+          // Handle the object structure from the JSON
+          const sourceInfo = h.source ? `${h.source}${h.grade ? ' (' + h.grade + ')' : ''}` : 'Unknown Source';
+          // Ensure relevance is handled gracefully
+          return `${sourceInfo}\n${h.text}${h.relevance ? '\nRelevance: ' + h.relevance : ''}`;
+        } else if (h && typeof h === 'object' && h.content) {
+            // Handle potential alternative object structures gracefully
+            return h.content;
+        }
+        // console.warn('Unexpected hadith format:', h);
+        return 'Invalid hadith format'; // Fallback for unexpected format
+      });
     } catch (e) {
+      console.error("Error parsing related hadith:", e);
       return [];
     }
   }

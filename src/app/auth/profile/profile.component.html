@@ -99,36 +99,69 @@
         <div class="p-6">
           <mat-card class="profile-card">
             <mat-card-content>
-              <!-- Empty State -->
-              <div *ngIf="bookmarks.length === 0" class="text-center py-12">
+              <!-- Empty State: Check both bookmark arrays -->
+              <div *ngIf="translationBookmarks.length === 0 && mushafBookmarks.length === 0" class="text-center py-12">
                 <div class="w-16 h-16 bg-[#FAF3E0] dark:bg-[#1A365D] rounded-full flex items-center justify-center mx-auto mb-4">
                   <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0] text-3xl">bookmark_border</mat-icon>
                 </div>
                 <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Bookmarks Yet</h3>
-                <p class="text-gray-600 dark:text-gray-400">Add bookmarks while reading to save your favorite verses</p>
+                <p class="text-gray-600 dark:text-gray-400">Add bookmarks while reading to save your favorite verses or pages</p>
               </div>
 
-              <!-- Bookmarks List -->
-              <div *ngIf="bookmarks.length > 0" class="space-y-4">
-                <div *ngFor="let bookmark of bookmarks" 
-                     class="bookmark-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                  <div>
-                    <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(bookmark.split(':')[0])}}</h3>
-                    <p class="text-gray-600 dark:text-gray-400">Verse {{bookmark.split(':')[1]}}</p>
-                  </div>
-                  <div class="flex gap-2">
-                    <button mat-icon-button (click)="goToVerse(bookmark)" 
-                            class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                            matTooltip="Go to verse">
-                      <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">visibility</mat-icon>
-                    </button>
-                    <button mat-icon-button (click)="removeBookmark(bookmark)"
-                            class="hover:bg-red-100/50 dark:hover:bg-red-900/30"
-                            matTooltip="Remove bookmark">
-                      <mat-icon class="text-red-500 dark:text-red-400">delete</mat-icon>
-                    </button>
+              <!-- Bookmarks List: Separate Translation and Mushaf -->
+              <div *ngIf="translationBookmarks.length > 0 || mushafBookmarks.length > 0" class="space-y-6">
+
+                <!-- Translation Bookmarks -->
+                <div *ngIf="translationBookmarks.length > 0">
+                  <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Verse Bookmarks</h4>
+                  <div class="space-y-4">
+                    <div *ngFor="let bookmark of translationBookmarks"
+                         class="bookmark-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                      <div>
+                        <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(bookmark.split(':')[1])}}</h3>
+                        <p class="text-gray-600 dark:text-gray-400">Verse {{bookmark.split(':')[2]}}</p>
+                      </div>
+                      <div class="flex gap-2">
+                        <button mat-icon-button (click)="goToVerse(bookmark)"
+                                class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
+                                matTooltip="Go to verse">
+                          <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">visibility</mat-icon>
+                        </button>
+                        <button mat-icon-button (click)="removeBookmark(bookmark)"
+                                class="hover:bg-red-100/50 dark:hover:bg-red-900/30"
+                                matTooltip="Remove bookmark">
+                          <mat-icon class="text-red-500 dark:text-red-400">delete</mat-icon>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                <!-- Mushaf Bookmarks -->
+                <div *ngIf="mushafBookmarks.length > 0">
+                   <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Page Bookmarks</h4>
+                   <div class="space-y-4">
+                      <div *ngFor="let bookmark of mushafBookmarks"
+                           class="bookmark-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                        <div>
+                          <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">Mushaf Page {{bookmark.split(':')[1]}}</h3>
+                        </div>
+                        <div class="flex gap-2">
+                          <button mat-icon-button (click)="goToVerse(bookmark)"
+                                  class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
+                                  matTooltip="Go to page">
+                            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">visibility</mat-icon>
+                          </button>
+                          <button mat-icon-button (click)="removeBookmark(bookmark)"
+                                  class="hover:bg-red-100/50 dark:hover:bg-red-900/30"
+                                  matTooltip="Remove bookmark">
+                            <mat-icon class="text-red-500 dark:text-red-400">delete</mat-icon>
+                          </button>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+
               </div>
             </mat-card-content>
           </mat-card>
@@ -165,7 +198,7 @@
               </div>
 
               <!-- Empty State (Show only if not loading, no error, and history is empty) -->
-              <div *ngIf="!historyLoading && !historyLoadingError && (!readingHistory || readingHistory.length === 0)" class="text-center py-12">
+              <div *ngIf="!historyLoading && !historyLoadingError && (!translationHistory || translationHistory.length === 0) && (!mushafHistory || mushafHistory.length === 0)" class="text-center py-12">
                 <!-- Icon container: Cream light -> Dark Blue dark -->
                 <div class="w-16 h-16 bg-[#FAF3E0] dark:bg-[#1A365D] rounded-full flex items-center justify-center mx-auto mb-4">
                   <!-- Icon: Gold light -> Cream dark -->
@@ -176,29 +209,51 @@
               </div>
 
               <!-- History List (Show only if not loading, no error, and history has items) -->
-              <div *ngIf="!historyLoading && !historyLoadingError && readingHistory && readingHistory.length > 0" class="space-y-4">
-                <div *ngFor="let entry of readingHistory"
-                     class="history-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                  <div class="flex-1">
-                    <!-- Title: Dark Blue light -> Cream dark -->
-                    <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(entry.surah)}}</h3>
-                    <div class="flex items-center gap-4">
-                      <p class="text-gray-600 dark:text-gray-400">Verse {{entry.verse}}</p>
-                      <span class="text-sm text-gray-400 dark:text-gray-500">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
+              <div *ngIf="!historyLoading && !historyLoadingError && (translationHistory.length > 0 || mushafHistory.length > 0)" class="space-y-6">
+                <!-- Verse History -->
+                <div *ngIf="translationHistory.length > 0">
+                    <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Verse History</h4>
+                    <div class="space-y-4">
+                        <div *ngFor="let entry of translationHistory"
+                             class="history-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(entry.surah!)}}</h3>
+                                <div class="flex items-center gap-4">
+                                    <p class="text-gray-600 dark:text-gray-400">Verse {{entry.verse}}</p>
+                                    <span class="text-sm text-gray-400 dark:text-gray-500">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
+                                </div>
+                            </div>
+                            <button mat-icon-button (click)="goToHistoryEntry(entry)"
+                                    class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
+                                    matTooltip="Continue reading verse">
+                                <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">play_arrow</mat-icon>
+                            </button>
+                        </div>
                     </div>
-                  </div>
-                  <!-- GoTo Button: Hover Gold light -> Hover Cream/Gold dark -->
-                  <button mat-icon-button (click)="goToHistoryEntry(entry)"
-                          class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                          matTooltip="Continue reading">
-                     <!-- Icon: Gold light -> Cream dark -->
-                    <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">play_arrow</mat-icon>
-                  </button>
+                </div>
+                <!-- Page History -->
+                <div *ngIf="mushafHistory.length > 0">
+                    <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Page History</h4>
+                    <div class="space-y-4">
+                        <div *ngFor="let entry of mushafHistory"
+                             class="history-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
+                            <div class="flex-1">
+                                <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">Mushaf Page {{entry.displayPage}}</h3>
+                                <div class="flex items-center gap-4">
+                                    <span class="text-sm text-gray-400 dark:text-gray-500">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
+                                </div>
+                            </div>
+                            <button mat-icon-button (click)="goToHistoryEntry(entry)"
+                                    class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
+                                    matTooltip="Continue reading page">
+                                <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">play_arrow</mat-icon>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Clear History Button -->
                 <div class="flex justify-end mt-6">
-                  <!-- Button styles handled by ::ng-deep -->
                   <button mat-stroked-button color="warn" (click)="clearHistory()"
                           class="btn-warn-outline">
                     <mat-icon class="mr-2">delete_sweep</mat-icon>

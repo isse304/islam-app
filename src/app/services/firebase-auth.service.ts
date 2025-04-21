@@ -640,13 +640,20 @@ export class FirebaseAuthService {
     this.isSaving = true;
 
     try {
-        await new Promise(resolve => setTimeout(resolve, this.SAVE_INTERVAL));
-
-        // Merge all queued preferences
-        const mergedPreferences = this.savePreferencesQueue.reduce((acc, curr) => ({
-            ...acc,
-            ...curr
-        }), {});
+        // Merge all queued preferences with deep merge for lastState
+        const mergedPreferences = this.savePreferencesQueue.reduce((acc, curr) => {
+            const newPrefs = { ...acc }; // Start with shallow copy of accumulator
+            Object.keys(curr).forEach(key => {
+                if (key === 'lastState' && typeof acc.lastState === 'object' && typeof curr.lastState === 'object') {
+                    // Deep merge for lastState
+                    newPrefs.lastState = { ...acc.lastState, ...curr.lastState };
+                } else {
+                    // Shallow merge for other keys
+                    newPrefs[key] = curr[key];
+                }
+            });
+            return newPrefs;
+        }, {});
 
         // Clear queue
         this.savePreferencesQueue = [];
@@ -676,6 +683,11 @@ export class FirebaseAuthService {
                 data: response.preferences,
                 timestamp: Date.now()
             };
+            // +++ Clear USER_CACHE_KEY after successful save +++
+            const cacheKey = `${this.USER_CACHE_KEY}_${user.uid}`;
+            console.log(`[saveUserPreferences] Clearing cache key: ${cacheKey}`);
+            localStorage.removeItem(cacheKey);
+            // +++ End Cache Clearing +++
         }
 
         this.isSaving = false;
@@ -949,48 +961,80 @@ export class FirebaseAuthService {
   }
 
   // Save reading history entry
-  async saveReadingHistory(surah: number, verse: number): Promise<void> {
-    try {
-      // --- Add Guard Clause --- 
-      if (!this.userDataSubject.getValue()) {
-        // console.warn('[AuthService] Skipping history save: User data not yet loaded.');
-        return; // Don't proceed if user data isn't ready
-      }
-      // --- End Guard Clause ---
-
-      const historyEntry: ReadingHistoryEntry = {
-        surah: surah,
-        verse: verse,
-        timestamp: new Date().toISOString() // Use ISO string for consistency
-      };
-
-      // Save locally first (simple)
-      try {
-        localStorage.setItem('last_quran_position', JSON.stringify(historyEntry));
-      } catch (error) {
-        // console.warn('Error saving history to localStorage:', error);
-      }
-
-      // Try to get user from BehaviorSubject first as it's faster
-      const currentUser = this._user.getValue();
-      if (currentUser?.id) {
-        await this.saveReadingHistoryToServer(currentUser.id, historyEntry);
-        return;
-      }
-
-      // If no user in BehaviorSubject, check Firebase
-      const user = this.auth.currentUser;
-      if (!user) {
-        // Don't throw error, just log warning as this is non-critical functionality
-        // console.warn('No user logged in, reading history saved only locally');
-        return;
-      }
-
-      await this.saveReadingHistoryToServer(user.uid, historyEntry);
-    } catch (error) {
-      // console.warn('Error saving reading history:', error);
-      // Don't throw error as this is non-critical functionality
+  async saveReadingHistory(location: { type: 'verse', surah: number, verse: number } | { type: 'page', page: number, surah: number | null }): Promise<void> {
+    const user = this._user.getValue();
+    if (!user) {
+      console.warn('[AuthService saveReadingHistory] User not logged in, skipping save.');
+      return; // Don't save if user is not logged in
     }
+
+    const userId = user.id;
+    const url = `${environment.apiUrl}/api/user/${userId}/reading-history`;
+
+    // Prepare the body based on the location type
+    let body: any;
+    if (location.type === 'verse') {
+        // REMOVED Incorrect Validation Block
+        body = { 
+            type: 'verse',
+            surah: location.surah, 
+            verse: location.verse 
+        };
+    } else if (location.type === 'page') {
+        // Keep page validation for now (might be useful, but ensure range is correct)
+        // Let's assume the backend range check (1-613) is the source of truth
+        // Remove frontend check for consistency if backend handles it reliably
+        /* 
+        if (isNaN(location.page) || location.page < 1 || location.page > 613) { 
+           console.warn('[AuthService saveReadingHistory] Invalid page data, skipping save:', location);
+           return;
+        }
+        */
+        body = { 
+            type: 'page',
+            page: location.page, 
+            // ADD SURAH FOR PAGE TYPE - This was in a previous version, ensure it's here
+            surah: location.surah 
+        };
+        // Add safety check for null surah on page type
+        if (body.surah === null || body.surah === undefined) {
+            console.warn('[AuthService saveReadingHistory] Surah is null/undefined for page type, skipping save:', location);
+            return;
+        }
+    } else {
+        console.warn('[AuthService saveReadingHistory] Unknown location type, skipping save:', location);
+      return;
+    }
+
+    // console.log(`[AuthService saveReadingHistory] Sending POST to ${url} with body:`, body);
+
+    // POST to the backend endpoint
+    try {
+        await firstValueFrom(this.http.post<any>(url, body).pipe(
+            timeout(this.API_TIMEOUT),
+            retry(this.API_RETRY_ATTEMPTS),
+            catchError(error => {
+                // Log specific errors but don't necessarily throw to break the app flow
+                console.error('[AuthService saveReadingHistory] Error saving history to server:', error);
+                // Return an observable that emits null or an error object to allow flow continuation
+                return of(null); // Or throwError(() => error) if you need to propagate
+            })
+        ));
+        // console.log('[AuthService saveReadingHistory] History saved successfully.');
+        // Optionally: Update local history cache/subject upon success here if needed
+    } catch (error) {
+        // Catch errors specifically from firstValueFrom if the pipe returns an error
+        console.error('[AuthService saveReadingHistory] Final error after pipe:', error);
+    }
+  }
+
+  // Keep the old method signature for backward compatibility or internal use if necessary,
+  // but mark it as deprecated or refactor calls to use the new method.
+  /**
+   * @deprecated Use saveReadingHistory(location: { type: 'verse', surah: number, verse: number } | { type: 'page', page: number, surah: number | null }) instead.
+   */
+  async saveReadingHistory_Legacy(surah: number, verse: number): Promise<void> {
+    await this.saveReadingHistory({ type: 'verse', surah, verse });
   }
 
   // Helper method to save reading history to server with retries
@@ -1110,7 +1154,7 @@ export class FirebaseAuthService {
   async hasAIAccess(): Promise<boolean> {
     try {
       const user = this.auth.currentUser;
-      if (!user) {
+    if (!user) {
         return false;
       }
 
@@ -1186,8 +1230,8 @@ export class FirebaseAuthService {
           typeof state.surah !== 'number' || typeof state.verse !== 'number' ||
           state.surah < 1 || state.surah > 114 || state.verse < 1) {
         // console.warn('Invalid state provided to saveQuranReaderState:', state);
-        return;
-      }
+      return;
+    }
 
       // First, get current user settings
       const userSettings = await this.getUserSettings();
@@ -1482,8 +1526,8 @@ export class FirebaseAuthService {
                   const currentData = this.userDataSubject.getValue();
                   if (currentData) {
                       this.userDataSubject.next({ ...currentData, history: response.history });
-                  }
-                } else {
+      }
+    } else {
                   // console.warn(`getReadingHistory: API call did not return successful history for ${userId}`, response);
                 }
               }),
@@ -1599,36 +1643,30 @@ export class FirebaseAuthService {
 
   // Bookmark methods
   removeBookmark(bookmark: string): Observable<BookmarkResponse> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return of({ success: false, message: 'User not logged in', bookmarks: [] });
-    }
-
-    return from(user.getIdToken()).pipe(
-      switchMap(token => {
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
-        return this.http.delete<BookmarkResponse>(
-          `${environment.apiUrl}/api/user/${user.uid}/bookmarks/${bookmark}`,
-          { headers }
-        ).pipe(
+    return this.user$.pipe(
+      take(1),
+      switchMap(user => {
+        if (!user) {
+          return throwError(() => new Error('User not logged in'));
+        }
+        // *** FIX: Encode bookmark and add to URL path for DELETE ***
+        const encodedBookmark = encodeURIComponent(bookmark);
+        const url = `${environment.apiUrl}/api/user/${user.id}/bookmarks/${encodedBookmark}`;
+        // *** FIX: Send DELETE request without body/options ***
+        return this.http.delete<BookmarkResponse>(url).pipe(
+          timeout(this.API_TIMEOUT),
+          retry(this.API_RETRY_ATTEMPTS),
+          catchError(this.handleError),
           tap(response => {
             if (response.success) {
-              // Update state ONLY on success
-              const current = this.userDataSubject.getValue();
-              this.userDataSubject.next({ ...current, bookmarks: response.bookmarks });
-            } else {
-              // Handle potential server-side failure message
-              // console.warn('Server failed to remove bookmark:', response.message);
-              // Optionally show snackbar or notification to user
+              // Update local cache/subject optimistically or upon success
+              const currentData = this.userDataSubject.value || {};
+              const currentBookmarks = Array.isArray(currentData.bookmarks) ? currentData.bookmarks : [];
+              this.userDataSubject.next({
+                ...currentData,
+                bookmarks: currentBookmarks.filter(b => b !== bookmark)
+              });
             }
-          }),
-          catchError(error => {
-            // No need to revert local state as it wasn't changed optimistically
-            // console.error('Error removing bookmark:', error);
-            return of({ success: false, message: 'Failed to remove bookmark', bookmarks: [] });
           })
         );
       })
@@ -1636,37 +1674,65 @@ export class FirebaseAuthService {
   }
 
   addBookmark(bookmark: string): Observable<BookmarkResponse> {
-    const user = this.auth.currentUser;
-    if (!user) {
-      return of({ success: false, message: 'User not logged in', bookmarks: [] });
-    }
+    return this.user$.pipe(
+      take(1),
+      switchMap(user => {
+        if (!user) {
+          return throwError(() => new Error('User not logged in'));
+        }
+        const url = `${environment.apiUrl}/api/user/${user.id}/bookmarks`;
+        
+        // *** UPDATE: Construct payload based on bookmark type for unified endpoint ***
+        let body: { verseReference: string } | { type: string, page: number };
 
-    return from(user.getIdToken()).pipe(
-      switchMap(token => {
-        const headers = {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        };
-        return this.http.post<BookmarkResponse>(
-          `${environment.apiUrl}/api/user/${user.uid}/bookmarks`,
-          { verseReference: bookmark },
-          { headers }
-        ).pipe(
+        if (bookmark.startsWith('verse:')) {
+          const parts = bookmark.split(':');
+          if (parts.length === 3) {
+            const surah = parseInt(parts[1], 10);
+            const verse = parseInt(parts[2], 10);
+            if (!isNaN(surah) && !isNaN(verse) && surah > 0 && surah <= 114 && verse > 0) {
+              // Format for verse bookmark request
+              body = { verseReference: `${surah}:${verse}` };
+            } else {
+              return throwError(() => new Error('Invalid verse bookmark format for API'));
+            }
+          } else {
+             return throwError(() => new Error('Invalid verse bookmark format for API'));
+          }
+        } else if (bookmark.startsWith('mushaf:')) {
+          const parts = bookmark.split(':');
+          if (parts.length === 2) {
+              const page = parseInt(parts[1], 10);
+              if (!isNaN(page) && page > 0 && page <= 604) { // Assuming page range 1-604
+                 // Format for page bookmark request
+                 body = { type: 'page', page: page };
+              } else {
+                 return throwError(() => new Error('Invalid page bookmark format for API'));
+              }
+          } else {
+              return throwError(() => new Error('Invalid page bookmark format for API'));
+          }
+        } else {
+           return throwError(() => new Error('Unknown bookmark format for API'));
+        }
+        // *** END UPDATE ***
+        
+        return this.http.post<BookmarkResponse>(url, body).pipe( // Send the correct body
+          timeout(this.API_TIMEOUT),
+          retry(this.API_RETRY_ATTEMPTS),
+          catchError(this.handleError),
           tap(response => {
             if (response.success) {
-              // Update state ONLY on success
-              const current = this.userDataSubject.getValue();
-              this.userDataSubject.next({ ...current, bookmarks: response.bookmarks });
-            } else {
-              // Handle potential server-side failure message
-              // console.warn('Server failed to add bookmark:', response.message);
-              // Optionally show snackbar or notification to user
+              // Update local cache/subject optimistically or upon success
+              const currentData = this.userDataSubject.value || {};
+              const currentBookmarks = Array.isArray(currentData.bookmarks) ? currentData.bookmarks : [];
+              if (!currentBookmarks.includes(bookmark)) {
+                 this.userDataSubject.next({
+                    ...currentData,
+                    bookmarks: [...currentBookmarks, bookmark]
+                 });
+              }
             }
-          }),
-          catchError(error => {
-            // No need to revert local state as it wasn't changed optimistically
-            // console.error('Error adding bookmark:', error);
-            return of({ success: false, message: 'Failed to add bookmark', bookmarks: [] });
           })
         );
       })

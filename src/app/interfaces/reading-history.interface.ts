@@ -1,8 +1,10 @@
 export interface ReadingHistory {
-  surah: number;
-  verse: number;
+  type?: 'verse' | 'page';
+  surah?: number;
+  verse?: number;
+  page?: number;
+  displayPage?: number;
   timestamp: Date;
-  userId: string;
 }
 
 export interface ReadingHistoryResponse {

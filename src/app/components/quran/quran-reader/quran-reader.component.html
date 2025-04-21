@@ -293,7 +293,12 @@
   </div>
 
   <!-- Main Content -->
-  <ng-container *ngIf="!isAudioLoading">
+  <ng-container>
+    <!-- Add a loading overlay div -->
+    <div *ngIf="isAudioLoading" class="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-40">
+      <div class="animate-spin rounded-full h-16 w-16 border-4 border-[#B7A57A] border-t-transparent"></div>
+    </div>
+
     <!-- Translation View -->
     <div *ngIf="!isMushafView" class="pb-24">
       <!-- Verse List -->
@@ -367,14 +372,14 @@
             <!-- Page Navigation (Centered on Mobile) -->
             <div class="flex items-center gap-3 w-full md:w-auto justify-center">
               <button (click)="nextPage()" 
-                      [disabled]="displayPageNumber >= DISPLAY_TOTAL || isAudioLoading"
+                      [disabled]="(displayPageNumber$ | async)! >= DISPLAY_TOTAL || isAudioLoading"
                       class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
                 <i class="fas fa-chevron-left"></i>
               </button>
               
               <div class="flex items-center gap-2">
                 <input type="number" 
-                       [(ngModel)]="displayPageNumber" 
+                       [(ngModel)]="pageInput" 
                        min="1" 
                        [max]="DISPLAY_TOTAL"
                        (keyup.enter)="goToPage()"
@@ -384,7 +389,7 @@
               </div>
 
               <button (click)="previousPage()" 
-                      [disabled]="displayPageNumber <= 1 || isAudioLoading"
+                      [disabled]="(displayPageNumber$ | async)! <= 1 || isAudioLoading"
                       class="px-4 py-2 rounded-lg bg-[#B7A57A] text-white hover:bg-[#9b8a65] disabled:opacity-50 transition-colors">
                 <i class="fas fa-chevron-right"></i>
               </button>
@@ -410,6 +415,16 @@
                 <i class="fas" [class.fa-pause]="isPlayingFullSurah" [class.fa-play]="!isPlayingFullSurah"></i>
                 <span class="hidden md:inline">{{ isPlayingFullSurah ? 'Pause Surah' : 'Play Surah' }}</span>
                 <span class="md:hidden">{{ isPlayingFullSurah ? 'Pause' : 'Play' }}</span>
+              </button>
+              <!-- *** ADD Mushaf Bookmark Button *** -->
+              <button (click)="toggleBookmark()" 
+                      matTooltip="{{ (isCurrentPageBookmarked$ | async) ? 'Remove Page Bookmark' : 'Bookmark This Page' }}"
+                      class="px-4 py-2 border-2 border-[#B7A57A] rounded-lg hover:bg-[#f8f4eb] transition-colors flex items-center gap-2"
+                      [class.bg-[#B7A57A]]="isCurrentPageBookmarked$ | async"
+                      [class.text-white]="isCurrentPageBookmarked$ | async"
+                      [class.text-[#B7A57A]]="!(isCurrentPageBookmarked$ | async)">
+                <i class="fas" [class.fa-bookmark]="isCurrentPageBookmarked$ | async" [class.fa-bookmark-o]="!(isCurrentPageBookmarked$ | async)"></i>
+                <span class="hidden md:inline">{{ (isCurrentPageBookmarked$ | async) ? 'Bookmarked' : 'Bookmark' }}</span>
               </button>
               <!-- Double Page Toggle (Hidden on Mobile) -->
               <button *ngIf="!isMobile" 
@@ -473,7 +488,7 @@
 
           <!-- Page Info -->
           <div class="mt-4 text-center text-[#B7A57A] font-medium pb-4">
-            Page {{displayPageNumber}} of {{DISPLAY_TOTAL}}
+            Page {{ displayPageNumber$ | async }} of {{DISPLAY_TOTAL}}
           </div>
         </div>
       </ng-container>

@@ -96,8 +96,11 @@ export class ProfileComponent implements OnInit, OnDestroy {
   // Quran preferences
   reciters: Reciter[] = [];
   translations: Translation[] = [];
-  bookmarks: string[] = [];
+  translationBookmarks: string[] = [];
+  mushafBookmarks: string[] = [];
   readingHistory: ReadingHistory[] = [];
+  translationHistory: ReadingHistory[] = [];
+  mushafHistory: ReadingHistory[] = [];
   
   // Cache flags to prevent redundant API calls
   private preferencesLoaded = false;
@@ -138,12 +141,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.authService.history$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(history => {
-      // Ensure a new array reference is created for OnPush
+      // Update the main history array first
       this.readingHistory = [...(history ?? [])];
-      this.historyLoading = false; // Stop loading indicator when history is received
-      this.historyLoadingError = null; // Clear any previous error
-      // *** Force immediate change detection ***
-      this.cdr.markForCheck();
+      this.historyLoading = false; 
+      this.historyLoadingError = null;
+      // Call filterHistory IMMEDIATELY after updating readingHistory
+      this.filterHistory(this.readingHistory);
+      // *** Force immediate change detection AFTER filtering ***
+      this.cdr.markForCheck(); 
     });
     // *** End history subscription ***
   }
@@ -422,9 +427,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.authService.removeBookmark(bookmark).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         if (response.success) {
-              this.bookmarks = response.bookmarks;
+          this.filterBookmarks(response.bookmarks);
           this.snackBar.open('Bookmark removed', 'Close', { duration: 2000 });
-          this.cdr.detectChanges(); // Update UI
+          this.cdr.markForCheck();
         } else {
           this.snackBar.open(`Failed to remove bookmark: ${response.message}`, 'Close', { duration: 4000 });
         }
@@ -436,37 +441,58 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
   
   goToVerse(bookmark: string): void {
-    const [surah, verse] = bookmark.split(':');
-    // Navigate to /quran using query parameters
-    this.router.navigate(['/quran'], { 
-      queryParams: { 
-        surah: surah, 
-        verse: verse 
-      } 
-    });
+    if (bookmark.startsWith('verse:')) {
+        const [, surah, verse] = bookmark.split(':');
+        this.router.navigate(['/quran'], { 
+            queryParams: { 
+                surah: surah, 
+                verse: verse,
+                mode: 'translation'
+            } 
+        });
+    } else if (bookmark.startsWith('mushaf:')) {
+        const [, pageStr] = bookmark.split(':');
+        this.router.navigate(['/quran'], { 
+            queryParams: { 
+                mode: 'mushaf', 
+                page: pageStr 
+            } 
+        });
+    } else {
+        console.warn('Unknown bookmark format:', bookmark);
+        this.snackBar.open('Cannot navigate to this bookmark.', 'Close', { duration: 3000 });
+    }
   }
   
   goToHistoryEntry(entry: ReadingHistory): void {
-    // Navigate to /quran and pass surah/verse as query parameters
-    this.router.navigate(['/quran'], { 
-      queryParams: { 
-        surah: entry.surah, 
-        verse: entry.verse 
-      } 
-    });
+    if (entry.type === 'verse' && entry.surah && entry.verse) {
+        this.router.navigate(['/quran'], { 
+            queryParams: { 
+                surah: entry.surah, 
+                verse: entry.verse,
+                mode: 'translation'
+            } 
+        });
+    } else if (entry.type === 'page' && entry.displayPage) {
+        this.router.navigate(['/quran'], { 
+            queryParams: { 
+                mode: 'mushaf', 
+                page: entry.displayPage
+            } 
+        });
+    } else {
+        console.warn('Unknown history entry format:', entry);
+        this.snackBar.open('Cannot navigate to this history entry.', 'Close', { duration: 3000 });
+    }
   }
   
   async clearHistory(): Promise<void> {
     try {
       await this.authService.clearHistory();
-      // No need to manually update this.readingHistory here,
-      // the subscription to authService.history$ will handle it.
       this.snackBar.open('Reading history cleared', 'Close', { duration: 3000 });
     } catch (error: any) {
       this.snackBar.open(`Error clearing history: ${error.message || 'Please try again.'}`, 'Close', { duration: 5000 });
     }
-    // No need for manual change detection here, async pipe/subscription handles it.
-    // this.cdr.detectChanges();
   }
   
   getSurahName(surahNumber: string | number): string {
@@ -515,33 +541,36 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   // Load user bookmarks
   private loadUserBookmarks(): void {
-    if (this.bookmarksLoaded) return;
-    
     this.isLoading = true;
-    this.bookmarks = []; // Initialize as empty array
+    this.translationBookmarks = [];
+    this.mushafBookmarks = [];
     
-    const bookmarksSub = this.authService.bookmarks$.subscribe({
+    this.authService.getBookmarks().pipe(takeUntil(this.destroy$)).subscribe({
       next: (bookmarks) => {
-        // Ensure bookmarks is treated as an array
         const bookmarksArray = Array.isArray(bookmarks) ? bookmarks : [];
         
-        // Filter out any invalid bookmarks
-        this.bookmarks = bookmarksArray.filter(bookmark => {
-          if (!bookmark || typeof bookmark !== 'string') return false;
-          const [surah, verse] = bookmark.split(':').map(Number);
-          return !isNaN(surah) && !isNaN(verse) && surah >= 1 && surah <= 114;
-        });
+        this.filterBookmarks(bookmarksArray);
+        
         this.bookmarksLoaded = true;
         this.isLoading = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
-        this.bookmarks = [];
+        this.translationBookmarks = [];
+        this.mushafBookmarks = [];
         this.bookmarksLoaded = true;
         this.isLoading = false;
+        console.error('Error loading bookmarks:', error);
+        this.snackBar.open('Failed to load bookmarks.', 'Close', { duration: 3000 });
+        this.cdr.markForCheck();
       }
     });
-    
-    this.subscriptions.push(bookmarksSub);
+  }
+
+  // Helper to filter bookmarks
+  private filterBookmarks(bookmarks: string[]) {
+      this.translationBookmarks = bookmarks.filter(b => b?.startsWith('verse:'));
+      this.mushafBookmarks = bookmarks.filter(b => b?.startsWith('mushaf:'));
   }
 
   // Method to get both Arabic and English surah names
@@ -580,7 +609,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   // Add this method to check for duplicates
   private isDuplicateBookmark(bookmark: string): boolean {
-    return this.bookmarks.includes(bookmark);
+    return this.translationBookmarks.includes(bookmark) || this.mushafBookmarks.includes(bookmark);
   }
 
   private isDuplicateHistory(entry: ReadingHistory): boolean {
@@ -622,35 +651,29 @@ export class ProfileComponent implements OnInit, OnDestroy {
     forkJoin({
       preferences: this.loadPreferences(userId), // Fetches and initializes form
       bookmarks: this.loadBookmarks(userId)
-      // Removed subscription: this.loadSubscriptionStatus(userId)
     })
     .pipe(
       takeUntil(this.destroy$),
       finalize(() => {
         this.isLoading = false; // Stop main loading AFTER forkJoin completes or errors
         this.cdr.markForCheck();
-        // console.log('[Profile] Main data loading finalized (isLoading=false).');
       })
     )
     .subscribe({
       next: (results) => {
-        // Preferences are handled within loadPreferences/form init
-        this.bookmarks = results.bookmarks || [];
-        // Subscription status should be available on this.user if loaded correctly by authService
+        this.filterBookmarks(results.bookmarks || []);
+        
         this.subscriptionStatus = this.user?.subscriptionStatus ? {
             plan: this.user.isPremium ? 'premium' : 'free',
             status: this.user.subscriptionStatus,
             currentPeriodEnd: this.user.subscriptionEnd ? new Date(this.user.subscriptionEnd * 1000) : null
         } : null;
-        // console.log('[Profile] Main data loaded successfully. Subscription Status:', this.subscriptionStatus);
 
-        // *** NOW load history AFTER main data is loaded successfully ***
         this.loadHistorySeparately();
       },
       error: (err) => {
         console.error('[Profile] Error loading main user data (forkJoin):', err);
         this.error = 'Failed to load profile data. Please try refreshing the page.';
-        // isLoading is set to false in finalize
       }
     });
   }
@@ -727,7 +750,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
       // Call the new backend endpoint using HttpClient
       const response = await firstValueFrom(this.http.delete<any>(
         `${environment.apiUrl}/api/users/me`
-        // No body needed for DELETE, interceptor handles token
       ));
 
       // Use optional chaining for safer access
@@ -781,14 +803,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
     try {
       const response = await this.apiService.createCustomerPortalSession();
-      // console.log('[Profile] Customer portal session created:', response);
       if (response?.url) {
         window.location.href = response.url;
       } else {
         throw new Error('No portal URL received from backend.');
       }
     } catch (error: any) {
-      // console.error('[Profile] Error creating customer portal session:', error);
       this.snackBar.open(`Could not open subscription management: ${error?.error?.error || error?.message || 'Please try again.'}`, 'Close', {
         duration: 7000,
         panelClass: ['snackbar-error']
@@ -801,8 +821,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   // Load Bookmarks
   private loadBookmarks(userId: string): Observable<string[] | null> {
-    // Check flag
-    if (this.bookmarksLoaded) return of(this.bookmarks);
+    // This function now primarily returns the raw list for loadOtherUserData
+    // The filtering happens via filterBookmarks called from the forkJoin result.
+    // Remove the check for bookmarksLoaded as loadOtherUserData handles sequencing.
 
     return this.authService.getBookmarks().pipe(
       timeout(10000),
@@ -840,7 +861,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   // Make public so template can call it for retry
   public loadHistorySeparately() {
-    // console.log('[Profile] loadHistorySeparately initiated.'); // Add log
     this.historyLoading = true;
     this.historyLoadingError = null;
     this.cdr.markForCheck(); // Trigger detection for spinner
@@ -848,46 +868,86 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.authService.getReadingHistory().pipe(
       takeUntil(this.destroy$),
       finalize(() => {
-        // Fallback: Ensure loading is stopped regardless of success or error
+        this.filterHistory(this.readingHistory);
         if (this.historyLoading) {
           this.historyLoading = false;
-          this.cdr.markForCheck(); // Trigger change detection
-          // console.log('[Profile] History loading finalized (fallback).');
+          this.cdr.markForCheck();
         }
       })
     ).subscribe({
       next: (response) => {
-        // console.log('[Profile] History API response received:', response); // Add log
         if (response.success) {
           this.readingHistory = response.history;
-          this.historyLoaded = true; // Mark history as successfully loaded
-          // console.log('[Profile] History loaded successfully (next block):', this.readingHistory);
+          this.historyLoaded = true;
+          this.historyLoading = false;
+          this.cdr.markForCheck();
         } else {
-          // Use a generic error message if success is false, as 'message' isn't guaranteed
           this.historyLoadingError = 'Failed to load history (API returned success: false)';
-          // console.warn('[Profile] History API error (next block):', this.historyLoadingError);
-          this.readingHistory = []; // Ensure history is empty on API failure
+          this.readingHistory = [];
           this.historyLoaded = false;
+          this.historyLoading = false;
+          this.cdr.markForCheck();
         }
-        // Explicitly set loading false here
-        this.historyLoading = false;
-        // console.log('[Profile] historyLoading set to false in next block.'); // Add log
-        this.cdr.markForCheck();
       },
       error: (error) => {
-        // Handle HTTP errors from the observable chain
         this.historyLoadingError = error.message || 'Failed to load history (network/request error)';
-        // console.error('[Profile] History loading HTTP error (error block):', error);
-        this.readingHistory = []; // Ensure history is empty on error
+        this.readingHistory = [];
         this.historyLoaded = false;
-        // Explicitly set loading false here
         this.historyLoading = false;
-        // console.log('[Profile] historyLoading set to false in error block.'); // Add log
         this.cdr.markForCheck();
       }
-      // No need for complete handler, finalize handles cleanup
     });
   }
 
-  // ... rest of the methods (compareById, resetPassword, manageSubscription, etc.)
+  // Helper to filter history and add type/parsed data
+  private filterHistory(history: any[]) {
+      this.translationHistory = [];
+      this.mushafHistory = [];
+
+      const uniqueEntries = new Map<string, any>();
+
+      history.forEach(entry => {
+          if (typeof entry === 'object' && entry !== null) {
+              let key: string | null = null;
+              let processedEntry: any = { ...entry }; // Clone entry
+
+              if ('surah' in entry && 'verse' in entry) {
+                  processedEntry.type = 'verse';
+                  key = `verse:${entry.surah}:${entry.verse}`;
+              } else if ('page' in entry) {
+                  processedEntry.type = 'page';
+                  processedEntry.displayPage = this.actualToDisplayPage(entry.page);
+                  key = `page:${entry.page}`;
+              } else {
+                  console.warn("Unknown history entry format:", entry);
+                  return; // Skip unknown formats
+              }
+
+              if (!uniqueEntries.has(key) || new Date(processedEntry.timestamp) > new Date(uniqueEntries.get(key).timestamp)) {
+                  uniqueEntries.set(key, processedEntry);
+              }
+          }
+      });
+
+      const sortedEntries = Array.from(uniqueEntries.values()).sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      sortedEntries.forEach(entry => {
+          if (entry.type === 'verse') {
+              this.translationHistory.push(entry);
+          } else if (entry.type === 'page') {
+              this.mushafHistory.push(entry);
+          }
+      });
+
+      this.translationHistory = this.translationHistory.slice(0, 50);
+      this.mushafHistory = this.mushafHistory.slice(0, 50);
+  }
+
+  // Helper needed for filtering history (display page calculation)
+  private actualToDisplayPage(actualPage: number): number {
+    const FIRST_PAGE_OFFSET = 9;
+    return Math.max(1, actualPage - FIRST_PAGE_OFFSET); 
+  }
 } 

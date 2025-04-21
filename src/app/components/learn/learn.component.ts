@@ -147,6 +147,7 @@ export class LearnComponent implements OnInit, OnDestroy {
       next: (isPremiumResult) => {
         this.isPremium = isPremiumResult; // Store the result
         this.initialPremiumCheckComplete = true; // Mark initial check as done
+        this.cdr.detectChanges();
         this.isLoading = false; // Stop loading AFTER checks
         if (this.isPremium) {
              this.setupAuthCheck(); // Only setup periodic check if initially premium
@@ -155,6 +156,7 @@ export class LearnComponent implements OnInit, OnDestroy {
       error: (error) => {
         console.error('Error during LearnComponent initialization:', error);
         this.initialPremiumCheckComplete = true; // Still mark as complete even on error
+        this.cdr.detectChanges();
         this.isLoading = false; // Ensure loading stops on error
         // Handle initialization error (e.g., show error message)
       }
@@ -317,7 +319,7 @@ export class LearnComponent implements OnInit, OnDestroy {
         this.saveState(); // Save to localStorage
 
         // Save history to backend (async, fire-and-forget for now)
-        this.firebaseAuthService.saveReadingHistory(this.selectedSurah, this.selectedVerse)
+        this.firebaseAuthService.saveReadingHistory({ type: 'verse', surah: this.selectedSurah, verse: this.selectedVerse })
         .catch(err => {
           console.warn('Failed to save reading history to backend:', err);
           // Optionally inform the user if saving fails consistently

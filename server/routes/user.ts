@@ -18,9 +18,10 @@ interface IPreferences {
     bookmarks?: string[];
     lastState?: {
         isMushafView?: boolean;
-        lastSurah?: number;
-        lastVerse?: number;
-        lastPage?: number;
+        lastTranslationSurah?: number;
+        lastTranslationVerse?: number;
+        lastMushafPage?: number;
+        isMainControlsMinimized?: boolean;
         timestamp?: Date;
     };
     readingHistory?: any[]; // Adjust type if known
@@ -37,25 +38,36 @@ interface IUserPreferencesDocument extends Document {
     preferences: IPreferences; 
 }
 
+// *** UPDATE: Make ReadingHistoryEntry flexible for verse or page ***
 interface IReadingHistoryEntry extends Document {
     userId: string;
     timestamp: Date;
-    surah: number;
-    verse: number;
+    type: 'verse' | 'page'; // Add type identifier
+    surah?: number;         // Optional
+    verse?: number;         // Optional
+    page?: number;          // Optional
 }
 
 // Create schemas
+// *** UPDATE: Modify schema for flexibility ***
 const readingHistorySchema = new Schema<IReadingHistoryEntry>({
-    userId: { type: String, required: true },
+    userId: { type: String, required: true, index: true }, // Index userId
     timestamp: { type: Date, default: Date.now },
-    surah: { type: Number, required: true },
-    verse: { type: Number, required: true }
+    type: { type: String, required: true, enum: ['verse', 'page'] },
+    surah: { type: Number, required: function() { return this.type === 'verse'; } }, // Required only if type is 'verse'
+    verse: { type: Number, required: function() { return this.type === 'verse'; } }, // Required only if type is 'verse'
+    page: { type: Number, required: function() { return this.type === 'page'; } }    // Required only if type is 'page'
 });
 
-// Create compound unique index on userId and surah to ensure one entry per surah per user
-readingHistorySchema.index({ userId: 1, surah: 1 }, { unique: true });
+// *** UPDATE: Compound unique index needs adjustment based on type ***
+// Option 1: Remove unique index (simplest, allows multiple entries per surah/page initially, relies on logic)
+// Option 2: Use partial indexes (more complex)
+// Let's go with Option 1 for now and handle uniqueness in the route logic.
+// readingHistorySchema.index({ userId: 1, surah: 1 }, { unique: true }); // Remove or adjust this
+// readingHistorySchema.index({ userId: 1, type: 1, surah: 1 }); // Index for verse lookups - REMOVED
+// readingHistorySchema.index({ userId: 1, type: 1, page: 1 });  // Index for page lookups - REMOVED
 
-// Add compound index for efficient user history retrieval and sorting
+// Add compound index for efficient user history retrieval and sorting (remains useful)
 readingHistorySchema.index({ userId: 1, timestamp: -1 });
 
 const preferencesSubSchema = new Schema<IPreferences>({ // Define sub-schema for typing
@@ -63,10 +75,11 @@ const preferencesSubSchema = new Schema<IPreferences>({ // Define sub-schema for
     selectedTranslation: { type: String, default: '131' },
     bookmarks: [String],
     lastState: {
-        isMushafView: Boolean,
-        lastSurah: Number,
-        lastVerse: Number,
-        lastPage: Number,
+        isMushafView: { type: Boolean, default: false },
+        lastTranslationSurah: Number,
+        lastTranslationVerse: Number,
+        lastMushafPage: Number,
+        isMainControlsMinimized: { type: Boolean, default: false },
         timestamp: { type: Date, default: Date.now }
     },
     readingHistory: [{
@@ -104,9 +117,10 @@ const getDefaultPreferences = (): IPreferences => ({
     bookmarks: [],
     lastState: {
         isMushafView: false,
-        lastSurah: 1,
-        lastVerse: 1,
-        lastPage: 1,
+        lastTranslationSurah: 1,
+        lastTranslationVerse: 1,
+        lastMushafPage: 1,
+        isMainControlsMinimized: false,
         timestamp: new Date()
     },
     readingHistory: [],
@@ -246,13 +260,28 @@ router.put('/:userId/preferences', withAuth(async (req: AuthenticatedRequest, re
         }
 
         const userId = req.auth!.uid;
-        const newPreferences = req.body;
+        const incomingPrefs = req.body;
 
-        // Find the document and update only the preferences field
+        // --- Prepare update object with dot notation for nested fields --- 
+        const updateOps: { [key: string]: any } = {};
+        Object.keys(incomingPrefs).forEach(key => {
+            if (key === 'lastState') {
+                // Handle nested lastState separately
+                Object.keys(incomingPrefs.lastState).forEach(stateKey => {
+                    updateOps[`preferences.lastState.${stateKey}`] = incomingPrefs.lastState[stateKey];
+                });
+            } else {
+                // Handle top-level preferences
+                updateOps[`preferences.${key}`] = incomingPrefs[key];
+            }
+        });
+
+        // // console.log(`[User Prefs PUT ${userId}] Update operations:`, updateOps); // Debug log
+
         const updatedUserPrefs = await UserPreferences.findOneAndUpdate(
             { userId },
-            { $set: { preferences: newPreferences } },
-            { new: true, upsert: true }
+            { $set: updateOps }, // Use the constructed update object
+            { new: true, upsert: true, setDefaultsOnInsert: true } // Ensure defaults on upsert
         ).lean();
 
         if (!updatedUserPrefs) {
@@ -292,6 +321,7 @@ router.get('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest
 }));
 
 // Save reading history entry
+// *** UPDATE: Handle both verse and page history types ***
 router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     try {
         if (!verifyUserAccess(req, req.params.userId)) {
@@ -299,78 +329,95 @@ router.post('/:userId/reading-history', withAuth(async (req: AuthenticatedReques
         }
 
         const userId = req.auth!.uid;
-        const { surah, verse } = req.body;
+        const { type, surah, verse, page } = req.body;
 
-        // Enhanced input validation
-        if (!surah || !verse) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Missing required fields: surah and verse are required.' 
-            });
+        // --- Input Validation ---
+        if (!type || (type !== 'verse' && type !== 'page')) {
+            return res.status(400).json({ success: false, error: 'Invalid or missing type field. Must be \'verse\' or \'page\'.' });
         }
 
-        // Convert to numbers and validate
-        const surahNum = Number(surah);
-        const verseNum = Number(verse);
+        let findCriteria: any = { userId, type };
+        let entryData: Partial<IReadingHistoryEntry> = { userId, type, timestamp: new Date() };
+        let isValid = false;
 
-        if (isNaN(surahNum) || isNaN(verseNum)) {
-            return res.status(400).json({ 
-                success: false, 
-                error: 'Invalid input: surah and verse must be valid numbers.' 
-            });
+        if (type === 'verse') {
+            const surahNum = Number(surah);
+            const verseNum = Number(verse);
+            if (isNaN(surahNum) || isNaN(verseNum) || surahNum < 1 || surahNum > 114 || verseNum < 1) {
+                return res.status(400).json({ success: false, error: 'Invalid surah or verse number for type \'verse\'.' });
+            }
+            findCriteria.surah = surahNum;
+            entryData.surah = surahNum;
+            entryData.verse = verseNum; // Update verse number even if surah exists
+            isValid = true;
+            // For verse type, we want one entry per surah, updating the verse and timestamp
+        } else { // type === 'page'
+            const pageNum = Number(page);
+            const surahNum = Number(surah);
+
+            // Validate page number (adjust range 1-613 based on your actual file system/logic)
+            if (isNaN(pageNum) || pageNum < 1 || pageNum > 613) {
+                return res.status(400).json({ success: false, error: 'Invalid page number for type \'page\'. Expected 1-613.' });
+            }
+            if (isNaN(surahNum) || surahNum < 1 || surahNum > 114) {
+                 return res.status(400).json({ success: false, error: 'Invalid surah number for type \'page\'.' });
+            }
+
+            findCriteria.page = pageNum;
+            findCriteria.surah = surahNum;
+            entryData.page = pageNum;
+            entryData.surah = surahNum;
+            isValid = true;
+            // For page type, we now upsert based on surah
         }
 
-        if (surahNum < 1 || surahNum > 114 || verseNum < 1) {
-            return res.status(400).json({
-                success: false,
-                error: 'Invalid input: surah must be between 1 and 114, verse must be positive.'
-            });
+        if (!isValid) {
+            // This should theoretically not be reached due to earlier checks, but as a safeguard:
+            return res.status(400).json({ success: false, error: 'Invalid history entry data.' });
         }
 
-        // --- REVERT: Restore findOne and update logic FOR HISTORY ONLY ---
-        let historyEntry = await ReadingHistory.findOne({ userId, surah: surahNum });
+        // --- Upsert Logic (Revised Defensive Approach) ---
+        let historyEntry;
 
+        // 1. Try to find existing entry
+        if (type === 'verse') {
+            historyEntry = await ReadingHistory.findOne({ userId, type: 'verse', surah: entryData.surah });
+        } else { // type === 'page'
+            if (entryData.surah === null || entryData.surah === undefined) {
+                 console.error(`[History POST ${userId}] Surah is missing for page type history entry. Aborting save.`);
+                 return res.status(400).json({ success: false, error: 'Surah is required for page history entries.' });
+            }
+            historyEntry = await ReadingHistory.findOne({ userId, type: 'page', surah: entryData.surah });
+        }
+
+        // 2. Update if found, Create if not found
         if (historyEntry) {
-            historyEntry.verse = verseNum;
-            historyEntry.timestamp = new Date();
+            historyEntry.timestamp = entryData.timestamp!;
+            if (type === 'verse') {
+                historyEntry.verse = entryData.verse;
+            } else { // type === 'page'
+                historyEntry.page = entryData.page;
+            }
             await historyEntry.save();
-            console.log(`[History POST ${userId}] Updated existing history entry: S:${surahNum} V:${verseNum}`);
+            console.log(`[History POST ${userId}] Updated existing ${type} history entry:`, historyEntry.toObject());
         } else {
-            historyEntry = new ReadingHistory({
-                userId,
-                surah: surahNum,
-                verse: verseNum,
-                timestamp: new Date()
-            });
+            if (type === 'page' && (entryData.surah === null || entryData.surah === undefined)) {
+                 console.error(`[History POST ${userId}] Cannot create new page history entry without surah. Aborting save.`);
+                 return res.status(400).json({ success: false, error: 'Internal server error: Surah missing for new page entry creation.' });
+            }
+            historyEntry = new ReadingHistory(entryData);
             await historyEntry.save();
-            console.log(`[History POST ${userId}] Saved new history entry: S:${surahNum} V:${verseNum}`);
+            console.log(`[History POST ${userId}] Saved new ${type} history entry:`, historyEntry.toObject());
         }
-        // --- END REVERT FOR HISTORY ONLY ---
-
-        // --- REMOVE UserPreferences Update Logic ---
-        /*
-        let userPrefs = await UserPreferences.findOne({ userId });
-        if (!userPrefs) {
-           // ... (create userPrefs) ...
-        }
-        if (!userPrefs.preferences) {
-           // ... (initialize preferences) ...
-        }
-        if (!userPrefs.preferences.lastState) {
-           // ... (initialize lastState) ...
-        } else {
-           // ... (update lastState) ...
-        }
-        await userPrefs.save();
-        */
-        // --- END REMOVAL ---
 
         res.json({
             success: true,
-            entry: historyEntry, // Return the history entry
+            entry: historyEntry.toObject(), // Return the saved/updated entry
             message: 'Reading history updated successfully'
         });
-    } catch (error) {
+
+    } catch (error: any) {
+        console.error(`[History POST ${req.auth?.uid}] Error saving history:`, error); // Log the full error
         next(error);
     }
 }));
@@ -422,22 +469,38 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
         }
 
         const userId = req.auth!.uid;
-        const { verseReference } = req.body;
+        const { verseReference, type, page } = req.body;
+        let bookmarkToAdd: string | null = null;
 
-        if (!verseReference) {
+        if (verseReference) {
+            // Handle verse bookmark
+            const [surah, verse] = verseReference.split(':').map(Number);
+            if (isNaN(surah) || isNaN(verse) || surah < 1 || surah > 114 || verse < 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid verse reference format. Expected format: surah:verse where surah is 1-114 and verse is positive',
+                    bookmarks: []
+                });
+            }
+            bookmarkToAdd = `verse:${surah}:${verse}`;
+        } else if (type === 'page' && page) {
+            // Handle page bookmark
+            const pageNum = Number(page);
+            // Assuming pages are within a valid range (e.g., 1-604 for display)
+            // Adjust the range according to your actual page numbering system if needed
+            if (isNaN(pageNum) || pageNum < 1 || pageNum > 604) { 
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid page number. Page must be between 1 and 604.',
+                    bookmarks: []
+                });
+            }
+            bookmarkToAdd = `mushaf:${pageNum}`;
+        } else {
+            // Invalid request body
             return res.status(400).json({ 
                 success: false, 
-                message: 'Verse reference is required',
-                bookmarks: []
-            });
-        }
-
-        // Validate verse reference format
-        const [surah, verse] = verseReference.split(':').map(Number);
-        if (isNaN(surah) || isNaN(verse) || surah < 1 || surah > 114 || verse < 1) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid verse reference format. Expected format: surah:verse where surah is 1-114 and verse is positive',
+                message: 'Invalid bookmark request. Provide either verseReference or { type: \'page\', page: number }.',
                 bookmarks: []
             });
         }
@@ -445,26 +508,38 @@ router.post('/:userId/bookmarks', withAuth(async (req: AuthenticatedRequest, res
         // Get or create user preferences with default values
         let userPrefs = await UserPreferences.findOne({ userId });
         if (!userPrefs || !userPrefs.preferences) {
-            userPrefs = await UserPreferences.create(getDefaultPreferences());
+            // If userPrefs is null or preferences field doesn't exist, create/reset it.
+            // Ensure the default includes an empty bookmarks array.
+            const defaultPrefs = getDefaultPreferences();
+            userPrefs = await UserPreferences.findOneAndUpdate(
+                { userId }, 
+                { $set: { preferences: defaultPrefs } }, 
+                { new: true, upsert: true, setDefaultsOnInsert: true }
+            );
+            // Handle potential error during creation/update
+            if (!userPrefs) {
+                throw new Error("Failed to get or create user preferences.");
+            }
         }
 
         // At this point we know userPrefs and preferences exist
         const preferences = userPrefs.preferences!;
 
-        // Ensure bookmarks array exists
-        if (!preferences.bookmarks) {
+        // Ensure bookmarks array exists, initialize if not
+        if (!Array.isArray(preferences.bookmarks)) {
             preferences.bookmarks = [];
         }
 
         // Add bookmark if it doesn't exist
-        if (!preferences.bookmarks.includes(verseReference)) {
-            preferences.bookmarks.push(verseReference);
+        if (bookmarkToAdd && !preferences.bookmarks.includes(bookmarkToAdd)) {
+            preferences.bookmarks.push(bookmarkToAdd);
             await userPrefs.save();
         }
 
         res.json({ 
             success: true, 
             message: 'Bookmark added successfully',
+            // Ensure we return the potentially initialized/updated bookmarks array
             bookmarks: preferences.bookmarks 
         });
     } catch (error) {

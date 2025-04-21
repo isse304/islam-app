@@ -76,16 +76,12 @@ $text-medium: #4A5568;
 }
 
 .verse-text {
-  @include arabic-text-base;
+  font-family: 'Traditional Arabic', serif;
+  font-size: 2.2rem;
+  line-height: 1.8;
   text-align: right;
+  direction: rtl;
   padding: 20px 0;
-  font-size: 42px;
-  line-height: 2.8;
-  
-  span {
-    display: inline-block;
-    padding: 0 4px;
-  }
 }
 
 // Tooltip styles
@@ -704,10 +700,9 @@ select option {
 }
 
 .highlighted-verse {
-  animation: pulse-highlight 3s ease-in-out;
-  background-color: rgba(183, 165, 122, 0.3);
-  border-radius: 4px;
-  transition: background-color 0.5s ease;
+  background-color: rgba(255, 255, 0, 0.2);
+  transition: background-color 0.5s ease-in-out;
+  border-radius: 8px;
 }
 
 @keyframes pulse-highlight {
