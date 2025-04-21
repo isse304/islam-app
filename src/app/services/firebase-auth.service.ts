@@ -685,7 +685,7 @@ export class FirebaseAuthService {
             };
             // +++ Clear USER_CACHE_KEY after successful save +++
             const cacheKey = `${this.USER_CACHE_KEY}_${user.uid}`;
-            console.log(`[saveUserPreferences] Clearing cache key: ${cacheKey}`);
+            //console.log(`[saveUserPreferences] Clearing cache key: ${cacheKey}`);
             localStorage.removeItem(cacheKey);
             // +++ End Cache Clearing +++
         }

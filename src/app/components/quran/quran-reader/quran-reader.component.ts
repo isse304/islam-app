@@ -368,7 +368,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     this.isLoading = true;
     this.changeDetector.markForCheck();
-    //console.log('%c[QuranReader ngOnInit] Starting initialization...', 'color: green; font-weight: bold;');
+    ////console.log('%c[QuranReader ngOnInit] Starting initialization...', 'color: green; font-weight: bold;');
 
     try {
         // 1. Load essential non-user data first (can run in parallel)
@@ -393,7 +393,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         let stateSource: string = 'defaults (forced translation)';
 
         const queryParams = this.route.snapshot.queryParams;
-        //console.log(`%c[QuranReader ngOnInit] Query Params:`, 'color: green;', queryParams);
+        ////console.log(`%c[QuranReader ngOnInit] Query Params:`, 'color: green;', queryParams);
         const routePage = queryParams['page'] ? parseInt(queryParams['page'], 10) : null;
         const routeMode = queryParams['mode'];
         const routeSurah = queryParams['surah'] ? parseInt(queryParams['surah'], 10) : null;
@@ -439,8 +439,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             this.currentPage = this.displayToActualPage(initialPage);
         }
 
-        console.log(`%c[QuranReader ngOnInit] Determined Source: ${stateSource}`, 'color: green; font-weight: bold;');
-        console.log(`%c[QuranReader ngOnInit] Applying Initial State -> Mode: ${initialModeIsMushaf ? 'Mushaf' : 'Translation'}, S:${initialSurah} V:${initialVerse} DisplayP:${initialPage} ActualP:${this.currentPage}`, 'color: green; font-weight: bold;');
+        //console.log(`%c[QuranReader ngOnInit] Determined Source: ${stateSource}`, 'color: green; font-weight: bold;');
+        //console.log(`%c[QuranReader ngOnInit] Applying Initial State -> Mode: ${initialModeIsMushaf ? 'Mushaf' : 'Translation'}, S:${initialSurah} V:${initialVerse} DisplayP:${initialPage} ActualP:${this.currentPage}`, 'color: green; font-weight: bold;');
 
         // --- Apply Determined Initial State ---
         this.isMushafView = initialModeIsMushaf;
@@ -453,15 +453,15 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.changeDetector.markForCheck();
 
         // +++ ADD LOG BEFORE loadInitialContent +++
-        //console.log(`%c[QuranReader ngOnInit] BEFORE loadInitialContent. isMushafView: ${this.isMushafView}, CurrentPage: ${this.currentPage}, DisplayPage: ${this.displayPageNumberSubject.value}`, 'color: blue');
+        ////console.log(`%c[QuranReader ngOnInit] BEFORE loadInitialContent. isMushafView: ${this.isMushafView}, CurrentPage: ${this.currentPage}, DisplayPage: ${this.displayPageNumberSubject.value}`, 'color: blue');
         // --- Load Initial Content ---
         this.loadInitialContent(this.currentSurah, this.currentVerse, this.isMushafView, initialPage);
         // +++ ADD LOG AFTER loadInitialContent +++
-        //console.log(`%c[QuranReader ngOnInit] AFTER loadInitialContent call.`, 'color: blue');
+        ////console.log(`%c[QuranReader ngOnInit] AFTER loadInitialContent call.`, 'color: blue');
 
         // --- Post-Content Load Setup ---
         this.initialLoadComplete = true;
-        ////console.log('%c[QuranReader ngOnInit] Initialization complete. initialLoadComplete = true.', 'color: green; font-weight: bold;');
+        //////console.log('%c[QuranReader ngOnInit] Initialization complete. initialLoadComplete = true.', 'color: green; font-weight: bold;');
         this.subscribeToRouteParams();
         this.loadSecondaryData().catch(err => console.warn("Error loading secondary data:", err)); // Keep this one warn
 
@@ -493,7 +493,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   public loadSurah(surahNumber: number): Observable<void | null> {
     this.isAudioLoading = true;
-    // ////console.log(`[loadSurah ENTRY] Loading Surah ${surahNumber}. Current component state Surah: ${this.currentSurah}`);
+    // //////console.log(`[loadSurah ENTRY] Loading Surah ${surahNumber}. Current component state Surah: ${this.currentSurah}`);
     // *** Set currentSurah immediately when starting load ***
     this.currentSurah = surahNumber;
     this.selectedSurah = surahNumber; // Also sync dropdown immediately
@@ -504,11 +504,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Return the observable stream
     return this.quranService.getSurah(surahNumber, this.selectedTranslation, this.selectedReciter.id).pipe(
       map(verses => {
-        // ////console.log(`[loadSurah MAP] Received ${verses?.length} verses for Surah ${surahNumber}.`);
+        // //////console.log(`[loadSurah MAP] Received ${verses?.length} verses for Surah ${surahNumber}.`);
         this.verses = verses;
         this.currentSurahDetails = this.surahs.find(s => s.number === surahNumber);
         // this.currentSurah = surahNumber; // Already set above
-        // ////console.log(`[loadSurah MAP] AFTER assigning verses. Current Surah: ${this.currentSurah}, Selected Surah: ${this.selectedSurah}`);
+        // //////console.log(`[loadSurah MAP] AFTER assigning verses. Current Surah: ${this.currentSurah}, Selected Surah: ${this.selectedSurah}`);
 
         this.setCachedVerses(surahNumber, this.selectedReciter.id, verses);
         this.isAudioLoading = false;
@@ -530,11 +530,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** UPDATED HELPER METHOD ***
   // Helper to load initial content based on determined state
   private loadInitialContent(surah: number, verse: number, isMushaf: boolean, targetDisplayPage?: number): void { 
-    //console.log(`%c[loadInitialContent] Called. isMushaf: ${isMushaf}, TargetDisplayPage: ${targetDisplayPage}, CurrentPage: ${this.currentPage}`, 'color: magenta'); // +++ ADD LOG +++
+    ////console.log(`%c[loadInitialContent] Called. isMushaf: ${isMushaf}, TargetDisplayPage: ${targetDisplayPage}, CurrentPage: ${this.currentPage}`, 'color: magenta'); // +++ ADD LOG +++
     if (isMushaf) {
       // Use the explicitly passed targetDisplayPage if available, otherwise fallback to currentPage
       const pageToLoad = targetDisplayPage ? this.displayToActualPage(targetDisplayPage) : this.currentPage;
-      //console.log(`%c[loadInitialContent] Loading Mushaf - Calling loadMushafPage(${pageToLoad})`, 'color: magenta'); // +++ ADD LOG +++
+      ////console.log(`%c[loadInitialContent] Loading Mushaf - Calling loadMushafPage(${pageToLoad})`, 'color: magenta'); // +++ ADD LOG +++
       this.loadMushafPage(pageToLoad);
     } else {
        // Translation Mode
@@ -542,33 +542,33 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
        // Set Surah immediately, but NOT verse yet
        this.currentSurah = surah;
        this.selectedSurah = surah; // Sync dropdown
-       // // ////console.log(`[loadInitialContent] Translation mode. Set currentSurah to ${this.currentSurah}. Current verse still ${this.currentVerse}. Calling loadSurah(${surah}).`);
+       // // //////console.log(`[loadInitialContent] Translation mode. Set currentSurah to ${this.currentSurah}. Current verse still ${this.currentVerse}. Calling loadSurah(${surah}).`);
 
        this.loadSurahSubscription?.unsubscribe();
        this.loadSurahSubscription = this.loadSurah(surah).pipe(
           finalize(() => {
-              // // ////console.log(`[loadInitialContent FINALIZE] Surah ${surah} load finished.`);
+              // // //////console.log(`[loadInitialContent FINALIZE] Surah ${surah} load finished.`);
               this.isLoading = false;
               // *** Set the target verse *after* surah load completes ***
               this.currentVerse = verse;
-              // // ////console.log(`[loadInitialContent FINALIZE] Set currentVerse to ${this.currentVerse}.`);
+              // // //////console.log(`[loadInitialContent FINALIZE] Set currentVerse to ${this.currentVerse}.`);
 
               this.changeDetector.markForCheck(); // Ensure verse update is checked
               // Scroll to verse AFTER loading finishes and verse is set
               setTimeout(() => {
-                  // // ////console.log(`[loadInitialContent FINALIZE setTimeout] Scrolling to verse ${verse}.`);
+                  // // //////console.log(`[loadInitialContent FINALIZE setTimeout] Scrolling to verse ${verse}.`);
                   this.scrollToVerse(verse); // Now scroll to the correct verse
               }, 200); // Keep delay for rendering
               this.updateUrlParams(); // URL will now have correct surah and verse
           })
        ).subscribe({
-            // next: () => { // ////console.log(`[loadInitialContent] loadSurah(${surah}) emitted next.`); },
+            // next: () => { // //////console.log(`[loadInitialContent] loadSurah(${surah}) emitted next.`); },
             error: (err) => {
               console.error(`[loadInitialContent ERROR] Error in loadSurah(${surah}) subscription:`, err);
               this.isLoading = false; // Ensure loading is stopped on error
               this.changeDetector.markForCheck();
             },
-            // complete: () => { // ////console.log(`[loadInitialContent] loadSurah(${surah}) completed.`); }
+            // complete: () => { // //////console.log(`[loadInitialContent] loadSurah(${surah}) completed.`); }
        });
     }
   }
@@ -576,7 +576,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // *** SIMPLIFIED HELPER METHOD ***
   // Helper to load non-essential data (preferences, history, bookmarks)
   private async loadSecondaryData(): Promise<void> {
-    // // ////console.log('[QuranReader] Loading secondary data...');
+    // // //////console.log('[QuranReader] Loading secondary data...');
     //this.showLoadingUI(); // <-- Remove argument
 
     // Load preferences, history (async), and bookmarks (observable)
@@ -596,7 +596,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Setup view mode based on the potentially restored state
     this.setupViewMode();
 
-    // // ////console.log('[QuranReader] Secondary data loading complete.');
+    // // //////console.log('[QuranReader] Secondary data loading complete.');
     //this.hideLoadingUI(); // <-- Remove argument
     this.changeDetector.markForCheck(); // Ensure UI reflects loaded data (final check)
   }
@@ -605,18 +605,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private scrollToVerse(verseNumber: number, maxAttempts: number = 5): boolean {
     if (!verseNumber || this.isMushafView) return false;
-    // // ////console.log(`[scrollToVerse] Called with verseNumber: ${verseNumber}`);
+    // // //////console.log(`[scrollToVerse] Called with verseNumber: ${verseNumber}`);
 
     let scrolledSuccessfully = false;
 
     const attemptScroll = (attempts: number = 0) => {
       const verseElement = document.getElementById(`verse-${verseNumber}`);
-      // // ////console.log(`[scrollToVerse Attempt ${attempts + 1}] Element lookup for 'verse-${verseNumber}':`, verseElement ? 'Found' : 'NOT Found');
+      // // //////console.log(`[scrollToVerse Attempt ${attempts + 1}] Element lookup for 'verse-${verseNumber}':`, verseElement ? 'Found' : 'NOT Found');
 
       if (verseElement) {
         // ++ Add a small delay before calculating position and scrolling ++
         setTimeout(() => {
-          // // ////console.log(`[Scroll attempt ${attempts + 1}] Found element for verse ${verseNumber}. Preparing to scroll...`);
+          // // //////console.log(`[Scroll attempt ${attempts + 1}] Found element for verse ${verseNumber}. Preparing to scroll...`);
           document.querySelectorAll('.highlighted-verse').forEach(el => {
             el.classList.remove('.highlighted-verse');
           });
@@ -701,7 +701,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         }
       };
 
-      // ////console.log('[QuranReader savePreferences] Attempting to save:', JSON.stringify(prefsToSave)); // Log the object being saved
+      // //////console.log('[QuranReader savePreferences] Attempting to save:', JSON.stringify(prefsToSave)); // Log the object being saved
 
       try {
         // Save locally immediately for responsiveness
@@ -709,7 +709,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
         // Save to server (no need to await if we don't need the result immediately)
         this.authService.saveUserPreferences(prefsToSave).then(() => {
-          // ////console.log('[QuranReader savePreferences] Server save successful (async).');
+          // //////console.log('[QuranReader savePreferences] Server save successful (async).');
         }).catch(error => {
           console.warn('[QuranReader savePreferences] Server save failed (async):', error);
           // Optionally notify user or retry
@@ -728,14 +728,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private debouncedSaveHistory(location: { type: 'verse', surah: number, verse: number } | { type: 'page', page: number }) {
     clearTimeout(this.historyDebounceTimer);
-    // ////console.log(`[QuranReader debouncedSaveHistory] Timer cleared. Queuing save for:`, location);
+    // //////console.log(`[QuranReader debouncedSaveHistory] Timer cleared. Queuing save for:`, location);
 
     this.historyDebounceTimer = setTimeout(async () => {
-      // ////console.log(`[QuranReader debouncedSaveHistory] Timeout executed for:`, location);
-      // ////console.log(`[QuranReader debouncedSaveHistory] Checking conditions: this.user exists? ${!!this.user}`);
+      // //////console.log(`[QuranReader debouncedSaveHistory] Timeout executed for:`, location);
+      // //////console.log(`[QuranReader debouncedSaveHistory] Checking conditions: this.user exists? ${!!this.user}`);
 
       if (!this.user) {
-        // ////console.log('[QuranReader debouncedSaveHistory] User not logged in, SKIPPING history save.');
+        // //////console.log('[QuranReader debouncedSaveHistory] User not logged in, SKIPPING history save.');
         return;
       }
       
@@ -785,12 +785,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
 
       if (!isValidLocation || !historyDataToSave) {
-          ////console.log('[QuranReader debouncedSaveHistory] Invalid location data, skipping server save.', location);
+          //////console.log('[QuranReader debouncedSaveHistory] Invalid location data, skipping server save.', location);
           return;
       }
 
       try {
-          // ////console.log(`[QuranReader debouncedSaveHistory] Calling authService.saveReadingHistory with:`, historyDataToSave);
+          // //////console.log(`[QuranReader debouncedSaveHistory] Calling authService.saveReadingHistory with:`, historyDataToSave);
           if (historyDataToSave && 'surah' in historyDataToSave && 'verse' in historyDataToSave) { // Check if it's a verse entry
             // *** UPDATE: Call the unified saveReadingHistory method with a single location object ***
             await this.authService.saveReadingHistory({ type: 'verse', surah: historyDataToSave.surah, verse: historyDataToSave.verse });
@@ -808,7 +808,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                   surah: currentSurahOnPage // Include the determined surah
               });
           } else {
-              ////console.log('[QuranReader debouncedSaveHistory] Skipping save for invalid data.');
+              //////console.log('[QuranReader debouncedSaveHistory] Skipping save for invalid data.');
           }
 
           // Update local readingHistory array optimistically
@@ -1006,7 +1006,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       if (cachedSurahs) {
         try {
           this.surahs = JSON.parse(cachedSurahs);
-          // // ////console.log('Loaded surah list from cache');
+          // // //////console.log('Loaded surah list from cache');
           if (this.surahs.length > 0) {
             return Promise.resolve();
           }
@@ -1016,7 +1016,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
       
       // If no cache or cache is invalid, load from API
-      // // ////console.log('Loading surah list from API...');
+      // // //////console.log('Loading surah list from API...');
       
       // Create a promise that will reject after 5 seconds
       const timeoutPromise = new Promise<never>((_, reject) => {
@@ -1036,14 +1036,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         console.warn('Error caching surahs:', cacheError);
       }
       
-      // // ////console.log('Loaded surah list successfully', this.surahs.length);
+      // // //////console.log('Loaded surah list successfully', this.surahs.length);
       return Promise.resolve();
     } catch (error) {
       console.error('Error loading surah list:', error);
       
       // Provide fallback data if loading fails
       if (this.surahs.length === 0) {
-        // // ////console.log('Using fallback surah list');
+        // // //////console.log('Using fallback surah list');
         this.surahs = [{
           number: 1,
           name: 'Al-Fatiha',
@@ -1174,7 +1174,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           this.audioPlayer.pause();
           this.removeAudioEvents();
           this.audioPlayer.removeAttribute('src'); // Clean up old source
-          // ////console.log('[playAudio] Previous player paused and cleaned.');
+          // //////console.log('[playAudio] Previous player paused and cleaned.');
         }
 
         // Store scroll position BEFORE creating/loading new audio
@@ -1185,7 +1185,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.currentAudioUrl = url; // Store the current URL
         this.setupAudioEvents(); // Add listeners to the new player
 
-        // ////console.log(`[playAudio] New audio element created for URL: ${url}`);
+        // //////console.log(`[playAudio] New audio element created for URL: ${url}`);
 
         // Initiate loading
         this.audioPlayer.load();
@@ -1203,7 +1203,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // The 'canplay' event or 'playing' event will set isAudioLoading to false
         try {
           await this.audioPlayer.play();
-          // ////console.log('[playAudio] Play promise resolved.');
+          // //////console.log('[playAudio] Play promise resolved.');
           // Note: isPlaying and isAudioLoading state will be updated by 'play' and 'canplay' event handlers
         } catch (playError: any) {
            // Handle cases where autoplay fails (common in browsers)
@@ -1219,7 +1219,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // Restore scroll position AFTER attempting playback (use rAF)
         requestAnimationFrame(() => {
           if (Math.abs(window.scrollY - currentScrollY) > 5) {
-              // ////console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
+              // //////console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
               window.scrollTo({ top: currentScrollY, behavior: 'instant' });
           }
         });
@@ -1405,7 +1405,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         };
 
         // *** ADD LOG HERE ***
-        ////console.log('%c[savePreferences] Attempting to save:', 'color: brown; font-weight: bold;', JSON.parse(JSON.stringify(prefsToSave))); // Deep copy for logging
+        //////console.log('%c[savePreferences] Attempting to save:', 'color: brown; font-weight: bold;', JSON.parse(JSON.stringify(prefsToSave))); // Deep copy for logging
 
         // Save to localStorage
         localStorage.setItem('quran_reader_preferences', JSON.stringify(prefsToSave));
@@ -1513,36 +1513,36 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   async ngOnDestroy(): Promise<void> { // Make ngOnDestroy async
-    // // // ////console.log('[QuranReader] Destroying component...');
+    // // // //////console.log('[QuranReader] Destroying component...');
     // Capture final state before cleanup
     const finalSurah = this.currentSurah;
     const finalVerse = this.currentVerse;
     const finalPage = this.currentPage; // Actual page
     const finalIsMushaf = this.isMushafView;
     // Log state *before* calling save
-    ////console.log(`%c[QuranReader ngOnDestroy] State BEFORE save: Mode=${finalIsMushaf ? 'Mushaf' : 'Translation'}, S:${finalSurah} V:${finalVerse} ActualP:${finalPage}`, 'color: orange; font-weight: bold;');
+    //////console.log(`%c[QuranReader ngOnDestroy] State BEFORE save: Mode=${finalIsMushaf ? 'Mushaf' : 'Translation'}, S:${finalSurah} V:${finalVerse} ActualP:${finalPage}`, 'color: orange; font-weight: bold;');
     this.destroy$.next();
     this.destroy$.complete();
 
     // --- Save final HISTORY entry --- 
     if (this.user && this.isValidVerseForHistory(finalSurah, finalVerse)) {
-         // ////console.log(`[QuranReader ngOnDestroy] Saving final HISTORY entry S:${finalSurah} V:${finalVerse}`);
+         // //////console.log(`[QuranReader ngOnDestroy] Saving final HISTORY entry S:${finalSurah} V:${finalVerse}`);
          try {
              // Call service directly, bypass debounce for immediate save on destroy
              await this.authService.saveReadingHistory({ type: 'verse', surah: finalSurah, verse: finalVerse }); // Await history save
-             // ////console.log('[QuranReader ngOnDestroy] Final HISTORY entry save successful.');
+             // //////console.log('[QuranReader ngOnDestroy] Final HISTORY entry save successful.');
          } catch (error) {
              console.error('[QuranReader ngOnDestroy] Error saving final HISTORY entry:', error);
          }
     } else {
-        // ////console.log('[QuranReader ngOnDestroy] Skipping final HISTORY entry save (no user or invalid verse).');
+        // //////console.log('[QuranReader ngOnDestroy] Skipping final HISTORY entry save (no user or invalid verse).');
     }
 
     // --- Save final PREFERENCES state (including lastState) --- 
-    // ////console.log('[QuranReader] Saving final preferences on destroy...');
+    // //////console.log('[QuranReader] Saving final preferences on destroy...');
     try {
         await this.savePreferences(); // Await preferences save
-        // ////console.log('[QuranReader ngOnDestroy] savePreferences() finished.');
+        // //////console.log('[QuranReader ngOnDestroy] savePreferences() finished.');
     } catch (error) {
         console.error('[QuranReader ngOnDestroy] Error awaiting savePreferences:', error);
         // Decide if we need to handle this error differently, 
@@ -1559,7 +1559,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.historyDebounceTimer) clearTimeout(this.historyDebounceTimer);
     if (this.audioLoadingTimeout) clearTimeout(this.audioLoadingTimeout);
     if (this.urlUpdateTimeoutId) clearTimeout(this.urlUpdateTimeoutId);
-    // ////console.log('[ngOnDestroy] Cleanup complete.');
+    // //////console.log('[ngOnDestroy] Cleanup complete.');
   }
 
   // === Initialization & State Management ===
@@ -1662,7 +1662,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       // Use replaceUrl: true if explicitly requested OR for scroll updates
       const shouldReplaceUrl = replaceUrlOverride || true; // Modify this condition if scroll updates should NOT replace
 
-      // ////console.log(`[updateUrlParams] Navigating. replaceUrl: ${shouldReplaceUrl}, Params:`, params); // Log before navigate
+      // //////console.log(`[updateUrlParams] Navigating. replaceUrl: ${shouldReplaceUrl}, Params:`, params); // Log before navigate
 
       this.router.navigate([], {
         relativeTo: this.route,
@@ -1726,10 +1726,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Navigation methods
   public selectSurah(surahNumber: number): void {
     // ++ LOG ++ Check if this is being called unexpectedly
-    // ////console.log(`[selectSurah ENTRY] Called with surahNumber: ${surahNumber}. Current state: this.currentSurah=${this.currentSurah}, this.selectedSurah=${this.selectedSurah}`);
+    // //////console.log(`[selectSurah ENTRY] Called with surahNumber: ${surahNumber}. Current state: this.currentSurah=${this.currentSurah}, this.selectedSurah=${this.selectedSurah}`);
     if (!surahNumber || surahNumber === this.currentSurah) return; // Don't reload if same surah
 
-    // ////console.log(`[selectSurah] Changing to Surah ${surahNumber}`);
+    // //////console.log(`[selectSurah] Changing to Surah ${surahNumber}`);
 
     // --- Immediate State Updates ---
     this.currentSurah = surahNumber;
@@ -1750,7 +1750,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     // --- Load Content Based on View Mode ---
     if (this.isMushafView) {
-      // ////console.log(`[selectSurah] Loading Mushaf view for Surah ${surahNumber}`);
+      // //////console.log(`[selectSurah] Loading Mushaf view for Surah ${surahNumber}`);
       const surahStartPage = this.quranFlash.surahPageMap[surahNumber];
       if (surahStartPage) {
         this.currentPage = surahStartPage;
@@ -1767,11 +1767,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
     } else {
       // For translation view, load the verses
-      // ////console.log(`[selectSurah] Loading Translation view for Surah ${surahNumber}`);
+      // //////console.log(`[selectSurah] Loading Translation view for Surah ${surahNumber}`);
       this.loadSurah(surahNumber).subscribe({
           // Optional: Add next/error handlers if specific actions needed after load
           next: () => {
-            // ////console.log(`[selectSurah] Translation view loaded for Surah ${surahNumber}`);
+            // //////console.log(`[selectSurah] Translation view loaded for Surah ${surahNumber}`);
             this.changeDetector.markForCheck(); // Mark for check after async load completes
           },
           error: (err) => {
@@ -1784,7 +1784,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // REMOVED: Trigger change detection after initiating load
     // this.changeDetector.markForCheck(); 
     // ++ LOG ++ Check state at the end of the synchronous part
-    // ////console.log(`[selectSurah EXIT] State after sync updates: this.currentSurah=${this.currentSurah}, this.selectedSurah=${this.selectedSurah}`);
+    // //////console.log(`[selectSurah EXIT] State after sync updates: this.currentSurah=${this.currentSurah}, this.selectedSurah=${this.selectedSurah}`);
     // ++ ADD: Explicitly save history for verse 1 or current page ++
     if (this.isMushafView) {
       this.debouncedSaveHistory({ type: 'page', page: this.currentPage });
@@ -1899,7 +1899,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurahSubscription = this.loadSurah(surahNumber).subscribe({
       next: () => {
         // Optional: Add logic after surah change load completes
-        // // ////console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
+        // // //////console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
         this.updateUrlParams(); // Update URL after successful load
         // Ensure isLoading is handled within loadSurah itself
       },
@@ -1970,11 +1970,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   public toggleView(): void {
     // Prevent re-entry if already processing
     if (this.isTogglingView) {
-      // ////console.log("[toggleView] Already toggling view.");
+      // //////console.log("[toggleView] Already toggling view.");
       return;
     }
     this.isTogglingView = true;
-    // ////console.log(`[toggleView] Starting toggle. Current view: ${this.isMushafView ? 'Mushaf' : 'Translation'}`);
+    // //////console.log(`[toggleView] Starting toggle. Current view: ${this.isMushafView ? 'Mushaf' : 'Translation'}`);
 
     const targetMushafView = !this.isMushafView;
 
@@ -1984,11 +1984,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // --- Save current state BEFORE switching --- 
     if (this.isMushafView) {
         this.lastMushafPage = this.currentPage || this.FIRST_PAGE;
-        // ////console.log(`[toggleView] Saved Mushaf state: Page ${this.lastMushafPage}`);
+        // //////console.log(`[toggleView] Saved Mushaf state: Page ${this.lastMushafPage}`);
     } else {
         this.lastTranslationSurah = this.currentSurah || 1;
         this.lastTranslationVerse = this.currentVerse || 1;
-        // ////console.log(`[toggleView] Saved Translation state: S${this.lastTranslationSurah} V${this.lastTranslationVerse}`);
+        // //////console.log(`[toggleView] Saved Translation state: S${this.lastTranslationSurah} V${this.lastTranslationVerse}`);
     }
 
     // Prepare query parameters - Start building params object
@@ -2007,7 +2007,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       // If we just selected a surah, the relevant verse is likely 1
       // const verseToStore = this.currentVerse || 1; // Default to 1 if undefined
 
-      // ////console.log(`[toggleView] Switching TO Mushaf. Storing state S:${surahToStore}, V:${verseToStore} (Derived from selectedSurah/currentVerse)`);
+      // //////console.log(`[toggleView] Switching TO Mushaf. Storing state S:${surahToStore}, V:${verseToStore} (Derived from selectedSurah/currentVerse)`);
       // this.lastTranslationSurah = surahToStore;
       // this.lastTranslationVerse = verseToStore; 
 
@@ -2023,7 +2023,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       let pageToLoad = this.lastMushafPage || this.FIRST_PAGE;
       // Ensure it's within valid range (e.g., if saved pref was bad)
       pageToLoad = Math.max(this.FIRST_PAGE, Math.min(pageToLoad, this.LAST_PAGE));
-      // ////console.log(`[toggleView] Restoring Mushaf state: Loading Page ${pageToLoad}`);
+      // //////console.log(`[toggleView] Restoring Mushaf state: Loading Page ${pageToLoad}`);
       
       // Update component state for Mushaf view
       this.currentPage = pageToLoad;
@@ -2045,11 +2045,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     } else {
       // --- Switching TO Translation View ---
-      // ////console.log(`[toggleView] Switching TO Translation. Restoring state S:${this.lastTranslationSurah}, V:${this.lastTranslationVerse}`);
+      // //////console.log(`[toggleView] Switching TO Translation. Restoring state S:${this.lastTranslationSurah}, V:${this.lastTranslationVerse}`);
       // Restore state from stored values
       const restoredSurah = this.lastTranslationSurah || 1;
       const restoredVerse = this.lastTranslationVerse || 1;
-      // ////console.log(`[toggleView] Restoring Translation state: S${restoredSurah} V${restoredVerse}`);
+      // //////console.log(`[toggleView] Restoring Translation state: S${restoredSurah} V${restoredVerse}`);
       
       this.currentSurah = restoredSurah;
       this.selectedSurah = restoredSurah; // Sync dropdown
@@ -2077,7 +2077,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     loadObservable.pipe(
       finalize(() => {
-        // ////console.log(`[toggleView] Load operation finalized. Re-enabling toggle.`);
+        // //////console.log(`[toggleView] Load operation finalized. Re-enabling toggle.`);
         this.isTogglingView = false; // Re-enable toggling
         
         // ** Rebuild params just before navigating to ensure correct state **
@@ -2094,7 +2094,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         }
 
         // ** DEBUG LOG **
-        // ////console.log(`[toggleView finalize] Navigating with params:`, finalParams, `Component state: currentSurah=${this.currentSurah}, currentVerse=${this.currentVerse}, isMushafView=${this.isMushafView}`);
+        // //////console.log(`[toggleView finalize] Navigating with params:`, finalParams, `Component state: currentSurah=${this.currentSurah}, currentVerse=${this.currentVerse}, isMushafView=${this.isMushafView}`);
 
         // Signal to ngOnInit subscription to ignore the upcoming change caused by this navigation
         this.ignoreNextQueryParamChange = true;
@@ -2110,7 +2110,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       })
     ).subscribe({
       next: () => {
-        // ////console.log(`[toggleView] Content loaded successfully for ${this.isMushafView ? 'Mushaf' : 'Translation'} view.`);
+        // //////console.log(`[toggleView] Content loaded successfully for ${this.isMushafView ? 'Mushaf' : 'Translation'} view.`);
       },
       error: (err) => {
         console.error(`[toggleView] Error loading content:`, err);
@@ -2207,7 +2207,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   public logTranslationChange(event: any): void {
-    // // ////console.log('Translation changed:', event);
+    // // //////console.log('Translation changed:', event);
   }
 
   public selectTranslation(translationId: string): void {
@@ -2244,7 +2244,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurahSubscription = this.loadSurah(surahNumber).subscribe({
       next: () => {
         // Optional: Add logic after surah change load completes
-        // ////console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
+        // //////console.log(`[Handler for line 1656] Surah ${surahNumber} loaded successfully.`);
         this.updateUrlParams(); // Update URL after successful load
         // Ensure isLoading is handled within loadSurah itself
       },
@@ -2260,7 +2260,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     if (this.currentSurah) {
       // Implementation will depend on your Quran data service
       // This is just a placeholder
-      // // ////console.log('Loading surah:', this.currentSurah);
+      // // //////console.log('Loading surah:', this.currentSurah);
     }
   }
 
@@ -2291,12 +2291,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private navigateToNextVerse(): void {
     // Implementation for next verse navigation
-    // // ////console.log('Navigate to next verse');
+    // // //////console.log('Navigate to next verse');
   }
 
   private navigateToPreviousVerse(): void {
     // Implementation for previous verse navigation
-    // // ////console.log('Navigate to previous verse');
+    // // //////console.log('Navigate to previous verse');
   }
 
   // Add this method to validate reciter ID
@@ -2366,10 +2366,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         const pageData = await firstValueFrom(this.quranFlash.getMushafPage(actualPageNumber));
         this.mushafPage = pageData;
         // +++ ADD LOG BEFORE SETTING URL +++
-        //console.log(`%c[loadMushafPage] Getting Image URL for actual page: ${actualPageNumber}`, 'color: cyan');
+        ////console.log(`%c[loadMushafPage] Getting Image URL for actual page: ${actualPageNumber}`, 'color: cyan');
         this.pageImageUrl = pageData.imageUrl;
         // +++ ADD LOG AFTER SETTING URL +++
-        //console.log(`%c[loadMushafPage] Set pageImageUrl: ${this.pageImageUrl}`, 'color: cyan');
+        ////console.log(`%c[loadMushafPage] Set pageImageUrl: ${this.pageImageUrl}`, 'color: cyan');
         // +++ FORCE CHANGE DETECTION +++
         this.changeDetector.markForCheck();
 
@@ -2434,10 +2434,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Renamed from attemptPlayback for clarity
   private startPlaybackWhenReady(): void {
     if (this.audioPlayer && !this.isPlaying && this.isAudioLoading) { // Only play if loading and not already playing
-        // // ////console.log('Attempting to play audio now that it is ready...');
+        // // //////console.log('Attempting to play audio now that it is ready...');
         this.audioPlayer.play()
             .then(() => {
-                // // ////console.log('Audio play() promise resolved after ready.');
+                // // //////console.log('Audio play() promise resolved after ready.');
                 // isPlaying and isAudioLoading state will be updated by 'play' and 'canplay' event handlers
             })
             .catch(err => {
@@ -2466,7 +2466,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     if (this.currentRecitingVerse !== newRecitingVerse) {
       this.currentRecitingVerse = newRecitingVerse;
-      // // ////console.log(`Highlighting verse: ${this.currentRecitingVerse}`); // Optional log
+      // // //////console.log(`Highlighting verse: ${this.currentRecitingVerse}`); // Optional log
       // Maybe scroll to this verse if needed?
       // if(this.currentRecitingVerse) this.scrollToVerse(this.currentRecitingVerse);
       this.changeDetector.markForCheck(); // Update view for highlighting
@@ -2481,7 +2481,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.quranService.getVerseTimings(surahNumber).subscribe({
       next: (timings) => {
         this.verseTimings = timings; // Store fetched timings
-        // // ////console.log(`[loadVerseTimings] Loaded timings for Surah ${surahNumber}`, this.verseTimings);
+        // // //////console.log(`[loadVerseTimings] Loaded timings for Surah ${surahNumber}`, this.verseTimings);
         // Store in cache
         // this.timingCache.set(surahNumber, timings);
         this.changeDetector.markForCheck(); 
@@ -2502,7 +2502,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   goToHistoryEntry(entry: ReadingHistory): void {
-    // ////console.log('Navigating to history entry:', entry);
+    // //////console.log('Navigating to history entry:', entry);
     this.ngZone.run(() => {
       if (entry.type === 'verse' && entry.surah && entry.verse) {
         // Navigate to Translation View
@@ -2515,7 +2515,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           queryParamsHandling: 'merge' // Merge to keep other params like reciter?
         }).then(success => {
           if (success) {
-            // ////console.log('Navigation successful to verse:', entry.surah, entry.verse);
+            // //////console.log('Navigation successful to verse:', entry.surah, entry.verse);
             // Force re-render or data load if needed after navigation
             this.changeDetector.markForCheck();
           } else {
@@ -2533,7 +2533,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
            queryParamsHandling: 'merge'
         }).then(success => {
           if (success) {
-            // ////console.log('Navigation successful to page:', displayPage);
+            // //////console.log('Navigation successful to page:', displayPage);
             this.changeDetector.markForCheck();
           } else {
             console.error('Navigation failed to page:', displayPage);
@@ -2622,7 +2622,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
         // Update currentVerse and URL only if it has changed significantly
         if (this.currentVerse !== detectedVerseNumber) {
-           // // ////console.log(`[Scroll Listener] Detected verse change: ${this.currentVerse} -> ${detectedVerseNumber}`);
+           // // //////console.log(`[Scroll Listener] Detected verse change: ${this.currentVerse} -> ${detectedVerseNumber}`);
            this.ngZone.run(() => { // Run updates within NgZone
                this.currentVerse = detectedVerseNumber;
                this.updateUrlParams(true); // Update URL, REPLACE entry for scroll updates
@@ -2664,7 +2664,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // --- NEW loadUserPreferences (with initialLoad flag) ---
   private async loadUserPreferences(initialLoad: boolean = false): Promise<any> { // Return prefs
-    // ////console.log(`[loadUserPreferences] Called. initialLoad flag: ${initialLoad}`);
+    // //////console.log(`[loadUserPreferences] Called. initialLoad flag: ${initialLoad}`);
      try {
          // Initialize reciters first (redundant if called after loadRecitersData, but safe)
          if (!this.reciters || this.reciters.length === 0) {
@@ -2701,7 +2701,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
                      // if (initialLoad) {
                      //    delete prefs.lastState;
                      // }
-                     // ////console.log('[loadUserPreferences] Loaded preferences from server.');
+                     // //////console.log('[loadUserPreferences] Loaded preferences from server.');
                  }
              } catch (error) {
                  console.warn('Error loading server preferences:', error);
@@ -2713,13 +2713,13 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
          // --- Log Loaded State ---
          if (prefs.lastState) {
-             ////console.log(`%c[loadUserPreferences] Loaded lastState:`, 'color: blue;', prefs.lastState);
+             //////console.log(`%c[loadUserPreferences] Loaded lastState:`, 'color: blue;', prefs.lastState);
          } else {
-             ////console.log(`%c[loadUserPreferences] No lastState found in preferences.`, 'color: blue;');
+             //////console.log(`%c[loadUserPreferences] No lastState found in preferences.`, 'color: blue;');
          }
 
          // --- Apply Preferences ---
-         // ////console.log('[loadUserPreferences] Applying preferences:', prefs);
+         // //////console.log('[loadUserPreferences] Applying preferences:', prefs);
 
          // Apply Secondary Preferences (Reciter, Translation, FontSize)
          // These act as defaults *if* not overridden by URL params later
@@ -2728,27 +2728,27 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
              const foundReciter = this.reciters.find(r => r.id === reciterId);
              if (foundReciter) {
                  this.selectedReciter = foundReciter;
-                 // ////console.log(`[loadUserPreferences] Applied reciter pref: ${foundReciter.name}`);
+                 // //////console.log(`[loadUserPreferences] Applied reciter pref: ${foundReciter.name}`);
              }
          }
          if (prefs.selectedTranslation) {
              this.selectedTranslation = prefs.selectedTranslation;
-             // ////console.log(`[loadUserPreferences] Applied translation pref: ${this.selectedTranslation}`);
+             // //////console.log(`[loadUserPreferences] Applied translation pref: ${this.selectedTranslation}`);
          }
          if (prefs.fontSize) {
              this.fontSize = prefs.fontSize;
-             // ////console.log(`[loadUserPreferences] Applied font size pref: ${this.fontSize}`);
+             // //////console.log(`[loadUserPreferences] Applied font size pref: ${this.fontSize}`);
          }
 
          // Apply isMainControlsMinimized state (regardless of initialLoad? Check logic)
          if (prefs.lastState && typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
              this.isMainControlsMinimized = prefs.lastState.isMainControlsMinimized;
-             // ////console.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
+             // //////console.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
          }
 
          // Don't Apply Primary State during initial load, ngOnInit handles it
          if (initialLoad) {
-             // ////console.log('[loadUserPreferences] Skipping application of primary lastState during initial load.');
+             // //////console.log('[loadUserPreferences] Skipping application of primary lastState during initial load.');
          }
 
          // Load last state values into component properties for later use (e.g., toggleView)
@@ -2759,7 +2759,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             // Apply secondary state like controls minimized here.
             if (typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
                  this.isMainControlsMinimized = prefs.lastState.isMainControlsMinimized;
-                 // ////console.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
+                 // //////console.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
             }
          }
 
@@ -2775,7 +2775,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // --- Simplified subscribeToRouteParams (removing flag checks) ---
   private subscribeToRouteParams(): void {
-    //console.log('%c[QuranReader] subscribeToRouteParams called.', 'color: blueviolet');
+    ////console.log('%c[QuranReader] subscribeToRouteParams called.', 'color: blueviolet');
     if (this.routeParamsSub) {
       this.routeParamsSub.unsubscribe(); // Unsubscribe from previous if any
     }
@@ -2784,7 +2784,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$) // Auto-unsubscribe on destroy
       // distinctUntilChanged(), // Consider adding if needed, but check performance
     ).subscribe(async (params) => {
-      //console.log('%c[SubToRouteParams] Received query params:', 'color: blueviolet', params);
+      ////console.log('%c[SubToRouteParams] Received query params:', 'color: blueviolet', params);
 
       // --- Prevent Overwrite on Default Navigation Back ---
       // If initial load is done and URL params are effectively empty/default, don't proceed.
@@ -2797,7 +2797,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       const routeTranslation = params['translation'];
 
       if (this.initialLoadComplete && !routeSurah && !routeVerse && !routePage && !routeMode) {
-        //console.log('%c[SubToRouteParams] Initial load complete and URL params are empty/default. Skipping update.', 'color: grey; font-style: italic;');
+        ////console.log('%c[SubToRouteParams] Initial load complete and URL params are empty/default. Skipping update.', 'color: grey; font-style: italic;');
         return; // Exit early, keep state set by ngOnInit
       }
 
@@ -2807,16 +2807,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       if (!this.initialLoadComplete || this.ignoreNextQueryParamChange) {
           if (this.ignoreNextQueryParamChange) {
               this.ignoreNextQueryParamChange = false; // Reset ignore flag after use
-              ////console.log('%c[SubToRouteParams] Ignored emission due to ignoreNextQueryParamChange flag.', 'color: orange;');
+              //////console.log('%c[SubToRouteParams] Ignored emission due to ignoreNextQueryParamChange flag.', 'color: orange;');
           } else {
-              ////console.log('%c[SubToRouteParams] Skipping emission before initial load complete.', 'color: purple; font-style: italic;');
+              //////console.log('%c[SubToRouteParams] Skipping emission before initial load complete.', 'color: purple; font-style: italic;');
           }
           return;
       }
 
       // Check 2: Exit early if URL params are effectively empty/default
       if (!routeSurah && !routeVerse && !routePage && !routeMode) {
-          //console.log('%c[SubToRouteParams] URL params are empty/default. Skipping update.', 'color: grey; font-style: italic;');
+          ////console.log('%c[SubToRouteParams] URL params are empty/default. Skipping update.', 'color: grey; font-style: italic;');
           return; // Exit early, keep state set by ngOnInit
       }
 
@@ -2825,12 +2825,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           this.currentSurah === routeSurah && 
           this.currentVerse === routeVerse && 
           this.currentPage === routePage) { // Note: currentPage is actual page, routePage is display page. Revisit comparison if needed.
-          //console.log('%c[SubToRouteParams] URL params are the same as current state. No action needed.', 'color: green; font-style: italic;');
+          ////console.log('%c[SubToRouteParams] URL params are the same as current state. No action needed.', 'color: green; font-style: italic;');
           return; // Exit early, no changes needed
       }
 
       // --- If state differs, update component from URL ---
-      //console.log('%c[SubToRouteParams] URL state differs from component. Updating component.', 'color: red; font-weight: bold;');
+      ////console.log('%c[SubToRouteParams] URL state differs from component. Updating component.', 'color: red; font-weight: bold;');
 
       let needsContentLoad = false; // Flag to reload content
       let needsSecondaryUpdate = false; // Flag for secondary changes
@@ -2849,7 +2849,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           (urlIsMushaf && this.displayPageNumberSubject.value !== urlTargetDisplayPage);
 
       if (primaryStateDiffers) {
-          //console.log(`%c[SubToRouteParams] Updating PRIMARY state: Mode:${urlIsMushaf ? 'Mushaf' : 'Translation'}, S:${routeSurah || 1} V:${routeVerse || 1} DisplayP:${urlTargetDisplayPage} ActualP:${urlTargetActualPage}`, 'color: red;');
+          ////console.log(`%c[SubToRouteParams] Updating PRIMARY state: Mode:${urlIsMushaf ? 'Mushaf' : 'Translation'}, S:${routeSurah || 1} V:${routeVerse || 1} DisplayP:${urlTargetDisplayPage} ActualP:${urlTargetActualPage}`, 'color: red;');
           this.isMushafView = urlIsMushaf;
           this.currentSurah = routeSurah || 1;
           this.selectedSurah = routeSurah || 1; // Keep dropdown synced
@@ -2867,12 +2867,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           if (foundReciter) {
               this.selectedReciter = foundReciter;
               needsSecondaryUpdate = true;
-              //console.log(`%c[SubToRouteParams] Updating Reciter to: ${foundReciter.name}`, 'color: red;');
+              ////console.log(`%c[SubToRouteParams] Updating Reciter to: ${foundReciter.name}`, 'color: red;');
           }
       }
       if (routeTranslation !== null && routeTranslation !== undefined && routeTranslation !== this.selectedTranslation) {
           this.selectedTranslation = routeTranslation;
-          ////console.log(`%c[SubToRouteParams] Updating Translation to: ${routeTranslation}`, 'color: red;');
+          //////console.log(`%c[SubToRouteParams] Updating Translation to: ${routeTranslation}`, 'color: red;');
           needsSecondaryUpdate = true;
           needsContentLoad = true; // Translation change ALWAYS requires content reload
       }
@@ -2884,7 +2884,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
       // Reload Content if Needed
       if (needsContentLoad) {
-          //console.log('%c[SubToRouteParams] Triggering content reload due to URL change.', 'color: red; font-weight:bold;');
+          ////console.log('%c[SubToRouteParams] Triggering content reload due to URL change.', 'color: red; font-weight:bold;');
           // Use the updated state derived from the URL
           // Pass the calculated target state variables
           this.loadInitialContent(this.currentSurah, this.currentVerse, this.isMushafView, this.displayPageNumberSubject.value);
