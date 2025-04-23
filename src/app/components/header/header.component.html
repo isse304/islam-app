@@ -1,4 +1,4 @@
-<nav class="header-nav" *ngIf="!isLandingPage">
+<nav class="header-nav" *ngIf="!isLandingPage && showHeader">
   <div class="nav-container">
     <!-- Logo Section -->
     <div class="logo-container">
@@ -43,6 +43,13 @@
       </a>
     </div>
 
+    <!-- Upgrade Button (Desktop) - Show if authenticated & NOT premium -->
+    <div class="upgrade-container hide-on-mobile" *ngIf="isAuthenticated && !isPremiumUser">
+       <a routerLink="/subscription" class="upgrade-button">
+         ✨ Upgrade to Premium
+       </a>
+    </div>
+
     <!-- Auth Buttons -->
     <!-- Hide Auth buttons container on mobile -->
     <div class="auth-container hide-on-mobile">
@@ -66,7 +73,11 @@
     <a routerLink="/about" class="mobile-link" (click)="closeMobileMenu()">About</a>
     <a routerLink="/profile" class="mobile-link" (click)="closeMobileMenu()">Profile</a>
     <a routerLink="/contact" class="mobile-link" (click)="closeMobileMenu()">Contact Us</a>
-    <a routerLink="/about" class="mobile-link" (click)="closeMobileMenu()">About</a>
+
+    <!-- Upgrade Button (Mobile) - Show if authenticated & NOT premium -->
+    <a *ngIf="isAuthenticated && !isPremiumUser" routerLink="/subscription" class="mobile-upgrade-link" (click)="closeMobileMenu()">
+      ✨ Upgrade to Premium
+    </a>
 
     <!-- Auth Buttons in Mobile Menu (Profile is already here, Sign Out is part of app-auth-buttons) -->
     <div class="mobile-auth-container">
@@ -76,7 +87,7 @@
 </nav>
 
 <!-- Spacer to prevent content from hiding under fixed navbar -->
-<div class="nav-spacer" *ngIf="!isLandingPage"></div>
+<div class="nav-spacer" *ngIf="!isLandingPage && showHeader"></div>
 
 <!-- <header> -->
   <!-- Navbar -->

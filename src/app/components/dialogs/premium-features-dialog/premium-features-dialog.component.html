@@ -1,0 +1,57 @@
+<div class="bg-gradient-to-br from-[#FAF3E0] via-[#E6DACE] to-[#D3C1BD] dark:from-[#1A365D] dark:via-[#2A4365] dark:to-[#3A5F8A] p-6 rounded-lg shadow-xl relative overflow-hidden">
+  <!-- Subtle Pattern -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-5 dark:opacity-[3%] bg-repeat"></div>
+
+  <div class="relative z-10">
+    <!-- Icon -->
+    <div class="w-16 h-16 rounded-full bg-[#B7A57A] dark:bg-yellow-400 flex items-center justify-center mx-auto mb-5 shadow-md">
+      <mat-icon class="text-white dark:text-[#1A365D] scale-150">stars</mat-icon>
+    </div>
+
+    <!-- Title -->
+    <h2 mat-dialog-title class="text-2xl font-bold text-center text-[#1A365D] dark:text-[#FAF3E0] mb-4">
+      Unlock Premium Features
+    </h2>
+
+    <!-- Content - Feature List -->
+    <mat-dialog-content class="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+      <p class="text-center text-sm mb-5">Enhance your spiritual journey with Nura AI Premium:</p>
+      <div class="feature-list space-y-1">
+        <div class="feature-item">
+          <mat-icon>psychology</mat-icon>
+          <span class="feature-text">Interact with the Quran with the world's first <strong>AI Tafsir Chat</strong></span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>sentiment_satisfied</mat-icon>
+          <span class="feature-text">Discover relevant duas with <strong>Emotional Dua Search</strong></span>
+        </div>
+        <div class="feature-item">
+          <mat-icon>lightbulb</mat-icon>
+          <span class="feature-text">Gain deeper understanding with <strong>Dua Insights & Analysis</strong></span>
+        </div>
+        <!-- Add more features as needed -->
+      </div>
+       <p class="text-center text-lg font-semibold text-[#1A365D] dark:text-yellow-300 mt-6 mb-2">
+         Start your 7-Day Free Trial today!
+       </p>
+       <p class="text-center text-sm text-gray-600 dark:text-gray-400">
+         Then only $5.99/month. Cancel anytime.
+       </p>
+    </mat-dialog-content>
+
+    <!-- Actions -->
+    <mat-dialog-actions align="center" class="flex justify-center gap-3">
+      <button mat-stroked-button
+              (click)="onNoClick()"
+              class="px-6 py-2 rounded-md border-[#B7A57A] text-[#B7A57A] dark:border-gray-500 dark:text-gray-300 hover:bg-[#B7A57A]/10 dark:hover:bg-gray-700/50 transition-colors order-2 sm:order-1">
+        Maybe Later
+      </button>
+      <button mat-flat-button
+              (click)="onConfirmClick()"
+              cdkFocusInitial
+              class="px-8 py-2 rounded-md bg-[#B7A57A] text-white hover:bg-[#A6946A] dark:bg-yellow-400 dark:text-[#1A365D] dark:hover:bg-yellow-300 transition-colors shadow-md order-1 sm:order-2">
+        Start Free Trial
+      </button>
+    </mat-dialog-actions>
+  </div>
+</div> 

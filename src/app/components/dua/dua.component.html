@@ -323,16 +323,27 @@
       </app-dua-tafsir> -->
 
       <!-- AI Insights Modal -->
-      <div *ngIf="selectedDua" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
-          <button 
-            (click)="selectedDua = null"
-            class="absolute top-4 right-4 text-gray-500 hover:text-gray-700">
-            <span class="material-icons">close</span>
-          </button>
+      <div *ngIf="selectedDua" 
+           class="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center p-4 pt-20 z-50">
+        <!-- Backdrop -->
+        <div class="absolute inset-0" (click)="selectedDua = null"></div> 
+        
+        <!-- Modal Content Container (With max-height) -->
+        <div class="bg-white rounded-xl max-w-3xl w-full flex flex-col overflow-hidden relative max-h-[85vh]" 
+             (click)="$event.stopPropagation()">
           
-          <div class="p-6">
-            <h2 class="text-2xl font-bold text-[#B7A57A] mb-4">{{ selectedDua.title }}</h2>
+          <!-- Modal Header (Fixed) -->
+          <div class="flex justify-between items-center p-4 border-b border-gray-200 flex-shrink-0">
+            <h2 class="text-xl font-bold text-[#B7A57A]">{{ selectedDua.title }}</h2>
+            <button 
+              (click)="selectedDua = null"
+              class="text-gray-500 hover:text-gray-700">
+              <span class="material-icons">close</span>
+            </button>
+          </div>
+
+          <!-- Modal Body (Scrollable) -->
+          <div class="p-6 overflow-y-auto flex-grow">
             <app-dua-insights [dua]="selectedDua"></app-dua-insights>
           </div>
         </div>

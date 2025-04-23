@@ -53,6 +53,7 @@ export class SignupComponent implements OnInit {
   isLoading = false;
   hidePassword = true;
   hideConfirmPassword = true;
+  errorMessage: string | null = null;
 
   constructor(
     private fb: FormBuilder,
@@ -82,66 +83,63 @@ export class SignupComponent implements OnInit {
   }
 
   onSubmit(): void {
-    if (this.signupForm.valid) {
-      this.isLoading = true;
-      const { email, password, firstName, lastName } = this.signupForm.value;
+    if (this.signupForm.invalid) {
+      this.markFormGroupTouched(this.signupForm);
+      return;
+    }
 
-      this.authService.createUserWithEmailAndPassword(email, password)
-        .then(result => {
-          return this.authService.updateUserProfile({
-            displayName: `${firstName} ${lastName}`
-          });
-        })
-        .then(() => {
-          this.snackBar.open(
-            'Account created! Please check your email to verify your account.',
-            'Close',
-            { duration: 7000 }
-          );
-          this.router.navigate(['/auth/login']);
-        })
-        .catch(error => {
-          let errorMessage = 'An error occurred during registration';
-          
-          if (error.code === 'auth/email-already-in-use') {
-            errorMessage = 'This email is already in use';
-          } else if (error.code === 'auth/invalid-email') {
-            errorMessage = 'Invalid email address';
-          } else if (error.code === 'auth/weak-password') {
-            errorMessage = 'Password is too weak';
-          }
-          
-          this.snackBar.open(errorMessage, 'Close', {
+    this.isLoading = true;
+    this.errorMessage = null;
+    const { email, password, firstName, lastName } = this.signupForm.value;
+
+    this.authService.createUserWithEmailAndPassword(email, password)
+      .then(result => {
+        return this.authService.updateUserProfile({
+          displayName: `${firstName} ${lastName}`
+        });
+      })
+      .then(() => {
+        this.snackBar.open(
+          'Account created! Please check your email to verify your account.',
+          'Close',
+          { duration: 7000 }
+        );
+        this.router.navigate(['/home']);
+      })
+      .catch(error => {
+        this.isLoading = false;
+        this.errorMessage = error.message || 'An unexpected error occurred during signup.';
+        if (this.errorMessage) {
+          this.snackBar.open(this.errorMessage, 'Close', {
             duration: 5000,
             panelClass: ['error-snackbar']
           });
-          console.error('Signup error:', error);
-        })
-        .finally(() => {
-          this.isLoading = false;
-        });
-    }
+        }
+        console.error('Signup error:', error);
+      });
   }
 
   signupWithGoogle(): void {
     this.isLoading = true;
+    this.errorMessage = null;
     this.authService.signInWithGoogle()
       .then(() => {
         this.snackBar.open('Account created successfully!', 'Close', {
           duration: 5000,
           panelClass: ['success-snackbar']
         });
-        this.router.navigate(['/']);
+        this.router.navigate(['/home']);
       })
       .catch(error => {
-        this.snackBar.open('Error signing up with Google', 'Close', {
-          duration: 5000,
-          panelClass: ['error-snackbar']
-        });
-        console.error('Google signup error:', error);
-      })
-      .finally(() => {
         this.isLoading = false;
+        this.errorMessage = error.message || 'Google Sign-In failed.';
+        if (this.errorMessage) {
+          this.snackBar.open(this.errorMessage, 'Close', {
+            duration: 5000,
+            panelClass: ['error-snackbar']
+          });
+        }
+        console.error('Google signup error:', error);
       });
   }
 
@@ -160,5 +158,15 @@ export class SignupComponent implements OnInit {
       maxHeight: '80vh'
     });
     */
+  }
+
+  // Helper to mark all fields as touched
+  private markFormGroupTouched(formGroup: FormGroup) {
+    Object.values(formGroup.controls).forEach(control => {
+      control.markAsTouched();
+      if (control instanceof FormGroup) {
+        this.markFormGroupTouched(control);
+      }
+    });
   }
 } 

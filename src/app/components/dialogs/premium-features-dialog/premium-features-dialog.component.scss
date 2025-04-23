@@ -1,0 +1,39 @@
+:host {
+  display: block;
+}
+
+// Ensure the dialog container allows the gradient/pattern to show
+::ng-deep .premium-features-dialog-container .mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0.75rem; // Tailwind rounded-xl
+  overflow: hidden; // Ensure pattern doesn't leak
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 0; // py-3
+  border-bottom: 1px solid rgba(128, 128, 128, 0.2); // Subtle border
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  mat-icon {
+    margin-right: 1rem; // mr-4
+    color: #B7A57A; // Gold
+    font-size: 1.5rem; // text-2xl
+    width: 24px; // Ensure consistent icon size
+    text-align: center;
+  }
+
+  // Dark mode icon color
+  .dark & mat-icon {
+     color: #facc15; // Brighter yellow for dark mode
+  }
+
+  .feature-text {
+    flex: 1;
+  }
+} 

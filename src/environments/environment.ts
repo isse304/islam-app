@@ -22,7 +22,7 @@ export const environment: Environment = {
   },
   stripeConfig: {
     publishableKey: 'pk_test_51R1RShGYeNehzlUZnehEoAkNzTKRO29KrBhHVlrJZVliO8MBrI9gHgbeSPL1ns7QOlO8vQ99afIl2EfAZ4HSoBFX00J8wRZMur',
-    priceId: 'price_1R1TPjGYeNehzlUZi71dNilr'
+    priceId: 'price_1RH7QQGYeNehzlUZUYuUPr8n'
   },
   mushafImageBaseUrl: 'https://storage.googleapis.com/nura_ai_quran_pages/',
   adminUsers: ['test-admin-user']

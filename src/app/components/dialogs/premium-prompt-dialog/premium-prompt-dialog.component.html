@@ -1,0 +1,70 @@
+<div class="bg-gradient-to-br from-[#FAF3E0] via-[#E6DACE] to-[#D3C1BD] dark:from-[#1A365D] dark:via-[#2A4365] dark:to-[#3A5F8A] p-6 rounded-lg shadow-xl relative overflow-hidden">
+  <!-- Subtle Pattern -->
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-5 dark:opacity-[3%] bg-repeat"></div>
+
+  <div class="relative z-10 text-center">
+    <!-- Icon -->
+    <div class="w-16 h-16 rounded-full bg-[#B7A57A] dark:bg-yellow-400 flex items-center justify-center mx-auto mb-5 shadow-md">
+      <mat-icon class="text-white dark:text-[#1A365D] scale-150">
+        {{ isGreetingMode ? 'info_outline' : 'stars' }}
+      </mat-icon>
+    </div>
+
+    <!-- Title -->
+    <h2 mat-dialog-title class="text-2xl font-bold text-[#1A365D] dark:text-[#FAF3E0] mb-3">
+      {{ isGreetingMode ? 'Tafsir Information' : 'Unlock Premium Feature' }}
+    </h2>
+
+    <!-- Content -->
+    <mat-dialog-content class="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+      <!-- Greeting Mode Content -->
+      <div *ngIf="isGreetingMode">
+        <p class="mb-3 text-sm">
+          You are viewing Tafsir (commentary) to help understand the Quranic verses.
+        </p>
+        <p class="text-xs opacity-80">
+            Unlock deeper AI-powered insights and chat features with <strong class="text-[#B7A57A] dark:text-yellow-300">Nura Premium</strong>!
+        </p>
+      </div>
+      <!-- Prompt Mode Content -->
+      <div *ngIf="!isGreetingMode">
+        <p class="mb-4">
+          Access <strong class="text-[#1A365D] dark:text-yellow-300">{{ data.featureName || 'this premium feature' }}</strong> and enhance your experience with Nura AI Premium.
+        </p>
+        <p class="text-lg font-semibold text-[#1A365D] dark:text-yellow-300">
+          Start your 7-Day Free Trial today!
+        </p>
+        <p class="text-sm text-gray-600 dark:text-gray-400">
+          Then only $5.99/month. Cancel anytime.
+        </p>
+      </div>
+    </mat-dialog-content>
+
+    <!-- Actions -->
+    <mat-dialog-actions align="center" class="flex justify-center gap-3">
+      <!-- Greeting Mode Button -->
+      <button *ngIf="isGreetingMode"
+              mat-flat-button
+              (click)="onConfirmClick()"
+              cdkFocusInitial
+              class="px-6 py-2 rounded-md bg-[#B7A57A] text-white hover:bg-[#A6946A] dark:bg-gray-600 dark:hover:bg-gray-500 transition-colors shadow-sm">
+        Got it!
+      </button>
+
+      <!-- Prompt Mode Buttons -->
+      <ng-container *ngIf="!isGreetingMode">
+        <button mat-stroked-button
+                (click)="onNoClick()"
+                class="px-6 py-2 rounded-md border-[#B7A57A] text-[#B7A57A] dark:border-gray-500 dark:text-gray-300 hover:bg-[#B7A57A]/10 dark:hover:bg-gray-700/50 transition-colors order-2 sm:order-1">
+          Maybe Later
+        </button>
+        <button mat-flat-button
+                (click)="onConfirmClick()"
+                cdkFocusInitial
+                class="px-8 py-2 rounded-md bg-[#B7A57A] text-white hover:bg-[#A6946A] dark:bg-yellow-400 dark:text-[#1A365D] dark:hover:bg-yellow-300 transition-colors shadow-md order-1 sm:order-2">
+          Start Free Trial
+        </button>
+      </ng-container>
+    </mat-dialog-actions>
+  </div>
+</div> 

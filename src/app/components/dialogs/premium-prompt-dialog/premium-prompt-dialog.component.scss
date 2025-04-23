@@ -1,0 +1,21 @@
+:host {
+  display: block;
+}
+
+// Use styles similar to profile buttons if desired
+// Or define specific styles for the dialog
+
+// Example: Using Tailwind classes applied in the HTML,
+// so minimal SCSS might be needed unless overriding Material defaults.
+
+// Ensure dialog background is transparent if using custom background in HTML
+::ng-deep .mat-mdc-dialog-container .mdc-dialog__surface {
+  background-color: transparent !important;
+  box-shadow: none !important; // Remove default Material shadow if using custom shadow
+  border-radius: 0.5rem; // Tailwind rounded-lg
+}
+
+// Adjust button spacing if needed
+.mat-mdc-dialog-actions {
+  padding: 0 1.5rem 1.5rem 1.5rem !important; // Adjust padding (equivalent to p-6 bottom/horizontal)
+} 

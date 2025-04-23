@@ -131,6 +131,9 @@ export class StripeService {
                 success_url: `${process.env['CLIENT_URL']}/subscription?success=true&session_id={CHECKOUT_SESSION_ID}`,
                 cancel_url: `${process.env['CLIENT_URL']}/subscription?canceled=true`,
                 customer: stripeCustomerId, // Use the determined Stripe Customer ID
+                subscription_data: {
+                    trial_period_days: 7, // Add a 7-day free trial
+                },
                 // Add client_reference_id to link session back to Firebase user
                 client_reference_id: userId,
                 // Optionally allow promotion codes

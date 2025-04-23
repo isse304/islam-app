@@ -24,6 +24,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatDialog } from '@angular/material/dialog';
+import { MatSnackBar } from '@angular/material/snack-bar';
 
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
 import { SttService } from '../../../services/stt.service';
@@ -33,6 +35,10 @@ import { environment } from '../../../../environments/environment';
 import { ClickOutsideDirective } from '../../../directives/click-outside.directive';
 import { AppUser, FirebaseAuthService, UserPreferences, BookmarkResponse, ReadingHistoryResponse } from '../../../services/firebase-auth.service';
 import { ReadingHistory } from '../../../interfaces/reading-history.interface'; // Add import
+import { PremiumPromptDialogComponent } from '../../dialogs/premium-prompt-dialog/premium-prompt-dialog.component';
+import { PreferencesService } from '../../../services/preferences.service';
+// +++ ADD Import for the new dialog +++
+import { PremiumFeaturesDialogComponent } from '../../dialogs/premium-features-dialog/premium-features-dialog.component';
 
 interface SearchSuggestion {
   type: 'surah' | 'verse';
@@ -187,6 +193,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   secondPageImageUrl: string = '';
   pageInput: number = 1;
   surahNumber: number = 1;
+  isPremiumUser = false; // Add property to track premium status
   @ViewChild('searchContainer') searchContainer!: ElementRef;
   verse: QuranVerse | null = null;
   activeWord: any = null;
@@ -336,8 +343,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private http: HttpClient,
     private ngZone: NgZone,
     private titleService: Title, // Inject Title
-    private metaService: Meta    // Inject Meta
+    private metaService: Meta,    // Inject Meta
+    private dialog: MatDialog,
+    private snackBar: MatSnackBar,
+    private preferencesService: PreferencesService
   ) {
+    // Initialize displayPageNumber$ observable (adjust logic as needed)
+    this.displayPageNumber$ = this.route.queryParams.pipe(
+       map(params => this.actualToDisplayPage(params['page'] ? parseInt(params['page'], 10) : 1)),
+       takeUntil(this.destroy$)
+     );
     // Don't set reciters here, wait for ngOnInit
   }
 
@@ -475,6 +490,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Subscribe to user changes
     this.authService.user$.pipe(takeUntil(this.destroy$)).subscribe(currentUser => {
       this.user = currentUser;
+      this.isPremiumUser = currentUser?.isPremium ?? false;
       this.changeDetector.markForCheck();
     });
   }
@@ -1687,21 +1703,74 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.updateUrlParams();
   }
 
-  showTafsir(verse: QuranVerse) {
-    this.selectedVerse = verse;
-    
-    this.quranService.getTafsir(this.currentSurah as number, verse.number, this.selectedTafsir)
-      .subscribe({
-        next: (response) => {
-          this.tafsir = response.text;
-        },
-        error: (error) => {
-          console.error('Error loading tafsir:', error);
-          this.tafsir = 'Error loading tafsir. Please try again later.';
-        }
-      });
-  }
+   // Inside QuranReaderComponent class in quran-reader.component.ts
 
+   showTafsir(verse: QuranVerse) {
+     console.log('showTafsir clicked. isPremiumUser =', this.isPremiumUser);
+ 
+     // --- Step 1: Always set selected verse and fetch Tafsir --- 
+     this.selectedVerse = verse;
+     const surahNum = typeof this.currentSurah === 'string' ? parseInt(this.currentSurah, 10) : this.currentSurah;
+ 
+     if (isNaN(surahNum)) {
+       console.error("Invalid currentSurah value:", this.currentSurah);
+       this.tafsir = 'Error: Invalid surah number.';
+       this.isLoading = false; // Ensure loading stops
+       this.changeDetector.markForCheck();
+       return; // Exit if surah number is invalid
+     }
+ 
+     this.isLoading = true;
+     this.tafsir = ''; // Clear previous tafsir
+     this.changeDetector.markForCheck();
+ 
+     this.quranService.getTafsir(surahNum, verse.number, this.selectedTafsir)
+       .pipe(finalize(() => {
+         this.isLoading = false;
+         // Tafsir (or error message) is ready, the HTML will now display it
+         this.changeDetector.markForCheck(); 
+       }))
+       .subscribe({
+         next: (response) => {
+           this.tafsir = response?.text || 'Tafsir not available for this selection.';
+           console.log("Tafsir loaded:", this.tafsir.substring(0, 100));
+ 
+           // --- Step 2: Conditionally show GREETING dialog for FREE users AFTER successful fetch ---
+           if (!this.isPremiumUser) {
+             console.log('Opening Tafsir Greeting Dialog (mode: greeting) for free user...');
+             // Open the dialog in PROMPT mode for free users, encouraging upgrade
+             const dialogRef = this.dialog.open(PremiumPromptDialogComponent, {
+                 width: '380px',
+                 data: { 
+                   mode: 'prompt', // Use PROMPT mode
+                   featureName: 'AI Tafsir Chat & Deeper Insights' // Comma added below
+                 }, 
+                 panelClass: ['premium-prompt-dialog-container', 'bg-transparent', 'shadow-none'], 
+                 backdropClass: 'bg-black/50',
+                 disableClose: false // Allow closing greeting dialog easily
+               });
+
+             // Subscribe to the dialog result
+             dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
+                if (result === true) { // User clicked 'Start Free Trial'
+                  console.log('User confirmed free trial from Tafsir prompt. Navigating to /subscription with initiateCheckout flag...');
+                  // Navigate to subscription page and signal to immediately start checkout
+                  this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } }); 
+                  } else {
+                    console.log('User dismissed the Tafsir prompt dialog.');
+                  }
+               });
+             // No navigation needed here, Tafsir is already loaded
+           }
+           // --- End Step 2 ---
+         },
+         error: (error) => {
+           console.error('Error loading tafsir:', error);
+           this.tafsir = 'Error loading tafsir. Please try again later.';
+           // Keep selectedVerse set so the main modal shows the error
+         }
+       });
+   }
   // Search related methods
   public onSearchInput(): void {
     if (this.searchQuery) {
@@ -2894,5 +2963,41 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+  // --- Add method to close Tafsir display ---
+  closeTafsirModal(): void { // Add void return type
+      this.selectedVerse = undefined;
+      this.tafsir = '';
+      this.changeDetector.markForCheck();
+  }
+  // ---
+
+  
+getSurahName(surahNumber: string | number): string {
+  const num = typeof surahNumber === 'string' ? parseInt(surahNumber, 10) : surahNumber;
+  const surah = this.surahs.find(s => s.number === num);
+  return surah ? surah.englishName : `Surah ${num}`;
+}
+
+// +++ ADD Method to open the premium nudge dialog +++
+openPremiumNudgeDialog(): void {
+  const dialogRef = this.dialog.open(PremiumFeaturesDialogComponent, {
+    width: '420px',
+    // No data needed for this specific dialog
+    panelClass: ['premium-features-dialog-container', 'bg-transparent', 'shadow-none'],
+    backdropClass: 'bg-black/50',
+    disableClose: false // Allow clicking backdrop to close
+  });
+
+  dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
+    if (result === true) { // User clicked 'Start Free Trial'
+      console.log('User confirmed free trial from Nudge dialog. Navigating...');
+      // Navigate to subscription page and signal immediate checkout
+      this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } });
+    }
+  });
+}
+// +++ END ADD Method +++
+
 }
 

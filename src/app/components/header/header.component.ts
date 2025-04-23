@@ -1,13 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
-import { filter } from 'rxjs/operators';
+import { filter, map, tap } from 'rxjs/operators';
 import { Subscription } from 'rxjs';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { AuthButtonsComponent } from '../../auth-buttons/auth-buttons.component';
 import { NgZone } from '@angular/core';
-import { SubscriptionService } from '../../services/subscription.service';
-import { tap } from 'rxjs/operators';
 
 @Component({
   selector: 'app-header',
@@ -24,55 +22,37 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isMobileMenuOpen = false;
   isLandingPage = false;
   isAuthenticated = false;
-  private routerSubscription: Subscription;
-  private authSubscription: Subscription;
-  user: any;
+  isPremiumUser = false;
+  private routerSubscription: Subscription | undefined;
+  private authSubscription: Subscription | undefined;
   showHeader = true;
 
   constructor(
     public authService: FirebaseAuthService,
     private router: Router,
-    private ngZone: NgZone,
-    private subscriptionService: SubscriptionService
+    private ngZone: NgZone
   ) {
     // console.log('[HeaderComponent] Constructor: Initializing...');
-    // Subscribe to route changes
-    this.routerSubscription = this.router.events
-      .pipe(filter(event => event instanceof NavigationEnd))
-      .subscribe((event) => {
-        if (event instanceof NavigationEnd) {
-          // console.log(`[HeaderComponent] NavigationEnd: ${event.url}`);
-          this.updateHeaderVisibility(event.url);
-          this.closeMobileMenu();
-        }
-      });
-
-    // Subscribe to auth state
-    this.authSubscription = this.authService.user$.subscribe(user => {
-      const wasAuthenticated = this.isAuthenticated;
-      this.isAuthenticated = !!user;
-      this.user = user;
-      // console.log(`[HeaderComponent] Auth State Changed: User ${user ? 'detected' : 'null'}. isAuthenticated = ${this.isAuthenticated}`);
-      this.updateHeaderVisibility(this.router.url);
-    });
   }
 
   ngOnInit(): void {
-    this.router.events.pipe(
+    // Subscribe to route changes for header visibility
+    this.routerSubscription = this.router.events.pipe(
       filter(event => event instanceof NavigationEnd),
       tap(event => {
         if (event instanceof NavigationEnd) {
           // console.log(`[HeaderComponent] NavigationEnd: ${event.url}`);
           this.updateHeaderVisibility(event.url);
+          this.closeMobileMenu();
         }
       })
     ).subscribe();
 
-    this.authService.user$.pipe(
+    // Subscribe to auth state for authentication and premium status
+    this.authSubscription = this.authService.user$.pipe(
       tap(user => {
         this.isAuthenticated = !!user;
-        this.user = user;
-        // console.log(`[HeaderComponent] Auth State Changed: User ${user ? 'detected' : 'null'}. isAuthenticated = ${this.isAuthenticated}`);
+        this.isPremiumUser = user?.isPremium ?? false;
         this.updateHeaderVisibility(this.router.url);
       })
     ).subscribe();
@@ -93,7 +73,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   private updateHeaderVisibility(url: string): void {
     const previousLandingPageState = this.isLandingPage;
-    // Hide header on landing page and auth pages when not authenticated
+    // Hide header on landing page and auth pages *only* when not authenticated
     this.isLandingPage = !this.isAuthenticated && (
       url === '/' ||
       url.startsWith('/auth/')

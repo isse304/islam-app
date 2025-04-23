@@ -96,20 +96,30 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     });
     
     // Handle subscription success redirect
-    this.routeSub = this.route.queryParams.subscribe(params => {
+    this.routeSub = this.route.queryParams.pipe(take(1)).subscribe(params => {
       if (params['success']) {
         this.handleSubscriptionSuccess();
       }
+      // ADD Check for initiateCheckout flag
+      if (params['initiateCheckout'] === 'true') {
+        // Remove the flag from URL to prevent re-triggering on refresh
+        this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { initiateCheckout: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true
+        });
+        console.log('initiateCheckout flag detected, starting subscription...');
+        this.startSubscription();
+      }
+      // --- END ADDED CHECK --- 
+      // Get feature from URL query params (can coexist with above checks)
+      this.feature = params['feature'];
     });
 
     // Load initial status
     this.loadSubscriptionStatus();
     
-    // Get feature from URL query params
-    this.routeSub = this.route.queryParams.subscribe(params => {
-      this.feature = params['feature'];
-    });
-
     // Subscribe to user changes using FirebaseAuthService
     this.userSub = this.firebaseAuthService.user$.subscribe(user => {
       // console.log('Current user updated:', user);
