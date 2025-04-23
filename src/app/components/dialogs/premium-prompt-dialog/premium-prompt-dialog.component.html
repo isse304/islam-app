@@ -1,22 +1,22 @@
-<div class="bg-gradient-to-br from-[#FAF3E0] via-[#E6DACE] to-[#D3C1BD] dark:from-[#1A365D] dark:via-[#2A4365] dark:to-[#3A5F8A] p-6 rounded-lg shadow-xl relative overflow-hidden">
+<div class="bg-gradient-to-br from-[#FAF3E0] via-[#E6DACE] to-[#D3C1BD] dark:from-[#1A365D] dark:via-[#2A4365] dark:to-[#3A5F8A] p-6 rounded-lg shadow-xl relative overflow-hidden mt-20 max-h-[85vh] flex flex-col">
   <!-- Subtle Pattern -->
   <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-5 dark:opacity-[3%] bg-repeat"></div>
 
-  <div class="relative z-10 text-center">
-    <!-- Icon -->
-    <div class="w-16 h-16 rounded-full bg-[#B7A57A] dark:bg-yellow-400 flex items-center justify-center mx-auto mb-5 shadow-md">
+  <div class="relative z-10 text-center flex flex-col flex-grow min-h-0">
+    <!-- Icon (Flex Shrink 0) -->
+    <div class="w-16 h-16 rounded-full bg-[#B7A57A] dark:bg-yellow-400 flex items-center justify-center mx-auto mb-5 shadow-md flex-shrink-0">
       <mat-icon class="text-white dark:text-[#1A365D] scale-150">
         {{ isGreetingMode ? 'info_outline' : 'stars' }}
       </mat-icon>
     </div>
 
-    <!-- Title -->
-    <h2 mat-dialog-title class="text-2xl font-bold text-[#1A365D] dark:text-[#FAF3E0] mb-3">
+    <!-- Title (Flex Shrink 0) -->
+    <h2 mat-dialog-title class="text-2xl font-bold text-[#1A365D] dark:text-[#FAF3E0] mb-3 flex-shrink-0">
       {{ isGreetingMode ? 'Tafsir Information' : 'Unlock Premium Feature' }}
     </h2>
 
-    <!-- Content -->
-    <mat-dialog-content class="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+    <!-- Content (Scrollable) -->
+    <mat-dialog-content class="text-gray-700 dark:text-gray-300 mb-6 leading-relaxed overflow-y-auto flex-grow">
       <!-- Greeting Mode Content -->
       <div *ngIf="isGreetingMode">
         <p class="mb-3 text-sm">
@@ -40,8 +40,8 @@
       </div>
     </mat-dialog-content>
 
-    <!-- Actions -->
-    <mat-dialog-actions align="center" class="flex justify-center gap-3">
+    <!-- Actions (Flex Shrink 0) -->
+    <mat-dialog-actions align="center" class="flex justify-center gap-3 flex-shrink-0">
       <!-- Greeting Mode Button -->
       <button *ngIf="isGreetingMode"
               mat-flat-button

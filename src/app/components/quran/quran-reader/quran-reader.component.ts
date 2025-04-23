@@ -39,6 +39,8 @@ import { PremiumPromptDialogComponent } from '../../dialogs/premium-prompt-dialo
 import { PreferencesService } from '../../../services/preferences.service';
 // +++ ADD Import for the new dialog +++
 import { PremiumFeaturesDialogComponent } from '../../dialogs/premium-features-dialog/premium-features-dialog.component';
+// Correct import for SafeHtmlPipe
+import { SafeHtmlPipe } from '../../../pipes/safe-html.pipe';
 
 interface SearchSuggestion {
   type: 'surah' | 'verse';
@@ -99,9 +101,10 @@ interface TimingData {
     MatListModule,
     MatMenuModule,
     MatTooltipModule,
-    MatDialogModule
-    // -- REMOVE ScrollingModule from imports --
-    // ScrollingModule
+    MatDialogModule,
+    ClickOutsideDirective, // Ensure ClickOutsideDirective is imported
+    // +++ ADD SafeHtmlPipe to imports +++
+    
   ],
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss']
