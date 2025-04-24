@@ -663,12 +663,7 @@ select option {
   // &.translate-y-full { transform: translateY(100%); }
   // &.bg-transparent { background-color: transparent; }
 
-  &.minimized {
-    // Styles when the player is just a bubble (managed by bindings)
-    // padding: 0; 
-    // box-shadow: none; 
-    // background-color: transparent; 
-  }
+
 }
 
 // Keep the padding rule for main content - ADJUST VALUE if needed!
@@ -799,4 +794,142 @@ select option {
   border-radius: 0.75rem;
   padding: 1.5rem; // Keep padding
   padding-top: 2.5rem; // Add extra top padding for close button
+}
+
+/* Add mobile-specific styles */
+@media (max-width: 768px) {
+  .quran-reader-container {
+    // Ensure full width and prevent body scroll
+    width: 100%;
+    overflow-x: hidden; 
+  }
+
+  .translation-view-container,
+  .mushaf-view-container {
+    padding-left: 0.5rem;  // Reduce horizontal padding
+    padding-right: 0.5rem;
+  }
+
+  .verse-card {
+    padding: 0.75rem; // Reduce padding inside verse cards
+  }
+
+  .arabic-text {
+    font-size: 24px; // Slightly smaller default Arabic font on mobile
+    line-height: 1.8; // Adjust line height for readability
+  }
+
+  .translation-text {
+    font-size: 15px; // Slightly smaller default translation font
+  }
+
+  .mushaf-image {
+    max-width: 100%; // Ensure mushaf images don't overflow horizontally
+    height: auto;    // Maintain aspect ratio
+  }
+  
+  .main-controls-popup {
+     max-height: 60vh; // Reduce max height of controls popup
+  }
+  
+  .playback-controls {
+     gap: 0.25rem; // Reduce gap between audio controls
+  }
+  
+  .progress-section {
+     max-width: none; // Allow progress bar to use available space
+     flex-grow: 1;
+  }
+
+  // Hide specific elements or adjust layout further if needed
+  // Example: .some-wide-element { display: none; } 
+}
+
+/* Style for highlighted verse */
+.highlighted-verse {
+  background-color: #fffbeb; /* Light yellow background */
+  border-left: 4px solid #facc15; /* Yellow border */
+  transition: background-color 0.5s ease, border-color 0.5s ease;
+}
+
+.currently-playing {
+  // Add subtle animation or stronger highlight for the currently playing verse
+  box-shadow: 0 0 10px rgba(183, 165, 122, 0.5); // Example shadow
+}
+
+
+
+
+.highlighted-word {
+  background-color: #E6DACE; /* Or your preferred highlight color */
+  border-radius: 4px;
+}
+
+/* Style for bookmarked verse */
+.bookmarked {
+  color: #B7A57A !important; /* Use theme color for bookmarked icon */
+}
+
+/* Custom scrollbar styling */
+.custom-scrollbar {
+  scrollbar-width: thin; /* "auto" or "thin" */
+  scrollbar-color: #B7A57A #f3f4f6; /* thumb and track color */
+}
+
+/* For Webkit browsers */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #B7A57A;
+  border-radius: 10px;
+  border: 2px solid #f3f4f6;
+}
+
+
+
+.mushaf-pages-wrapper {
+  gap: 1rem; /* Add gap for double page view */
+}
+
+.mushaf-page-container {
+  /* Allow scaling */
+  transition: transform 0.3s ease;
+}
+
+
+
+
+/* Font Classes */
+.font-uthmani {
+  font-family: 'UthmanicHafs', 'Traditional Arabic', serif; /* Add fallbacks */
+}
+
+.font-naskh {
+  font-family: 'Amiri', 'Noto Naskh Arabic', serif; /* Add fallbacks */
+}
+
+/* Audio Player Slider Customization */
+.audio-progress-slider .mat-mdc-slider-track::before {
+  background-color: rgba(255, 255, 255, 0.5) !important; 
+}
+
+.audio-progress-slider .mat-mdc-slider-track::after {
+  background-color: #ffffff !important; 
+}
+
+.audio-progress-slider .mdc-slider__thumb-knob {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+/* Ensure controls popup content doesn't overflow */
+.main-controls-popup > div:last-child { /* Target the scrollable content div */
+  min-height: 0; /* Prevent flex item from growing indefinitely */
 }

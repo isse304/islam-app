@@ -104,7 +104,7 @@ interface TimingData {
     MatDialogModule,
     ClickOutsideDirective, // Ensure ClickOutsideDirective is imported
     // +++ ADD SafeHtmlPipe to imports +++
-    
+    SafeHtmlPipe,
   ],
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss']
@@ -300,6 +300,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   private initialLoadComplete: boolean = false; // Flag for initial load
 
   isLoading: boolean = false; // Add isLoading flag back
+
+  isTafsirModalOpen: boolean = false; // <<< Add this property declaration
 
   // Method to toggle the minimized state
   public toggleControlsView(): void {
@@ -1719,61 +1721,43 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
        console.error("Invalid currentSurah value:", this.currentSurah);
        this.tafsir = 'Error: Invalid surah number.';
        this.isLoading = false; // Ensure loading stops
+       this.isTafsirModalOpen = true; // Open Tafsir modal to show error
        this.changeDetector.markForCheck();
        return; // Exit if surah number is invalid
      }
  
      this.isLoading = true;
      this.tafsir = ''; // Clear previous tafsir
+     this.isTafsirModalOpen = true; // Open Tafsir modal immediately (shows spinner)
      this.changeDetector.markForCheck();
  
      this.quranService.getTafsir(surahNum, verse.number, this.selectedTafsir)
        .pipe(finalize(() => {
          this.isLoading = false;
-         // Tafsir (or error message) is ready, the HTML will now display it
+         // Open modal in finalize (redundant if opened above, but safe)
+         this.isTafsirModalOpen = true; 
+         // Final check to ensure UI updates after loading finishes or error occurs
          this.changeDetector.markForCheck(); 
        }))
        .subscribe({
          next: (response) => {
            this.tafsir = response?.text || 'Tafsir not available for this selection.';
            console.log("Tafsir loaded:", this.tafsir.substring(0, 100));
- 
-           // --- Step 2: Conditionally show GREETING dialog for FREE users AFTER successful fetch ---
-           if (!this.isPremiumUser) {
-             console.log('Opening Tafsir Greeting Dialog (mode: greeting) for free user...');
-             // Open the dialog in PROMPT mode for free users, encouraging upgrade
-             const dialogRef = this.dialog.open(PremiumPromptDialogComponent, {
-                 width: '380px',
-                 data: { 
-                   mode: 'prompt', // Use PROMPT mode
-                   featureName: 'AI Tafsir Chat & Deeper Insights' // Comma added below
-                 }, 
-                 panelClass: ['premium-prompt-dialog-container', 'bg-transparent', 'shadow-none'], 
-                 backdropClass: 'bg-black/50',
-                 disableClose: false // Allow closing greeting dialog easily
-               });
-
-             // Subscribe to the dialog result
-             dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
-                if (result === true) { // User clicked 'Start Free Trial'
-                  console.log('User confirmed free trial from Tafsir prompt. Navigating to /subscription with initiateCheckout flag...');
-                  // Navigate to subscription page and signal to immediately start checkout
-                  this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } }); 
-                  } else {
-                    console.log('User dismissed the Tafsir prompt dialog.');
-                  }
-               });
-             // No navigation needed here, Tafsir is already loaded
-           }
-           // --- End Step 2 ---
          },
          error: (error) => {
            console.error('Error loading tafsir:', error);
            this.tafsir = 'Error loading tafsir. Please try again later.';
-           // Keep selectedVerse set so the main modal shows the error
          }
        });
    }
+
+  closeTafsirModal(): void { 
+      this.isTafsirModalOpen = false; // Use the new flag
+      this.selectedVerse = undefined;
+      this.tafsir = '';
+      this.changeDetector.markForCheck();
+  }
+
   // Search related methods
   public onSearchInput(): void {
     if (this.searchQuery) {
@@ -2968,11 +2952,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   // --- Add method to close Tafsir display ---
-  closeTafsirModal(): void { // Add void return type
-      this.selectedVerse = undefined;
-      this.tafsir = '';
-      this.changeDetector.markForCheck();
-  }
+
   // ---
 
   
@@ -2981,26 +2961,6 @@ getSurahName(surahNumber: string | number): string {
   const surah = this.surahs.find(s => s.number === num);
   return surah ? surah.englishName : `Surah ${num}`;
 }
-
-// +++ ADD Method to open the premium nudge dialog +++
-// openPremiumNudgeDialog(): void {
-//   const dialogRef = this.dialog.open(PremiumFeaturesDialogComponent, {
-//     width: '420px',
-//     // No data needed for this specific dialog
-//     panelClass: ['premium-features-dialog-container', 'bg-transparent', 'shadow-none'],
-//     backdropClass: 'bg-black/50',
-//     disableClose: false // Allow clicking backdrop to close
-//   });
-
-//   dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
-//     if (result === true) { // User clicked 'Start Free Trial'
-//       console.log('User confirmed free trial from Nudge dialog. Navigating...');
-//       // Navigate to subscription page and signal immediate checkout
-//       this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } });
-//     }
-//   });
-// }
-// +++ END ADD Method +++
 
 }
 
