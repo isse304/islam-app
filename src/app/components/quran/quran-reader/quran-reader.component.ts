@@ -2983,23 +2983,23 @@ getSurahName(surahNumber: string | number): string {
 }
 
 // +++ ADD Method to open the premium nudge dialog +++
-openPremiumNudgeDialog(): void {
-  const dialogRef = this.dialog.open(PremiumFeaturesDialogComponent, {
-    width: '420px',
-    // No data needed for this specific dialog
-    panelClass: ['premium-features-dialog-container', 'bg-transparent', 'shadow-none'],
-    backdropClass: 'bg-black/50',
-    disableClose: false // Allow clicking backdrop to close
-  });
+// openPremiumNudgeDialog(): void {
+//   const dialogRef = this.dialog.open(PremiumFeaturesDialogComponent, {
+//     width: '420px',
+//     // No data needed for this specific dialog
+//     panelClass: ['premium-features-dialog-container', 'bg-transparent', 'shadow-none'],
+//     backdropClass: 'bg-black/50',
+//     disableClose: false // Allow clicking backdrop to close
+//   });
 
-  dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
-    if (result === true) { // User clicked 'Start Free Trial'
-      console.log('User confirmed free trial from Nudge dialog. Navigating...');
-      // Navigate to subscription page and signal immediate checkout
-      this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } });
-    }
-  });
-}
+//   dialogRef.afterClosed().pipe(take(1)).subscribe(result => {
+//     if (result === true) { // User clicked 'Start Free Trial'
+//       console.log('User confirmed free trial from Nudge dialog. Navigating...');
+//       // Navigate to subscription page and signal immediate checkout
+//       this.router.navigate(['/subscription'], { queryParams: { initiateCheckout: 'true' } });
+//     }
+//   });
+// }
 // +++ END ADD Method +++
 
 }

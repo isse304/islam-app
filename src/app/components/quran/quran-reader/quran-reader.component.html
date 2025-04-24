@@ -497,9 +497,10 @@
 
   <!-- Tafsir Modal -->
   <div *ngIf="selectedVerse && tafsir" 
-       class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+       class="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-start justify-center p-4 z-[100]"
+       (click)="closeTafsirModal()">
 
-    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-2xl w-full relative transform transition-all scale-100 opacity-100"
+    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 max-w-2xl w-full relative transform transition-all scale-100 opacity-100 mt-20"
          (click)="$event.stopPropagation()">
 
       <button (click)="closeTafsirModal()"
@@ -719,14 +720,14 @@
 </div> <!-- End Component Root div -->
 
 <!-- ++ ADD Premium Nudge Bubble ++ -->
-<button *ngIf="!isPremiumUser"
+<!-- <button *ngIf="!isPremiumUser"
         (click)="openPremiumNudgeDialog()"
         mat-fab
         color="accent" 
         matTooltip="Unlock Premium Features!"
         class="fixed bottom-20 right-4 z-30 bg-[#B7A57A] text-white shadow-lg hover:bg-[#A6946A] transition-colors">
   <mat-icon>stars</mat-icon>
-</button>
+</button> -->
 <!-- ++ END Premium Nudge Bubble ++ -->
 
 <style>
