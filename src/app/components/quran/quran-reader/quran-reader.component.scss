@@ -539,7 +539,7 @@ $text-medium: #4A5568;
   background: white;
   padding: 1rem;
   box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-  z-index: 50;
+  z-index: 100 !important;
 
   .progress-bar {
     width: 100%;
@@ -932,4 +932,410 @@ select option {
 /* Ensure controls popup content doesn't overflow */
 .main-controls-popup > div:last-child { /* Target the scrollable content div */
   min-height: 0; /* Prevent flex item from growing indefinitely */
+}
+
+/* Mobile Mushaf Controls Styling */
+.mobile-mushaf-controls {
+  // Apply cream background AND pattern WITH transparency
+  background-color: #E6DACE !important; // Base cream color fallback
+  // Layer transparent cream gradient under the pattern
+  background-image: 
+    linear-gradient(to right, rgba(250, 243, 224, 0.85), rgba(250, 243, 224, 0.9)), 
+    url('/islamic-pattern-2.png'); 
+  background-size: 300px; // Adjust pattern size if needed
+  background-position: center;
+  background-repeat: repeat;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  border-top: 1px solid #e0d8c4; // Add subtle top border for cream
+
+  // --- Adjustments for readability on CREAM + PATTERN background --- 
+  // (Keep text/icons dark/gold as they were for the cream background)
+
+  // Make icon buttons have DARK icons by default
+  button.mat-mdc-icon-button .mat-icon {
+    color: #4A5568 !important; // Dark gray icons
+  }
+
+  // Style the bookmark icon specifically when bookmarked (Primary Gold)
+  button.bookmarked .mat-icon { 
+    color: #B7A57A !important; // Use primary gold for bookmarked state
+  }
+
+  // Make the input field readable 
+  input[type="number"] {
+    color: #1A365D !important; // Dark text
+    background-color: white !important; // White background
+    border: 1px solid rgba(183, 165, 122, 0.5) !important; // Gold border
+    border-radius: 0.375rem; 
+    &:focus {
+      border-color: #B7A57A !important;
+      box-shadow: 0 0 0 1px #B7A57A !important;
+    }
+  }
+
+  // Make suffix text (total pages) GOLD
+  span.text-xs:not(.font-medium) { 
+    color: #B7A57A !important; // Gold text
+  }
+
+  // Make zoom percentage GOLD
+  span.text-xs.font-medium {
+      color: #B7A57A !important; // Gold text
+  }
+
+  // Style the Surah select dropdown 
+  .mobile-surah-select-styled {
+    .mat-mdc-form-field-flex {
+      background-color: white !important; // White background
+    }
+    .mat-mdc-select-value,
+    .mat-mdc-select-arrow {
+      color: #1A365D !important; // Dark text/arrow
+    }
+     .mat-mdc-floating-label {
+        color: #6B7280 !important; // Darker label
+     }
+  }
+}
+
+/* Ensure content area has space for the sticky/fixed controls */
+.mushaf-display-area {
+  // Mobile: Padding for top controls
+  padding-top: 110px; 
+  padding-bottom: 20px; // Base bottom padding
+}
+
+@media (min-width: 768px) { // md breakpoint
+  .mushaf-display-area {
+    // Desktop: Remove top padding, add bottom padding for fixed controls
+    padding-top: 20px !important; // Use !important just in case
+    padding-bottom: 90px !important; /* Increased Space for bottom controls */
+  }
+}
+
+// Styles for the main controls header
+.mushaf-controls-header {
+  // Mobile: Stick to top (default)
+  position: sticky; 
+  top: 0;
+  z-index: 50;
+  // Background set by Tailwind for mobile
+
+  @media (min-width: 768px) { // md breakpoint
+    // Desktop: Fix to bottom
+    position: fixed !important; // Add !important
+    top: auto !important;     // Add !important
+    bottom: 0 !important;    // Add !important
+    left: 0 !important;      // Add !important
+    right: 0 !important;     // Add !important
+    background-color: #FAF3E0; // Set to cream background
+    border-bottom: 1px solid #e0d8c4; // Add subtle bottom border
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    z-index: 51 !important; // Slightly higher z-index just in case
+  }
+}
+
+/* PC Surah Selector Styling (Fill Appearance) */
+.pc-surah-select.mat-mdc-form-field-type-mat-select {
+  .mat-mdc-form-field-flex {
+    background-color: rgba(255, 255, 255, 0.5); // Slightly transparent bg
+    border-radius: 4px 4px 0 0;
+    padding: 0.5em 0.75em 0 0.75em !important; // Adjust padding
+  }
+  .mat-mdc-floating-label.mdc-floating-label {
+     top: 1.2em !important; // Adjust label position for fill
+  }
+  .mat-mdc-form-field-infix {
+     padding-top: 0.5em !important;
+     padding-bottom: 0.5em !important;
+  }
+}
+
+/* Mobile Surah Selector Styling (Fill Appearance) */
+.mobile-surah-select-styled.mat-mdc-form-field-type-mat-select {
+   .mat-mdc-form-field-flex {
+      background-color: rgba(243, 244, 246, 0.8); // Light gray background
+      padding: 0 0.5em !important; // Adjust padding
+      height: 38px;
+      border-radius: 4px;
+   }
+   .mat-mdc-form-field-infix {
+      padding: 0.3em 0 !important;
+      min-height: 36px;
+   }
+   .mat-mdc-select-value {
+      padding-top: 0 !important; // Adjust vertical alignment
+   }
+   // Hide underline and bottom space for fill appearance
+   .mat-mdc-form-field-underline { display: none; }
+   .mat-mdc-form-field-subscript-wrapper { display: none; }
+}
+
+/* Mobile Mushaf Controls Styling */
+.mobile-mushaf-controls {
+  // Styles for input, icon buttons, bookmark handled here
+  input[type="number"] {
+    border-color: #D1D5DB;
+    &:focus {
+      border-color: #B7A57A;
+      box-shadow: 0 0 0 1px #B7A57A;
+    }
+  }
+  .mat-mdc-icon-button {
+    color: #6B7280;
+    width: 36px;
+    height: 36px;
+    line-height: 36px;
+    &:hover { background-color: rgba(183, 165, 122, 0.1); color: #B7A57A; }
+    &:disabled { color: #D1D5DB; }
+    .mat-icon { font-size: 20px; height: 20px; width: 20px; }
+  }
+  .bookmarked .mat-icon { color: #B7A57A; }
+  
+}
+
+/* Padding for FIXED bottom mobile controls */
+@media (max-width: 767px) { // Up to md breakpoint
+  .mushaf-container {
+      padding-bottom: 90px; /* Adjust if needed */
+  }
+  .mushaf-display-area {
+      padding-top: 80px; /* Adjust if mobile sticky header height differs */
+  }
+}
+
+/* Padding for sticky header (Desktop) */
+@media (min-width: 768px) { // md breakpoint and up
+  .mushaf-display-area {
+    padding-top: 80px; /* Adjust */
+  }
+}
+
+// --- Desktop Surah Select Styling (Increased Specificity) ---
+.mushaf-controls-header .pc-surah-select {
+  .mat-mdc-form-field-flex {
+    background-color: rgba(255, 255, 255, 0.7) !important;
+    border-radius: 8px !important;
+    padding: 0 12px 0 16px !important; 
+    height: 44px !important; // Use !important
+    align-items: center !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+  }
+  .mat-mdc-select-value {
+    color: #1A365D !important; 
+    font-weight: 500 !important;
+  }
+  .mat-mdc-select-arrow {
+    color: #B7A57A !important; 
+  }
+  // Remove underline and bottom space
+  .mat-mdc-form-field-underline {
+    display: none !important;
+  }
+   .mat-mdc-form-field-subscript-wrapper {
+    display: none !important;
+  }
+  .mat-mdc-form-field-infix {
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+      margin-top: -0.25em !important; // Adjust vertical alignment
+  }
+  // Ensure label styling applies
+  .mat-mdc-floating-label.mdc-floating-label {
+     transform: translateY(-1.3em) scale(0.75) !important; 
+     color: #B7A57A !important;
+  }
+  // Target the trigger specifically if needed
+  .mat-mdc-select-trigger {
+      height: 100%;
+      align-items: center;
+  }
+}
+
+
+// --- Desktop Page Input Styling (Refinements) ---
+.mushaf-controls-header mat-form-field[appearance="outline"] {
+  .mat-mdc-text-field-wrapper {
+    height: 44px !important; 
+    background-color: rgba(255, 255, 255, 0.8) !important; // Slightly less transparent
+    border-radius: 8px !important;
+    padding: 0 !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+  }
+  .mat-mdc-form-field-outline {
+    border-color: rgba(183, 165, 122, 0.5) !important; // Slightly stronger border
+    border-width: 1px !important; // Ensure border width is standard
+    border-radius: 8px !important;
+  }
+  .mat-mdc-form-field-outline-thick {
+     border-color: #B7A57A !important;
+     opacity: 1 !important;
+     border-width: 2px !important; // Make focused border thicker
+  }
+  input.mat-mdc-input-element {
+    color: #1A365D !important;
+    text-align: center !important;
+    padding: 0 !important; 
+    font-weight: 500 !important;
+    height: 100% !important;
+    text-decoration: none !important; // REMOVE line-through
+  }
+  .mat-mdc-form-field-infix {
+    padding: 0 !important;
+    display: flex !important; 
+    align-items: center !important;
+  }
+  .mat-mdc-form-field-label {
+      color: #B7A57A !important;
+      transform: translateY(-1.5em) scale(0.75) !important; 
+  }
+  .mat-mdc-form-field-flex {
+      padding: 0 0.75em !important;
+      height: 44px !important; 
+  }
+  .mat-mdc-form-field-suffix {
+    align-self: center !important; 
+    padding-right: 8px !important; 
+  }
+}
+
+
+// --- Mobile Surah Select Styling (Wider) ---
+.mobile-mushaf-controls .mobile-surah-select-styled {
+    flex-grow: 1; // Allow it to take more space in the flex container
+    min-width: 150px; // Set a minimum width
+    .mat-mdc-form-field-flex {
+      background-color: rgba(255, 255, 255, 0.9) !important;
+      border-radius: 8px !important;
+      padding: 0 8px !important; 
+      min-height: 38px !important; 
+      height: 38px !important;
+      align-items: center !important; 
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    }
+    .mat-mdc-select-value {
+      color: #1A365D !important;
+      font-weight: 500 !important;
+      font-size: 0.8rem !important; 
+    }
+    .mat-mdc-select-arrow {
+      color: #B7A57A !important;
+    }
+    .mat-mdc-form-field-infix {
+      padding: 0 !important;
+    }
+    .mat-mdc-form-field-underline { display: none !important; }
+    .mat-mdc-form-field-subscript-wrapper { display: none !important; }
+}
+
+// --- Desktop Mushaf Controls Header Styling ---
+.mushaf-controls-header {
+  // ... existing styles ...
+  background-color: #FAF3E0; // Set to cream background
+  border-bottom: 1px solid #e0d8c4; // Add subtle bottom border
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  position: sticky; // Keep sticky
+  top: 0;
+  z-index: 51 !important; // Ensure it's above content but below modals/audio
+
+  // Style the mat-form-field for page input
+  mat-form-field[appearance="outline"] {
+    .mat-mdc-text-field-wrapper {
+      height: 44px !important; // Match Surah select height
+      background-color: rgba(255, 255, 255, 0.8) !important; 
+      border-radius: 8px !important;
+      padding: 0 !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
+    }
+    .mat-mdc-form-field-outline {
+      border-color: rgba(183, 165, 122, 0.5) !important; 
+      border-width: 1px !important;
+      border-radius: 8px !important;
+    }
+    .mat-mdc-form-field-outline-start, .mat-mdc-form-field-outline-end {
+      border-width: 1px !important; 
+    }
+    .mat-mdc-form-field-outline-thick {
+       border-color: #B7A57A !important;
+       opacity: 1 !important;
+       border-width: 2px !important; 
+    }
+    input.mat-mdc-input-element {
+      color: #1A365D !important;
+      text-align: center !important;
+      padding: 0 4px !important; // Add slight horizontal padding
+      font-weight: 500 !important;
+      height: 100% !important;
+      font-size: 1rem !important; // Ensure consistent size
+    }
+    .mat-mdc-form-field-infix {
+      padding: 0 !important;
+      display: flex !important; 
+      align-items: center !important;
+    }
+    .mat-mdc-form-field-label {
+        color: #B7A57A !important;
+        // Use transform for positioning to avoid conflicts
+        transform: translateY(-1.5em) scale(0.75) !important; 
+        // Remove top/left positioning if previously set
+    }
+    .mat-mdc-form-field-flex {
+        padding: 0 0.75em !important;
+        height: 44px !important; // Ensure flex container matches height
+    }
+    .mat-mdc-form-field-subscript-wrapper { display: none; } // Hide subscript space
+    .mat-mdc-form-field-bottom-align::before { height: 0; } // Remove bottom alignment space
+    .mat-mdc-form-field-suffix {
+      align-self: center !important; // Vertically center suffix
+      padding-right: 8px !important; // Add some padding
+      color: #1A365D !important; // Match input color
+      font-weight: 500 !important; // Match input weight
+      font-size: 1rem !important; // Match input size
+    }
+  }
+}
+
+// --- Mobile Mushaf Controls Styling ---
+.mobile-mushaf-controls {
+  // ... existing styles ...
+  background-color: #FAF3E0; // Apply same background as desktop
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1); // Add shadow consistent with desktop bottom
+  // Ensure text/icons inside are readable (adjust if needed)
+  // Example: Make icon buttons white
+  button mat-icon {
+    color: white !important; // Make icons white
+  }
+  // Make input text readable
+  input[type="number"] {
+    color: #1A365D !important; // Dark blue text
+    background-color: rgba(255, 255, 255, 0.8) !important; // White background
+    border-color: rgba(183, 165, 122, 0.5) !important;
+  }
+  span.text-xs {
+    color: white !important; // Make suffix text white
+  }
+}
+
+// Remove previous complex styles for desktop page input
+// --- Style for NEW Desktop Page Input ---
+.desktop-page-input-container {
+  // Container uses Tailwind classes for layout, bg, border, rounded, padding, height, shadow
+}
+
+.desktop-page-input {
+  // Input uses Tailwind classes for flex-grow, width, text-align, padding, bg, border, focus, text color, font-weight
+  // Remove number input spinner arrows
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  -moz-appearance: textfield; // Firefox
+}
+
+.desktop-page-suffix {
+  // Suffix uses Tailwind classes for size, color, padding
+  white-space: nowrap; // Prevent wrapping
 }

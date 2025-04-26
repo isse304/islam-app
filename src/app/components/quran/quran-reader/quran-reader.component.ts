@@ -26,6 +26,8 @@ import { MatDialogModule } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { DragDropModule } from '@angular/cdk/drag-drop'; // <-- Import this
+import { MatButtonToggleModule } from '@angular/material/button-toggle'; // <-- ADD THIS LINE
 
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
 import { SttService } from '../../../services/stt.service';
@@ -102,9 +104,11 @@ interface TimingData {
     MatMenuModule,
     MatTooltipModule,
     MatDialogModule,
+    MatButtonToggleModule, // <-- ADD THIS LINE
     ClickOutsideDirective, // Ensure ClickOutsideDirective is imported
     // +++ ADD SafeHtmlPipe to imports +++
     SafeHtmlPipe,
+    DragDropModule, // <-- Add this to imports
   ],
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss']
@@ -186,7 +190,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   mushafContent: MushafContent | null = null;
   previousMushafContent: MushafContent | null = null;
   mushafPage: MushafPage | null = null;
-  mushafZoom: number = 0.9;
+  mushafZoom: number = 0.8; // Default zoom 80%
   mushafMode: 'single' | 'double' = 'single';
   surahName: string = '';
   pageImageUrl: string = '';
@@ -283,6 +287,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // ++ NEW State for Audio Player ++ 
   public isAudioPlayerMinimized = false; 
+  public isDraggingBubble: boolean = false; // <<< ADD THIS LINE
 
   // ++ NEW State for Mobile Mushaf Bottom Bar ++
   public isMobileMushafBarVisible = true; // Added this line
@@ -386,6 +391,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   );
 
   async ngOnInit() {
+    // Detect if mobile for layout adjustments
+    this.isMobile = window.innerWidth < 768;
+
+    // Set default zoom based on device
+    this.mushafZoom = this.isMobile ? 0.9 : 0.8;
+
     this.isLoading = true;
     this.changeDetector.markForCheck();
     ////console.log('%c[QuranReader ngOnInit] Starting initialization...', 'color: green; font-weight: bold;');
@@ -1176,6 +1187,18 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const isNewAudio = this.currentAudioUrl !== url; // Check if it's a new track
+
+    // *** Set minimized state based on VIEW MODE ***
+    if (isNewAudio) {
+        // Only start minimized if in Mushaf view
+        this.isAudioPlayerMinimized = this.isMushafView; 
+    } else {
+        // Always expand when resuming regardless of view
+        this.isAudioPlayerMinimized = false; 
+    }
+    // *** End state setting ***
+
     // 1. Set loading state immediately and trigger UI update
     this.isAudioLoading = true;
     this.audioPaused = false; // Assume playback will start
@@ -1195,61 +1218,57 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           this.audioPlayer.pause();
           this.removeAudioEvents();
           this.audioPlayer.removeAttribute('src'); // Clean up old source
-          // //////console.log('[playAudio] Previous player paused and cleaned.');
         }
 
-        // Store scroll position BEFORE creating/loading new audio
         const currentScrollY = window.scrollY;
 
-        // Create and configure the NEW Audio element
+        // If resuming the SAME audio, ensure it's expanded (already handled by bubble click)
+        // if (!isNewAudio) {
+        //     this.isAudioPlayerMinimized = false; 
+        // }
+
         this.audioPlayer = new Audio(url);
-        this.currentAudioUrl = url; // Store the current URL
-        this.setupAudioEvents(); // Add listeners to the new player
+        this.currentAudioUrl = url;
+        this.audioPlayer.src = url; // Set src here
+        this.setupAudioEvents(); 
 
-        // //////console.log(`[playAudio] New audio element created for URL: ${url}`);
-
-        // Initiate loading
         this.audioPlayer.load();
 
-        // Set timeout for loading indicator - reset it here
         clearTimeout(this.audioLoadingTimeout);
         this.audioLoadingTimeout = setTimeout(() => {
           if (this.isAudioLoading && this.audioPlayer?.networkState === HTMLMediaElement.NETWORK_LOADING) {
              console.warn('Audio loading timed out.');
              this.ngZone.run(() => this.handleAudioError('Audio loading timed out'));
           }
-        }, 15000); // 15 second timeout
+        }, 15000);
 
-        // Attempt to play - Browser might block this until user interaction
-        // The 'canplay' event or 'playing' event will set isAudioLoading to false
         try {
           await this.audioPlayer.play();
-          // //////console.log('[playAudio] Play promise resolved.');
-          // Note: isPlaying and isAudioLoading state will be updated by 'play' and 'canplay' event handlers
         } catch (playError: any) {
-           // Handle cases where autoplay fails (common in browsers)
            console.warn('[playAudio] Autoplay error (might be expected):', playError.message);
-           // Don't necessarily treat this as a full error, user might need to click play again
            this.ngZone.run(() => {
               this.isPlaying = false;
               this.audioPaused = true;
-              // Keep isAudioLoading potentially true until 'canplay' if load is ongoing
+               // Ensure state remains correct if autoplay fails
+               if (isNewAudio) {
+                   this.isAudioPlayerMinimized = this.isMushafView; // Re-apply based on view
+               }
            });
         }
 
-        // Restore scroll position AFTER attempting playback (use rAF)
         requestAnimationFrame(() => {
           if (Math.abs(window.scrollY - currentScrollY) > 5) {
-              // //////console.log(`[playAudio] Restoring scroll position from ${window.scrollY} to ${currentScrollY}`);
               window.scrollTo({ top: currentScrollY, behavior: 'instant' });
           }
         });
+        
+        this.changeDetector.markForCheck(); // Check after state changes
 
       } catch (error) {
         console.error('[playAudio] Error setting up audio:', error);
         this.ngZone.run(() => this.handleAudioError('Failed to set up audio'));
       }
-    }, 0); // setTimeout 0ms helps prevent blocking the main thread
+    }, 0); 
   }
 
   private setupAudioEvents(): void {
@@ -2196,23 +2215,15 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   // Page navigation methods
-  public nextPage(): void {
-    if (this.displayPageNumberSubject.value < this.DISPLAY_TOTAL) {
-      const newDisplayPage = this.displayPageNumberSubject.value + 1;
-      this.displayPageNumberSubject.next(newDisplayPage); // Emit new display page
-      this.loadMushafPage(this.displayToActualPage(newDisplayPage));
-      this.updateUrlParams(); // <-- ADD THIS LINE
-    } else {
+  public nextPage(): void { // Now goes to PREVIOUS page (lower number)
+    if (this.currentPage > this.FIRST_PAGE) {
+      this.loadMushafPage(this.currentPage - 1);
     }
   }
 
-  public previousPage(): void {
-    if (this.displayPageNumberSubject.value > 1) {
-      const newDisplayPage = this.displayPageNumberSubject.value - 1;
-      this.displayPageNumberSubject.next(newDisplayPage); // Emit new display page
-      this.loadMushafPage(this.displayToActualPage(newDisplayPage));
-      this.updateUrlParams(); // <-- ADD THIS LINE
-    } else {
+  public previousPage(): void { // Now goes to NEXT page (higher number)
+    if (this.currentPage < this.LAST_PAGE) {
+      this.loadMushafPage(this.currentPage + 1);
     }
   }
 
@@ -2961,6 +2972,22 @@ getSurahName(surahNumber: string | number): string {
   const surah = this.surahs.find(s => s.number === num);
   return surah ? surah.englishName : `Surah ${num}`;
 }
+
+  public handleBubbleClick(): void {
+    // ONLY change the audio player minimized state
+    this.isAudioPlayerMinimized = false; 
+    // REMOVE: this.isPopupOpen = true; 
+    this.changeDetector.markForCheck();
+  }
+
+  // Drag end handler - Make sure it doesn't expand
+  onBubbleDragEnd(event: any): void { // Use any for now, replace with CdkDragEnd if imported
+    // Only update position, DO NOT change isAudioPlayerMinimized
+    this.isDraggingBubble = false;
+    // Optional: Save the bubble's last position if needed
+    const endPosition = event.source.getFreeDragPosition(); 
+    // // console.log('Bubble drag ended at:', endPosition);
+  }
 
 }
 
