@@ -4,6 +4,8 @@ $primary-color: #B7A57A;
 $text-dark: #2D3748;
 $text-medium: #4A5568;
 
+@import 'mobile-controls';
+
 // Mixins
 @mixin arabic-text-base {
   font-family: $arabic-font-family;

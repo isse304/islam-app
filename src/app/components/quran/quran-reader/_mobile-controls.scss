@@ -1,0 +1,63 @@
+// Mobile Mushaf Controls Styling
+.mobile-mushaf-controls {
+  // Apply cream background AND pattern WITH transparency
+  background-color: #E6DACE !important; // Base cream color fallback
+  // Layer transparent cream gradient under the pattern
+  background-image: 
+    linear-gradient(to right, rgba(250, 243, 224, 0.85), rgba(250, 243, 224, 0.9)), 
+    url('/islamic-pattern-2.png'); 
+  background-size: 300px; // Adjust pattern size if needed
+  background-position: center;
+  background-repeat: repeat;
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+  border-top: 1px solid #e0d8c4; // Add subtle top border for cream
+
+  // --- Adjustments for readability on CREAM + PATTERN background --- 
+  // (Keep text/icons dark/gold as they were for the cream background)
+
+  // Make icon buttons have DARK icons by default
+  button.mat-mdc-icon-button .mat-icon {
+    color: #4A5568 !important; // Dark gray icons
+  }
+
+  // Style the bookmark icon specifically when bookmarked (Primary Gold)
+  button.bookmarked .mat-icon { 
+    color: #B7A57A !important; // Use primary gold for bookmarked state
+  }
+
+  // Make the input field readable 
+  input[type="number"] {
+    color: #1A365D !important; // Dark text
+    background-color: white !important; // White background
+    border: 1px solid rgba(183, 165, 122, 0.5) !important; // Gold border
+    border-radius: 0.375rem; 
+    &:focus {
+      border-color: #B7A57A !important;
+      box-shadow: 0 0 0 1px #B7A57A !important;
+    }
+  }
+
+  // Make suffix text (total pages) GOLD
+  span.text-xs:not(.font-medium) { 
+    color: #B7A57A !important; // Gold text
+  }
+
+  // Make zoom percentage GOLD
+  span.text-xs.font-medium {
+      color: #B7A57A !important; // Gold text
+  }
+
+  // Style the Surah select dropdown 
+  .mobile-surah-select-styled {
+    .mat-mdc-form-field-flex {
+      background-color: white !important; // White background
+    }
+    .mat-mdc-select-value,
+    .mat-mdc-select-arrow {
+      color: #1A365D !important; // Dark text/arrow
+    }
+     .mat-mdc-floating-label {
+        color: #6B7280 !important; // Darker label
+     }
+  }
+} 
