@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
@@ -35,15 +35,22 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private userSubscription: Subscription | null = null;
   private pollingSubscription: Subscription | null = null;
+  private verificationIntent: string | null = null;
 
   constructor(
     private authService: FirebaseAuthService,
     private router: Router,
     private snackBar: MatSnackBar,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      this.verificationIntent = params.get('intent');
+      // console.log(`[VerifyEmailComponent] Intent read: ${this.verificationIntent}`);
+    });
+
     this.isLoading = true;
     this.userSubscription = this.authService.user$
       .pipe(takeUntil(this.destroy$))
@@ -53,8 +60,9 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
         if (!user) {
           this.navigateToApp();
         } else if (user.emailVerified) {
-          // console.warn('[VerifyEmailComponent] User is already verified but landed on this page.');
-          this.pollingSubscription?.unsubscribe();
+          // If already verified when landing here, navigate immediately
+          // console.warn('[VerifyEmailComponent] User already verified. Navigating...');
+          this.navigateToApp();
         } else {
           this.startPollingForVerification();
         }
@@ -72,17 +80,39 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
   private startPollingForVerification(): void {
     this.pollingSubscription?.unsubscribe();
 
-    this.pollingSubscription = timer(2000, 5000)
+    this.pollingSubscription = timer(2000, 5000) // Poll every 5 seconds after 2 initial seconds
       .pipe(
         takeUntil(this.destroy$),
         switchMap(async () => {
+          // Only poll if not currently checking manually or resending, and user exists but is not verified
           if (!this.isCheckingStatus && !this.isResending && this.user && !this.user.emailVerified) {
-            // console.log('[Polling] Checking verification status...');
-            await this.authService.reloadCurrentUser();
+            try {
+              // console.log('[Polling] Reloading user state...');
+              await this.authService.reloadCurrentUser();
+              // console.log('[Polling] User state reloaded.');
+
+              // Directly check status AFTER reload
+              const latestUser = this.authService.getCurrentUser(); // Use synchronous getter after reload
+              const isVerified = !!latestUser?.emailVerified;
+              // console.log(`[Polling] Verification status after reload: ${isVerified}`);
+
+              if (isVerified) {
+                // console.log('[Polling] Verified! Navigating to app...');
+                this.navigateToApp(); // This will unsubscribe polling
+                // No need to manually unsubscribe here, navigateToApp handles it.
+              }
+            } catch (error) {
+              console.error('[Polling] Error reloading user:', error);
+              // Optional: Show a subtle error or stop polling on persistent errors
+            }
+          } else {
+             // console.log(`[Polling] Skipping poll (isCheckingStatus: ${this.isCheckingStatus}, isResending: ${this.isResending}, userVerified: ${this.user?.emailVerified})`);
           }
         })
       )
-      .subscribe();
+      .subscribe({
+         error: (err) => console.error('[Polling] Uncaught error in polling stream:', err) // Catch errors in the stream itself
+      });
   }
 
   async resendVerificationEmail(): Promise<void> {
@@ -189,9 +219,15 @@ export class VerifyEmailComponent implements OnInit, OnDestroy {
 
   navigateToApp(): void {
     this.pollingSubscription?.unsubscribe();
-    const redirectUrl = this.authService.redirectUrl || '/home';
-    this.authService.redirectUrl = null;
-    this.router.navigate([redirectUrl]);
+    // ++ Determine redirect based on stored intent ++ 
+    const targetUrl = (this.verificationIntent === 'start_trial')
+      ? '/subscription?initiateCheckout=true'
+      : this.authService.redirectUrl || '/home'; // Keep fallback to authService.redirectUrl or /home
+    
+    // console.log(`[VerifyEmailComponent] Navigating to app. Intent: '${this.verificationIntent}', Target URL: ${targetUrl}`);
+    
+    this.authService.redirectUrl = null; // Clear any potentially conflicting global redirect
+    this.router.navigateByUrl(targetUrl);
   }
 
   async signOut(): Promise<void> {

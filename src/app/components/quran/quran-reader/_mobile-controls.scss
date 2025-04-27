@@ -2,13 +2,8 @@
 .mobile-mushaf-controls {
   // Apply cream background AND pattern WITH transparency
   background-color: #E6DACE !important; // Base cream color fallback
-  // Layer transparent cream gradient under the pattern
-  background-image: 
-    linear-gradient(to right, rgba(250, 243, 224, 0.85), rgba(250, 243, 224, 0.9)), 
-    url('/islamic-pattern-2.png'); 
   background-size: 300px; // Adjust pattern size if needed
   background-position: center;
-  background-repeat: repeat;
   box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
   border-top: 1px solid #e0d8c4; // Add subtle top border for cream
 

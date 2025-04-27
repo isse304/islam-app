@@ -45,6 +45,7 @@ export class LoginComponent implements OnInit, OnDestroy {
   activeFeature: ActiveFeature = 'tafsir';
   private featureRotationInterval: Subscription | null = null;
   private returnUrl: string | null = null;
+  private loginIntent: string | null = null; // Store the intent
   private routeSub: Subscription;
 
   constructor(
@@ -61,26 +62,33 @@ export class LoginComponent implements OnInit, OnDestroy {
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
 
-    // Get the return URL from route parameters or default to '/'
+    // Get the return URL and intent from route parameters
     this.routeSub = this.route.queryParams.subscribe(params => {
-        this.returnUrl = params['returnUrl'] || '/'; // Default to root, which redirects to /home
+        // this.returnUrl = params['returnUrl']; // Keep if needed for other return scenarios
+        this.loginIntent = params['intent'];
+        // console.log(`[LoginComponent OnInit] Intent read: ${this.loginIntent}`);
     });
   }
 
   ngOnInit(): void {
-    // Get return URL from query parameters FIRST
-    this.returnUrl = this.route.snapshot.queryParams['returnUrl'] || '/home';
-    // console.log(`[LoginComponent OnInit] Target returnUrl: ${this.returnUrl}`);
+    // Only subscribe to get the intent, DO NOT set a default returnUrl here
+    this.routeSub = this.route.queryParams.subscribe(params => {
+        // this.returnUrl = params['returnUrl']; // Keep if needed for other return scenarios
+        this.loginIntent = params['intent'];
+        // console.log(`[LoginComponent OnInit] Intent read: ${this.loginIntent}`);
+    });
 
-    // Check if user is already logged in AFTER getting returnUrl
+    // Check if user is already logged in (keep this)
     this.authSubscription = this.authService.user$.pipe(
       take(1) // Only check the initial state on load
     ).subscribe(user => {
       if (user && !this.isDestroyed) {
-        // User is already logged in, redirect to the returnUrl or /home
-        // console.log(`[LoginComponent OnInit] User already logged in, navigating to: ${this.returnUrl}`);
-        // Use navigateByUrl to handle absolute paths correctly
-        this.zone.run(() => this.router.navigateByUrl(this.returnUrl!));
+        // Determine redirect URL here based on intent if already logged in
+        const initialRedirectUrl = (this.loginIntent === 'start_trial')
+            ? '/subscription?initiateCheckout=true'
+            : '/home'; // Default to home if already logged in without specific intent
+        // console.log(`[LoginComponent OnInit] User already logged in, navigating to: ${initialRedirectUrl}`);
+        this.zone.run(() => this.router.navigateByUrl(initialRedirectUrl));
       }
     });
 
@@ -100,50 +108,46 @@ export class LoginComponent implements OnInit, OnDestroy {
   // Helper function to handle navigation after successful login
   private async navigateOnLoginSuccess(): Promise<void> {
     try {
-      // console.log('[LoginComponent] Waiting for auth ready...');
+      // Wait for auth and user state confirmation
       await this.authService.waitForAuthReady();
-      // console.log('[LoginComponent] Auth is ready. Waiting for user state...');
-      // Wait for the user$ observable to emit an actual user object
       await new Promise<void>((resolve, reject) => {
         const sub = this.authService.user$.pipe(
-          filter(user => !!user), // Ensure user is not null
-          take(1) // Take the first non-null user
+          filter(user => !!user), // Ensure user object is not null
+          take(1)
         ).subscribe({
-          next: (user) => {
-             // console.log(`[LoginComponent] User state confirmed: ${user?.email}. Navigating...`);
-             resolve();
-          },
+          next: (user) => { resolve(); },
           error: (err) => reject(err),
-          complete: () => {} // No need to resolve on complete here
+          complete: () => { /* Optional: handle completion */ }
         });
-        // Safety timeout
+        // Add timeout for safety
         setTimeout(() => {
           if (!sub.closed) {
             sub.unsubscribe();
-            reject(new Error('Timeout waiting for user state confirmation'));
+            reject(new Error('Timeout waiting for user state confirmation post-login'));
           }
-        }, 10000); // 10 second timeout
+        }, 10000); // 10-second timeout
       });
 
-      // Run navigation inside Angular zone
+      // Navigate based *directly* on loginIntent
       this.zone.run(() => {
-        // console.log(`[LoginComponent] Navigating to: ${this.returnUrl}`);
-        this.router.navigateByUrl(this.returnUrl || '/home').catch(navError => {
-          // console.error('[LoginComponent] Navigation error:', navError);
-          // Fallback navigation if the intended one fails
-          this.router.navigate(['/home']);
+        const targetUrl = (this.loginIntent === 'start_trial')
+             ? '/subscription?initiateCheckout=true' // Go to subscription if intent matches
+             : '/home'; // Default to home for all other cases
+        // console.log(`[LoginComponent navigateOnLoginSuccess] Intent: '${this.loginIntent}'. Navigating to: ${targetUrl}`);
+        this.router.navigateByUrl(targetUrl).catch(navError => {
+          // console.error('[LoginComponent] Navigation error after login:', navError);
+          this.router.navigate(['/home']); // Fallback to home on navigation error
         });
       });
 
     } catch (error) {
       // console.error('[LoginComponent] Error during post-login navigation setup:', error);
       this.snackBar.open('Login successful, but redirect failed. Please navigate manually.', 'Close', { duration: 5000 });
-      // Attempt fallback navigation even on error
-      this.zone.run(() => this.router.navigate(['/home']));
+      this.zone.run(() => this.router.navigate(['/home'])); // Fallback on error
     } finally {
-      // Ensure loading state is turned off if it was missed
+      // Ensure isLoading is turned off regardless of success/error
       if (this.isLoading) {
-         this.zone.run(() => { this.isLoading = false; });
+         this.zone.run(() => { this.isLoading = false; this.cdr.markForCheck(); });
       }
     }
   }
@@ -174,7 +178,6 @@ export class LoginComponent implements OnInit, OnDestroy {
           });
            this.zone.run(() => { this.isLoading = false; }); // Turn off loading on error
         });
-        // No finally block needed here as navigateOnLoginSuccess handles it
     }
   }
 
@@ -267,15 +270,13 @@ export class LoginComponent implements OnInit, OnDestroy {
 
     this.stopAutoRotate();
     this.activeFeature = feature;
-    // Use detectChanges() after manual state change outside interval
-     if (!this.isDestroyed) { // Use the existing component flag
-        this.cdr.detectChanges();
-     }
-    this.startAutoRotate();
+    // Use detectChanges() for more robust change detection triggering
+    this.cdr.detectChanges();
+    this.startAutoRotate(); // Restart timer after manual selection
   }
 
   goToSignup(): void {
-    this.router.navigate(['/auth/signup']);
+    this.router.navigate(['/auth/signup'], { queryParamsHandling: 'preserve' }); // Preserve intent
   }
 
   goToForgotPassword(): void {

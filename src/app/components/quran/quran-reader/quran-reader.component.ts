@@ -395,7 +395,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.isMobile = window.innerWidth < 768;
 
     // Set default zoom based on device
-    this.mushafZoom = this.isMobile ? 0.9 : 0.8;
+    this.mushafZoom = this.isMobile ? 0.7 : 0.8;
 
     this.isLoading = true;
     this.changeDetector.markForCheck();
@@ -2216,14 +2216,24 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // Page navigation methods
   public nextPage(): void { // Now goes to PREVIOUS page (lower number)
-    if (this.currentPage > this.FIRST_PAGE) {
-      this.loadMushafPage(this.currentPage - 1);
+    const increment = this.isDoublePageView ? 2 : 1;
+    const targetPage = this.currentPage - increment;
+    if (targetPage >= this.FIRST_PAGE) { // Check if target is within bounds
+      this.loadMushafPage(targetPage);
+    } else if (this.currentPage !== this.FIRST_PAGE) {
+      // If jumping by 2 would go past the start, go to the first page
+      this.loadMushafPage(this.FIRST_PAGE);
     }
   }
 
   public previousPage(): void { // Now goes to NEXT page (higher number)
-    if (this.currentPage < this.LAST_PAGE) {
-      this.loadMushafPage(this.currentPage + 1);
+    const increment = this.isDoublePageView ? 2 : 1;
+    const targetPage = this.currentPage + increment;
+    if (targetPage <= this.LAST_PAGE) { // Check if target is within bounds
+      this.loadMushafPage(targetPage);
+    } else if (this.currentPage !== this.LAST_PAGE) {
+       // If jumping by 2 would go past the end, go to the last page
+       this.loadMushafPage(this.LAST_PAGE);
     }
   }
 

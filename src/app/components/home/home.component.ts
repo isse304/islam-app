@@ -1,7 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
+import { Subscription, interval } from 'rxjs';
+
+interface ShowcaseSlide {
+  text: string;
+  source: string;
+  backgroundImage?: string;
+}
 
 @Component({
   selector: 'app-home',
@@ -24,6 +31,45 @@ import { Title, Meta } from '@angular/platform-browser';
               Your spiritual companion for Quran, Duas, and Islamic learning. Explore Quran reader, Dua collection, and AI Tafsir Chat.
             </p>
           </div>
+
+          <!-- ++ NEW: Inspirational Showcase Section ++ -->
+          <section class="inspirational-showcase container mx-auto px-4 mb-16 relative overflow-hidden bg-[#FAF3E0] rounded-xl shadow-lg p-8 min-h-[250px] flex flex-col justify-center items-center text-center"
+                   (mouseenter)="stopSlideShow()"
+                   (mouseleave)="startSlideShow()">
+              <!-- Slides Container -->
+              <div class="relative w-full h-full">
+                <ng-container *ngFor="let slide of slides; let i = index">
+                  <div class="slide absolute inset-0 flex flex-col justify-center items-center transition-opacity duration-1000 ease-in-out"
+                       [class.opacity-100]="i === currentSlideIndex"
+                       [class.opacity-0]="i !== currentSlideIndex">
+                       <!-- Optional Background Image Div -->
+                       <!-- <div class="absolute inset-0 bg-cover bg-center opacity-10" [style.backgroundImage]="slide.backgroundImage"></div> -->
+                       <p class="text-lg md:text-xl lg:text-2xl text-[#B7A57A] font-serif italic mb-4 leading-relaxed max-w-3xl relative z-10">
+                           "{{ slide.text }}"
+                       </p>
+                       <p class="text-sm md:text-base text-[#1A365D] font-semibold relative z-10">
+                           — {{ slide.source }}
+                       </p>
+                  </div>
+                </ng-container>
+              </div>
+
+              <!-- Optional: Navigation Dots -->
+              <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
+                  <button *ngFor="let slide of slides; let i = index"
+                          (click)="goToSlide(i)"
+                          [ngClass]="{
+                            'w-2.5': true, 'h-2.5': true, 'rounded-full': true,
+                            'transition-colors': true, 'duration-300': true,
+                            'bg-[#1A365D]': i === currentSlideIndex,
+                            'bg-[#1A365D]/40': i !== currentSlideIndex,
+                            'hover:bg-[#1A365D]/70': i !== currentSlideIndex
+                          }"
+                          [attr.aria-label]="'Go to slide ' + (i + 1)">
+                  </button>
+              </div>
+          </section>
+          <!-- ++ END: Inspirational Showcase Section ++ -->
 
           <!-- Feature Cards -->
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
@@ -188,14 +234,46 @@ import { Title, Meta } from '@angular/platform-browser';
   imports: [
     CommonModule,
     RouterModule
-  ]
+  ],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
   currentYear = new Date().getFullYear();
+
+  slides: ShowcaseSlide[] = [
+    {
+      text: "This is a blessed Book which We have revealed to you, so that they may reflect upon its verses and those of understanding would be reminded.",
+      source: "Surah Sad, 38:29",
+    },
+    {
+      text: "The best of you are those who learn the Quran and teach it.",
+      source: "Sahih al-Bukhari, 5027",
+    },
+    {
+      text: "The Quran is not only meant to be recited, but to be lived. Every verse is a call to action.",
+      source: "Imam Ibn Taymiyyah",
+    },
+    {
+      text: "And We have certainly made the Quran easy for remembrance, so is there any who will remember?",
+      source: "Surah Al-Qamar, 54:17",
+    },
+    {
+      text: "If you want to converse with Allah, recite the Quran.",
+      source: "Imam Al-Shafi'i",
+    },
+    {
+      text: "Whoever follows a path in pursuit of knowledge, Allah will make a path to Paradise easy for him.",
+      source: "Sahih Muslim, 2699",
+    }
+  ];
+  currentSlideIndex = 0;
+  private slideIntervalSubscription: Subscription | null = null;
+  slideInterval = 7000;
 
   constructor(
     private titleService: Title,
-    private metaService: Meta
+    private metaService: Meta,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -204,5 +282,36 @@ export class HomeComponent implements OnInit {
       { name: 'description', content: 'Welcome to Nura AI, your spiritual companion for Quran, Duas, and AI-powered Islamic learning. Explore Quran reader, Dua collection, and interactive learning tools.' },
       { name: 'keywords', content: 'islamic app, quran reader, dua collection, islamic learning, ai assistant, nura ai, islam' }
     ]);
+
+    this.startSlideShow();
+  }
+
+  ngOnDestroy(): void {
+    this.stopSlideShow();
+  }
+
+  startSlideShow(): void {
+    this.stopSlideShow();
+    this.slideIntervalSubscription = interval(this.slideInterval).subscribe(() => {
+      this.nextSlide();
+      this.cdr.markForCheck();
+    });
+  }
+
+  stopSlideShow(): void {
+    if (this.slideIntervalSubscription) {
+      this.slideIntervalSubscription.unsubscribe();
+      this.slideIntervalSubscription = null;
+    }
+  }
+
+  nextSlide(): void {
+    this.currentSlideIndex = (this.currentSlideIndex + 1) % this.slides.length;
+  }
+
+  goToSlide(index: number): void {
+    this.currentSlideIndex = index;
+    this.stopSlideShow();
+    this.startSlideShow();
   }
 } 

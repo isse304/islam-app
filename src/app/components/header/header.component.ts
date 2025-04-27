@@ -75,6 +75,7 @@ export class HeaderComponent implements OnInit, OnDestroy {
     const previousLandingPageState = this.isLandingPage;
     // Hide header on landing page and auth pages *only* when not authenticated
     this.isLandingPage = !this.isAuthenticated && (
+      url === '/landing' ||
       url === '/' ||
       url.startsWith('/auth/')
     );

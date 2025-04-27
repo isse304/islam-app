@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors, ReactiveFormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
@@ -14,6 +14,7 @@ import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
+import { take } from 'rxjs/operators';
 
 // Password matching validator
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -54,13 +55,15 @@ export class SignupComponent implements OnInit {
   hidePassword = true;
   hideConfirmPassword = true;
   errorMessage: string | null = null;
+  private signupIntent: string | null = null;
 
   constructor(
     private fb: FormBuilder,
     private authService: FirebaseAuthService,
     private router: Router,
     private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private route: ActivatedRoute
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required]],
@@ -74,10 +77,13 @@ export class SignupComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Check if user is already logged in
-    this.authService.user$.subscribe(user => {
+    this.route.queryParamMap.subscribe(params => {
+      this.signupIntent = params.get('intent');
+    });
+
+    this.authService.user$.pipe(take(1)).subscribe(user => {
       if (user) {
-        this.router.navigate(['/']);
+        this.router.navigate(['/home']);
       }
     });
   }
@@ -94,28 +100,41 @@ export class SignupComponent implements OnInit {
 
     this.authService.createUserWithEmailAndPassword(email, password)
       .then(result => {
+        return this.authService.sendEmailVerification().then(() => result);
+      })
+      .then(result => {
         return this.authService.updateUserProfile({
           displayName: `${firstName} ${lastName}`
         });
       })
       .then(() => {
+        this.isLoading = false;
         this.snackBar.open(
           'Account created! Please check your email to verify your account.',
           'Close',
           { duration: 7000 }
         );
-        this.router.navigate(['/home']);
+        this.handleSignupSuccessRedirect();
       })
       .catch(error => {
         this.isLoading = false;
-        this.errorMessage = error.message || 'An unexpected error occurred during signup.';
-        if (this.errorMessage) {
+        if (error?.code === 'auth/too-many-requests') {
+          this.errorMessage = 'Account created, but verification email limit reached. Please check inbox or verify later.';
           this.snackBar.open(this.errorMessage, 'Close', {
-            duration: 5000,
-            panelClass: ['error-snackbar']
+            duration: 7000,
+            panelClass: ['warn-snackbar']
           });
+          this.handleSignupSuccessRedirect();
+        } else {
+          this.errorMessage = error.message || 'An unexpected error occurred during signup.';
+          if (this.errorMessage) {
+            this.snackBar.open(this.errorMessage, 'Close', {
+              duration: 5000,
+              panelClass: ['error-snackbar']
+            });
+          }
+          console.error('Signup error:', error);
         }
-        console.error('Signup error:', error);
       });
   }
 
@@ -123,12 +142,13 @@ export class SignupComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = null;
     this.authService.signInWithGoogle()
-      .then(() => {
-        this.snackBar.open('Account created successfully!', 'Close', {
+      .then(async () => {
+        this.isLoading = false;
+        this.snackBar.open('Account created/linked successfully!', 'Close', {
           duration: 5000,
           panelClass: ['success-snackbar']
         });
-        this.router.navigate(['/home']);
+        this.handleSignupSuccessRedirect();
       })
       .catch(error => {
         this.isLoading = false;
@@ -158,6 +178,15 @@ export class SignupComponent implements OnInit {
       maxHeight: '80vh'
     });
     */
+  }
+
+  private handleSignupSuccessRedirect(): void {
+    const targetUrl = (this.signupIntent === 'start_trial')
+      ? '/subscription?initiateCheckout=true' // Go to subscription if intent matches
+      : '/auth/verify-email'; // Default to verify email for other cases
+
+    // console.log(`[SignupComponent handleSignupSuccessRedirect] Intent: '${this.signupIntent}'. Navigating to: ${targetUrl}`);
+    this.router.navigateByUrl(targetUrl);
   }
 
   // Helper to mark all fields as touched

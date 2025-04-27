@@ -3,24 +3,26 @@ import { Routes } from '@angular/router';
 import { authGuardFn } from './guards/auth.guard';
 import { premiumGuard } from './guards/premium.guard';
 import { NoAuthGuard } from './guards/no-auth.guard';
+import { premiumRedirectGuard } from './guards/premium-redirect.guard';
 
 
 export const routes: Routes = [
-  // Redirect empty path to a protected route (e.g., home)
-  // AuthGuard will handle redirecting to login if needed
-  { path: '', redirectTo: '/home', pathMatch: 'full' },
-  // { path: '', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent) }, // Comment out landing page route
+  {
+    path: 'landing', // Explicit path for landing page
+    redirectTo: '',    // REDIRECT /landing to root
+    pathMatch: 'full' // Important for redirects
+  },
+  {
+    path: '', // Root path IS the landing page
+    loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent),
+    canActivate: [NoAuthGuard], // Keep NoAuthGuard here
+    pathMatch: 'full'
+  },
 
-  // Remove the old landing page route
-  // { path: 'landing', loadComponent: () => import('./components/landing/landing.component').then(m => m.LandingComponent), canActivate: [NoAuthGuard] },
-
-  // Auth routes (login, signup, etc.) - accessible only when not logged in
+  // Auth routes - accessible only when not logged in
   {
     path: 'auth',
-    // Use the AuthModule to load children routes
     loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule),
-    // Reinstate the NoAuthGuard
-    canActivate: [NoAuthGuard]
   },
 
   // Main application routes - accessible only when logged in
@@ -53,27 +55,22 @@ export const routes: Routes = [
   {
     path: 'subscription',
     loadComponent: () => import('./components/subscription/subscription.component').then(m => m.SubscriptionComponent),
-    // Allow access regardless of auth state for upgrades/management
+    canActivate: [authGuardFn, premiumRedirectGuard] // Protected & Redirect premium users
   },
   {
     path: 'contact',
     loadComponent: () => import('./components/contact/contact.component').then(m => m.ContactComponent),
-    // Allow access regardless of auth state
+    // Public
   },
   {
     path: 'about',
     loadComponent: () => import('./components/about/about.component').then(m => m.AboutComponent)
+    // Public
   },
-  /*
-  {
-    path: 'thank-you',
-    loadComponent: () => import('./components/thank-you/thank-you.component').then(m => m.ThankYouComponent),
-    // Allow access regardless of auth state
-  },
-  */
 
-  // Catch-all route (optional: redirect to home or login based on auth)
-  // Redirect unknown routes to home; AuthGuard will handle unauthorized access
-  { path: '**', redirectTo: '/home' },
-  // { path: '**', redirectTo: '' } // Comment out landing redirect
+  // Catch-all route redirects to root (landing/home via guards)
+  { 
+    path: '**', 
+    redirectTo: '' 
+  },
 ]; 

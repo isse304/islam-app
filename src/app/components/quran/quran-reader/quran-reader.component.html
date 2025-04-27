@@ -437,12 +437,12 @@
       <div class="fixed bottom-0 left-0 right-0 z-40 md:hidden mobile-mushaf-controls px-3 py-2 bg-white border-t border-gray-200 shadow-[-2px_0_5px_rgba(0,0,0,0.1)]">
          <!-- Row 1: Page Navigation (Icons Reversed) -->
          <div class="flex justify-between items-center mb-2">
-           <button mat-icon-button (click)="nextPage()" [disabled]="currentPage >= LAST_PAGE"> <mat-icon>arrow_back_ios</mat-icon> </button>
+           <button mat-icon-button (click)="previousPage()" [disabled]="currentPage >= LAST_PAGE"> <mat-icon>arrow_back_ios</mat-icon> </button>
            <div class="flex items-center gap-2">
              <input type="number" [(ngModel)]="pageInput" name="mushafPageInputMobile" min="1" [max]="totalPages" (keyup.enter)="goToPage()" class="w-16 px-2 py-1 border border-gray-300 rounded-md text-center focus:outline-none focus:ring-1 focus:ring-[#B7A57A] text-sm">
              <span class="text-xs text-gray-500">/ {{totalPages}}</span>
            </div>
-           <button mat-icon-button (click)="previousPage()" [disabled]="currentPage <= FIRST_PAGE"> <mat-icon>arrow_forward_ios</mat-icon> </button>
+           <button mat-icon-button (click)="nextPage()" [disabled]="currentPage <= FIRST_PAGE"> <mat-icon>arrow_forward_ios</mat-icon> </button>
          </div>
          <!-- Row 2: Actions -->
          <div class="flex justify-between items-center gap-1">

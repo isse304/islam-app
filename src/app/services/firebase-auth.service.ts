@@ -209,11 +209,17 @@ export class FirebaseAuthService {
     const names = firebaseUser.displayName?.split(' ') || ['', ''];
     const claims = idTokenResult?.claims || {};
 
-    const isPremium = claims['premium'] === true || claims['subscriptionStatus'] === 'active';
-    const subEndClaim = claims['subscriptionEnd'];
-    const subscriptionEnd = typeof subEndClaim === 'number' ? subEndClaim : null;
+    // Get status from claims, default to 'inactive' if not present
     const subStatusClaim = claims['subscriptionStatus'];
     const subscriptionStatus = typeof subStatusClaim === 'string' ? subStatusClaim : 'inactive';
+
+    // Determine premium status based on claims (including 'trialing')
+    const isPremium = claims['premium'] === true || 
+                      subscriptionStatus === 'active' || 
+                      subscriptionStatus === 'trialing';
+
+    const subEndClaim = claims['subscriptionEnd'];
+    const subscriptionEnd = typeof subEndClaim === 'number' ? subEndClaim : null;
 
     return {
       id: firebaseUser.uid,
@@ -227,7 +233,7 @@ export class FirebaseAuthService {
       createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
       lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
       isAdmin: claims['admin'] === true,
-      isPremium: isPremium,
+      isPremium: isPremium, // Use the updated calculation
       token: idTokenResult?.token || '',
       subscriptionEnd: subscriptionEnd,
       subscriptionStatus: subscriptionStatus,
@@ -485,14 +491,10 @@ export class FirebaseAuthService {
           }
 
         } else {
-          // User is signed out
-          //console.log('[Auth Listener] User signed out.');
-          this.clearAuthData(); // Clear local state
-          // Navigate to login only if not already on an auth page
-          if (!this.router.url.includes('/auth')) {
-              //console.log('[Auth Listener] Redirecting to login due to sign out.');
-              this.router.navigate(['/auth/login']);
-          }
+          // User is signed out OR initial load state is null
+          //console.log('[Auth Listener] User signed out or initial null state.');
+          this.clearAuthData(); // Clear local state ONLY
+          // REMOVED navigation logic from here - guards should handle this.
         }
 
         // Signal auth is ready AFTER the first check is complete (user signed in or out)
@@ -913,79 +915,65 @@ export class FirebaseAuthService {
 
   // Sign out
   async signOut(): Promise<void> {
-    // //console.log('[FirebaseAuthService] signOut called.');
     this._isLoading.next(true);
     try {
-      // Cancel any ongoing operations if necessary (e.g., token refresh timer)
+      // Cancel any ongoing operations
       if (this.tokenRefreshTimer) {
         clearTimeout(this.tokenRefreshTimer);
         this.tokenRefreshTimer = null;
-        // // //console.log('[FirebaseAuthService] Token refresh timer cleared.');
       }
 
       // Clear local state immediately
-      this.clearAuthData(); // This already clears the user subject and local storage for user data/token
-
-      // *** Add explicit clearing for preference/state caches ***
-      localStorage.removeItem(this.PREFERENCES_CACHE_KEY); // Clear cached preferences
-      localStorage.removeItem('quran_reader_preferences'); // Clear profile component specific cache
-      localStorage.removeItem('quranReaderPreferences'); // Another key used by profile
-      localStorage.removeItem(this.USER_CACHE_KEY); // Redundant but safe
-      localStorage.removeItem(this.TOKEN_CACHE_KEY); // Redundant but safe
-      localStorage.removeItem(this.LAST_ROUTE_KEY); // Clear last route
-      localStorage.removeItem(this.ROUTE_STATE_KEY); // Clear saved route state
-      // Add any other known localStorage keys specific to user session state here
-
-      // Clear BehaviorSubject caches if necessary (though clearAuthData handles _user)
-      this.preferencesCache = null; // Clear in-memory cache too
-      this.preferencesSubject.next(null); // Signal preference reset
-      this.userDataSubject.next({ // Reset user data observable state (without lastLoad)
-        bookmarks: [],
-        history: [],
-        preferences: null
-      });
-
+      this.clearAuthData(); 
+      localStorage.removeItem(this.PREFERENCES_CACHE_KEY); 
+      localStorage.removeItem('quran_reader_preferences');
+      localStorage.removeItem('quranReaderPreferences'); 
+      localStorage.removeItem(this.USER_CACHE_KEY); 
+      localStorage.removeItem(this.TOKEN_CACHE_KEY); 
+      localStorage.removeItem(this.LAST_ROUTE_KEY); 
+      localStorage.removeItem(this.ROUTE_STATE_KEY); 
+      this.preferencesCache = null; 
+      this.preferencesSubject.next(null); 
+      this.userDataSubject.next({ bookmarks: [], history: [], preferences: null });
 
       // Sign out from Firebase Auth
       await signOut(this.auth);
-      // // //console.log('[FirebaseAuthService] Firebase sign-out successful.');
+      // //console.log('[FirebaseAuthService] Firebase sign-out successful.');
 
-      // Clear any service-specific state if needed (e.g., in QuranService, etc.)
-      // Example: this.quranService.clearUserState();
-
-      // Force a full page reload to the login page to ensure clean state
-      // Use window.location.assign for cleaner history than window.location.href
-      this.ngZone.run(() => { // Keep ngZone just in case, though location assign might bypass it
-        window.location.assign('/auth/login'); 
+      // *** Use Angular Router for navigation ***
+      this.ngZone.run(() => {
+        // REMOVED: window.location.assign('/auth/login'); 
+        this.router.navigate(['/']); // Navigate to root -> NoAuthGuard handles landing
       });
 
     } catch (error) {
-      // //console.error('[FirebaseAuthService] Error during sign out:', error);
+      // console.error('[FirebaseAuthService] Error during sign out:', error);
       // Attempt to clear local state even if Firebase sign-out fails
-      this.clearAuthData();
-      localStorage.removeItem(this.PREFERENCES_CACHE_KEY);
-      localStorage.removeItem('quran_reader_preferences');
-      localStorage.removeItem('quranReaderPreferences');
-      localStorage.removeItem(this.USER_CACHE_KEY);
-      localStorage.removeItem(this.TOKEN_CACHE_KEY);
-      localStorage.removeItem(this.LAST_ROUTE_KEY);
-      localStorage.removeItem(this.ROUTE_STATE_KEY);
-      this.preferencesCache = null;
-      this.preferencesSubject.next(null);
-      this.userDataSubject.next({ bookmarks: [], history: [], preferences: null }); // Reset without lastLoad
-
-      // Optionally show error message to user
-      // Handle specific errors if needed
+      try {
+        this.clearAuthData();
+        localStorage.removeItem(this.PREFERENCES_CACHE_KEY);
+        localStorage.removeItem('quran_reader_preferences');
+        localStorage.removeItem('quranReaderPreferences');
+        localStorage.removeItem(this.USER_CACHE_KEY);
+        localStorage.removeItem(this.TOKEN_CACHE_KEY);
+        localStorage.removeItem(this.LAST_ROUTE_KEY);
+        localStorage.removeItem(this.ROUTE_STATE_KEY);
+        this.preferencesCache = null;
+        this.preferencesSubject.next(null);
+        this.userDataSubject.next({ bookmarks: [], history: [], preferences: null });
+      } catch (clearError) {
+          // console.error('[FirebaseAuthService] Error clearing data after sign out error:', clearError);
+      }
+      // Navigate after clearing data on error
+      this.ngZone.run(() => { 
+         // REMOVED: window.location.assign('/auth/login');
+         this.router.navigate(['/']);
+      });
 
     } finally {
       this._isLoading.next(false);
-      // // //console.log('[FirebaseAuthService] signOut finished.');
-
-      // Force a full page reload to the login page to ensure clean state
-      // Use window.location.assign for cleaner history than window.location.href
-      this.ngZone.run(() => { // Keep ngZone just in case, though location assign might bypass it
-        window.location.assign('/auth/login'); 
-      });
+      // //console.log('[FirebaseAuthService] signOut finished.');
+      // REMOVED Redundant Navigation from finally block entirely
     }
   }
 
@@ -1934,9 +1922,10 @@ export class FirebaseAuthService {
   }
 
   public async waitForAuthReady(): Promise<void> {
-    // Wait for the authReady ReplaySubject to emit true
-    await firstValueFrom(this.authReady$);
-    // // //console.log('[waitForAuthReady] Auth is ready.'); // Log confirmation
+    // // //console.log('[FirebaseAuthService] waitForAuthReady called...');
+    await firstValueFrom(this.authReady$.pipe(filter(ready => ready)));
+    // We don't need the boolean value, just wait for it to emit.
+    // The await ensures the function returns Promise<void> implicitly.
   }
 
   private initTokenFromCache() {

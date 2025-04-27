@@ -158,40 +158,43 @@
             </div>
 
             <!-- Login Button -->
-            <button mat-raised-button type="submit" [disabled]="isLoading || loginForm.invalid" class="w-full py-3 text-lg bg-[#B7A57A] hover:bg-[#a8966c] text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-              <mat-spinner diameter="24" *ngIf="isLoading" class="inline-block mr-2"></mat-spinner>
-              {{ isLoading ? 'Signing In...' : 'Sign In' }}
-            </button>
+             <button mat-raised-button type="submit" [disabled]="isLoading || loginForm.invalid" class="w-full py-3 text-lg bg-[#B7A57A] hover:bg-[#a8966c] text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+               <mat-spinner diameter="24" *ngIf="isLoading" class="inline-block mr-2"></mat-spinner>
+               {{ isLoading ? 'Signing In...' : 'Sign In' }}
+             </button>
 
             <!-- Divider -->
-            <div class="relative flex py-4 items-center">
-              <div class="flex-grow border-t border-gray-300"></div>
-              <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
-              <div class="flex-grow border-t border-gray-300"></div>
-            </div>
+             <div class="relative flex py-4 items-center">
+               <div class="flex-grow border-t border-gray-300"></div>
+               <span class="flex-shrink mx-4 text-gray-500 text-sm">OR</span>
+               <div class="flex-grow border-t border-gray-300"></div>
+             </div>
 
             <!-- Google Sign-In Button -->
-            <button type="button" (click)="loginWithGoogle()" [disabled]="isLoading" class="w-full py-3 text-lg flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed group">
-              <!-- Ensure SVG size is constrained and does not shrink -->
-               <svg class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12
-c-0.007-6.633,5.367-12.006,11.994-12.006c3.613,0,6.839,1.556,9.067,4.016l5.657-5.657C34.046,6.053,29.268,4,24,4
-C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" fill="#FFC107"></path>
-                <path d="M43.611,20.083H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571
-c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C39.999,35.66,44,30.478,44,24C44,22.659,43.862,21.35,43.611,20.083z" fill="#FF3D00"></path>
-                <path d="M24,42c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238c-2.008,1.62-4.746,2.572-7.641,2.572
-c-6.08,0-11.303-3.343-13.409-8.169l-5.845,4.554C8.174,37.318,15.43,42,24,42z" fill="#4CAF50"></path>
-                <path d="M11.994,11.994c-2.228,2.458-3.635,5.722-3.635,9.399c0,0.811,0.09,1.603,0.254,2.363l-5.845-4.554
-C4.254,21.189,4.007,19.967,4,18.686c0-3.036,0.924-5.831,2.544-8.202L11.994,11.994z" fill="#1976D2"></path>
-               </svg>
-              <span class="transition-transform duration-200 group-hover:translate-x-1">Sign In with Google</span>
-            </button>
+             <button type="button" (click)="loginWithGoogle()" [disabled]="isLoading" class="w-full py-3 text-lg flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed group">
+               <!-- Ensure SVG size is constrained and does not shrink -->
+                <svg class="w-5 h-5 shrink-0 transition-transform duration-200 group-hover:scale-110" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                 <path d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12
+ c-0.007-6.633,5.367-12.006,11.994-12.006c3.613,0,6.839,1.556,9.067,4.016l5.657-5.657C34.046,6.053,29.268,4,24,4
+ C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z" fill="#FFC107"></path>
+                 <path d="M43.611,20.083H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571
+ c0.001-0.001,0.002-0.001,0.003-0.002l6.19,5.238C39.999,35.66,44,30.478,44,24C44,22.659,43.862,21.35,43.611,20.083z" fill="#FF3D00"></path>
+                 <path d="M24,42c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238c-2.008,1.62-4.746,2.572-7.641,2.572
+ c-6.08,0-11.303-3.343-13.409-8.169l-5.845,4.554C8.174,37.318,15.43,42,24,42z" fill="#4CAF50"></path>
+                 <path d="M11.994,11.994c-2.228,2.458-3.635,5.722-3.635,9.399c0,0.811,0.09,1.603,0.254,2.363l-5.845-4.554
+ C4.254,21.189,4.007,19.967,4,18.686c0-3.036,0.924-5.831,2.544-8.202L11.994,11.994z" fill="#1976D2"></path>
+                </svg>
+               <span class="transition-transform duration-200 group-hover:translate-x-1">Sign In with Google</span>
+             </button>
+            <p class="text-xs text-gray-500 mt-3 px-4">
+              If Google Sign-In doesn't work (e.g., from Instagram/Facebook), please open this page in your main browser (Chrome, Safari, etc.) and try again.
+            </p>
 
             <!-- Sign Up Link -->
             <div class="text-center mt-8">
               <p class="text-gray-600">
                 Need an account? 
-                <a routerLink="/auth/signup" class="font-medium text-[#B7A57A] hover:text-[#9b8a65] hover:underline transition-colors">
+                <a routerLink="/auth/signup" queryParamsHandling="preserve" class="font-medium text-[#B7A57A] hover:text-[#9b8a65] hover:underline transition-colors">
                   Sign Up
                 </a>
               </p>

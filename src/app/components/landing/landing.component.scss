@@ -219,4 +219,27 @@ form {
     background-color: #1A365D;
     color: white;
   }
+}
+
+// Basic Landing Page Styles
+.landing-page {
+  // Placeholder for page-specific styles
+}
+
+.hero-section {
+  // Add specific hero styles if needed beyond Tailwind
+}
+
+.features-section {
+  .feature-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    &:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    }
+  }
+}
+
+.cta-section {
+  // Styles for the final call to action
 } 
