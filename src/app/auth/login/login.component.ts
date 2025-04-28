@@ -71,12 +71,19 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Only subscribe to get the intent, DO NOT set a default returnUrl here
-    this.routeSub = this.route.queryParams.subscribe(params => {
-        // this.returnUrl = params['returnUrl']; // Keep if needed for other return scenarios
-        this.loginIntent = params['intent'];
-        // console.log(`[LoginComponent OnInit] Intent read: ${this.loginIntent}`);
-    });
+    // Prioritize intent from localStorage, then check query params
+    const storedIntent = localStorage.getItem('signupIntent');
+    if (storedIntent) {
+      this.loginIntent = storedIntent;
+      // console.log(`[LoginComponent OnInit] Intent read from localStorage: ${this.loginIntent}`);
+      // Optional: Clear it immediately after reading if only needed on init?
+      // localStorage.removeItem('signupIntent'); 
+    } else {
+      this.routeSub = this.route.queryParams.subscribe(params => {
+        this.loginIntent = params['get']('intent');
+        // console.log(`[LoginComponent OnInit] Intent read from queryParams: ${this.loginIntent}`);
+      });
+    }
 
     // Check if user is already logged in (keep this)
     this.authSubscription = this.authService.user$.pipe(
@@ -134,6 +141,10 @@ export class LoginComponent implements OnInit, OnDestroy {
              ? '/subscription?initiateCheckout=true' // Go to subscription if intent matches
              : '/home'; // Default to home for all other cases
         // console.log(`[LoginComponent navigateOnLoginSuccess] Intent: '${this.loginIntent}'. Navigating to: ${targetUrl}`);
+
+        // Clear the intent from localStorage AFTER determining the target URL
+        localStorage.removeItem('signupIntent');
+
         this.router.navigateByUrl(targetUrl).catch(navError => {
           // console.error('[LoginComponent] Navigation error after login:', navError);
           this.router.navigate(['/home']); // Fallback to home on navigation error
@@ -190,6 +201,13 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.cdr.markForCheck(); // Update UI for loading state
 
+    // Store the intent before starting the Google flow
+    const intentToStore = this.loginIntent || localStorage.getItem('signupIntent');
+    if (intentToStore) {
+      localStorage.setItem('signupIntent', intentToStore);
+      // console.log(`[LoginComponent loginWithGoogle] Stored intent: ${intentToStore}`);
+    }
+
     // Run the Firebase call outside Angular zone
     this.zone.runOutsideAngular(() => {
       this.authService.signInWithGoogle()
@@ -202,20 +220,24 @@ export class LoginComponent implements OnInit, OnDestroy {
               this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
               await this.navigateOnLoginSuccess(); // Wait for navigation logic
             } else {
-              console.warn('[LoginComponent] signInWithGoogle resolved but credential/user is null/undefined. Redirect might be happening or popup closed.');
-              // If popup closed early or redirect happened, we might need to reset loading state carefully.
-              // Let's reset loading state here if no user credential was received.
-              this.isLoading = false;
-              this.cdr.markForCheck();
+              // Handle case where credential or user is missing (shouldn't happen often)
+              localStorage.removeItem('signupIntent'); // Clear intent on unexpected issue
+              console.warn('[LoginComponent] Google Sign-In succeeded but credential/user missing in result.');
+              this.snackBar.open('Login successful, but encountered an issue. Redirecting home.', 'Close', { duration: 5000 });
+              this.router.navigate(['/home']);
             }
           });
         })
         .catch(error => {
           // Bring error handling back into the Angular zone
           this.zone.run(() => {
-            console.error('[LoginComponent] signInWithGoogle promise rejected. Error:', error); // Log error
+            localStorage.removeItem('signupIntent'); // Clear intent on error
+            console.error('[LoginComponent] signInWithGoogle failed:', error);
+            this.isLoading = false;
+            let errorMessage = 'Google Sign-In failed.';
             if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') { 
-              this.snackBar.open('Google login failed. Please try again.', 'Close', {
+              errorMessage = 'Google login failed. Please try again.';
+              this.snackBar.open(errorMessage, 'Close', {
                   duration: 5000,
                   panelClass: ['error-snackbar']
               });

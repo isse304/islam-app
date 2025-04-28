@@ -189,6 +189,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   startFreeTrial(): void {
+    // Store the intent before navigating
+    localStorage.setItem('signupIntent', 'start_trial');
     // This button should ideally lead to signup, so keep it navigating there with the intent.
     // Alternatively, it could open a modal asking Login or Signup, both passing the intent.
     this.router.navigate(['/auth/signup'], { queryParams: { intent: 'start_trial' } });

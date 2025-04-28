@@ -168,19 +168,27 @@ export class FirebaseAuthService {
   private authReady = new ReplaySubject<boolean>(1);
   authReady$ = this.authReady.asObservable();
 
+  // Subject to signal when auth is ready AND redirect result is processed
+  private postRedirectAuthSettled = new ReplaySubject<void>(1);
+
   // Flag to ensure signalAuthReady logic runs only once
   private hasSignaledAuthReady = false;
 
   private tokenRefreshTimer: any = null;
 
+  // Flag to track if getRedirectResult has been processed
+  private redirectResultProcessed = false;
+
   private readonly API_RETRY_ATTEMPTS = 2;
   private readonly API_TIMEOUT = 15000; // 15 seconds
   private readonly TOKEN_REFRESH_MARGIN = 5 * 60 * 1000; // 5 minutes in milliseconds
 
-  private authPromise: Promise<Auth>; // Restore authPromise
   private isAuthInitialized = false; // Add flag to prevent multiple initializations
 
   private _apiService: ApiService | null = null; // Add property to hold the instance
+
+  // Add authPromise initialization back to the constructor
+  private authPromise: Promise<Auth> | null = null;
 
   constructor(
     private router: Router,
@@ -190,10 +198,11 @@ export class FirebaseAuthService {
     private snackBar: MatSnackBar,
     private injector: Injector // Inject Injector
   ) {
-    // // //console.log('[AuthService] Constructor called');
-    // Initialize authPromise but don't await here
-    this.authPromise = this.initializeAuth();
-    this.setupAuthStateListener();
+    // //console.log('[AuthService] Constructor called');
+    // Start initialization immediately
+    // Ensure initializeAuth is called to set up the promise if needed elsewhere
+    this.authPromise = this.initializeAuth(); 
+    this.initializeAuthAndStateListener();
   }
 
   // Private getter for lazy loading ApiService
@@ -310,195 +319,141 @@ export class FirebaseAuthService {
   }
 
   // Handles processing after a user is signed in (Firebase Auth level)
+  // *** MODIFIED: Now returns AppUser | null, doesn't update _user directly ***
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<AppUser | null> {
-    // // //console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
+    // //console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
     const startTime = Date.now();
-    let appUser: AppUser | null = null;
 
     try {
       // Force refresh token to get latest claims
       const tokenResult = await firebaseUser.getIdTokenResult(true);
-      // // //console.log(`[handleUserSignedIn] Fetched token & claims for ${firebaseUser.uid}`);
+      // //console.log(`[handleUserSignedIn] Fetched token & claims for ${firebaseUser.uid}`);
 
       // Map Firebase user + claims to AppUser
-      appUser = this.mapFirebaseUser(firebaseUser, tokenResult);
+      let appUser = this.mapFirebaseUser(firebaseUser, tokenResult);
       
       // Initialize lastEmailVerifiedState based on this initial user state
-      // Only if it hasn't been set by the listener yet (or on first sign-in)
       if (this.lastEmailVerifiedState === null) {
           this.lastEmailVerifiedState = appUser.emailVerified;
       }
 
-      // // //console.log(`[handleUserSignedIn] Constructed AppUser. Time: ${Date.now() - startTime}ms`);
+      // //console.log(`[handleUserSignedIn] Constructed AppUser. Time: ${Date.now() - startTime}ms`);
 
-      // Update the main user BehaviorSubject FIRST to make user ID available
-      this._user.next(appUser);
-
-      // NOW Fetch preferences, bookmarks, history in parallel AFTER user subject is updated
+      // Fetch preferences, bookmarks, history in parallel
       const initialUserData = await firstValueFrom(
         forkJoin({
           preferences: from(this.getUserPreferences()),
           bookmarks: from(this.getBookmarks()),
           history: from(this.getReadingHistoryInternal()).pipe(
-            timeout(30000), // Increase timeout to 30 seconds
+            timeout(30000), 
             catchError(err => {
               // //console.warn('[handleUserSignedIn] Timeout or error fetching history, proceeding with empty history:', err);
-              return of([]); // Return empty array on timeout or error
+              return of([]); 
             })
           )
         }).pipe(
-          // Main catchError for forkJoin (catches errors from prefs/bookmarks if they don't have their own pipe)
           catchError(dataError => {
             // //console.error('[handleUserSignedIn] Error fetching initial user data (forkJoin level): ', dataError);
-            // Return default/empty data for all fields if forkJoin itself fails
             return of({ preferences: null, bookmarks: [], history: [] });
           })
         )
       );
 
-      // Assign fetched data or defaults to the existing appUser object
-      // Ensure appUser is not null before assigning (though it should be set above)
-      if (appUser) {
-        appUser.preferences = initialUserData.preferences || this.getDefaultPreferences();
-        appUser.bookmarks = initialUserData.bookmarks || [];
-        appUser.history = initialUserData.history || [];
+      // Assign fetched data or defaults
+      appUser.preferences = initialUserData.preferences || this.getDefaultPreferences();
+      appUser.bookmarks = initialUserData.bookmarks || [];
+      appUser.history = initialUserData.history || [];
 
-        // Emit the user AGAIN with the updated data (prefs/bookmarks/history)
-        // This ensures components consuming user$ get the complete data eventually
-        this._user.next(appUser);
+      // Update the combined user data BehaviorSubject (can be done here or after _user update)
+      this.userDataSubject.next({
+        preferences: appUser.preferences,
+        bookmarks: appUser.bookmarks,
+        history: appUser.history
+      });
 
-        // Update the combined user data BehaviorSubject AFTER fetching
-        this.userDataSubject.next({
-          preferences: appUser.preferences,
-          bookmarks: appUser.bookmarks,
-          history: appUser.history
-        });
+      // Cache the token (can be done here)
+      this.cachedToken = { token: tokenResult.token, timestamp: Date.now() };
+      localStorage.setItem(this.TOKEN_CACHE_KEY, JSON.stringify(this.cachedToken));
+      
+      // Cache user data (can be done here or after _user update)
+      await this.cacheUserData(appUser); 
+      
+      // //console.log(`[handleUserSignedIn] State updated and data cached.`);
 
-        // Cache the token and user data (including the fetched prefs/history/bookmarks)
-        this.cachedToken = { token: tokenResult.token, timestamp: Date.now() };
-        localStorage.setItem(this.TOKEN_CACHE_KEY, JSON.stringify(this.cachedToken));
-        await this.cacheUserData(appUser);
-        // // //console.log(`[handleUserSignedIn] State updated and data cached.`);
+      // Schedule next token refresh
+      this.scheduleTokenRefresh();
 
-        // Schedule next token refresh
-        this.scheduleTokenRefresh();
-      } else {
-         // This case should ideally not happen if mapFirebaseUser worked
-         // //console.error('[handleUserSignedIn] appUser became null unexpectedly after initial construction.');
-         this.clearAuthData(); // Clear data on error
-         return null;
-      }
-
+      // *** RETURN the fully constructed user ***
       return appUser;
 
     } catch (error) {
       // //console.error(`[handleUserSignedIn] Error processing signed-in user ${firebaseUser.uid}:`, error);
-      this.clearAuthData(); // Clear data on error
-      return null;
+      // *** RETURN null on error ***
+      return null; 
     }
   }
 
   // Setup the primary listener for Firebase Auth state changes
-  private setupAuthStateListener(): void {
+  // *** MODIFIED: Awaits handleUserSignedIn, then updates _user, then signals settled ***
+  private setupAuthStateListener(redirectAlreadyProcessed: boolean): void {
+    // //console.log('[AuthService] Setting up onAuthStateChanged listener...');
+    let initialAuthStateReceived = false;
     onAuthStateChanged(this.auth, async (firebaseUser) => {
-      this.ngZone.run(async () => { // Ensure operations run within Angular's zone
-         //console.log('[Auth Listener] State changed. User:', firebaseUser ? firebaseUser.uid : 'null');
+      // //console.log(`[AuthService] onAuthStateChanged triggered. User: ${firebaseUser ? firebaseUser.uid : 'null'}`);
+      const isFirstCallback = !initialAuthStateReceived;
+      initialAuthStateReceived = true;
+
+      // Define finalAppUser variable to hold the result
+      let finalAppUser: AppUser | null = null; 
+
+      try {
         if (firebaseUser) {
-          // **Explicitly reload user data before processing**
-          let reloadedFirebaseUser: FirebaseUser | null = firebaseUser; // Use a new variable
-          try {
-            //console.log('[Auth Listener] Reloading Firebase user data...');
-            await reloadedFirebaseUser.reload();
-            reloadedFirebaseUser = this.auth.currentUser; // Re-assign to get the reloaded user object
-            if (!reloadedFirebaseUser) {
-              //console.warn('[Auth Listener] User became null after reload, signing out.');
-              this.clearAuthData();
-              this.signalAuthReady();
-              return; // Exit if user is null now
-            }
-            //console.log(`[Auth Listener] User data reloaded. Current Firebase Verified Status: ${reloadedFirebaseUser.emailVerified}`);
-          } catch (reloadError) {
-              //console.error('[Auth Listener] Error reloading user data:', reloadError);
-              // If reload fails, reloadedFirebaseUser might still hold the original (stale) firebaseUser object
-              // Or it could be null if the error was severe. We proceed cautiously.
-              if (!reloadedFirebaseUser) {
-                  //console.warn('[Auth Listener] User is null after reload error. Signing out.');
-                  this.clearAuthData();
-                  this.signalAuthReady();
-                  return;
-              }
-          }
-          // **End Explicit Reload**
-
-          // **Check if user exists after potential reload/error handling**
-          if (!reloadedFirebaseUser) {
-             //console.warn('[Auth Listener] No valid user object available after reload attempt. Cannot process sign-in.');
-             this._isLoading.next(false);
-             // Consider if clearAuthData() is needed here too, or if the initial null check handles it.
-          } else {
-             // User is signed in (and reloadedFirebaseUser is guaranteed non-null here)
-             this._isLoading.next(true); // Start loading
-             const appUser = await this.handleUserSignedIn(reloadedFirebaseUser); // Process sign-in with guaranteed non-null user
-
-             // Add the refresh logic HERE, after handleUserSignedIn returns the AppUser
-             if (appUser) {
-               //console.log(`[Auth Listener] User processed. AppUser Verified: ${appUser.emailVerified}, Last Known State: ${this.lastEmailVerifiedState}, Refresh Triggered: ${this.refreshTriggeredForVerification}`);
-
-               if (!this.refreshTriggeredForVerification) {
-                 const previousState = this.lastEmailVerifiedState; // Read last known state
-                 const currentState = appUser.emailVerified;    // Get current state from AppUser
-
-                 //console.log(`[Auth Listener] Checking for verification change: Previous=${previousState}, Current=${currentState}`);
-
-                 // Condition 1: Explicit change from false to true detected
-                 if (previousState === false && currentState === true) {
-                   //console.log('[Auth Listener] Condition 1 MET: Email verified! Triggering page refresh.');
-                   this.refreshTriggeredForVerification = true; // Set flag BEFORE reloading
-                   window.location.reload(); // Reload the page
-                 } 
-                 // Condition 2: Handle edge case - first time loading user state and they are *already* verified
-                 // This prevents refresh if user was verified long ago. Refresh only happens on state *change*.
-                 // If previousState is null (meaning first time seeing this user in this session) and currentState is true, just record it.
-                 else if (previousState === null && currentState === true) {
-                    //console.log('[Auth Listener] User is already verified on initial load. No refresh needed.');
-                    // Only update lastEmailVerifiedState here, no reload.
-                 }
-
-
-                 // **Crucial Update:** Always update lastEmailVerifiedState *after* the checks
-                 // if the user state has been processed (i.e., appUser is not null).
-                 // This ensures the 'previousState' for the *next* run is correct.
-                 // Update only if the state actually changed or if it was null initially.
-                 if (this.lastEmailVerifiedState === null || this.lastEmailVerifiedState !== currentState) {
-                    ////console.log(`[Auth Listener] Updating lastEmailVerifiedState from ${this.lastEmailVerifiedState} to ${currentState}`);
-                    this.lastEmailVerifiedState = currentState;
-                    // Optionally persist this state change if needed, e.g., in cacheUserData
-                    // const currentUserData = this._user.value; // Get potentially updated user
-                    // if (currentUserData) {
-                    //     await this.cacheUserData({...currentUserData, emailVerified: currentState });
-                    // }
-                 }
-
-               } else {
-                  //console.log('[Auth Listener] Refresh already triggered for verification this session.');
-               }
-             } else {
-                 //console.log('[Auth Listener] appUser is null after handleUserSignedIn. Skipping refresh check.');
-             }
-             // End Page Refresh Logic
-
-             this._isLoading.next(false); // Stop loading AFTER processing
-          }
-
+          // Await the result of processing the user
+          finalAppUser = await this.handleUserSignedIn(firebaseUser);
         } else {
-          // User is signed out OR initial load state is null
-          //console.log('[Auth Listener] User signed out or initial null state.');
-          this.clearAuthData(); // Clear local state ONLY
-          // REMOVED navigation logic from here - guards should handle this.
+          // If firebaseUser is null, ensure we handle sign-out
+          this.handleUserSignedOut(); // This clears data and sets _user to null internally
+          finalAppUser = null; // Explicitly set to null
         }
+      } catch (error) {
+         console.error('[AuthService] Unexpected error during onAuthStateChanged processing:', error);
+         this.clearAuthData(); // Ensure cleanup on unexpected error
+         finalAppUser = null;
+      } finally {
+         // Run UI updates and signaling within Angular zone
+         this.ngZone.run(() => {
+            // Update the main _user subject AFTER all processing
+            if (finalAppUser) {
+              this._user.next(finalAppUser);
+            } else if (!firebaseUser) { 
+              // Ensure _user is null if firebaseUser was null and no error occurred
+              // handleUserSignedOut should have already done this, but double-check
+              if (this._user.value !== null) { 
+                 this._user.next(null); 
+              }
+            } // If finalAppUser is null due to an error in handleUserSignedIn, clearAuthData was likely called
 
-        // Signal auth is ready AFTER the first check is complete (user signed in or out)
-        this.signalAuthReady(); // Call helper to signal readiness
+            // Signal initial auth state is ready after first callback completes
+            if (isFirstCallback) {
+              // //console.log('[AuthService] First onAuthStateChanged callback finished. Signaling authReady.');
+              this.signalAuthReady(); // Use the original signal for basic readiness
+            }
+            
+            // Try to signal that post-redirect auth is settled AFTER _user is updated
+            this.trySignalPostRedirectAuthSettled();
+         });
+      }
+    }, (error) => {
+      // //console.log('[AuthService] onAuthStateChanged reported an error.');
+      console.error('[AuthService] Auth state listener error:', error);
+      // Run UI updates and signaling within Angular zone for error case
+      this.ngZone.run(() => {
+         this.clearAuthData(); // Clears _user and other data
+         // Signal readiness even on error, but also try to signal settled state
+         if (!initialAuthStateReceived) {
+            this.signalAuthReady();
+         }
+         this.trySignalPostRedirectAuthSettled();
       });
     });
   }
@@ -1922,10 +1877,9 @@ export class FirebaseAuthService {
   }
 
   public async waitForAuthReady(): Promise<void> {
-    // // //console.log('[FirebaseAuthService] waitForAuthReady called...');
-    await firstValueFrom(this.authReady$.pipe(filter(ready => ready)));
-    // We don't need the boolean value, just wait for it to emit.
-    // The await ensures the function returns Promise<void> implicitly.
+    // //console.log('[AuthService] waitForAuthReady called... Waiting for postRedirectAuthSettled.');
+    await firstValueFrom(this.postRedirectAuthSettled);
+    // //console.log('[AuthService] waitForAuthReady completed (postRedirectAuthSettled resolved).');
   }
 
   private initTokenFromCache() {
@@ -2210,8 +2164,13 @@ export class FirebaseAuthService {
   // Refreshes the Firebase ID token
   public async refreshToken(forceRefresh: boolean = false): Promise<string | null> {
     // //console.log(`[refreshToken] Called. Force refresh: ${forceRefresh}`);
-    const firebase = await this.authPromise; // Ensure Firebase Auth is initialized
-    const currentUser = firebase.currentUser;
+    const firebaseAuth = await this.authPromise; // Ensure Firebase Auth is initialized
+    if (!firebaseAuth) { // Add null check after awaiting
+      console.error('[refreshToken] Firebase Auth instance is null after initialization attempt.');
+      return null;
+    }
+
+    const currentUser = firebaseAuth.currentUser;
 
     if (!currentUser) {
         //console.warn('[refreshToken] No current Firebase user. Cannot refresh token.');
@@ -2276,5 +2235,49 @@ export class FirebaseAuthService {
         // Reject the promise
         throw new Error('Firebase initialization failed'); 
     }
+  }
+
+  private async initializeAuthAndStateListener(): Promise<void> {
+    // //console.log('[AuthService] Initializing Auth and State Listener...');
+    let redirectProcessed = false; // Local flag for this init sequence
+    try {
+      // 1. Check and process redirect result FIRST
+      // //console.log('[AuthService] Checking for redirect result...');
+      const credential = await getRedirectResult(this.auth);
+      // //console.log('[AuthService] getRedirectResult finished. Credential:', credential ? 'Exists' : 'null');
+    } catch (error: any) {
+      console.error('[AuthService] Error processing redirect result:', error);
+      if (error.code === 'auth/account-exists-with-different-credential') {
+        this.snackBar.open('An account already exists with this email using a different sign-in method.', 'Close', { duration: 7000 });
+      } else {
+        this.snackBar.open(`Login failed during redirect: ${error.message}`, 'Close', { duration: 5000 });
+      }
+    } finally {
+      // //console.log('[AuthService] Marking redirect result as processed LOCALLY.');
+      redirectProcessed = true; // Mark local flag
+      this.redirectResultProcessed = true; // Mark service flag
+      // Don't signal settled yet, wait for onAuthStateChanged
+    }
+
+    // 2. Setup the AuthStateChanged listener AFTER starting redirect check
+    this.setupAuthStateListener(redirectProcessed); // Pass the local flag
+  }
+
+  // New method to try signaling the post-redirect settled state
+  private trySignalPostRedirectAuthSettled(): void {
+    // //console.log(`[AuthService] trySignalPostRedirectAuthSettled called. hasSignaledAuthReady: ${this.hasSignaledAuthReady}, redirectResultProcessed: ${this.redirectResultProcessed}`);
+    // Check if initial auth state determined AND redirect processing is done
+    if (this.hasSignaledAuthReady && this.redirectResultProcessed && !this.postRedirectAuthSettled.closed) {
+      // //console.log('[AuthService] Conditions met. Signaling Post Redirect Auth Settled (postRedirectAuthSettled).');
+      this.postRedirectAuthSettled.next();
+      this.postRedirectAuthSettled.complete();
+    } else {
+      // //console.log('[AuthService] Conditions not met for signaling Post Redirect Auth Settled yet.');
+    }
+  }
+
+  private handleUserSignedOut(): void {
+    // //console.log('[AuthService] User signed out. Signaling authReady...');
+    this.signalAuthReady();
   }
 } 

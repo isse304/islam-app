@@ -13,15 +13,23 @@ export const authGuardFn: CanActivateFn = (
   // console.log(`[AuthGuard] Activated for: ${state.url}`);
 
   return from(authService.waitForAuthReady()).pipe(
-    switchMap(() => authService.user$), // Switch to the user$ stream AFTER ready
-    filter(user => user !== undefined),   // Filter out initial undefined state
-    take(1),                            // Take the first actual state (null or AppUser)
+    // Ensures Firebase is initialized before checking user state
+    switchMap(() => {
+      // console.log(`[AuthGuard] Firebase ready for ${state.url}. Switching to user$`);
+      // Now wait specifically for the first emission that is NOT undefined
+      return authService.user$.pipe(
+        // tap(user => console.log(`[AuthGuard] user$ emitted for ${state.url}: ${user === null ? 'null' : (user ? user.uid : 'undefined')}`)),
+        filter(user => user !== undefined), // Wait until user state is determined (null or AppUser)
+        filter(user => user !== null),
+        take(1)                             // Take only that first determined state (which is now guaranteed non-null)
+      );
+    }),
     map(user => {
-      const isLoggedIn = !!user;
-      // console.log(`[AuthGuard] Check for URL: ${state.url}. Auth Ready. User state received: ${isLoggedIn ? `UID: ${user.uid}, Verified: ${user.emailVerified}` : 'null'}`);
+      // console.log(`[AuthGuard] Filter passed, user is non-null: ${user?.uid}`);
+      // Since the filter ensures user is non-null, we can assume logged in here.
 
-      if (isLoggedIn) { // User is logged in
-        if (user.emailVerified || state.url.includes('/auth/verify-email')) { 
+      if (user) { // Check added for type safety, though filter should guarantee it.
+        if (user.emailVerified || state.url.includes('/auth/verify-email')) {
           // Allow access if email is verified OR if navigating to the verify-email page itself
           // console.log(`[AuthGuard] Decision for ${state.url}: User IS logged in (Verified: ${user.emailVerified}) -> ALLOWING access.`);
           return true;
@@ -30,14 +38,14 @@ export const authGuardFn: CanActivateFn = (
           return router.createUrlTree(['/auth/verify-email']); // Redirect to verification page
         }
       } else { // User is logged out (null)
-        // console.log(`[AuthGuard] Decision for ${state.url}: User is NOT logged in -> REDIRECTING to /auth/login.`);
-        authService.redirectUrl = state.url; // Store intended URL
-        return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } }); // Redirect to login
+        // // console.warn('[AuthGuard] Reached supposedly unreachable block (user is null after filter). Redirecting to login.');
+        authService.redirectUrl = state.url;
+        return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
       }
     }),
     timeout(10000),
     catchError(err => {
-      console.error(`[AuthGuard] Error in guard for ${state.url}:`, err);
+      console.error(`[AuthGuard] Error/Timeout in guard for ${state.url}:`, err);
       // Fallback: Redirect to login on error
       // console.log(`[AuthGuard] Redirecting to /auth/login from ${state.url} due to error`);
       authService.redirectUrl = state.url;

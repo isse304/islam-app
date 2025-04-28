@@ -141,6 +141,12 @@ export class SignupComponent implements OnInit {
   signupWithGoogle(): void {
     this.isLoading = true;
     this.errorMessage = null;
+
+    // Store the intent before starting the Google flow
+    if (this.signupIntent) {
+      localStorage.setItem('signupIntent', this.signupIntent);
+    }
+
     this.authService.signInWithGoogle()
       .then(async () => {
         this.isLoading = false;
@@ -148,10 +154,13 @@ export class SignupComponent implements OnInit {
           duration: 5000,
           panelClass: ['success-snackbar']
         });
-        this.handleSignupSuccessRedirect();
+        // Redirect after successful Google Sign-In
+        this.handleSignupSuccessRedirect(); 
       })
       .catch(error => {
         this.isLoading = false;
+        // Clear the intent if Google Sign-In fails
+        localStorage.removeItem('signupIntent'); 
         this.errorMessage = error.message || 'Google Sign-In failed.';
         if (this.errorMessage) {
           this.snackBar.open(this.errorMessage, 'Close', {
@@ -181,11 +190,22 @@ export class SignupComponent implements OnInit {
   }
 
   private handleSignupSuccessRedirect(): void {
-    const targetUrl = (this.signupIntent === 'start_trial')
-      ? '/subscription?initiateCheckout=true' // Go to subscription if intent matches
-      : '/auth/verify-email'; // Default to verify email for other cases
+    // Prioritize intent from localStorage (set during Google Sign-In)
+    const storedIntent = localStorage.getItem('signupIntent');
+    const finalIntent = storedIntent || this.signupIntent;
 
-    // console.log(`[SignupComponent handleSignupSuccessRedirect] Intent: '${this.signupIntent}'. Navigating to: ${targetUrl}`);
+    // Clear the stored intent after retrieving it
+    if (storedIntent) {
+      localStorage.removeItem('signupIntent');
+    }
+
+    // Determine target URL
+    let targetUrl = '/home'; // Default to home for ALL successful signups/logins from this component
+    if (finalIntent === 'start_trial') {
+      targetUrl = '/subscription?initiateCheckout=true'; // Override if trial intent exists
+    }
+
+    // console.log(`[SignupComponent handleSignupSuccessRedirect] Final Intent: '${finalIntent}'. Navigating to: ${targetUrl}`);
     this.router.navigateByUrl(targetUrl);
   }
 

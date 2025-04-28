@@ -1,6 +1,6 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router, UrlTree } from '@angular/router';
-import { Observable, from, map, switchMap, take, catchError, of, timeout, filter } from 'rxjs';
+import { Observable, from, map, switchMap, take, catchError, of, timeout, filter, tap } from 'rxjs';
 import { FirebaseAuthService } from '../services/firebase-auth.service';
 
 export const NoAuthGuard: CanActivateFn = (
@@ -13,28 +13,33 @@ export const NoAuthGuard: CanActivateFn = (
   // console.log(`[NoAuthGuard] Activated for: ${state.url}`);
 
   return from(authService.waitForAuthReady()).pipe(
-    // tap(() => console.log(`[NoAuthGuard] waitForAuthReady completed for ${state.url}.`)),
+    // Ensures Firebase is initialized before checking user state
     switchMap(() => {
-      // console.log(`[NoAuthGuard] Checking user$ state for ${state.url}...`);
-      // Take the first emission after ready, whether null or AppUser
-      return authService.user$.pipe(take(1)); 
+      // console.log(`[NoAuthGuard] Firebase ready for ${state.url}. Switching to user$`);
+      // Wait specifically for the first emission that is NOT undefined
+      return authService.user$.pipe(
+        // tap(user => console.log(`[NoAuthGuard] user$ emitted for ${state.url}: ${user === null ? 'null' : (user ? user.uid : 'undefined')}`)),
+        filter(user => user !== undefined), // Wait until user state is determined (null or AppUser)
+        take(1)                             // Take only that first determined state
+      );
     }),
     map(user => {
       const isLoggedIn = !!user;
-      // console.log(`[NoAuthGuard] Check for URL: ${state.url}. Auth Ready. User state received: ${isLoggedIn ? `UID: ${user.uid}` : 'null'}`);
-      if (isLoggedIn) { // User object exists (logged in)
+      // console.log(`[NoAuthGuard] Determined user state for ${state.url}: ${isLoggedIn ? `UID: ${user.uid}` : 'null'}`);
+
+      if (isLoggedIn) { // User IS logged in
         // console.log(`[NoAuthGuard] Decision for ${state.url}: User IS logged in. REDIRECTING to /home.`);
-        return router.createUrlTree(['/home']); // Redirect to home
-      } else { // User is explicitly null (logged out)
+        return router.createUrlTree(['/home']); // Redirect logged-in users away
+      } else { // User is null (definitively logged out)
         // console.log(`[NoAuthGuard] Decision for ${state.url}: User is NOT logged in. ALLOWING access.`);
         return true; // Allow access
       }
     }),
-    timeout(10000), // Keep timeout reasonable
+    timeout(10000),
     catchError(err => {
-      console.error(`[NoAuthGuard] Timeout/Error in guard for ${state.url}:`, err);
-      // Fallback: Allow access to public pages on error
-      // console.log(`[NoAuthGuard] Allowing access to ${state.url} due to error`);
+      console.error(`[NoAuthGuard] Error/Timeout in guard for ${state.url}:`, err);
+      // Fallback: Allow access on error, as it's usually for public pages
+      // console.log(`[NoAuthGuard] Allowing access to ${state.url} due to error/timeout.`);
       return of(true);
     })
   );
