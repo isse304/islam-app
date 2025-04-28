@@ -749,7 +749,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     try {
       // Call the new backend endpoint using HttpClient
       const response = await firstValueFrom(this.http.delete<any>(
-        `${environment.apiUrl}/api/users/me`
+        `${environment.apiUrl}/api/user/me`
       ));
 
       // Use optional chaining for safer access
