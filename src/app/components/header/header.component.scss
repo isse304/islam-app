@@ -208,19 +208,19 @@
   }
   
   // Ensure mobile menu specific styles apply correctly
-  .mobile-menu {
-    background-color: var(--mobile-menu-bg) !important; 
+  html.dark .mobile-menu { 
+    background-color: rgba(26, 54, 93, 0.98) !important; // Apply color directly
     backdrop-filter: blur(8px); 
   }
-  .mobile-link,
-  .mobile-menu-btn {
-     color: var(--header-text) !important; // Ensure cream text
-     text-shadow: none !important; // Remove shadow if it causes contrast issues
+  html.dark .mobile-link,
+  html.dark .mobile-menu-btn { 
+     color: #FAF3E0 !important; // Apply color directly
+     text-shadow: none !important; 
   }
-  .mobile-link:hover {
+  html.dark .mobile-link:hover { 
      background-color: var(--header-link-hover-bg) !important; // Use hover var
   }
-  .mobile-upgrade-link {
+  html.dark .mobile-upgrade-link {
       // Ensure correct colors for upgrade link in dark mobile menu
       color: #1A365D !important;
       background-color: #ffc107 !important;

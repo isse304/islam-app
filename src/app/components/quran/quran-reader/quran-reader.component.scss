@@ -1253,84 +1253,84 @@ select option {
 .dark app-quran-reader {
   background-color: #1A365D !important; /* Dark Blue */
   display: block !important; /* Ensure host can have background applied */
+  color: #FAF3E0 !important; /* DEFAULT DARK MODE TEXT: Cream */
 
   h1 {
     color: #B7A57A !important; /* Gold */
   }
 
   // --- Force Override common light backgrounds/text --- 
-  .bg-white { /* General white areas */
+  .bg-white { 
       background-color: #2A4365 !important; 
       border-color: rgba(183, 165, 122, 0.2) !important;
   }
-  .bg-gray-50, .bg-\[\#FAF3E0\] { /* Light gray or cream areas */
+  .bg-gray-50, .bg-\[\#FAF3E0\] { 
       background-color: #1A365D !important; 
       border-color: rgba(183, 165, 122, 0.2) !important;
   }
-  // ... other general text overrides ...
-  .text-gray-800 { color: #FAF3E0 !important; }
-  .text-gray-700 { color: #d1d5db !important; }
-  .text-gray-600 { color: #9ca3af !important; }
-  .text-gray-500 { color: #6b7280 !important; }
-  .text-\[\#1A365D\] { color: #FAF3E0 !important; }
-  .text-\[\#B7A57A\] { color: #B7A57A !important; }
+  // REMOVED general text overrides - rely on inheritance
+  // .text-gray-800 { color: #FAF3E0 !important; }
+  // .text-gray-700 { color: #d1d5db !important; }
+  // .text-gray-600 { color: #9ca3af !important; }
+  // .text-gray-500 { color: #6b7280 !important; }
+  .text-\[\#1A365D\] { color: #FAF3E0 !important; } // Keep this override
+  .text-\[\#B7A57A\] { color: #B7A57A !important; } // Keep this override
 
   // --- Translation View --- 
   .verse-card { 
       background-color: #1F3A5F !important; 
       border-color: rgba(183, 165, 122, 0.2); 
       box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      color: #d1d5db !important; 
+      // color: #d1d5db !important; // REMOVE - Inherit default
 
       .verse-meaning {
           background-color: #2A4365 !important; 
           border-top-color: rgba(183, 165, 122, 0.2) !important; 
           background-image: none !important; 
-          .translation-text, .translation-text p { color: #FAF3E0 !important; } 
-          .transliteration-text, .transliteration-text p { color: #9ca3af !important; } 
-          .verse-details, .verse-source { color: #6b7280 !important; }
+          // .translation-text, .translation-text p { color: #FAF3E0 !important; } // REMOVE - Inherit default
+          .transliteration-text, .transliteration-text p { color: #9ca3af !important; } // KEEP - Needs specific lighter gray
+          .verse-details, .verse-source { color: #6b7280 !important; } // KEEP - Needs specific medium gray
       }
       .verse-number {
          background-color: rgba(183, 165, 122, 0.15) !important; 
          border-color: rgba(183, 165, 122, 0.3) !important; 
-         color: #B7A57A !important; 
+         color: #B7A57A !important; // KEEP - Needs gold
       }
       .verse-actions button.mat-icon-button { 
-         .mat-icon { color: #FAF3E0; }
+         .mat-icon { color: #FAF3E0; } // KEEP - Needs default cream icons
          &:hover:not(:disabled) { 
              background-color: rgba(250, 243, 224, 0.1); 
-             .mat-icon { color: #B7A57A; }
+             .mat-icon { color: #B7A57A; } // KEEP - Needs gold on hover
          } 
-         &.bookmarked .mat-icon { color: #B7A57A !important; }
+         &.bookmarked .mat-icon { color: #B7A57A !important; } // KEEP - Needs gold when bookmarked
       }
-      > .p-6 > .verse-text { color: #B7A57A !important; }
+      > .p-6 > .verse-text { color: #B7A57A !important; } // KEEP - Verse text itself is Gold
   }
 
   // === Default verse text color ===
-  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; }
+  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // KEEP - Verse text is Gold
 
   // --- Highlighted Verse Colors ---
-  .highlighted-verse, .selected-verse { // Target the verse-card when highlighted
+  .highlighted-verse, .selected-verse { 
     background-color: #3A5F8A !important; 
     border-color: #B7A57A !important; 
-    .verse-text, .word-tooltip-trigger { color: #1A365D !important; } 
+    .verse-text, .word-tooltip-trigger { color: #1A365D !important; } // KEEP - Highlighted verse text is dark
     .verse-meaning {
-      // Keep nested dark styles
       background-color: #2A4365 !important; 
       border-top-color: rgba(183, 165, 122, 0.4) !important;
-      .translation-text, .translation-text p { color: #FAF3E0 !important; } 
-      .transliteration-text, .transliteration-text p { color: #9ca3af !important; } 
-      .verse-details, .verse-source { color: #6b7280 !important; } 
+      // .translation-text, .translation-text p { color: #FAF3E0 !important; } // REMOVE - Inherit default
+      .transliteration-text, .transliteration-text p { color: #9ca3af !important; } // KEEP
+      .verse-details, .verse-source { color: #6b7280 !important; } // KEEP
     }
-    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } 
-    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #1A365D !important; }
+    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // KEEP
+    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #1A365D !important; } // KEEP - Dark icon when highlighted & bookmarked
   } 
 
   // --- Tafsir section dark mode ---
   .bg-gray-50 { 
      background-color: #1A365D !important; 
-     color: #d1d5db !important; 
-     h3, h4 { color: #B7A57A !important; }
+     // color: #d1d5db !important; // REMOVE - Inherit default
+     h3, h4 { color: #B7A57A !important; } // KEEP - Headings are Gold
   }
 
   // +++ DESKTOP MUSHAF CONTROLS DARK STYLES (NESTED HERE) +++

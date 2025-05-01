@@ -264,56 +264,35 @@
 
 /* Consolidated Dark Mode Styles */
 body.dark app-contact {
-  .contact-page {
-    background-color: transparent !important;
-  }
-
-  .contact-header h1, 
-  .text-gray-800 {
-    color: #FAF3E0 !important;
-  }
-  .contact-header p, 
-  .text-gray-600, 
-  .text-gray-300 {
-     color: #d1d5db !important;
-  }
-
-  .contact-card, .info-card, .contact-form {
-    background-color: #2A4365 !important;
-    color: #d1d5db !important;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
-  }
-
-  .contact-info .info-card h3 { color: #B7A57A !important; }
-  .contact-info .info-card p { color: #d1d5db !important; }
-  .contact-info .info-card .icon i { color: #B7A57A !important; }
-  .contact-info .info-card .icon { background-color: #1A365D !important; }
-
-  label { 
-     color: #FAF3E0 !important; 
-  }
+  // .contact-page rule removed - Handled by Tailwind class
+  // .contact-container transparent rule removed - Handled by Tailwind class
   
-  .contact-input,
-  .contact-textarea,
-  input,
-  textarea {
+  /* Restore specific overrides for elements WITHIN cards/form */
+  .info-card h3 { color: #B7A57A !important; } // Gold headings in info cards
+  .info-card p { color: #d1d5db !important; } // Light gray text in info cards
+  .info-card .icon i { color: #B7A57A !important; } // Gold icons
+  .info-card .icon { background-color: #1A365D !important; } // Darkest blue icon background
+  
+  .contact-form label { color: #FAF3E0 !important; } // Cream labels
+  .contact-form input,
+  .contact-form textarea {
     background-color: #1A365D !important;
     border-color: #B7A57A !important;
-    color: #FAF3E0 !important;
+    color: #FAF3E0 !important; // Cream input text
     &::placeholder {
-      color: #9ca3af !important;
+      color: #9ca3af !important; // Lighter gray placeholder
+    }
+    &:focus {
+      border-color: #FAF3E0 !important;
+      box-shadow: 0 0 0 2px rgba(250, 243, 224, 0.4) !important;
+      background-color: #1A365D !important;
     }
   }
-
-  .contact-input:focus,
-  .contact-textarea:focus,
-  input:focus,
-  textarea:focus {
-    border-color: #FAF3E0 !important;
-    box-shadow: 0 0 0 2px rgba(250, 243, 224, 0.4) !important;
-    background-color: #1A365D !important;
+  .contact-form .error-message { // Make error message visible
+     color: #f87171 !important; // Light red
   }
 
+  // Button styles (already seem correct)
   .contact-button,
   button[type="submit"] {
     background-color: #B7A57A !important;
@@ -324,10 +303,15 @@ body.dark app-contact {
     span { color: inherit !important; }
     i.fas { color: inherit !important; }
   }
-}
-
-/* Ensure HIGH SPECIFICITY RULE FOR HOST BACKGROUND is present */
-html.dark body.dark app-contact :host {
-  display: block;
-  background-color: #1A365D !important;
+  
+  // General text overrides (if any remain needed outside cards/form)
+  .contact-header h1, 
+  .text-gray-800 {
+    color: #FAF3E0 !important;
+  }
+  .contact-header p, 
+  .text-gray-600, 
+  .text-gray-300 {
+     color: #d1d5db !important;
+  }
 }
