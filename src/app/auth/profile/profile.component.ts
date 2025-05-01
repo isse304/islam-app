@@ -18,7 +18,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatSliderModule } from '@angular/material/slider';
 import { MatSelectModule } from '@angular/material/select';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabsModule, MatTabChangeEvent } from '@angular/material/tabs';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { QuranService, Reciter } from '../../services/quran.service';
 import { ReadingHistory, ReadingHistoryResponse } from '../../interfaces/reading-history.interface';
@@ -37,6 +37,7 @@ import { Observable } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { environment } from '../../../environments/environment';
 import { HttpClient } from '@angular/common/http';
+import { ThemeService, Theme } from '../../services/theme.service';
 
 // Keep local Translation interface
 interface Translation {
@@ -119,6 +120,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private initialFormValues: any = {}; // Store initial values to check for changes
   error: string | null = null; // Declare the error property
+  private themeSubscription?: Subscription; // Add subscription property for cleanup
 
   constructor(
     private fb: FormBuilder,
@@ -133,7 +135,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     private datePipe: DatePipe,
     private subscriptionService: SubscriptionService,
     private cdr: ChangeDetectorRef,
-    private http: HttpClient
+    private http: HttpClient,
+    public themeService: ThemeService
   ) {
     this.initializeForms(null, null, 24);
 
@@ -261,21 +264,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.isLoading = true; // Start main loading
+    this.isLoading = true;
+    this.error = null; // Reset error on init
 
-    // Assign reciters and translations here
-    this.reciters = this.quranService.reciters;
-    this.translations = this.quranService.translations.map((t: any) => ({
-      id: t.id.toString(),
-      name: t.name
-    }));
-    
-    // Re-initialize forms AFTER reciters/translations are set
-    // This ensures default values are picked correctly if needed
-    this.initializeForms(null, null, 24); 
-
-    // Subscribe to the AppUser observable - Consolidated logic
-    this.authService.user$.pipe(
+    this.userSub = this.authService.user$.pipe(
       take(1), // Take the first emitted value (could be null initially)
       switchMap(user => {
         if (!user) {
@@ -307,13 +299,21 @@ export class ProfileComponent implements OnInit, OnDestroy {
       // Optional: Add a next handler if you need to do something after successful load
       // next: (loadedUser) => { if (loadedUser) { console.log('[Profile] User data loaded successfully'); } }
     );
+
+    // Subscribe to theme changes
+    this.themeSubscription = this.themeService.currentTheme$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(() => {
+      this.cdr.markForCheck(); // Trigger change detection on theme change
+    });
   }
 
   ngOnDestroy(): void {
     this.subscriptions.forEach(sub => sub.unsubscribe());
-    this.destroy$.next();
-    this.destroy$.complete();
     this.userSub?.unsubscribe();
+    this.destroy$.next(); // Signal completion for takeUntil
+    this.destroy$.complete();
+    // No need to unsubscribe themeSubscription due to takeUntil
   }
 
   // Custom validator to check if passwords match
@@ -949,5 +949,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
   private actualToDisplayPage(actualPage: number): number {
     const FIRST_PAGE_OFFSET = 9;
     return Math.max(1, actualPage - FIRST_PAGE_OFFSET); 
+  }
+
+  // Add method to handle tab changes
+  onTabChanged(event: MatTabChangeEvent): void {
+    // console.log(`[Profile] Tab changed to index: ${event.index}`);
+    // Trigger change detection when tabs are switched, potentially helping with OnPush issues
+    this.cdr.markForCheck();
   }
 } 

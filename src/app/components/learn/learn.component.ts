@@ -1,8 +1,8 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewEncapsulation, ChangeDetectionStrategy, HostListener, HostBinding } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
-import { Router } from '@angular/router';
-import { firstValueFrom, Subscription, switchMap, tap, catchError, of, take, from } from 'rxjs';
+import { Router, RouterModule } from '@angular/router';
+import { firstValueFrom, Subscription, switchMap, tap, catchError, of, take, from, Observable } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -19,6 +19,9 @@ import { ApiService } from '../../services/api.service';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { HttpClient } from '@angular/common/http';
 import { Title, Meta } from '@angular/platform-browser';
+import { environment } from '../../../environments/environment';
+import { ThemeService, Theme } from '../../services/theme.service';
+import { map } from 'rxjs/operators';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -52,6 +55,7 @@ interface AIResponse {
   selector: 'app-learn',
   templateUrl: './learn.component.html',
   styleUrls: ['./learn.component.scss'],
+  encapsulation: ViewEncapsulation.None,
   standalone: true,
   imports: [
     CommonModule,
@@ -92,6 +96,7 @@ export class LearnComponent implements OnInit, OnDestroy {
   private initSubscription: Subscription | null = null; // Subscription for ngOnInit async ops
   initialPremiumCheckComplete: boolean = false; // Flag for initial check
   isPremium: boolean = false; // Store premium status
+  currentTheme$: Observable<Theme>; // Use correct observable name and type
 
   private conversationContext: {
     lastTopic?: string;
@@ -118,8 +123,11 @@ export class LearnComponent implements OnInit, OnDestroy {
     public router: Router,
     private cdr: ChangeDetectorRef,
     private titleService: Title,
-    private metaService: Meta
-  ) {}
+    private metaService: Meta,
+    private themeService: ThemeService // Inject ThemeService
+  ) {
+    this.currentTheme$ = this.themeService.currentTheme$; // Assign correct observable
+  }
 
   ngOnInit() {
     this.titleService.setTitle('Learn Quran & AI Tafsir Chat | Nura AI');
@@ -467,7 +475,8 @@ export class LearnComponent implements OnInit, OnDestroy {
       // console.log('[LearnComponent] Sending payload:', payload); // Log the payload being sent
 
       // Call the backend API service directly using HttpClient
-      const response = await firstValueFrom(this.http.post<TafsirChatResponse>('/api/tafsir/chat', payload).pipe(
+      // Ensure the correct API base URL is used so the interceptor adds the token
+      const response = await firstValueFrom(this.http.post<TafsirChatResponse>(`${environment.apiUrl}/api/tafsir/chat`, payload).pipe(
          catchError((error: any) => {
            console.error('Error calling /api/tafsir/chat:', error);
            // Return a fallback error response compatible with TafsirChatResponse interface

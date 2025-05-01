@@ -1,0 +1,23 @@
+:host {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  z-index: 999; /* Below loading overlay but above most content */
+}
+
+button {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Optional: Adjust colors if default primary/accent aren't suitable */
+/* Example for light mode primary */
+:host:not(.dark) button.mat-primary {
+  background-color: #B7A57A; /* Gold */
+  color: white;
+}
+
+/* Example for dark mode accent */
+:host(.dark) button.mat-accent {
+  background-color: #FAF3E0; /* Cream */
+  color: #1A365D; /* Dark Blue */
+}

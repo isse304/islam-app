@@ -1,6 +1,6 @@
 // Mobile Mushaf Controls Styling
 .mobile-mushaf-controls {
-  // Apply cream background AND pattern WITH transparency
+  // Light Mode Styles (Current styles)
   background-color: #E6DACE !important; // Base cream color fallback
   background-size: 300px; // Adjust pattern size if needed
   background-position: center;
@@ -21,15 +21,20 @@
   }
 
   // Make the input field readable 
-  input[type="number"] {
-    color: #1A365D !important; // Dark text
-    background-color: white !important; // White background
-    border: 1px solid rgba(183, 165, 122, 0.5) !important; // Gold border
-    border-radius: 0.375rem; 
+  input[type="number"].page-input-mobile { // Added specific class
+    color: #FAF3E0 !important; // Ensure Cream text
+    background-color: #2A4365 !important; // Lighter Blue background
+    border: 1px solid #B7A57A !important; // Gold border
+    width: 70px !important; // Increase width slightly
+    text-align: center !important; // Center text
+    padding-left: 0.5rem !important; // Adjust padding if needed
+    padding-right: 0.5rem !important; // Adjust padding if needed
     &:focus {
-      border-color: #B7A57A !important;
-      box-shadow: 0 0 0 1px #B7A57A !important;
+      border-color: #FAF3E0 !important; // Cream focus border
+      box-shadow: 0 0 0 1px #FAF3E0 !important; // Cream focus ring
+      background-color: #2A4365 !important; // Keep bg on focus
     }
+    &::placeholder { color: #9ca3af !important; }
   }
 
   // Make suffix text (total pages) GOLD
@@ -44,15 +49,122 @@
 
   // Style the Surah select dropdown 
   .mobile-surah-select-styled {
+    flex: 1 1 auto !important; // Allow select to grow and take available space
+    min-width: 150px !important; // Ensure a minimum width
+
     .mat-mdc-form-field-flex {
-      background-color: white !important; // White background
+      background-color: #1A365D !important; // Darkest blue bg for select
     }
     .mat-mdc-select-value,
     .mat-mdc-select-arrow {
-      color: #1A365D !important; // Dark text/arrow
+      color: #FAF3E0 !important; // Cream text/arrow
     }
      .mat-mdc-floating-label {
         color: #6B7280 !important; // Darker label
      }
+  }
+}
+
+// Dark Mode Overrides
+.dark .mobile-mushaf-controls {
+  background-color: #1A365D !important; // Dark Blue background
+  border-top: 1px solid rgba(183, 165, 122, 0.2) !important; // Faint Gold border
+  box-shadow: 0 -2px 5px rgba(0,0,0,0.3) !important; // Slightly stronger shadow
+
+  // Default icon color (cream for dark mode)
+  button.mat-mdc-icon-button .mat-icon {
+    color: #FAF3E0 !important; // Cream icons
+  }
+  button.mat-mdc-icon-button:hover:not(:disabled) .mat-icon {
+    color: #B7A57A !important; // Gold icon on hover
+  }
+  button.mat-mdc-icon-button:disabled .mat-icon {
+    color: #6b7280 !important; // Medium Gray disabled icon
+  }
+
+  // Style the bookmark icon specifically when bookmarked (Primary Gold)
+  button.bookmarked .mat-icon { 
+    color: #B7A57A !important; // Gold
+  }
+
+  // Make the input field readable 
+  input[type="number"].page-input-mobile { // Added specific class
+    color: #FAF3E0 !important; // Ensure Cream text
+    background-color: #2A4365 !important; // Lighter Blue background
+    border: 1px solid #B7A57A !important; // Gold border
+    width: 70px !important; // Increase width slightly
+    text-align: center !important; // Center text
+    padding-left: 0.5rem !important; // Adjust padding if needed
+    padding-right: 0.5rem !important; // Adjust padding if needed
+    &:focus {
+      border-color: #FAF3E0 !important; // Cream focus border
+      box-shadow: 0 0 0 1px #FAF3E0 !important; // Cream focus ring
+      background-color: #2A4365 !important; // Keep bg on focus
+    }
+    &::placeholder { color: #9ca3af !important; }
+  }
+
+  // Make suffix text (total pages) readable
+  span.text-xs:not(.font-medium) { 
+    color: #B7A57A !important; // Ensure Gold text
+  }
+
+  // Make zoom percentage GOLD
+  span.text-xs.font-medium {
+      color: #B7A57A !important; // Gold text
+  }
+
+  // Style the Surah select dropdown 
+  .mobile-surah-select-styled {
+    flex: 1 1 auto !important; // Allow select to grow and take available space
+    min-width: 150px !important; // Ensure a minimum width
+
+    .mat-mdc-form-field-flex {
+      background-color: #1A365D !important; // Darkest blue bg for select
+    }
+    .mat-mdc-select-value,
+    .mat-mdc-select-arrow {
+      color: #FAF3E0 !important; // Cream text/arrow
+    }
+     // Ensure label is styled correctly if used
+     .mat-mdc-floating-label,
+     .mat-mdc-form-field-label {
+        color: #9ca3af !important; // Lighter Gray label
+     }
+     // Ensure focused label is cream
+    &.mat-focused .mat-mdc-floating-label {
+        color: #FAF3E0 !important;
+    }
+    // Ensure outline is gold
+    .mdc-notched-outline > * {
+        border-color: #B7A57A !important; // Gold outline
+    }
+    &.mat-focused .mdc-notched-outline > * {
+        border-color: #FAF3E0 !important; // Cream focus outline
+    }
+  }
+
+  // Style Mat Button Toggle Group (Single/Double Page)
+  mat-button-toggle-group {
+      background-color: #2A4365 !important; // Lighter Blue background
+      border: 1px solid #B7A57A !important; // Gold border
+  }
+  mat-button-toggle {
+      background-color: transparent !important;
+      .mat-button-toggle-button {
+          color: #9ca3af !important; // Lighter Gray text inactive
+      }
+      &.mat-button-toggle-checked {
+          background-color: #B7A57A !important; // Gold background active
+          .mat-button-toggle-button {
+              color: #1A365D !important; // Dark Blue text active
+          }
+      }
+      &:hover:not(.mat-button-toggle-checked) {
+          background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
+          .mat-button-toggle-button {
+              color: #B7A57A !important; // Gold text on hover
+          }
+      }
   }
 } 

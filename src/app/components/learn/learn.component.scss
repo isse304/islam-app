@@ -4,22 +4,22 @@
       margin-bottom: 1rem;
     }
   
-    p {
+    p, ul, ol, li {
+      color: #4B5563;
       margin-bottom: 1rem;
       line-height: 1.8;
     }
   
     ul, ol {
       margin-left: 1.5rem;
-      margin-bottom: 1rem;
     }
   }
   
   select, 
   input, 
-  button,
-  label,
-  option,
+  button, 
+  label, 
+  option, 
   .page-number,
   .text-gray-700,
   .text-gray-600 {
@@ -31,7 +31,10 @@
   
   select {
     background-color: white;
-    border-color: #e5e7eb;
+    border: 1px solid #e5e7eb;
+    color: #1f2937;
+    border-radius: 0.375rem;
+    padding: 0.5rem 0.75rem;
     
     &:focus {
       outline: none;
@@ -64,3 +67,166 @@
     font-size: 1.125rem;
     color: #2D3748;
   } 
+  
+  // == Styles for Verse Display Dark Mode (tied to [ngClass]) ==
+  .learn-verse-dark {
+     background-color: #2A4365 !important; // Lighter Blue
+     border: 1px solid rgba(183, 165, 122, 0.2) !important; // Faint gold border
+     
+     .arabic-verse p {
+        color: #FAF3E0 !important; // Cream for Arabic text
+     }
+     .translation p {
+         color: #d1d5db !important; // Light Gray for translation
+     }
+     
+     // Scrollbar
+     &.custom-scrollbar::-webkit-scrollbar-thumb { // Add .custom-scrollbar here if needed
+        background-color: #B7A57A !important; 
+        border-color: #2A4365 !important; 
+     }
+     &.custom-scrollbar::-webkit-scrollbar-track {
+        background: #1A365D !important; 
+     }
+  }
+  
+  // --- Dark Mode Styles for OTHER elements within Learn Component --- 
+  .dark app-learn { // Use component selector
+
+    // Ensure the main container background is dark (targeting element within app-learn)
+    .min-h-screen.bg-\[\#FAF3E0\] {
+      background-color: #1A365D !important;
+    }
+
+    // General rule for direct children or deeply nested elements needing dark backgrounds
+    // EXCLUDE the verse display from this rule if it was targeted before
+    .bg-white:not(#learn-verse-display):not(.learn-verse-dark) { // Controls container, Chat container etc.
+      background-color: #2A4365 !important;
+      border-color: rgba(183, 165, 122, 0.2) !important;
+    }
+
+    // REMOVE #learn-verse-display styles from here
+    /*
+    #learn-verse-display {
+       ... styles previously here ...
+    }
+    */
+    
+    .border-gray-100 { 
+        border-color: rgba(183, 165, 122, 0.3) !important; // Gold border
+    }
+
+    // General Text Colors (These apply within .dark app-learn)
+    .text-gray-800 { color: #FAF3E0 !important; } 
+    .text-gray-700 { color: #d1d5db !important; } 
+    .text-gray-600 { color: #9ca3af !important; } 
+    .text-gray-500 { color: #6b7280 !important; } 
+    .text-\[\#1A365D\] { color: #FAF3E0 !important; } 
+    .text-\[\#B7A57A\] { color: #B7A57A !important; } 
+
+    // Controls Area Styles...
+    select {
+      background-color: #1A365D !important; 
+      border-color: #B7A57A !important; 
+      color: #FAF3E0 !important; 
+      &:focus {
+        border-color: #FAF3E0 !important; 
+        box-shadow: 0 0 0 1px #FAF3E0 !important; 
+      }
+      option {
+          color: #1A365D !important;
+          background-color: #FAF3E0 !important;
+      }
+    }
+    button {
+        &.text-\[\#B7A57A\] { 
+            color: #B7A57A !important;
+            &:hover:not(:disabled) { 
+                background-color: rgba(183, 165, 122, 0.1) !important;
+            }
+            &:disabled { color: #6b7280 !important; opacity: 0.5 !important; } 
+        }
+        &.text-gray-500 { 
+             color: #9ca3af !important; 
+            &:hover:not(:disabled) {
+                color: #B7A57A !important; 
+                background-color: rgba(183, 165, 122, 0.1) !important; 
+            }
+            &.hover\:text-red-500:hover:not(:disabled) { 
+                 color: #f87171 !important; 
+                 background-color: rgba(248, 113, 113, 0.1) !important; 
+            }
+        }
+    }
+
+    // Chat Interface Styles...
+    .ml-auto.bg-\[\#B7A57A\].text-white { // User Message
+        background-color: #3A5F8A !important; 
+        color: #FAF3E0 !important; 
+        .prose {
+            color: #FAF3E0 !important; 
+            .prose-headings, .prose-a, .prose-strong { color: #FAF3E0 !important; }
+        }
+        .text-white\/70 { 
+            color: #9ca3af !important; 
+        }
+    }
+    .mr-auto.bg-gradient-to-br.from-\[\#FAF3E0\].to-white { // AI Message
+        background-image: none !important; 
+        background-color: #2A4365 !important; 
+        color: #FAF3E0 !important; 
+        .prose {
+             color: #FAF3E0 !important; 
+             p, ul, ol, li { color: #FAF3E0 !important; } 
+             strong { color: #B7A57A !important; } 
+             a { color: #B7A57A !important; } 
+             blockquote {
+                 background-color: #1A365D !important; 
+                 border-left-color: #B7A57A !important; 
+                 color: #d1d5db !important; 
+             }
+             code {
+                background-color: #1A365D !important; 
+                color: #B7A57A !important; 
+             }
+        }
+        .text-gray-500 { 
+            color: #6b7280 !important; 
+        }
+    }
+
+    // Chat Input Area Styles...
+    .flex.gap-2.mt-4.pt-1.border-t { // Input Container
+        border-top-color: rgba(183, 165, 122, 0.3) !important; 
+    }
+    input[type="text"].flex-1 { // The actual input
+        background-color: #1A365D !important; 
+        color: #FAF3E0 !important; 
+        border-color: #B7A57A !important; 
+        &::placeholder {
+            color: #9ca3af !important; 
+        }
+        &:focus {
+            border-color: #FAF3E0 !important; 
+            box-shadow: 0 0 0 1px #FAF3E0 !important; 
+            background-color: #1A365D !important; 
+        }
+    }
+    button.bg-\[\#B7A57A\].text-white { // Send Button
+       background-color: #B7A57A !important; 
+       color: #1A365D !important; 
+       &:hover:not(:disabled) {
+         background-color: darken(#B7A57A, 5%) !important;
+       }
+       &:disabled {
+          background-color: #B7A57A !important; 
+          opacity: 0.5 !important;
+          color: #6b7280 !important; 
+       }
+    }
+    
+    // Loading indicators
+    mat-spinner circle {
+      stroke: #B7A57A !important; 
+    }
+  }

@@ -3,7 +3,8 @@
         <!-- Main Content Area (Render only AFTER initial premium check AND if user IS premium) -->
         <div class="grid lg:grid-cols-2 gap-8 h-[calc(100vh-4rem)] overflow-hidden" *ngIf="initialPremiumCheckComplete && isPremium">
             <!-- Left Column: Current Verse Section -->
-            <div class="hidden lg:block bg-white rounded-xl shadow-lg p-6 overflow-y-auto custom-scrollbar">
+            <div class="hidden lg:block rounded-xl shadow-lg p-6 overflow-y-auto custom-scrollbar"
+                 [ngClass]="{ 'learn-verse-dark': (currentTheme$ | async) === 'dark' }">
                 <!-- Verse Selection Controls MOVED OUTSIDE -->
                 
                 <div class="verse-meaning space-y-6">
@@ -102,7 +103,7 @@
                         <div class="prose prose-lg max-w-none" 
                              [ngClass]="{
                                'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant',
-                               'prose-headings:text-white prose-a:text-white prose-strong:text-white': message.role === 'user'
+                               'prose-headings:text-[#1A365D] prose-a:text-[#1A365D] prose-strong:text-[#1A365D] text-[#1A365D]': message.role === 'user'
                              }"
                              [innerHTML]="message.content | markdown">
                         </div>

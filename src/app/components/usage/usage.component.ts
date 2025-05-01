@@ -52,13 +52,20 @@ export class UsageComponent implements OnInit, OnDestroy {
   ngOnInit() {
     this.loading = true;
     this.userSubscription = this.authService.user$.subscribe(user => {
+      const wasPremium = this.isPremiumUser; // Store previous state
       this.isPremiumUser = user?.isPremium || false;
-      if (this.isPremiumUser) {
+      
+      // Always fetch if the user is premium, or if their status just changed to premium
+      if (this.isPremiumUser) { 
         this.fetchUsageLimits();
-      } else {
+      } else if (wasPremium && !this.isPremiumUser) {
+        // If user just downgraded, clear the limits
         this.loading = false;
         this.usageLimits = null;
         this.clearResetTimer();
+      } else {
+        // If user was not premium and still isn't, just stop loading
+        this.loading = false; 
       }
     });
   }

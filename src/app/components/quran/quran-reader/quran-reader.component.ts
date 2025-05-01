@@ -1,6 +1,6 @@
 export {};
 
-import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -111,7 +111,8 @@ interface TimingData {
     DragDropModule, // <-- Add this to imports
   ],
   templateUrl: './quran-reader.component.html',
-  styleUrls: ['./quran-reader.component.scss']
+  styleUrls: ['./quran-reader.component.scss'],
+  encapsulation: ViewEncapsulation.None // Add this line
 })
 export class QuranReaderComponent implements OnInit, OnDestroy {
   @Input() selectedSurah: number = 1;
@@ -403,18 +404,22 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
     try {
         // 1. Load essential non-user data first (can run in parallel)
-        await Promise.all([
+        // AND load user preferences concurrently, but DON'T await them here
+        const nonUserDataPromise = Promise.all([
             this.loadSurahs(),
             this.loadTranslationsData(),
             this.loadRecitersData(),
-            // this.loadReadingHistory(), // History can load later if needed
-            // this.loadBookmarks() // Bookmarks can load later if needed
         ]);
-        this.checkDarkMode();
+        
+        // Trigger preferences load but don't block
+        const preferencesPromise = this.loadUserPreferences(true); 
+        // We'll get the result later or use defaults/URL params first
 
-        // 2. Load user preferences and WAIT for them
-        // Store prefs in a local variable for easier access in this scope
-        const prefs = await this.loadUserPreferences(true); 
+        await nonUserDataPromise; // Wait for non-user data
+        this.checkDarkMode();
+        
+        // Wait for preferences ONLY to get lastState if needed for default view
+        const prefs = await preferencesPromise; 
 
         // 3. Determine Initial State (URL > Defaults) - Simplified
         let initialSurah: number = 1;
@@ -461,7 +466,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         else {
             stateSource = 'defaults (forced translation)';
             initialModeIsMushaf = false; // Always default to translation now
-            // Load last *translation* state if available, otherwise pure defaults
+            // Load last *translation* state if available from prefs, otherwise pure defaults
             initialSurah = prefs?.lastState?.lastTranslationSurah || 1;
             const surahInfo = this.surahs.find(s => s.number === initialSurah);
             const maxVerse = surahInfo ? surahInfo.numberOfAyahs : 1;
@@ -485,7 +490,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
         // +++ ADD LOG BEFORE loadInitialContent +++
         ////console.log(`%c[QuranReader ngOnInit] BEFORE loadInitialContent. isMushafView: ${this.isMushafView}, CurrentPage: ${this.currentPage}, DisplayPage: ${this.displayPageNumberSubject.value}`, 'color: blue');
-        // --- Load Initial Content ---
+        // --- Load Initial Content IMMEDIATELY---
         this.loadInitialContent(this.currentSurah, this.currentVerse, this.isMushafView, initialPage);
         // +++ ADD LOG AFTER loadInitialContent +++
         ////console.log(`%c[QuranReader ngOnInit] AFTER loadInitialContent call.`, 'color: blue');
@@ -494,21 +499,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.initialLoadComplete = true;
         //////console.log('%c[QuranReader ngOnInit] Initialization complete. initialLoadComplete = true.', 'color: green; font-weight: bold;');
         this.subscribeToRouteParams();
+        // Load secondary data (bookmarks/history) in the background
         this.loadSecondaryData().catch(err => console.warn("Error loading secondary data:", err)); // Keep this one warn
 
     } catch (error) {
-        console.error('[ngOnInit ERROR] Critical error during initialization:', error);
-        this.toastService.showError('Failed to initialize Quran Reader.');
+        console.error('%c[QuranReader ngOnInit] Critical initialization error:', 'color: red; font-weight: bold;', error);
         this.isLoading = false;
-        this.initialLoadComplete = true;
         this.changeDetector.markForCheck();
+        // Handle critical error (e.g., show error message to user)
     }
-    // Subscribe to user changes
-    this.authService.user$.pipe(takeUntil(this.destroy$)).subscribe(currentUser => {
-      this.user = currentUser;
-      this.isPremiumUser = currentUser?.isPremium ?? false;
-      this.changeDetector.markForCheck();
-    });
+    // Note: isLoading is now managed primarily within loadInitialContent and loadMushafPage
   }
 
   // Helper to update title and meta tags

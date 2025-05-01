@@ -198,7 +198,7 @@ export class FirebaseAuthService {
     private snackBar: MatSnackBar,
     private injector: Injector // Inject Injector
   ) {
-    // //console.log('[AuthService] Constructor called');
+    // //console.log('[AuthService] Constructor called'); // Log: Constructor start
     // Start initialization immediately
     // Ensure initializeAuth is called to set up the promise if needed elsewhere
     this.authPromise = this.initializeAuth(); 
@@ -255,9 +255,11 @@ export class FirebaseAuthService {
   // Helper to signal auth readiness only once
   private signalAuthReady(): void {
     if (!this.hasSignaledAuthReady) {
-        // // //console.log('[FirebaseAuthService] Signaling authReady (true).');
+        // //console.log('[FirebaseAuthService] Signaling authReady (true).'); // Log: signalAuthReady called
         this.hasSignaledAuthReady = true; // Set flag immediately
         this.authReady.next(true); // Emit true
+    } else {
+        // //console.log('[FirebaseAuthService] AuthReady already signaled.');
     }
   }
 
@@ -266,7 +268,7 @@ export class FirebaseAuthService {
     if (this.tokenRefreshTimer) {
       clearTimeout(this.tokenRefreshTimer);
       this.tokenRefreshTimer = null;
-      // // //console.log('[Timer] Token refresh timer cleared.');
+      // // ////console.log('[Timer] Token refresh timer cleared.');
     }
   }
 
@@ -278,12 +280,12 @@ export class FirebaseAuthService {
       localStorage.removeItem(this.PREMIUM_TIMESTAMP_KEY);
       localStorage.removeItem(this.TOKEN_CACHE_KEY); // Also clear token from storage
       // Clear other relevant cache keys if any
-      // // //console.log('[Cache] User cache cleared.');
+      // // ////console.log('[Cache] User cache cleared.');
   }
 
   // Centralized method to clear all auth data on sign-out or error
   private clearAuthData(): void {
-      // // //console.log('[clearAuthData] Clearing auth data...');
+      // // ////console.log('[clearAuthData] Clearing auth data...');
       this._user.next(null);
       this.userDataSubject.next(null); // Clear user data observable
       this.cachedToken = null;
@@ -293,7 +295,7 @@ export class FirebaseAuthService {
       this.lastEmailVerifiedState = null;
       this.refreshTriggeredForVerification = false;
       // Reset any other relevant state (e.g., loading flags if necessary)
-      // // //console.log('[clearAuthData] Auth data cleared.');
+      // // ////console.log('[clearAuthData] Auth data cleared.');
   }
 
   // Define or ensure getDefaultPreferences exists
@@ -319,76 +321,106 @@ export class FirebaseAuthService {
   }
 
   // Handles processing after a user is signed in (Firebase Auth level)
-  // *** MODIFIED: Now returns AppUser | null, doesn't update _user directly ***
+  // *** MODIFIED: Emits partial user first, then fetches data ***
   private async handleUserSignedIn(firebaseUser: FirebaseUser): Promise<AppUser | null> {
-    // //console.log(`[handleUserSignedIn] Processing user: ${firebaseUser.uid}, Verified: ${firebaseUser.emailVerified}`);
+    // //console.log(`[handleUserSignedIn] START processing user: ${firebaseUser.uid}`);
     const startTime = Date.now();
 
     try {
-      // Force refresh token to get latest claims
+      // 1. Get token & map basic user data
+      // //console.log(`[handleUserSignedIn] Getting token/claims for ${firebaseUser.uid}...`);
       const tokenResult = await firebaseUser.getIdTokenResult(true);
-      // //console.log(`[handleUserSignedIn] Fetched token & claims for ${firebaseUser.uid}`);
+      // //console.log(`[handleUserSignedIn] Fetched token & claims.`);
+      let partialAppUser = this.mapFirebaseUser(firebaseUser, tokenResult); 
+      // //console.log(`[handleUserSignedIn] Mapped partial AppUser.`);
 
-      // Map Firebase user + claims to AppUser
-      let appUser = this.mapFirebaseUser(firebaseUser, tokenResult);
-      
-      // Initialize lastEmailVerifiedState based on this initial user state
+      // Initialize lastEmailVerifiedState
       if (this.lastEmailVerifiedState === null) {
-          this.lastEmailVerifiedState = appUser.emailVerified;
+          this.lastEmailVerifiedState = partialAppUser.emailVerified;
       }
-
-      // //console.log(`[handleUserSignedIn] Constructed AppUser. Time: ${Date.now() - startTime}ms`);
-
-      // Fetch preferences, bookmarks, history in parallel
-      const initialUserData = await firstValueFrom(
-        forkJoin({
-          preferences: from(this.getUserPreferences()),
-          bookmarks: from(this.getBookmarks()),
-          history: from(this.getReadingHistoryInternal()).pipe(
-            timeout(30000), 
-            catchError(err => {
-              // //console.warn('[handleUserSignedIn] Timeout or error fetching history, proceeding with empty history:', err);
-              return of([]); 
-            })
-          )
-        }).pipe(
-          catchError(dataError => {
-            // //console.error('[handleUserSignedIn] Error fetching initial user data (forkJoin level): ', dataError);
-            return of({ preferences: null, bookmarks: [], history: [] });
-          })
-        )
-      );
-
-      // Assign fetched data or defaults
-      appUser.preferences = initialUserData.preferences || this.getDefaultPreferences();
-      appUser.bookmarks = initialUserData.bookmarks || [];
-      appUser.history = initialUserData.history || [];
-
-      // Update the combined user data BehaviorSubject (can be done here or after _user update)
-      this.userDataSubject.next({
-        preferences: appUser.preferences,
-        bookmarks: appUser.bookmarks,
-        history: appUser.history
-      });
-
-      // Cache the token (can be done here)
+      
+      // 2. Cache token immediately
       this.cachedToken = { token: tokenResult.token, timestamp: Date.now() };
       localStorage.setItem(this.TOKEN_CACHE_KEY, JSON.stringify(this.cachedToken));
       
-      // Cache user data (can be done here or after _user update)
-      await this.cacheUserData(appUser); 
-      
-      // //console.log(`[handleUserSignedIn] State updated and data cached.`);
+      // 3. Emit PARTIAL user state immediately (important!)
+      // Ensure essential fields are present before emitting
+      const userToEmitInitially: AppUser = { 
+          ...partialAppUser, 
+          preferences: this.getDefaultPreferences(), // Emit default prefs initially
+          bookmarks: [], // Emit empty arrays initially
+          history: [] 
+      };
+      this.ngZone.run(() => { // Ensure emission is in Angular zone
+          this._user.next(userToEmitInitially);
+          // //console.log(`[handleUserSignedIn] Emitted PARTIAL user state for ${firebaseUser.uid}`);
+      });
 
-      // Schedule next token refresh
+      // 4. Schedule token refresh (can happen after partial emit)
       this.scheduleTokenRefresh();
 
-      // *** RETURN the fully constructed user ***
-      return appUser;
+      // 5. Fetch preferences, bookmarks, history concurrently
+      // //console.log(`[handleUserSignedIn] Fetching profile data (prefs, bookmarks, history)...`);
+      const profileData = await firstValueFrom(
+        forkJoin({
+          // Use methods that now rely on the emitted _user state 
+          preferences: from(this.getUserPreferences()), 
+          bookmarks: from(this.getBookmarks()),
+          history: from(this.getReadingHistoryInternal()) // Ensure this also uses _user if needed
+        }).pipe(
+          timeout(30000), // Add timeout for the whole join
+          catchError(dataError => {
+            //console.error('[handleUserSignedIn] Error fetching profile data (forkJoin level): ', dataError);
+            // Return default structure on error
+            return of({ 
+                preferences: this.getDefaultPreferences(), // Default prefs
+                bookmarks: [], 
+                history: [] 
+            }); 
+          })
+        )
+      );
+      // //console.log(`[handleUserSignedIn] Profile data fetched.`);
+
+      // 6. Get the LATEST user state (in case it changed during async fetch)
+      const latestPartialUser = this._user.getValue();
+      if (!latestPartialUser || latestPartialUser.id !== firebaseUser.uid) {
+          //console.warn(`[handleUserSignedIn] User state changed unexpectedly during profile data fetch for ${firebaseUser.uid}. Aborting full update.`);
+          return latestPartialUser; // Return the current (possibly null or different) user state
+      }
+      
+      // 7. Merge fetched data with the latest partial user state
+      const finalAppUser: AppUser = {
+          ...latestPartialUser, // Base is the latest state from _user
+          preferences: profileData.preferences || latestPartialUser.preferences || this.getDefaultPreferences(),
+          bookmarks: profileData.bookmarks || latestPartialUser.bookmarks || [],
+          history: profileData.history || latestPartialUser.history || []
+          // Ensure other claims/fields from latestPartialUser are preserved
+      };
+
+      // 8. Cache the FINAL user data
+      await this.cacheUserData(finalAppUser);
+
+      // 9. Emit the FINAL, complete user state
+      this.ngZone.run(() => { // Ensure emission is in Angular zone
+          this._user.next(finalAppUser);
+          // //console.log(`[handleUserSignedIn] Emitted FINAL user state for ${firebaseUser.uid}`);
+      });
+      
+      // Update combined subject as well
+      this.userDataSubject.next({
+          preferences: finalAppUser.preferences,
+          bookmarks: finalAppUser.bookmarks,
+          history: finalAppUser.history
+      });
+
+      // //console.log(`[handleUserSignedIn] END processing user: ${firebaseUser.uid}. Total Time: ${Date.now() - startTime}ms`);
+      return finalAppUser; // Return the final state
 
     } catch (error) {
-      // //console.error(`[handleUserSignedIn] Error processing signed-in user ${firebaseUser.uid}:`, error);
-      // *** RETURN null on error ***
+      //console.error(`[handleUserSignedIn] ERROR processing signed-in user ${firebaseUser.uid}:`, error);
+      // Ensure user state is cleared on error
+      this.ngZone.run(() => { this.clearAuthData(); });
       return null; 
     }
   }
@@ -396,10 +428,10 @@ export class FirebaseAuthService {
   // Setup the primary listener for Firebase Auth state changes
   // *** MODIFIED: Awaits handleUserSignedIn, then updates _user, then signals settled ***
   private setupAuthStateListener(redirectAlreadyProcessed: boolean): void {
-    // //console.log('[AuthService] Setting up onAuthStateChanged listener...');
+    // //console.log('[AuthService] Setting up onAuthStateChanged listener...'); // Log: setupAuthStateListener start
     let initialAuthStateReceived = false;
     onAuthStateChanged(this.auth, async (firebaseUser) => {
-      // //console.log(`[AuthService] onAuthStateChanged triggered. User: ${firebaseUser ? firebaseUser.uid : 'null'}`);
+      // //console.log(`[AuthService] onAuthStateChanged triggered. User: ${firebaseUser ? firebaseUser.uid : 'null'}`); // Log: onAuthStateChanged trigger
       const isFirstCallback = !initialAuthStateReceived;
       initialAuthStateReceived = true;
 
@@ -412,40 +444,47 @@ export class FirebaseAuthService {
           finalAppUser = await this.handleUserSignedIn(firebaseUser);
         } else {
           // If firebaseUser is null, ensure we handle sign-out
+          // //console.log('[AuthService] onAuthStateChanged: User is null, handling sign out...');
           this.handleUserSignedOut(); // This clears data and sets _user to null internally
           finalAppUser = null; // Explicitly set to null
         }
       } catch (error) {
-         console.error('[AuthService] Unexpected error during onAuthStateChanged processing:', error);
+         //console.error('[AuthService] onAuthStateChanged: Unexpected error during processing:', error); // Log: onAuthStateChanged error
          this.clearAuthData(); // Ensure cleanup on unexpected error
          finalAppUser = null;
       } finally {
          // Run UI updates and signaling within Angular zone
          this.ngZone.run(() => {
+            // //console.log('[AuthService] onAuthStateChanged: Updating _user subject in NgZone...');
             // Update the main _user subject AFTER all processing
             if (finalAppUser) {
               this._user.next(finalAppUser);
+              // //console.log('[AuthService] onAuthStateChanged: _user subject updated with user.');
             } else if (!firebaseUser) { 
               // Ensure _user is null if firebaseUser was null and no error occurred
               // handleUserSignedOut should have already done this, but double-check
               if (this._user.value !== null) { 
                  this._user.next(null); 
+                 // //console.log('[AuthService] onAuthStateChanged: _user subject set to null (explicitly).');
               }
-            } // If finalAppUser is null due to an error in handleUserSignedIn, clearAuthData was likely called
+            } else {
+                //console.log('[AuthService] onAuthStateChanged: finalAppUser is null (likely due to error), _user subject not updated again.');
+            }
 
             // Signal initial auth state is ready after first callback completes
             if (isFirstCallback) {
-              // //console.log('[AuthService] First onAuthStateChanged callback finished. Signaling authReady.');
+              //console.log('[AuthService] First onAuthStateChanged callback finished. Signaling authReady.'); // Log: signalAuthReady call point
               this.signalAuthReady(); // Use the original signal for basic readiness
             }
             
             // Try to signal that post-redirect auth is settled AFTER _user is updated
+            //console.log('[AuthService] onAuthStateChanged: Attempting to signal post-redirect settled...');
             this.trySignalPostRedirectAuthSettled();
          });
       }
     }, (error) => {
-      // //console.log('[AuthService] onAuthStateChanged reported an error.');
-      console.error('[AuthService] Auth state listener error:', error);
+      //console.log('[AuthService] onAuthStateChanged reported an error callback.'); // Log: onAuthStateChanged error callback
+      //console.error('[AuthService] Auth state listener error:', error);
       // Run UI updates and signaling within Angular zone for error case
       this.ngZone.run(() => {
          this.clearAuthData(); // Clears _user and other data
@@ -468,7 +507,7 @@ export class FirebaseAuthService {
 
     const firebaseUser = this.auth.currentUser;
     if (!firebaseUser) {
-      // //console.warn('getToken: No Firebase user found.');
+      // ////console.warn('getToken: No Firebase user found.');
       return null;
     }
 
@@ -485,7 +524,7 @@ export class FirebaseAuthService {
     const token = idTokenResult?.token; // Extract token after getting result
     
     if (!token) {
-        // //console.warn('getToken: Failed to obtain a valid token from Firebase SDK.');
+        // ////console.warn('getToken: Failed to obtain a valid token from Firebase SDK.');
         return null;
     }
 
@@ -527,25 +566,25 @@ export class FirebaseAuthService {
   }
 
   private async refreshAndGetToken(): Promise<string | null> {
-    // //console.warn('refreshAndGetToken called - this should ideally be handled by getToken(true)');
+    // ////console.warn('refreshAndGetToken called - this should ideally be handled by getToken(true)');
     return this.getToken(true); // Delegate to getToken with forceRefresh = true
   }
 
   async isAuthenticated(): Promise<boolean> {
-    // // //console.log('🔒 Checking authentication...');
+    // // ////console.log('🔒 Checking authentication...');
     await this.waitForAuthReady(); // Ensure listener has processed initial state
     const user = this._user.getValue();
-    // // //console.log('🔒 Auth check result:', { isAuthenticated: !!user, user });
+    // // ////console.log('🔒 Auth check result:', { isAuthenticated: !!user, user });
     return !!user;
   }
 
   async refreshSubscriptionStatus(): Promise<boolean> {
-    // // //console.log('Starting subscription status refresh...');
+    // // ////console.log('Starting subscription status refresh...');
     
     try {
         const user = this.auth.currentUser;
         if (!user) {
-            // //console.warn('No current user for subscription status refresh');
+            // ////console.warn('No current user for subscription status refresh');
             return false;
         }
 
@@ -554,7 +593,7 @@ export class FirebaseAuthService {
         if (lastRefreshTime) {
             const timeSinceLastRefresh = Date.now() - parseInt(lastRefreshTime);
             if (timeSinceLastRefresh < 5 * 60 * 1000) { // Less than 5 minutes
-                // // //console.log('Using cached subscription status');
+                // // ////console.log('Using cached subscription status');
                 return true;
             }
         }
@@ -585,12 +624,12 @@ export class FirebaseAuthService {
                 localStorage.setItem('premium_status_timestamp', Date.now().toString());
                 localStorage.setItem('subscription_refresh_timestamp', Date.now().toString());
                 
-                // // //console.log('Subscription status refreshed:', { isPremium, features });
+                // // ////console.log('Subscription status refreshed:', { isPremium, features });
             }
 
             return true;
         } catch (error) {
-            // //console.warn('Error checking subscription status:', error);
+            // ////console.warn('Error checking subscription status:', error);
             
             // Fallback to token claims if server check fails
             const isPremium = idTokenResult.claims['premium'] === true;
@@ -607,7 +646,7 @@ export class FirebaseAuthService {
             return isPremium;
         }
     } catch (error) {
-        // //console.error('Error in refreshSubscriptionStatus:', error);
+        // ////console.error('Error in refreshSubscriptionStatus:', error);
         return false;
     }
   }
@@ -616,61 +655,43 @@ export class FirebaseAuthService {
     try {
         const user = this.auth.currentUser;
         if (!user) {
-            // //console.warn('getUserPreferences: No current user found, returning default preferences');
             return this.getDefaultPreferences();
         }
         const userId = user.uid;
 
-        // Check cache first
-        // // //console.log(`[AuthService] getUserPreferences: Checking cache for user ${userId}...`);
         const cachedData = this.getCachedData(`${this.USER_CACHE_KEY}_${userId}`);
         if (cachedData && cachedData.preferences) {
-          // // //console.log(`[AuthService] getUserPreferences: Cache hit for user ${userId}.`);
           this.preferencesSubject.next(cachedData.preferences);
           return cachedData.preferences;
         }
 
-        // // //console.log(`[AuthService] getUserPreferences: Cache miss or stale for user ${userId}. Fetching from API...`);
         this.lastPreferencesRequest = Date.now();
 
-        // Fetch from API if not cached or cache expired
-        const token = await user.getIdToken();
-        if (!token) {
-            // //console.error('getUserPreferences: Failed to get auth token');
-            return this.getDefaultPreferences();
-        }
-
-        // Make API request
+        // Make API request - Interceptor adds token
         const response = await firstValueFrom(
             this.http.get<any>(`${environment.apiUrl}/api/user/${userId}/preferences`).pipe(
                 timeout(15000),
                 retry({ count: 2, delay: 1500 }),
                 catchError(error => {
-                    // //console.error(`[AuthService] getUserPreferences: Error fetching preferences for ${userId}:`, error);
+                    //console.error(`[AuthService] getUserPreferences: Error fetching preferences for ${userId}:`, error);
                     return of(null); // Return null on error, handle below
                 })
             )
         );
 
         const preferencesToCache = response?.preferences || this.getDefaultPreferences();
-
-        // --- Update Cache ---
-        // // //console.log(`[AuthService] getUserPreferences: Caching new data for ${userId}`);
         this.setCachedData(`${this.USER_CACHE_KEY}_${userId}`, { preferences: preferencesToCache });
-        // --- End Update Cache ---
-
         this.preferencesSubject.next(preferencesToCache);
         return preferencesToCache;
 
     } catch (error) {
-        // //console.error('[AuthService] getUserPreferences: General error:', error);
+        //console.error('[AuthService] getUserPreferences: General error:', error);
         const defaults = this.getDefaultPreferences();
         this.preferencesSubject.next(defaults);
         return defaults;
     }
   }
 
-  // Update saveUserPreferences with better debouncing
   async saveUserPreferences(preferences: any): Promise<UserPreferences> {
     // Update local cache immediately
     this.preferencesCache = {
@@ -710,20 +731,13 @@ export class FirebaseAuthService {
 
         const user = this.auth.currentUser;
         if (!user) throw new Error('No user logged in');
-
-        const token = await user.getIdToken();
+        const userId = user.uid;
         
-        // Send preferences directly in the body
+        // Send preferences directly in the body - Interceptor adds token
         const response = await firstValueFrom(
             this.http.put<any>(
-                `${environment.apiUrl}/api/user/${user.uid}/preferences`,
-                mergedPreferences,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
+                `${environment.apiUrl}/api/user/${userId}/preferences`,
+                mergedPreferences
             )
         );
 
@@ -733,19 +747,17 @@ export class FirebaseAuthService {
                 data: response.preferences,
                 timestamp: Date.now()
             };
-            // +++ Clear USER_CACHE_KEY after successful save +++
-            const cacheKey = `${this.USER_CACHE_KEY}_${user.uid}`;
-            ////console.log(`[saveUserPreferences] Clearing cache key: ${cacheKey}`);
+            const cacheKey = `${this.USER_CACHE_KEY}_${userId}`;
             localStorage.removeItem(cacheKey);
-            // +++ End Cache Clearing +++
         }
 
         this.isSaving = false;
-        return this.preferencesCache.data;
+        return this.preferencesCache?.data || this.getDefaultPreferences(); // Return cached or default
     } catch (error) {
-        // //console.error('Error saving preferences:', error);
+        //console.error('Error saving preferences:', error);
         this.isSaving = false;
-        throw error;
+        // Re-throw or handle as needed, but interceptor handles auth errors
+        throw error; 
     }
   }
 
@@ -764,15 +776,15 @@ export class FirebaseAuthService {
         // Silently handle 404 errors for admin endpoint - this is expected in development
         const httpError = error as any;
         if (httpError?.status === 404) {
-          // // //console.log('Admin status endpoint not available, defaulting to non-admin');
+          // // ////console.log('Admin status endpoint not available, defaulting to non-admin');
         } else {
-          // //console.warn('Could not check admin status');
+          // ////console.warn('Could not check admin status');
         }
         // Default to non-admin if API endpoint doesn't exist
         return false;
       }
     } catch (error) {
-      // // //console.log('Error in admin status check, defaulting to non-admin');
+      // // ////console.log('Error in admin status check, defaulting to non-admin');
       return false;
     }
   }
@@ -793,14 +805,14 @@ export class FirebaseAuthService {
       .then(async (userCredential) => {
         // User created successfully
         const firebaseUser = userCredential.user;
-        // // //console.log('[AuthService] User created successfully:', firebaseUser.uid);
+        // // ////console.log('[AuthService] User created successfully:', firebaseUser.uid);
 
         // Send verification email immediately after creation
         try {
           await sendEmailVerification(firebaseUser);
-          // // //console.log('[AuthService] Verification email sent to:', firebaseUser.email);
+          // // ////console.log('[AuthService] Verification email sent to:', firebaseUser.email);
         } catch (verificationError) {
-          // //console.error('[AuthService] Error sending verification email:', verificationError);
+          // ////console.error('[AuthService] Error sending verification email:', verificationError);
           // Decide how to handle this - maybe log it, but don't fail the signup
         }
 
@@ -808,7 +820,7 @@ export class FirebaseAuthService {
       })
       .catch(error => {
         // Handle creation errors
-        // //console.error('[AuthService] Error creating user:', error);
+        // ////console.error('[AuthService] Error creating user:', error);
         throw error; // Re-throw the error to be handled by the caller
       });
   }
@@ -816,20 +828,20 @@ export class FirebaseAuthService {
   // Sign in with Google
   async signInWithGoogle(): Promise<UserCredential> {
     const provider = new GoogleAuthProvider();
-    // //console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
+    // ////console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
     try {
       const credential = await signInWithPopup(this.auth, provider);
-      // //console.log('[AuthService] signInWithPopup successful.'); // Log success
+      // ////console.log('[AuthService] signInWithPopup successful.'); // Log success
       // No need to call handleUserSignedIn here, onAuthStateChanged will handle it.
       return credential;
     } catch (error: any) { // Add type annotation to error
-      //console.error('[AuthService] signInWithPopup error:', error);
+      ////console.error('[AuthService] signInWithPopup error:', error);
       // Handle specific errors if needed
       if (error.code === 'auth/popup-closed-by-user') {
         // Handle popup closed specifically, maybe just log or return null/reject differently
-        // //console.log('[AuthService] Google Sign-In popup closed by user.');
+        // ////console.log('[AuthService] Google Sign-In popup closed by user.');
       } else if (error.code === 'auth/cancelled-popup-request') {
-        // //console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
+        // ////console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
       }
       throw error; // Re-throw the error for the component to catch
     }
@@ -837,31 +849,31 @@ export class FirebaseAuthService {
 
   // Handle redirect result
   private async handleRedirectResult(): Promise<void> {
-    // //console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
+    // ////console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
     this._isLoading.next(true);
     try {
       const credential = await getRedirectResult(this.auth);
-      // //console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
+      // ////console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
       if (credential) {
-        // //console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
+        // ////console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
         const user = await this.handleUserSignedIn(credential.user);
         if (user) {
           // Navigate only if a user was successfully processed from redirect
-          // //console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
+          // ////console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
           this.ngZone.run(() => {
              this.router.navigateByUrl(this.redirectUrl || '/home').catch(err => {
-               //console.error('[AuthService] handleRedirectResult: Navigation failed after redirect:', err);
+               ////console.error('[AuthService] handleRedirectResult: Navigation failed after redirect:', err);
                this.router.navigate(['/home']); // Fallback
              });
           });
         } else {
-            //console.warn('[AuthService] handleRedirectResult: Redirect credential processed, but handleUserSignedIn resulted in null user.');
+            ////console.warn('[AuthService] handleRedirectResult: Redirect credential processed, but handleUserSignedIn resulted in null user.');
         }
       } else {
-        // //console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
+        // ////console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
       }
     } catch (error: any) {
-      //console.error('[AuthService] handleRedirectResult: Error processing redirect result:', error); // Log error
+      ////console.error('[AuthService] handleRedirectResult: Error processing redirect result:', error); // Log error
       // Avoid navigating on error, let the normal auth state handle it
     } finally {
       this._isLoading.next(false);
@@ -893,7 +905,7 @@ export class FirebaseAuthService {
 
       // Sign out from Firebase Auth
       await signOut(this.auth);
-      // //console.log('[FirebaseAuthService] Firebase sign-out successful.');
+      // ////console.log('[FirebaseAuthService] Firebase sign-out successful.');
 
       // *** Use Angular Router for navigation ***
       this.ngZone.run(() => {
@@ -902,7 +914,7 @@ export class FirebaseAuthService {
       });
 
     } catch (error) {
-      // console.error('[FirebaseAuthService] Error during sign out:', error);
+      // //console.error('[FirebaseAuthService] Error during sign out:', error);
       // Attempt to clear local state even if Firebase sign-out fails
       try {
         this.clearAuthData();
@@ -917,7 +929,7 @@ export class FirebaseAuthService {
         this.preferencesSubject.next(null);
         this.userDataSubject.next({ bookmarks: [], history: [], preferences: null });
       } catch (clearError) {
-          // console.error('[FirebaseAuthService] Error clearing data after sign out error:', clearError);
+          // //console.error('[FirebaseAuthService] Error clearing data after sign out error:', clearError);
       }
       // Navigate after clearing data on error
       this.ngZone.run(() => { 
@@ -927,7 +939,7 @@ export class FirebaseAuthService {
 
     } finally {
       this._isLoading.next(false);
-      // //console.log('[FirebaseAuthService] signOut finished.');
+      // ////console.log('[FirebaseAuthService] signOut finished.');
       // REMOVED Redundant Navigation from finally block entirely
     }
   }
@@ -946,7 +958,7 @@ export class FirebaseAuthService {
     try {
       await sendPasswordResetEmail(this.auth, email);
     } catch (error) {
-      // //console.error('Error sending password reset email:', error);
+      // ////console.error('Error sending password reset email:', error);
       throw error;
     }
   }
@@ -971,7 +983,7 @@ export class FirebaseAuthService {
           return apiPrefs;
         }
       } catch (error) {
-        // //console.warn('Could not fetch user preferences from API');
+        // ////console.warn('Could not fetch user preferences from API');
       }
       
       // Try localStorage as fallback
@@ -980,7 +992,7 @@ export class FirebaseAuthService {
         try {
           return JSON.parse(localPrefs);
         } catch (error) {
-          // //console.error('Error parsing localStorage preferences:', error);
+          // ////console.error('Error parsing localStorage preferences:', error);
         }
       }
       
@@ -991,7 +1003,7 @@ export class FirebaseAuthService {
         bookmarks: []
       };
     } catch (error) {
-      // //console.error('Error getting user settings:', error);
+      // ////console.error('Error getting user settings:', error);
       return {};
     }
   }
@@ -1000,7 +1012,7 @@ export class FirebaseAuthService {
   async saveReadingHistory(location: { type: 'verse', surah: number, verse: number } | { type: 'page', page: number, surah: number | null }): Promise<void> {
     const user = this._user.getValue();
     if (!user) {
-      //console.warn('[AuthService saveReadingHistory] User not logged in, skipping save.');
+      ////console.warn('[AuthService saveReadingHistory] User not logged in, skipping save.');
       return; // Don't save if user is not logged in
     }
 
@@ -1022,7 +1034,7 @@ export class FirebaseAuthService {
         // Remove frontend check for consistency if backend handles it reliably
         /* 
         if (isNaN(location.page) || location.page < 1 || location.page > 613) { 
-           //console.warn('[AuthService saveReadingHistory] Invalid page data, skipping save:', location);
+           ////console.warn('[AuthService saveReadingHistory] Invalid page data, skipping save:', location);
            return;
         }
         */
@@ -1034,15 +1046,15 @@ export class FirebaseAuthService {
         };
         // Add safety check for null surah on page type
         if (body.surah === null || body.surah === undefined) {
-            //console.warn('[AuthService saveReadingHistory] Surah is null/undefined for page type, skipping save:', location);
+            ////console.warn('[AuthService saveReadingHistory] Surah is null/undefined for page type, skipping save:', location);
             return;
         }
     } else {
-        //console.warn('[AuthService saveReadingHistory] Unknown location type, skipping save:', location);
+        ////console.warn('[AuthService saveReadingHistory] Unknown location type, skipping save:', location);
       return;
     }
 
-    // //console.log(`[AuthService saveReadingHistory] Sending POST to ${url} with body:`, body);
+    // ////console.log(`[AuthService saveReadingHistory] Sending POST to ${url} with body:`, body);
 
     // POST to the backend endpoint
     try {
@@ -1051,16 +1063,16 @@ export class FirebaseAuthService {
             retry(this.API_RETRY_ATTEMPTS),
             catchError(error => {
                 // Log specific errors but don't necessarily throw to break the app flow
-                //console.error('[AuthService saveReadingHistory] Error saving history to server:', error);
+                ////console.error('[AuthService saveReadingHistory] Error saving history to server:', error);
                 // Return an observable that emits null or an error object to allow flow continuation
                 return of(null); // Or throwError(() => error) if you need to propagate
             })
         ));
-        // //console.log('[AuthService saveReadingHistory] History saved successfully.');
+        // ////console.log('[AuthService saveReadingHistory] History saved successfully.');
         // Optionally: Update local history cache/subject upon success here if needed
     } catch (error) {
         // Catch errors specifically from firstValueFrom if the pipe returns an error
-        //console.error('[AuthService saveReadingHistory] Final error after pipe:', error);
+        ////console.error('[AuthService saveReadingHistory] Final error after pipe:', error);
     }
   }
 
@@ -1084,7 +1096,7 @@ export class FirebaseAuthService {
 
     // Linter Fix 1: Check if originalData exists
     if (!originalData) {
-        // //console.warn('[AuthService] Skipping optimistic history update: originalData is null.');
+        // ////console.warn('[AuthService] Skipping optimistic history update: originalData is null.');
         // NOTE: Server save will still be attempted below if token is available.
     } else {
         try {
@@ -1092,10 +1104,10 @@ export class FirebaseAuthService {
             const originalHistory: ReadingHistoryEntry[] = originalData.history ?? [];
             const optimisticallyUpdatedHistory = this.addOrUpdateHistoryEntry(originalHistory, entry);
             this.userDataSubject.next({ ...originalData, history: optimisticallyUpdatedHistory });
-            // // //console.log('[AuthService] userDataSubject emitted after optimistic update:', updatedUserData);
-            // // //console.log('[AuthService] Optimistically updated history:', entry);
+            // // ////console.log('[AuthService] userDataSubject emitted after optimistic update:', updatedUserData);
+            // // ////console.log('[AuthService] Optimistically updated history:', entry);
         } catch (optimisticError) {
-            // //console.error('[AuthService] Error during optimistic history update:', optimisticError);
+            // ////console.error('[AuthService] Error during optimistic history update:', optimisticError);
             // If optimistic update fails, maybe don't proceed? For now, let server call attempt.
         }
     }
@@ -1103,13 +1115,13 @@ export class FirebaseAuthService {
 
     for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
       try {
-        // //console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] User: ${userId}, Entry: S:${entry.surah} V:${entry.verse}`); // Log call details
+        // ////console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] User: ${userId}, Entry: S:${entry.surah} V:${entry.verse}`); // Log call details
         const token = await this.getToken(true); // Get fresh token for each attempt potentially needed
         if (!token) throw new Error('Authentication token unavailable for saving history.');
 
-        // //console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] Got token. Making POST request...`); // Log before POST
+        // ////console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] Got token. Making POST request...`); // Log before POST
 
-        // // //console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
+        // // ////console.log(`[AuthService] Attempt ${attempt} to save history to server...`);
         await firstValueFrom(
           this.http.post<any>(
             `${environment.apiUrl}/api/user/${userId}/reading-history`, 
@@ -1118,20 +1130,20 @@ export class FirebaseAuthService {
           )
         );
 
-        // //console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] POST request successful.`); // Log success
+        // ////console.log(`[AuthService saveHistoryToServer Attempt ${attempt}] POST request successful.`); // Log success
 
         // Server call successful, the optimistic update is now confirmed.
-        // // //console.log('[AuthService] Reading history saved successfully on server.');
+        // // ////console.log('[AuthService] Reading history saved successfully on server.');
         return; // Exit loop on success
 
       } catch (error: any) {
-        // //console.error(`[AuthService] Error saving reading history (attempt ${attempt}):`, error);
+        // ////console.error(`[AuthService] Error saving reading history (attempt ${attempt}):`, error);
 
         // --- Revert Optimistic Update on Failure ---
         if (!reverted) {
-            // //console.warn('[AuthService] Reverting optimistic history update due to server error.');
+            // ////console.warn('[AuthService] Reverting optimistic history update due to server error.');
             this.userDataSubject.next(originalData); // Restore original state
-            // // //console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
+            // // ////console.log('[AuthService] userDataSubject emitted after REVERTING update:', JSON.stringify(this.userDataSubject.getValue())); 
             reverted = true;
             // Optionally show a snackbar/message to the user about the failure
         }
@@ -1144,7 +1156,7 @@ export class FirebaseAuthService {
 
         // Optional: Check for specific error types (e.g., 401 Unauthorized) and stop retrying
         if (error.status === 401 || error.status === 403) {
-             // //console.error('[AuthService] Authentication error during history save, stopping retries.');
+             // ////console.error('[AuthService] Authentication error during history save, stopping retries.');
              throw error; // Stop retrying on auth errors
         }
 
@@ -1181,7 +1193,7 @@ export class FirebaseAuthService {
       }
       return null;
     } catch (error) {
-      // //console.warn('Error getting last read position:', error);
+      // ////console.warn('Error getting last read position:', error);
       return null;
     }
   }
@@ -1214,7 +1226,7 @@ export class FirebaseAuthService {
 
       return false;
     } catch (error) {
-      // //console.error('Error checking AI access:', error);
+      // ////console.error('Error checking AI access:', error);
       return false;
     }
   }
@@ -1265,7 +1277,7 @@ export class FirebaseAuthService {
       if (!state || !state.surah || !state.verse || 
           typeof state.surah !== 'number' || typeof state.verse !== 'number' ||
           state.surah < 1 || state.surah > 114 || state.verse < 1) {
-        // //console.warn('Invalid state provided to saveQuranReaderState:', state);
+        // ////console.warn('Invalid state provided to saveQuranReaderState:', state);
       return;
     }
 
@@ -1293,7 +1305,7 @@ export class FirebaseAuthService {
             updatedHistory
           ).toPromise();
         } catch (error) {
-          // //console.warn('Reading history API endpoint not available, using localStorage instead');
+          // ////console.warn('Reading history API endpoint not available, using localStorage instead');
           // Save to localStorage as fallback
           const preferences = await this.getUserSettings();
           preferences.history = updatedHistory;
@@ -1301,7 +1313,7 @@ export class FirebaseAuthService {
         }
       }
     } catch (error) {
-      // //console.error('Error saving Quran reader state:', error);
+      // ////console.error('Error saving Quran reader state:', error);
       throw error;
     }
   }
@@ -1311,7 +1323,7 @@ export class FirebaseAuthService {
     await this.authReady.pipe(take(1)).toPromise(); // Wait for auth state to be ready
     const user = this._user.getValue();
     if (!user) {
-      // // //console.log('[isPremiumUser] No user logged in.');
+      // // ////console.log('[isPremiumUser] No user logged in.');
       return false;
     }
 
@@ -1323,16 +1335,16 @@ export class FirebaseAuthService {
         // For client-side check, simple check is okay
         const decoded: any = JSON.parse(atob(token.split('.')[1]));
         if (decoded.premium === true) {
-           // // //console.log('[isPremiumUser] Determined premium status from token claim.');
+           // // ////console.log('[isPremiumUser] Determined premium status from token claim.');
           return true;
         }
       } catch (e) {
-        // //console.error('[isPremiumUser] Error decoding token for claims check:', e);
+        // ////console.error('[isPremiumUser] Error decoding token for claims check:', e);
       }
     }
 
     // Fallback: Check the AppUser object's isPremium field (updated by handleUserSignedIn)
-     // // //console.log(`[isPremiumUser] Falling back to AppUser object check. isPremium: ${user.isPremium}`);
+     // // ////console.log(`[isPremiumUser] Falling back to AppUser object check. isPremium: ${user.isPremium}`);
     return user.isPremium;
   }
 
@@ -1342,10 +1354,10 @@ export class FirebaseAuthService {
     if (user) {
       try {
         await sendEmailVerification(user);
-        // // //console.log('Verification email sent successfully.');
+        // // ////console.log('Verification email sent successfully.');
         // Optionally show a success message to the user
       } catch (error) {
-        // //console.error('Error sending verification email:', error);
+        // ////console.error('Error sending verification email:', error);
         // Optionally show an error message to the user
         throw error; // Re-throw to allow component handling
       }
@@ -1369,7 +1381,7 @@ export class FirebaseAuthService {
       // Update password
       return updatePassword(user, newPassword);
     } catch (error) {
-      // //console.error('Error changing password:', error);
+      // ////console.error('Error changing password:', error);
       throw error;
     }
   }
@@ -1395,11 +1407,11 @@ export class FirebaseAuthService {
       if (Date.now() - timestamp < this.REQUEST_CACHE_DURATION) {
         return data;
       }
-      // // //console.log(`[AuthService] Cache expired for key: ${key}`);
+      // // ////console.log(`[AuthService] Cache expired for key: ${key}`);
       localStorage.removeItem(key); // Remove expired cache item
       return null;
     } catch (error) {
-      // //console.warn(`[AuthService] Error reading cache for key ${key}:`, error);
+      // ////console.warn(`[AuthService] Error reading cache for key ${key}:`, error);
       localStorage.removeItem(key); // Remove corrupted cache item
       return null;
     }
@@ -1412,25 +1424,25 @@ export class FirebaseAuthService {
         timestamp: Date.now()
       }));
     } catch (error) {
-      // //console.warn(`[AuthService] Error writing cache for key ${key}:`, error);
+      // ////console.warn(`[AuthService] Error writing cache for key ${key}:`, error);
     }
   }
 
   // User data management
   private async loadUserData(userId: string): Promise<void> {
-    // // //console.log(`[AuthService] loadUserData called for ${userId}`);
+    // // ////console.log(`[AuthService] loadUserData called for ${userId}`);
     // --- Add Caching Logic ---
     const cacheKey = `user_data_${userId}`;
     const cachedUserData = this.getCachedData(cacheKey); // Uses helper with REQUEST_CACHE_DURATION
     if (cachedUserData) {
-        // // //console.log(`[AuthService] loadUserData: Returning cached data for ${userId}`);
+        // // ////console.log(`[AuthService] loadUserData: Returning cached data for ${userId}`);
         this.userDataSubject.next(cachedUserData);
         this.preferencesSubject.next(cachedUserData.preferences || this.getDefaultPreferences()); // Update prefs too
         return; // Exit if cache is valid
     }
     // --- End Caching Logic ---
 
-    // // //console.log(`[AuthService] loadUserData: Cache miss or stale for ${userId}. Fetching from API...`);
+    // // ////console.log(`[AuthService] loadUserData: Cache miss or stale for ${userId}. Fetching from API...`);
 
     try {
         // Fetch combined user data from the backend profile endpoint
@@ -1439,7 +1451,7 @@ export class FirebaseAuthService {
             timeout(20000),
             retry({ count: 2, delay: 1500 }),
             catchError(error => {
-                // //console.error(`[AuthService] loadUserData: Error fetching profile for ${userId}:`, error);
+                // ////console.error(`[AuthService] loadUserData: Error fetching profile for ${userId}:`, error);
                 // Return a default/empty structure on error
                 return of({
                     id: userId,
@@ -1451,7 +1463,7 @@ export class FirebaseAuthService {
         ));
 
         if (userData) {
-          // // //console.log(`[AuthService] loadUserData: Successfully fetched data for ${userId}.`);
+          // // ////console.log(`[AuthService] loadUserData: Successfully fetched data for ${userId}.`);
 
           // Ensure preferences object exists before caching/emitting
           if (!userData.preferences) {
@@ -1470,7 +1482,7 @@ export class FirebaseAuthService {
           this.preferencesSubject.next(userData.preferences);
         }
     } catch (error) {
-        // //console.error(`[AuthService] loadUserData: General error fetching profile for ${userId}:`, error);
+        // ////console.error(`[AuthService] loadUserData: General error fetching profile for ${userId}:`, error);
         // Emit default data on critical failure (preserving existing history if possible)
         const defaultData = {
             id: userId,
@@ -1512,92 +1524,48 @@ export class FirebaseAuthService {
   getReadingHistory(): Observable<ReadingHistoryResponse> {
     return this.user$.pipe(
       take(1),
+      filter(user => !!user && !!user.id), // Ensure user is logged in
       switchMap(user => {
-        if (!user || !user.id) {
-          // //console.warn('getReadingHistory: User not authenticated');
-          // Return an object matching the expected structure on error
-          return of({ success: false, message: 'User not authenticated', history: [] });
-        }
-
-        const userId = user.id;
-        const cacheKey = `reading_history_${userId}`;
+        const userId = user!.id;
+        const cacheKey = `history_${userId}`;
         const cachedHistory = this.getCachedData(cacheKey);
-
         if (cachedHistory) {
-          // Return cached data in the expected structure
           return of({ success: true, history: cachedHistory });
         }
 
-        if (this.shouldThrottle(`history_${userId}`)) {
-          // Return empty history matching the structure if throttled
-           return of({ success: true, history: this.userDataSubject.getValue()?.history || [] }); // Return current state if throttled
+        if (this.shouldThrottle(cacheKey)) {
+            return of({ success: true, history: this.userDataSubject.value?.history || [] }); // Return current state if throttled
         }
-
-        this.updateLastRequestTime(`history_${userId}`);
-
-        return from(this.getToken(true)).pipe( // Use getToken which handles refresh
-          switchMap(token => {
-            if (!token) {
-              // //console.warn('getReadingHistory: Failed to get fresh token');
-              // Return error object matching the structure
-              return of({ success: false, message: 'Authentication token unavailable', history: [] });
-            }
-
-            // *** REMOVED TEMP DEBUG BLOCK ***
-
-            // Corrected URL to match server route
-            return this.http.get<ReadingHistoryResponse>(
-              `${environment.apiUrl}/api/user/${userId}/reading-history`, // Corrected path
-              {
-                headers: {
-                  'Authorization': `Bearer ${token}`
-                }
+        this.updateLastRequestTime(cacheKey);
+        
+        // Interceptor will add the token
+        return this.http.get<ReadingHistoryResponse>(
+          `${environment.apiUrl}/api/user/${userId}/reading-history`
+        ).pipe(
+          tap(response => {
+            if (response && response.success && Array.isArray(response.history)) {
+              this.setCachedData(cacheKey, response.history);
+              const currentData = this.userDataSubject.getValue();
+              if (currentData) {
+                  this.userDataSubject.next({ ...currentData, history: response.history });
               }
-            ).pipe(
-              tap(response => {
-                // Ensure response structure is checked before accessing properties
-                if (response && response.success && Array.isArray(response.history)) {
-                  this.setCachedData(cacheKey, response.history);
-                  // Also update the main user data subject if needed
-                  const currentData = this.userDataSubject.getValue();
-                  if (currentData) {
-                      this.userDataSubject.next({ ...currentData, history: response.history });
-      }
-    } else {
-                  // //console.warn(`getReadingHistory: API call did not return successful history for ${userId}`, response);
-                }
-              }),
-              catchError(error => {
-                // //console.error(`getReadingHistory: HTTP Error for ${userId}:`, error);
-                // Return error object matching the structure
-                return throwError(() => ({
-                  success: false,
-                  message: error.message || 'Failed to fetch reading history',
-                  history: [],
-                  status: error.status
-                }));
-              })
-            );
+            }
           }),
-          catchError(tokenError => {
-             // //console.error(`getReadingHistory: Error getting token for ${userId}:`, tokenError);
-             // Return error object matching the structure
-             return throwError(() => ({
-               success: false,
-               message: 'Failed to obtain authentication token',
-               history: []
-             }));
+          catchError(error => {
+            //console.error(`getReadingHistory: HTTP Error for ${userId}:`, error);
+            return throwError(() => ({
+              success: false,
+              message: error.message || 'Failed to fetch reading history',
+              history: [],
+              status: error.status
+            }));
           })
         );
       }),
-      catchError(outerError => {
-         // //console.error('getReadingHistory: Error in outer user$ pipe:', outerError);
-         // Return error object matching the structure
-         return throwError(() => ({
-           success: false,
-           message: outerError.message || 'Error processing user data for history',
-           history: []
-         }));
+      catchError(error => {
+        // Handle error if user stream fails or user is null
+        //console.error('getReadingHistory: Error in user stream or user not logged in:', error);
+        return of({ success: false, message: 'User not authenticated', history: [] });
       })
     );
   }
@@ -1632,48 +1600,20 @@ export class FirebaseAuthService {
     if (!user) throw new Error('No user logged in');
     const userId = user.uid; // Get userId for cache key
 
-    // --- Remove Optimistic Update ---
-    /*
-    // Update state immediately
-    const current = this.userDataSubject.getValue();
-    this.userDataSubject.next({ ...current, history: [] });
-    */
-
     // Clear on server first
     try {
-      const token = await user.getIdToken();
-      await this.http.delete<any>(
-        `${environment.apiUrl}/api/user/${userId}/reading-history`,
-            {
-              headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+        await this.http.delete<any>(
+          `${environment.apiUrl}/api/user/${userId}/reading-history`
+        ).toPromise();
+        // Update local state after successful deletion
+        const currentData = this.userDataSubject.getValue();
+        if (currentData) {
+            this.userDataSubject.next({ ...currentData, history: [] });
         }
-      ).toPromise();
-
-      // --- Update State AFTER Successful Deletion --- 
-      // //console.log(`[AuthService clearHistory] Backend deletion successful for ${userId}. Updating local state.`);
-      const current = this.userDataSubject.getValue();
-      // Ensure 'current' is not null before spreading
-      if (current) {
-           this.userDataSubject.next({ ...current, history: [] });
-      } else {
-           // If current somehow null, maybe just emit default with empty history?
-           // Or handle based on expected application logic
-           //console.warn('[AuthService clearHistory] userDataSubject was null, cannot spread. State might be inconsistent.');
-      }
-
-      // --- Clear Cache AFTER Successful Deletion ---
-      const cacheKey = `reading_history_${userId}`;
-      // //console.log(`[AuthService clearHistory] Clearing cache key: ${cacheKey}`);
-      localStorage.removeItem(cacheKey); // Assuming simple localStorage cache for history
-      // If using a more complex cache service, call its clear method here.
-
-    } catch (error) {
-        //console.error('[AuthService clearHistory] Error deleting history on server:', error);
-        // Re-throw the error so the caller (ProfileComponent) can catch it
-        throw error; 
+    } catch(error) {
+        //console.error("Error clearing history via API", error);
+        // Handle error - Interceptor deals with 401/403
+        throw error;
     }
   }
 
@@ -1776,31 +1716,28 @@ export class FirebaseAuthService {
   }
 
   getBookmarks(): Observable<string[]> {
+    // Revert to using user$ with filter
     return this.user$.pipe(
+      filter(user => !!user && !!user.id), // Wait for a valid user
       take(1),
       switchMap(appUser => {
-        if (!appUser || !appUser.id || !appUser.token) {
-          // //console.warn('getBookmarks: No authenticated AppUser with ID and token found in BehaviorSubject.');
-          return throwError(() => new Error('User not fully authenticated for getBookmarks')); 
-        }
-
-        const userId = appUser.id;
-        const token = appUser.token;
-
+        // User is guaranteed to be non-null here due to filter
+        const userId = appUser!.id;
         return this.http.get<string[]>(
-          `${environment.apiUrl}/api/user/${userId}/bookmarks`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
+          `${environment.apiUrl}/api/user/${userId}/bookmarks`
         ).pipe(
           map(bookmarks => Array.isArray(bookmarks) ? bookmarks : []),
           catchError(error => {
-            // //console.error(`Error loading bookmarks for user ${userId}:`, error);
-            return throwError(() => error); 
+            //console.error(`Error loading bookmarks for user ${userId}:`, error);
+            // Return empty array on HTTP errors for bookmarks
+            return of([]); 
           })
         );
       }),
       catchError(error => {
-        // //console.error('Error in getBookmarks observable chain:', error);
-        return of([]);
+        // Catch errors from the filter/take(1)/user$ stream itself
+        //console.error('Error in getBookmarks user stream:', error);
+        return of([]); // Return empty array if user stream errors or never emits valid user
       })
     );
   }
@@ -1810,7 +1747,7 @@ export class FirebaseAuthService {
       const currentUser = this.auth.currentUser;
       
       if (!currentUser) {
-        // //console.warn('❌ No current user found during token refresh');
+        // ////console.warn('❌ No current user found during token refresh');
         throw new Error('No authenticated user');
       }
 
@@ -1877,9 +1814,9 @@ export class FirebaseAuthService {
   }
 
   public async waitForAuthReady(): Promise<void> {
-    // //console.log('[AuthService] waitForAuthReady called... Waiting for postRedirectAuthSettled.');
+    //console.log('[AuthService] waitForAuthReady called... Waiting for postRedirectAuthSettled.'); // Log: waitForAuthReady called
     await firstValueFrom(this.postRedirectAuthSettled);
-    // //console.log('[AuthService] waitForAuthReady completed (postRedirectAuthSettled resolved).');
+    //console.log('[AuthService] waitForAuthReady completed (postRedirectAuthSettled resolved).'); // Log: waitForAuthReady resolved
   }
 
   private initTokenFromCache() {
@@ -1983,7 +1920,7 @@ export class FirebaseAuthService {
       this.setCachedData(this.USER_CACHE_KEY, userData);
       // No need to emit here, handled elsewhere
     } catch (error) {
-      // //console.error('[AuthService] Error caching user data:', error);
+      // ////console.error('[AuthService] Error caching user data:', error);
     }
   }
 
@@ -1992,28 +1929,28 @@ export class FirebaseAuthService {
     const firebaseUser = getAuth(this.firebaseApp).currentUser;
     if (firebaseUser) {
       try {
-        // // //console.log(`[FirebaseAuthService] Reloading user state for ${firebaseUser.uid}...`);
+        // // ////console.log(`[FirebaseAuthService] Reloading user state for ${firebaseUser.uid}...`);
         await firebaseUser.reload();
         const refreshedFirebaseUser = getAuth(this.firebaseApp).currentUser; // Get the reloaded user
         if (refreshedFirebaseUser) {
-          // // //console.log(`[FirebaseAuthService] User state reloaded. emailVerified: ${refreshedFirebaseUser.emailVerified}. Updating internal state...`);
+          // // ////console.log(`[FirebaseAuthService] User state reloaded. emailVerified: ${refreshedFirebaseUser.emailVerified}. Updating internal state...`);
           // Re-process the user state to update the BehaviorSubject and potentially claims
           // Assuming handleUserSignedIn fetches/processes claims and returns the full AppUser
           const processedUser = await this.handleUserSignedIn(refreshedFirebaseUser); 
           return processedUser; // Return the updated AppUser
         } else {
-           // //console.warn('[FirebaseAuthService] User became null immediately after reload.');
+           // ////console.warn('[FirebaseAuthService] User became null immediately after reload.');
            this._user.next(null);
            return null;
         }
       } catch (error) {
-        // //console.error('[FirebaseAuthService] Error reloading user state:', error);
+        // ////console.error('[FirebaseAuthService] Error reloading user state:', error);
         // On error, return the *current* known state without updating BehaviorSubject again
         // This prevents potentially emitting null incorrectly if reload fails temporarily
         return this._user.getValue(); 
       }
     } else {
-      // // //console.log('[FirebaseAuthService] reloadCurrentUser called but no user is logged in.');
+      // // ////console.log('[FirebaseAuthService] reloadCurrentUser called but no user is logged in.');
       return null;
     }
   }
@@ -2025,34 +1962,34 @@ export class FirebaseAuthService {
     // Refresh slightly before the 1-hour expiry (e.g., 55 minutes)
     const refreshInterval = this.TOKEN_CACHE_DURATION; // Use defined duration
     this.tokenRefreshTimer = setTimeout(async () => {
-      // // //console.log('[Timer] Token refresh timer triggered. Forcing refresh...');
+      // // ////console.log('[Timer] Token refresh timer triggered. Forcing refresh...');
       try {
         await this.getToken(true); // Force refresh
-        // // //console.log('[Timer] Token refreshed successfully.');
+        // // ////console.log('[Timer] Token refreshed successfully.');
         this.startTokenRefreshTimer(); // Restart the timer for the next interval
       } catch (error) {
-        // //console.error('[Timer] Failed to refresh token automatically:', error);
+        // ////console.error('[Timer] Failed to refresh token automatically:', error);
         // Optionally, schedule a retry with backoff, or rely on next API call to trigger refresh
       }
     }, refreshInterval);
     this.refreshTimerStarted = true; // Mark timer as started
-    // // //console.log(`[Timer] Token refresh timer started. Interval: ${refreshInterval / 60000} minutes.`);
+    // // ////console.log(`[Timer] Token refresh timer started. Interval: ${refreshInterval / 60000} minutes.`);
   }
 
   // Method to schedule the next token refresh
   private scheduleTokenRefresh(): void {
-    // // //console.log('[scheduleTokenRefresh] Attempting to schedule token refresh...');
+    //console.log('[scheduleTokenRefresh] Attempting to schedule token refresh...'); // Log: scheduleTokenRefresh start
     this.clearTokenRefreshTimer(); // Clear any existing timer first
 
     const user = this._user.getValue();
     if (!user || !this.cachedToken) {
-      // // //console.log('[scheduleTokenRefresh] No user or cached token found. Cannot schedule refresh.');
+      // // ////console.log('[scheduleTokenRefresh] No user or cached token found. Cannot schedule refresh.');
       return;
     }
 
     const decodedToken = this.decodeToken(this.cachedToken.token);
     if (!decodedToken || typeof decodedToken.exp !== 'number') {
-        // //console.error('[scheduleTokenRefresh] Could not decode token or find expiry time. Cannot schedule refresh.');
+        // ////console.error('[scheduleTokenRefresh] Could not decode token or find expiry time. Cannot schedule refresh.');
         return;
     }
 
@@ -2065,7 +2002,7 @@ export class FirebaseAuthService {
 
     // Ensure refreshDelay is positive and reasonable
     if (refreshDelay <= 0) {
-        // //console.warn(`[scheduleTokenRefresh] Token already expired or too close to expiry (delay: ${refreshDelay}ms). Attempting immediate refresh.`);
+        // ////console.warn(`[scheduleTokenRefresh] Token already expired or too close to expiry (delay: ${refreshDelay}ms). Attempting immediate refresh.`);
         // Optionally trigger an immediate refresh attempt here, but be cautious of loops
         // For now, just log and don't schedule.
         // Or schedule for a minimal delay like 1 second if immediate refresh is desired
@@ -2074,16 +2011,16 @@ export class FirebaseAuthService {
         // return; // Or simply don't schedule if already expired
     }
 
-    // // //console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
+    // // ////console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
 
-    // //console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
+    // ////console.log(`[scheduleTokenRefresh] Scheduling token refresh in ${Math.round(refreshDelay / 1000)} seconds.`);
 
     this.tokenRefreshTimer = setTimeout(async () => {
-        // //console.log('[Timer] Token refresh timer triggered.');
+        // ////console.log('[Timer] Token refresh timer triggered.');
         try {
             await this.refreshToken(true); // Force refresh
         } catch (error) {
-            //console.error('[Timer] Error during scheduled token refresh:', error);
+            ////console.error('[Timer] Error during scheduled token refresh:', error);
             // Handle error appropriately, maybe retry or sign out
             // Depending on the error, might need to clear auth state
             // if (error indicates invalid grant or user deleted) this.signOut();
@@ -2102,7 +2039,7 @@ export class FirebaseAuthService {
       }).join(''));
       return JSON.parse(jsonPayload);
     } catch (e) {
-      //console.error('[decodeToken] Error decoding token:', e);
+      ////console.error('[decodeToken] Error decoding token:', e);
       return null;
     }
   }
@@ -2113,17 +2050,17 @@ export class FirebaseAuthService {
     try {
       const user = this.getCurrentUser();
       if (!user) {
-        // // //console.log('[getReadingHistoryInternal] No current user, returning empty history');
+        // // ////console.log('[getReadingHistoryInternal] No current user, returning empty history');
         return [];
       }
 
-      // // //console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
-      // // //console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
+      // // ////console.log(`[getReadingHistoryInternal] Fetching history internally for user: ${user.uid}`);
+      // // ////console.log(`[getReadingHistoryInternal] >>> MAKING REQUEST TO: /api/user/${user.uid}/reading-history`);
 
       // Create AbortController for the request
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
-        // //console.log('[getReadingHistoryInternal] Request timeout reached, aborting...');
+        // ////console.log('[getReadingHistoryInternal] Request timeout reached, aborting...');
         abortController.abort();
       }, 10000); // 10 second timeout
 
@@ -2135,13 +2072,13 @@ export class FirebaseAuthService {
         // Clear timeout since request completed
         clearTimeout(timeoutId);
 
-        // // //console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
+        // // ////console.log(`[getReadingHistoryInternal] <<< RETURNED FROM apiService.makeRequest`);
         
         if (response && response.success && Array.isArray(response.history)) {
-          // // //console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
+          // // ////console.log(`[getReadingHistoryInternal] Fetched ${response.history.length} history entries.`);
           return response.history;
         } else {
-          // //console.warn('[getReadingHistoryInternal] Invalid response format:', response);
+          // ////console.warn('[getReadingHistoryInternal] Invalid response format:', response);
           return [];
         }
       } catch (error: any) {
@@ -2149,39 +2086,39 @@ export class FirebaseAuthService {
         clearTimeout(timeoutId);
 
         if (error.name === 'AbortError') {
-          //console.error('[getReadingHistoryInternal] Request aborted due to timeout');
+          ////console.error('[getReadingHistoryInternal] Request aborted due to timeout');
           return [];
         }
 
         throw error; // Re-throw other errors
       }
     } catch (error: any) {
-      //console.error('[getReadingHistoryInternal] Error fetching history:', error);
+      ////console.error('[getReadingHistoryInternal] Error fetching history:', error);
       return [];
     }
   }
 
   // Refreshes the Firebase ID token
   public async refreshToken(forceRefresh: boolean = false): Promise<string | null> {
-    // //console.log(`[refreshToken] Called. Force refresh: ${forceRefresh}`);
+    // ////console.log(`[refreshToken] Called. Force refresh: ${forceRefresh}`);
     const firebaseAuth = await this.authPromise; // Ensure Firebase Auth is initialized
     if (!firebaseAuth) { // Add null check after awaiting
-      console.error('[refreshToken] Firebase Auth instance is null after initialization attempt.');
+      //console.error('[refreshToken] Firebase Auth instance is null after initialization attempt.');
       return null;
     }
 
     const currentUser = firebaseAuth.currentUser;
 
     if (!currentUser) {
-        //console.warn('[refreshToken] No current Firebase user. Cannot refresh token.');
+        ////console.warn('[refreshToken] No current Firebase user. Cannot refresh token.');
         this.clearAuthData(); // Ensure clean state if user disappears unexpectedly
         return null;
     }
 
     try {
-        // //console.log(`[refreshToken] Getting ID token for user: ${currentUser.uid}`);
+        // ////console.log(`[refreshToken] Getting ID token for user: ${currentUser.uid}`);
         const token = await currentUser.getIdToken(forceRefresh);
-        // //console.log(`[refreshToken] Successfully obtained new token for ${currentUser.uid}.`);
+        // ////console.log(`[refreshToken] Successfully obtained new token for ${currentUser.uid}.`);
 
         // Update cache
         this.cachedToken = { token: token, timestamp: Date.now() };
@@ -2192,7 +2129,7 @@ export class FirebaseAuthService {
 
         return token;
     } catch (error) {
-        //console.error(`[refreshToken] Error refreshing ID token for user ${currentUser.uid}:`, error);
+        ////console.error(`[refreshToken] Error refreshing ID token for user ${currentUser.uid}:`, error);
         // Handle specific errors, e.g., user deleted, disabled, token expired/revoked
         if (error instanceof Error && (
             error.message.includes('auth/user-token-expired') ||
@@ -2200,11 +2137,11 @@ export class FirebaseAuthService {
             error.message.includes('auth/user-not-found') ||
             error.message.includes('auth/invalid-user-token')
         )) {
-            //console.warn('[refreshToken] User session seems invalid. Signing out.');
+            ////console.warn('[refreshToken] User session seems invalid. Signing out.');
             await this.signOut(); // Force sign out on critical token errors
         } else {
             // For other errors, maybe retry later or just log
-            //console.error('[refreshToken] Unhandled error during token refresh.');
+            ////console.error('[refreshToken] Unhandled error during token refresh.');
             // Consider if clearing auth data is appropriate here too
             // this.clearAuthData();
         }
@@ -2215,21 +2152,21 @@ export class FirebaseAuthService {
   // --- Initialization ---
   private async initializeAuth(): Promise<Auth> {
     if (this.isAuthInitialized) {
-        // // //console.log('[initializeAuth] Auth already initialized.');
+        // // ////console.log('[initializeAuth] Auth already initialized.');
         // Return the existing promise which resolves to the Auth instance
         return getAuth(initializeApp(environment.firebase)); 
     }
-    // // //console.log('[initializeAuth] Initializing Firebase Auth...');
+    // // ////console.log('[initializeAuth] Initializing Firebase Auth...');
     try {
         // Initialize Firebase App (idempotent)
         const app = initializeApp(environment.firebase);
         // Get Auth instance
         const auth = getAuth(app);
         this.isAuthInitialized = true;
-        // // //console.log('[initializeAuth] Firebase Auth initialized successfully.');
+        // // ////console.log('[initializeAuth] Firebase Auth initialized successfully.');
         return auth; // Resolve the promise with the Auth instance
     } catch (error) {
-        // //console.error('[initializeAuth] Error initializing Firebase:', error);
+        // ////console.error('[initializeAuth] Error initializing Firebase:', error);
         // Mark as initialized even on error to prevent retries
         this.isAuthInitialized = true; 
         // Reject the promise
@@ -2238,46 +2175,58 @@ export class FirebaseAuthService {
   }
 
   private async initializeAuthAndStateListener(): Promise<void> {
-    // //console.log('[AuthService] Initializing Auth and State Listener...');
+    //console.log('[AuthService] Initializing Auth and State Listener START...'); // Log: initializeAuthAndStateListener start
     let redirectProcessed = false; // Local flag for this init sequence
     try {
       // 1. Check and process redirect result FIRST
-      // //console.log('[AuthService] Checking for redirect result...');
+      //console.log('[AuthService] Checking for redirect result START...'); // Log: getRedirectResult start
       const credential = await getRedirectResult(this.auth);
-      // //console.log('[AuthService] getRedirectResult finished. Credential:', credential ? 'Exists' : 'null');
+      //console.log('[AuthService] getRedirectResult finished. Credential:', credential ? `Exists (User: ${credential.user.uid})` : 'null'); // Log: getRedirectResult end
     } catch (error: any) {
-      console.error('[AuthService] Error processing redirect result:', error);
+      //console.error('[AuthService] Error processing redirect result:', error); // Log: getRedirectResult error
       if (error.code === 'auth/account-exists-with-different-credential') {
         this.snackBar.open('An account already exists with this email using a different sign-in method.', 'Close', { duration: 7000 });
       } else {
         this.snackBar.open(`Login failed during redirect: ${error.message}`, 'Close', { duration: 5000 });
       }
     } finally {
-      // //console.log('[AuthService] Marking redirect result as processed LOCALLY.');
+      //console.log('[AuthService] Marking redirect result as processed LOCALLY.'); // Log: redirectResultProcessed set
       redirectProcessed = true; // Mark local flag
       this.redirectResultProcessed = true; // Mark service flag
       // Don't signal settled yet, wait for onAuthStateChanged
+      // BUT, if auth is already ready by now (unlikely but possible), try signaling
+      this.trySignalPostRedirectAuthSettled(); 
     }
 
     // 2. Setup the AuthStateChanged listener AFTER starting redirect check
     this.setupAuthStateListener(redirectProcessed); // Pass the local flag
+    //console.log('[AuthService] Initializing Auth and State Listener END.');
   }
 
   // New method to try signaling the post-redirect settled state
+  // This is called from the finally block of onAuthStateChanged AND from finally block of getRedirectResult
   private trySignalPostRedirectAuthSettled(): void {
-    // //console.log(`[AuthService] trySignalPostRedirectAuthSettled called. hasSignaledAuthReady: ${this.hasSignaledAuthReady}, redirectResultProcessed: ${this.redirectResultProcessed}`);
+    //console.log(`[AuthService] trySignalPostRedirectAuthSettled called. hasSignaledAuthReady: ${this.hasSignaledAuthReady}, redirectResultProcessed: ${this.redirectResultProcessed}`); // Log: trySignalPostRedirectAuthSettled called
     // Check if initial auth state determined AND redirect processing is done
     if (this.hasSignaledAuthReady && this.redirectResultProcessed && !this.postRedirectAuthSettled.closed) {
-      // //console.log('[AuthService] Conditions met. Signaling Post Redirect Auth Settled (postRedirectAuthSettled).');
+      //console.log('[AuthService] Conditions met. Signaling Post Redirect Auth Settled (postRedirectAuthSettled).'); // Log: postRedirectAuthSettled signaling
       this.postRedirectAuthSettled.next();
       this.postRedirectAuthSettled.complete();
     } else {
-      // //console.log('[AuthService] Conditions not met for signaling Post Redirect Auth Settled yet.');
+       // If redirect is processed but auth isn't ready yet, we wait for auth.
+       // If auth is ready but redirect isn't processed yet, we wait for redirect.
+       // This ensures it eventually resolves once both conditions are met.
+      //console.log('[AuthService] Conditions not met for signaling Post Redirect Auth Settled yet.'); // Log: postRedirectAuthSettled waiting
     }
   }
 
   private handleUserSignedOut(): void {
-    // //console.log('[AuthService] User signed out. Signaling authReady...');
-    this.signalAuthReady();
+    //console.log('[AuthService] User signed out. Clearing auth data...'); // Log: handleUserSignedOut called
+    this.clearAuthData(); // Clear user state, token, cache, timer
+    //console.log('[AuthService] Auth data cleared after sign out.');
+    // Auth is now ready (state is known: null)
+    this.signalAuthReady(); 
+    // Also try to settle the post-redirect state, as redirect is processed and auth is now ready (null)
+    this.trySignalPostRedirectAuthSettled(); 
   }
 } 

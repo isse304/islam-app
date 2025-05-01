@@ -9,6 +9,9 @@
   background-color: #FAF3E0;
   min-height: 100vh;
 }
+.dark .profile-page-container {
+  background-color: #1A365D; /* Keep main page bg dark blue */
+}
 
 .profile-header {
   display: flex;
@@ -23,6 +26,12 @@
     font-weight: 500;
     color: #B7A57A;
     font-size: 28px;
+  }
+}
+.dark .profile-header {
+  border-bottom-color: rgba(183, 165, 122, 0.4); /* Fainter Gold */
+  h1 {
+    color: #B7A57A; /* Keep Gold */
   }
 }
 
@@ -317,4 +326,504 @@
     align-items: flex-start;
     gap: 16px;
   }
-} 
+}
+
+/* Shared Form Field Styles (Apply to Profile) */
+::ng-deep .mat-mdc-form-field-appearance-outline {
+  .mdc-notched-outline > * {
+      border-color: rgba(100, 116, 139, 0.4) !important; /* Lighter gray border */
+  }
+  .mdc-text-field {
+    border-radius: 8px !important; /* Rounded corners */
+    background-color: rgba(248, 250, 252, 0.7) !important; /* Subtle light background */
+  }
+  .mat-mdc-form-field-infix {
+     padding-top: 12px !important; /* Adjust padding */
+     padding-bottom: 12px !important;
+  }
+}
+/* Dark Mode Form Field Background */
+::ng-deep .dark .mat-mdc-form-field-appearance-outline .mdc-text-field {
+  background-color: rgba(55, 65, 81, 0.5) !important; /* Subtle dark background (gray-700/50) */
+}
+
+/* Profile Specific Focus Styles (Gold Accent Light, Cream Dark) */
+::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused {
+   .mdc-notched-outline > * {
+      border-color: #B7A57A !important; /* Gold border on focus */
+      border-width: 2px !important;
+   }
+   .mat-mdc-floating-label {
+       color: #B7A57A !important; /* Gold label on focus */
+   }
+   .mdc-text-field {
+      background-color: white !important; /* White background on focus */
+   }
+}
+::ng-deep .dark .mat-mdc-form-field-appearance-outline.mat-focused {
+   .mdc-notched-outline > * {
+      border-color: #FAF3E0 !important; /* Cream border on focus in dark mode */
+   }
+   .mat-mdc-floating-label {
+       color: #FAF3E0 !important; /* Cream label on focus in dark mode */
+   }
+   .mdc-text-field {
+      background-color: #1A365D !important; /* Dark blue background on focus in dark mode */
+   }
+}
+
+/* Tab Styles */
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* Tailwind gap-2 */
+  padding: 0.75rem 1rem; /* Tailwind py-3 px-4 */
+  color: #4a5568; /* Tailwind text-gray-700 approx */
+  transition: color 0.2s ease-in-out;
+}
+.dark .tab-label {
+   color: #9ca3af; /* Lighter Gray for inactive tabs */
+}
+
+::ng-deep .mat-mdc-tab {
+  height: auto !important; /* Override Material default height */
+}
+
+::ng-deep .mat-mdc-tab-header {
+  background-color: white;
+  border-radius: 0.5rem 0.5rem 0 0; /* Tailwind rounded-t-lg */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* Tailwind shadow-sm */
+  border-bottom: 1px solid #e5e7eb; /* Tailwind border-gray-200 */
+}
+ ::ng-deep .dark .mat-mdc-tab-header {
+    background-color: #2A4365; /* Lighter Blue for tab header bg */
+    border-bottom-color: rgba(183, 165, 122, 0.3); /* Gold border */
+ }
+
+::ng-deep .mat-mdc-tab-label-active .tab-label { /* Target the inner label div for active color */
+  color: #1A365D !important; /* Dark Blue */
+}
+ ::ng-deep .dark .mat-mdc-tab-label-active .tab-label {
+    color: #B7A57A !important; /* Gold */
+ }
+ ::ng-deep .dark .mat-mdc-tab-indicator-wrapper {
+    background-color: #B7A57A !important; /* Gold ink bar */
+ }
+
+ /* Ensure icon color follows text color */
+ ::ng-deep .mat-mdc-tab-label-active .tab-label mat-icon {
+    color: inherit !important;
+ }
+ ::ng-deep .tab-label mat-icon {
+     color: #B7A57A; /* Default gold icon color */
+     transition: color 0.2s ease-in-out;
+ }
+ ::ng-deep .dark .tab-label mat-icon {
+     color: #9ca3af; /* Lighter Gray default icons */
+ }
+ /* Keep active icon color matching text */
+ ::ng-deep .mat-mdc-tab-label-active .tab-label mat-icon {
+    color: inherit !important; 
+ }
+
+
+::ng-deep .mat-mdc-tab-body-content {
+  background-color: transparent !important; /* Ensure tab content area doesn't interfere */
+}
+
+/* Card Styles */
+.profile-card {
+  background-color: white;
+  border-radius: 0.75rem; /* Tailwind rounded-xl */
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* Tailwind shadow-sm */
+  overflow: hidden;
+  margin-bottom: 1.25rem; // Added margin bottom
+}
+/* REMOVE General dark mode rule for .profile-card to avoid conflicts */
+/*
+.dark .profile-card {
+  background-color: #2A4365 !important; 
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15) !important;
+  color: #d1d5db !important; 
+}
+*/
+
+/* Button Styles - Keep Tailwind classes on buttons in HTML */
+
+/* Card Hover Effects */
+.bookmark-card, .history-card {
+  transform: translateY(0);
+  transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, background-color 0.2s ease-in-out;
+  background-color: #f9fafb; // Light gray base for list items
+}
+.dark .bookmark-card, .dark .history-card {
+   background-color: #3A5F8A; // Slightly Lighter Blue for list items
+}
+
+.bookmark-card:hover, .history-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Tailwind shadow-md */
+  background-color: #f3f4f6;
+}
+.dark .bookmark-card:hover, .dark .history-card:hover {
+  background-color: #4b5563; // Medium Gray on hover (contrast)
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.15);
+}
+
+
+/* Loading Spinner */
+::ng-deep .mat-mdc-progress-spinner circle {
+  stroke: #B7A57A !important; /* Gold */
+}
+::ng-deep .dark .mat-mdc-progress-spinner circle {
+   stroke: #B7A57A !important; /* Gold spinner */
+ }
+
+/* Dark mode slide toggle */
+ ::ng-deep .dark mat-slide-toggle .mdc-switch__track::after {
+     background: #FAF3E0 !important; /* Cream track */
+ }
+ ::ng-deep .dark mat-slide-toggle .mdc-switch__handle {
+     background: #1A365D !important; /* Dark blue handle */
+ }
+ ::ng-deep .dark mat-slide-toggle.mat-checked .mdc-switch__track {
+     background: #B7A57A !important; /* Gold track when checked */
+     border-color: #B7A57A !important;
+ }
+  ::ng-deep .dark mat-slide-toggle.mat-checked .mdc-switch__handle {
+     background: #FAF3E0 !important; /* Cream handle when checked */
+ }
+
+/* -- Text Overrides for Dark Mode -- */
+.dark {
+  /* Profile Header */
+  .profile-header {
+    border-bottom-color: rgba(183, 165, 122, 0.4) !important;
+    h1 {
+      color: #B7A57A !important;
+    }
+  }
+
+  /* Tab Header & Labels */
+  .mat-mdc-tab-header {
+    background-color: #2A4365 !important;
+    border-bottom-color: rgba(183, 165, 122, 0.3) !important;
+  }
+  .tab-label {
+    color: #9ca3af !important; 
+    mat-icon {
+       color: #9ca3af !important;
+    }
+  }
+  .mat-mdc-tab-label-active .tab-label {
+    color: #B7A57A !important;
+    mat-icon {
+       color: inherit !important;
+    }
+  }
+  .mat-mdc-tab-indicator-wrapper {
+    background-color: #B7A57A !important;
+  }
+  
+  /* REMOVE General card title/subtitle rules if they cause issues */
+  /*
+  .profile-card h3,
+  .profile-card h4,
+  .profile-card mat-card-title {
+    color: #B7A57A !important; // Gold
+  }
+  .profile-card mat-card-subtitle { // Make subtitle lighter gray
+    color: #9ca3af !important;
+  }
+  */
+  
+  /* === Overrides for Account Tab Cards (KEEP THESE) === */
+  mat-tab-body[aria-label="Account"] {
+      .profile-card { // Target cards specifically inside the Account tab body
+        background-color: #2A4365 !important; // Lighter Blue for cards
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15) !important;
+        color: #d1d5db !important; // Default Light Gray text
+
+        mat-card-title,
+        h3, h4 { // Ensure titles inside these cards are Gold
+           color: #B7A57A !important;
+        }
+        p, label, span:not([class*='mat-']), // Target paragraphs, labels, generic spans
+        a { // Target links like 'Reset Password', 'Manage Subscription'
+           color: #d1d5db !important; // Light Gray text
+           &:hover {
+              color: #FAF3E0 !important; // Cream hover for links
+           }
+        }
+        mat-icon { // Ensure icons next to links are styled
+            color: #d1d5db !important;
+        }
+        
+        // Style the Usage Statistics component if needed (assuming it's inside a card)
+        app-usage {
+           // Add specific styles for app-usage children if they don't inherit correctly
+           .text-gray-800 { color: #FAF3E0 !important; }
+           .text-green-600 { color: #6EE7B7 !important; } // Adjust green if needed
+           // ... other overrides for app-usage ...
+        }
+      }
+  }
+  /* === End Account Tab Overrides === */
+
+  /* Text within bookmark/history cards (KEEP THESE) */
+  .bookmark-card .bookmark-title, .history-card .history-title {
+      font-weight: 500;
+      color: #FAF3E0; /* Cream for titles inside these cards */
+      font-size: 16px;
+  }
+  .bookmark-card .bookmark-verse, .history-card .history-verse {
+      color: #9ca3af; /* Lighter Gray for verse refs */
+      background-color: rgba(183, 165, 122, 0.15); /* Faint Gold bg */
+  }
+  .history-card .history-time {
+      color: #6b7280; /* Medium Gray for timestamp */
+  }
+
+  /* Ensure Tailwind overrides use appropriate colors */
+  .profile-card .text-gray-800 { color: #FAF3E0 !important; } // Should use Cream
+  .profile-card .text-gray-600 { color: #d1d5db !important; } // Light Gray - OK
+  .profile-card .text-gray-500 { color: #9ca3af !important; } // Lighter Gray - OK
+  .profile-card .text-gray-400 { color: #6b7280 !important; } // Medium Gray - OK
+
+  /* Specific overrides for text-[#1A365D] or text-[#B7A57A] */
+  .profile-card [class*="text-[#1A365D]"],
+  .bookmark-card [class*="text-[#1A365D]"],
+  .history-card [class*="text-[#1A365D]"] {
+    color: #FAF3E0 !important; // Use Cream instead of Dark Blue text
+  }
+  .profile-card [class*="text-[#B7A57A]"],
+  .bookmark-card [class*="text-[#B7A57A]"],
+  .history-card [class*="text-[#B7A57A]"] {
+    color: #B7A57A !important; // Ensure uses Gold
+  }
+
+  /* Icons in Bookmark/History Cards - Use Gold */
+  .bookmark-card .bookmark-actions button mat-icon,
+  .history-card .history-actions button mat-icon {
+     color: #B7A57A !important; // Gold
+  }
+  .bookmark-card .bookmark-actions button:hover,
+  .history-card .history-actions button:hover {
+     background-color: rgba(183, 165, 122, 0.1); // Faint Gold hover bg
+  }
+  .dark .empty-state .empty-icon {
+      color: #B7A57A; // Gold
+      opacity: 0.6;
+  }
+  .dark .empty-state p {
+      color: #9ca3af; // Lighter Gray
+  }
+
+  /* Buttons - Use Gold for primary */
+   .btn-primary {
+     background-color: #B7A57A !important; // Gold
+     color: white !important; // White Text
+     &:hover:not(:disabled) {
+       background-color: color.adjust(#B7A57A, $lightness: -10%) !important;
+     }
+   }
+   .form-actions button { // Ensure form action buttons also use primary style
+      background-color: #B7A57A !important; 
+      color: white !important; 
+      &:hover:not(:disabled) {
+        background-color: color.adjust(#B7A57A, $lightness: -10%) !important;
+      }
+   }
+   // Secondary uses gray bg, cream text
+   .btn-secondary {
+       background-color: #4b5563 !important; // Gray
+       color: #FAF3E0 !important; // Cream text
+       &:hover:not(:disabled) {
+          background-color: #6b7280 !important;
+       }
+   }
+   // Keep warn as is (red)
+   .btn-warn {
+     background-color: #ef4444 !important; // Red
+     color: white !important;
+      &:hover:not(:disabled) {
+         background-color: #dc2626 !important;
+      }
+   }
+   // Outline buttons
+    .btn-warn-outline {
+       color: #f87171 !important; /* Light Red */
+       border-color: #f87171 !important;
+       &:hover:not(:disabled) {
+          background-color: rgba(248, 113, 113, 0.1) !important;
+       }
+   }
+    .btn-secondary-outline {
+       color: #9ca3af !important; /* Light gray */
+       border-color: #9ca3af !important;
+       &:hover:not(:disabled) {
+          background-color: rgba(156, 163, 175, 0.1) !important;
+       }
+   }
+}
+
+/* --- Dark Mode Styles --- */
+body.dark app-profile { // Use body.dark for higher specificity
+
+  .profile-page-container {
+    background-color: transparent !important; // Make inner container transparent
+  }
+
+  /* Profile Header (Keep these) */
+  .profile-header {
+    // ... header styles ...
+  }
+
+  /* Tab Header & Labels - Force Colors (Keep these) */
+  .mat-mdc-tab-header {
+     // ... tab header styles ...
+  }
+  // Force inactive tab text/icon color
+  .mat-mdc-tab:not(.mat-mdc-tab-disabled) .mdc-tab__text-label,
+  .tab-label {
+     // ... inactive label styles ...
+  }
+  // Force active tab text/icon color
+  .mat-mdc-tab:not(.mat-mdc-tab-disabled).mdc-tab--active .mdc-tab__text-label,
+  .mat-mdc-tab-label-active .tab-label {
+     // ... active label styles ...
+  }
+  .mat-mdc-tab-indicator-wrapper {
+     // ... indicator styles ...
+  }
+  
+  /* === RE-ADD Overrides for Account Tab Cards === */
+  // Increase specificity by adding html.dark body.dark app-profile
+  // html.dark body.dark app-profile mat-tab-body[aria-label="Account"] {
+  //     .profile-card { 
+  //       ...
+  //        }
+  //     }
+  // } // End Account Tab Overrides (REMOVING THIS BLOCK)
+
+  /* === REMOVE Text & BG within bookmark/history cards === */
+  /* .bookmark-card, .history-card { ... } */
+  /* .bookmark-card:hover, .history-card:hover { ... } */
+
+  /* === REMOVE Empty state colors (rely on HTML) === */
+  /* .empty-state { ... } */
+
+  /* === Keep General Buttons === */
+  .btn-warn-outline { // Clear History button
+     // ... button styles ...
+  }
+  button[mat-stroked-button].text-red-500 { // Sign out button?
+     // ... button styles ...
+  }
+   
+  /* === Keep Form Field Styles === */
+   .mat-mdc-form-field-appearance-outline .mdc-text-field {
+     // ... form field styles ...
+   }
+   .mat-mdc-form-field-appearance-outline.mat-focused {
+     // ... form field styles ...
+   }
+   
+  /* === Keep Loading Spinner === */
+   .mat-mdc-progress-spinner circle {
+      stroke: #B7A57A !important; 
+   }
+   mat-spinner circle { stroke: #B7A57A !important; }
+
+  /* === ADD Styles for Active Tab Content === */
+  .mat-mdc-tab-body-active {
+    .profile-card { 
+      // background-color: #2A4365 !important; // REMOVING THIS - Handled by style binding
+      box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15) !important;
+      color: #d1d5db !important; // Light Gray text default
+
+      mat-card-title,
+      h3, h4 { 
+         color: #B7A57A !important; // Gold titles
+      }
+      mat-card-subtitle,
+      p,
+      label,
+      span:not([class*='mat-']), 
+      .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500, .text-gray-400 {
+         color: #d1d5db !important; // Light Gray text
+      }
+      mat-card-subtitle { // Specific override if needed
+         color: #9ca3af !important; // Lighter gray for subtitle
+      }
+      a { 
+         color: #B7A57A !important; // Links should be Gold
+         &:hover {
+            color: #FAF3E0 !important; // Cream hover
+         }
+      }
+      mat-icon { 
+          color: #d1d5db !important; // Default icon color
+      }
+       a mat-icon { // Icons inside links
+           color: #B7A57A !important; 
+       }
+       a:hover mat-icon { // Icons inside links on hover
+           color: #FAF3E0 !important; 
+       }
+       
+      // Specific Tailwind text color overrides
+      .text-\[\#B7A57A\], [class*="text-[#B7A57A]"] { color: #B7A57A !important; }
+      .text-\[\#1A365D\], [class*="text-[#1A365D]"] { color: #FAF3E0 !important; }
+
+      // Button Styles within active tab cards
+      button.btn-primary { 
+         background-color: #B7A57A !important; 
+         color: #1A365D !important; 
+      }
+      button.btn-secondary { 
+        border-color: #B7A57A !important; 
+        background-color: #3A5F8A !important; // Set a background
+        color: #B7A57A !important; 
+         &:hover { background-color: #4b5563 !important; } // Darken slightly on hover
+      }
+       button.btn-warn { 
+          background-color: #ef4444 !important; 
+          color: white !important; 
+       }
+       button.btn-warn-outline, button.btn-secondary-outline { 
+          color: #f87171 !important; 
+          border-color: #f87171 !important; 
+          &:hover:not(:disabled) { background-color: rgba(248, 113, 113, 0.1) !important; }
+       }
+       // Ensure specific overrides for signout/delete buttons
+       button.btn-secondary-outline { // Sign out button
+          color: #9ca3af !important; 
+          border-color: #9ca3af !important; 
+          &:hover:not(:disabled) { background-color: rgba(156, 163, 175, 0.1) !important; }
+       }
+       button.btn-warn { // Delete button
+          background-color: #ef4444 !important; 
+          color: white !important; 
+       }
+    }
+  } // End .mat-mdc-tab-body-active
+
+} // End of body.dark app-profile
+
+/* Ensure HIGH SPECIFICITY RULE FOR HOST BACKGROUND is present (Keep this) */
+html.dark body.dark app-profile :host {
+  display: block; // Ensure host can have background
+  background-color: #1A365D !important; // MAX specificity attempt
+}
+
+/* Apply ::ng-deep fixes for Tab Header Dark Mode */
+::ng-deep .dark .mat-mdc-tab-header {
+    background-color: #2A4365 !important; 
+    border-bottom-color: rgba(183, 165, 122, 0.3) !important; 
+ }
+
+/* NEW: Apply ::ng-deep fixes for Account Tab Content Dark Mode - REMOVING THIS */
+// ::ng-deep .dark mat-tab-body[aria-label="Account"] .profile-card {
+//    ...
+// }

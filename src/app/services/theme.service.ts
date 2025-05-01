@@ -94,22 +94,31 @@ export class ThemeService implements OnDestroy {
       // console.log(`[ThemeService] Applying theme based on user preference: ${themeToApply}`);
     }
 
-    // Apply the class to the body
+    // Apply the class to html and body
     try {
+        const htmlClassList = document.documentElement.classList;
         const bodyClassList = document.body.classList;
         if (themeToApply === 'dark') {
+            if (!htmlClassList.contains('dark')) {
+                htmlClassList.add('dark');
+                // console.log('[ThemeService] Added "dark" class to html.');
+            }
             if (!bodyClassList.contains('dark')) {
                 bodyClassList.add('dark');
                 // console.log('[ThemeService] Added "dark" class to body.');
             }
         } else {
+             if (htmlClassList.contains('dark')) {
+                htmlClassList.remove('dark');
+                // console.log('[ThemeService] Removed "dark" class from html.');
+            }
              if (bodyClassList.contains('dark')) {
                 bodyClassList.remove('dark');
                 // console.log('[ThemeService] Removed "dark" class from body.');
             }
         }
     } catch(e) {
-        // console.error('[ThemeService] Error manipulating body classList:', e);
+        // console.error('[ThemeService] Error manipulating html/body classList:', e);
     }
 
     // Update BehaviorSubject only if the theme actually changed

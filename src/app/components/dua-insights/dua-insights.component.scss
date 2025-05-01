@@ -188,4 +188,121 @@
       font-style: italic;
     }
   }
+}
+
+/* Dark Mode Overrides */
+.dark .dua-insights {
+  .insights-container {
+    background-color: #2A4365 !important; // Lighter Blue modal background
+    color: #FAF3E0 !important; // Cream default text
+  }
+
+  .loading-container p {
+    color: #B7A57A !important; // Gold loading text
+  }
+  .loading-container .animate-spin {
+      border-color: #B7A57A !important; // Gold spinner
+      border-t-color: transparent !important;
+  }
+  .progress-bar {
+      background-color: #1A365D !important; // Dark blue track
+      .progress {
+          background-color: #B7A57A !important; // Gold progress
+      }
+  }
+
+  .error-message {
+    color: #f87171 !important; // Light Red text
+    background-color: rgba(239, 68, 68, 0.15) !important; // Faint red background
+    i {
+        color: #f87171 !important; // Light Red icon
+    }
+  }
+
+  .tabs-container {
+    border-bottom-color: rgba(183, 165, 122, 0.3) !important; // Faint Gold border
+    
+    .tabs {
+      &::-webkit-scrollbar-track {
+        background: #1A365D !important; // Dark blue track
+      }
+      &::-webkit-scrollbar-thumb {
+        background: #B7A57A !important; // Gold thumb
+      }
+    }
+
+    .tab {
+      color: #9ca3af !important; // Lighter Gray inactive tab
+      
+      i {
+        color: #9ca3af !important; // Lighter Gray inactive icon
+      }
+      
+      &.active {
+        color: #B7A57A !important; // Gold active tab
+        background-color: #1A365D !important; // Dark blue active bg
+        i { color: #B7A57A !important; } // Gold active icon
+        
+        &::after {
+          background-color: #B7A57A !important; // Gold indicator line
+        }
+      }
+      
+      &:hover:not(.active) {
+        color: #B7A57A !important; // Gold hover text
+        background-color: #1A365D !important; // Dark blue hover bg
+        i { color: #B7A57A !important; } // Gold hover icon
+      }
+    }
+  }
+
+  .insights-content {
+    section {
+      background-color: #1A365D !important; // Darkest blue for sections
+      border-color: rgba(183, 165, 122, 0.2) !important; // Faint gold border
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2) !important;
+
+      &:hover {
+        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3) !important;
+      }
+
+      h3 {
+        color: #B7A57A !important; // Gold headers
+        i {
+          color: #B7A57A !important; // Gold icons in headers
+        }
+      }
+      h4 { // Target h4 specifically for nested sections
+        color: #FAF3E0 !important; // Cream for sub-headers like 'Islamic Perspective'
+      }
+
+      p, li {
+        color: #d1d5db !important; // Light Gray base text
+      }
+      li { // Style list item bullets
+        &::before {
+            color: #B7A57A !important; // Gold bullets
+        }
+      }
+      // Style nested list items (e.g., within spiritual advice)
+      ul {
+        li {
+            background-color: #2A4365 !important; // Lighter Blue background for nested items
+            border: 1px solid rgba(183, 165, 122, 0.1) !important; // Very faint gold border
+            .font-arabic { color: #FAF3E0 !important; } // Cream Arabic
+            .text-gray-700, .text-gray-600 { color: #d1d5db !important; } // Light gray
+            .text-gray-500 { color: #9ca3af !important; } // Lighter gray
+            .text-\[\#B7A57A\], .text-\[\#B7A57A\] i { color: #B7A57A !important; } // Gold for specific text/icons
+            .italic { color: #9ca3af !important; } // Lighter gray for italics
+            .font-semibold { color: #FAF3E0 !important; } // Cream for semi-bold like practice names
+        }
+      }
+    }
+
+    .verse { // Style related verses section
+      background-color: #1A365D !important; // Darkest blue
+      border-left-color: #B7A57A !important; // Gold border
+      color: #d1d5db !important; // Light gray text
+    }
+  }
 } 

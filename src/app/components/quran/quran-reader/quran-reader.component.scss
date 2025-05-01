@@ -165,7 +165,7 @@ $text-medium: #4A5568;
   background-color: #{$primary-color}15;
   border: 1px solid #{$primary-color}40;
   border-radius: 50%;
-  font-family: 'Traditional Arabic', serif;
+  font-family: 'Traditional Arabic';
   font-size: 1.2rem;
   color: $primary-color;
   margin: 0 0.5rem;
@@ -1140,7 +1140,7 @@ select option {
   .mat-mdc-form-field-infix {
       padding-top: 0 !important;
       padding-bottom: 0 !important;
-      margin-top: -0.25em !important; // Adjust vertical alignment
+      margin-top:0 !important; // Adjust vertical alignment
   }
   // Ensure label styling applies
   .mat-mdc-floating-label.mdc-floating-label {
@@ -1232,112 +1232,168 @@ select option {
 
 // --- Desktop Mushaf Controls Header Styling ---
 .mushaf-controls-header {
-  // ... existing styles ...
-  background-color: #FAF3E0; // Set to cream background
-  border-bottom: 1px solid #e0d8c4; // Add subtle bottom border
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  position: sticky; // Keep sticky
-  top: 0;
-  z-index: 51 !important; // Ensure it's above content but below modals/audio
+  // Base light mode styles (ensure these are present)
+  background-color: #FAF3E0; 
+  border-top: 1px solid #e0d8c4; 
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.1); 
 
-  // Style the mat-form-field for page input
-  mat-form-field[appearance="outline"] {
-    .mat-mdc-text-field-wrapper {
-      height: 44px !important; // Match Surah select height
-      background-color: rgba(255, 255, 255, 0.8) !important; 
-      border-radius: 8px !important;
-      padding: 0 !important;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
-    }
-    .mat-mdc-form-field-outline {
-      border-color: rgba(183, 165, 122, 0.5) !important; 
-      border-width: 1px !important;
-      border-radius: 8px !important;
-    }
-    .mat-mdc-form-field-outline-start, .mat-mdc-form-field-outline-end {
-      border-width: 1px !important; 
-    }
-    .mat-mdc-form-field-outline-thick {
-       border-color: #B7A57A !important;
-       opacity: 1 !important;
-       border-width: 2px !important; 
-    }
-    input.mat-mdc-input-element {
-      color: #1A365D !important;
-      text-align: center !important;
-      padding: 0 4px !important; // Add slight horizontal padding
-      font-weight: 500 !important;
-      height: 100% !important;
-      font-size: 1rem !important; // Ensure consistent size
-    }
-    .mat-mdc-form-field-infix {
-      padding: 0 !important;
-      display: flex !important; 
-      align-items: center !important;
-    }
-    .mat-mdc-form-field-label {
-        color: #B7A57A !important;
-        // Use transform for positioning to avoid conflicts
-        transform: translateY(-1.5em) scale(0.75) !important; 
-        // Remove top/left positioning if previously set
-    }
-    .mat-mdc-form-field-flex {
-        padding: 0 0.75em !important;
-        height: 44px !important; // Ensure flex container matches height
-    }
-    .mat-mdc-form-field-subscript-wrapper { display: none; } // Hide subscript space
-    .mat-mdc-form-field-bottom-align::before { height: 0; } // Remove bottom alignment space
-    .mat-mdc-form-field-suffix {
-      align-self: center !important; // Vertically center suffix
-      padding-right: 8px !important; // Add some padding
-      color: #1A365D !important; // Match input color
-      font-weight: 500 !important; // Match input weight
-      font-size: 1rem !important; // Match input size
-    }
+  // Ensure internal elements have default dark text in light mode
+  .pc-surah-select .mat-mdc-select-value, 
+  .pc-surah-select .mat-mdc-select-arrow,
+  .desktop-page-input,
+  .desktop-page-suffix {
+     color: #1A365D !important; // Dark Blue text
+  }
+  button.mat-mdc-icon-button .mat-icon {
+     color: #4A5568 !important; // Dark Gray icons
   }
 }
 
-// --- Mobile Mushaf Controls Styling ---
-.mobile-mushaf-controls {
-  // ... existing styles ...
-  background-color: #FAF3E0; // Apply same background as desktop
-  background-size: cover;
-  background-position: center;
-  box-shadow: 0 -2px 5px rgba(0,0,0,0.1); // Add shadow consistent with desktop bottom
-  // Ensure text/icons inside are readable (adjust if needed)
-  // Example: Make icon buttons white
-  button mat-icon {
-    color: white !important; // Make icons white
-  }
-  // Make input text readable
-  input[type="number"] {
-    color: #1A365D !important; // Dark blue text
-    background-color: rgba(255, 255, 255, 0.8) !important; // White background
-    border-color: rgba(183, 165, 122, 0.5) !important;
-  }
-  span.text-xs {
-    color: white !important; // Make suffix text white
-  }
-}
+/* Dark Mode Overrides */
+.dark app-quran-reader {
+  background-color: #1A365D !important; /* Dark Blue */
+  display: block !important; /* Ensure host can have background applied */
 
-// Remove previous complex styles for desktop page input
-// --- Style for NEW Desktop Page Input ---
-.desktop-page-input-container {
-  // Container uses Tailwind classes for layout, bg, border, rounded, padding, height, shadow
-}
-
-.desktop-page-input {
-  // Input uses Tailwind classes for flex-grow, width, text-align, padding, bg, border, focus, text color, font-weight
-  // Remove number input spinner arrows
-  &::-webkit-inner-spin-button,
-  &::-webkit-outer-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
+  h1 {
+    color: #B7A57A !important; /* Gold */
   }
-  -moz-appearance: textfield; // Firefox
-}
 
-.desktop-page-suffix {
-  // Suffix uses Tailwind classes for size, color, padding
-  white-space: nowrap; // Prevent wrapping
-}
+  // --- Force Override common light backgrounds/text --- 
+  .bg-white { /* General white areas */
+      background-color: #2A4365 !important; 
+      border-color: rgba(183, 165, 122, 0.2) !important;
+  }
+  .bg-gray-50, .bg-\[\#FAF3E0\] { /* Light gray or cream areas */
+      background-color: #1A365D !important; 
+      border-color: rgba(183, 165, 122, 0.2) !important;
+  }
+  // ... other general text overrides ...
+  .text-gray-800 { color: #FAF3E0 !important; }
+  .text-gray-700 { color: #d1d5db !important; }
+  .text-gray-600 { color: #9ca3af !important; }
+  .text-gray-500 { color: #6b7280 !important; }
+  .text-\[\#1A365D\] { color: #FAF3E0 !important; }
+  .text-\[\#B7A57A\] { color: #B7A57A !important; }
+
+  // --- Translation View --- 
+  .verse-card { 
+      background-color: #1F3A5F !important; 
+      border-color: rgba(183, 165, 122, 0.2); 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      color: #d1d5db !important; 
+
+      .verse-meaning {
+          background-color: #2A4365 !important; 
+          border-top-color: rgba(183, 165, 122, 0.2) !important; 
+          background-image: none !important; 
+          .translation-text, .translation-text p { color: #FAF3E0 !important; } 
+          .transliteration-text, .transliteration-text p { color: #9ca3af !important; } 
+          .verse-details, .verse-source { color: #6b7280 !important; }
+      }
+      .verse-number {
+         background-color: rgba(183, 165, 122, 0.15) !important; 
+         border-color: rgba(183, 165, 122, 0.3) !important; 
+         color: #B7A57A !important; 
+      }
+      .verse-actions button.mat-icon-button { 
+         .mat-icon { color: #FAF3E0; }
+         &:hover:not(:disabled) { 
+             background-color: rgba(250, 243, 224, 0.1); 
+             .mat-icon { color: #B7A57A; }
+         } 
+         &.bookmarked .mat-icon { color: #B7A57A !important; }
+      }
+      > .p-6 > .verse-text { color: #B7A57A !important; }
+  }
+
+  // === Default verse text color ===
+  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; }
+
+  // --- Highlighted Verse Colors ---
+  .highlighted-verse, .selected-verse { // Target the verse-card when highlighted
+    background-color: #3A5F8A !important; 
+    border-color: #B7A57A !important; 
+    .verse-text, .word-tooltip-trigger { color: #1A365D !important; } 
+    .verse-meaning {
+      // Keep nested dark styles
+      background-color: #2A4365 !important; 
+      border-top-color: rgba(183, 165, 122, 0.4) !important;
+      .translation-text, .translation-text p { color: #FAF3E0 !important; } 
+      .transliteration-text, .transliteration-text p { color: #9ca3af !important; } 
+      .verse-details, .verse-source { color: #6b7280 !important; } 
+    }
+    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } 
+    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #1A365D !important; }
+  } 
+
+  // --- Tafsir section dark mode ---
+  .bg-gray-50 { 
+     background-color: #1A365D !important; 
+     color: #d1d5db !important; 
+     h3, h4 { color: #B7A57A !important; }
+  }
+
+  // +++ DESKTOP MUSHAF CONTROLS DARK STYLES (NESTED HERE) +++
+  .mushaf-controls-header {
+    background-color: #1A365D !important; 
+    border-top: 1px solid rgba(183, 165, 122, 0.2) !important; 
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.3) !important;
+
+    // Surah Select (PC)
+    .pc-surah-select {
+      .mat-mdc-form-field-flex {
+        background-color: #2A4365 !important; // Lighter Blue background
+        // height: auto; // Remove fixed height if causing issues
+        // align-items: center !important; 
+      }
+      // Remove previous infix/trigger adjustments if flex align-items is enough
+      /* .mat-mdc-form-field-infix { ... } */
+      /* .mat-mdc-select-trigger { ... } */
+      .mat-mdc-select-value { color: #FAF3E0 !important; } // Ensure Cream text
+      .mat-mdc-select-arrow { color: #FAF3E0 !important; } // Ensure Cream arrow
+      .mat-mdc-floating-label { color: #9ca3af !important; } 
+      .mdc-notched-outline > * { border-color: rgba(183, 165, 122, 0.5) !important; }
+      &.mat-focused {
+        .mat-mdc-floating-label { color: #FAF3E0 !important; }
+        .mdc-notched-outline > * { border-color: #FAF3E0 !important; }
+      }
+    }
+
+    // Page Input (PC)
+    .desktop-page-input-container { 
+       background-color: #2A4365 !important; 
+       border-color: rgba(183, 165, 122, 0.5) !important; 
+    }
+    .desktop-page-input { color: #FAF3E0 !important; background-color: transparent !important; }
+    .desktop-page-suffix { color: #B7A57A !important; }
+
+    // Icon Buttons
+    button.mat-mdc-icon-button .mat-icon { color: #FAF3E0 !important; }
+    button.mat-mdc-icon-button:hover:not(:disabled) {
+      background-color: rgba(250, 243, 224, 0.1) !important; 
+      .mat-icon { color: #B7A57A !important; }
+    }
+    button.mat-mdc-icon-button:disabled .mat-icon { color: #6b7280 !important; }
+    button.bookmarked .mat-icon { color: #B7A57A !important; }
+
+    // Mat Button Toggle Group
+    mat-button-toggle-group {
+        background-color: #2A4365 !important; 
+        border: 1px solid #B7A57A !important; 
+    }
+    mat-button-toggle {
+        background-color: transparent !important;
+        .mat-button-toggle-button { color: #9ca3af !important; }
+        &.mat-button-toggle-checked {
+            background-color: #B7A57A !important; 
+            .mat-button-toggle-button { color: #1A365D !important; }
+        }
+        &:hover:not(.mat-button-toggle-checked) {
+            background-color: rgba(183, 165, 122, 0.1) !important; 
+            .mat-button-toggle-button { color: #B7A57A !important; }
+        }
+    }
+  } // End .mushaf-controls-header
+
+} // End of .dark app-quran-reader
+

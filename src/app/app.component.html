@@ -1,10 +1,89 @@
 <!-- Loading Overlay -->
-<div *ngIf="isLoading$ | async" class="loading-overlay">
-  <mat-spinner diameter="50"></mat-spinner>
+<div *ngIf="displayLoading$ | async" class="loading-overlay">
+  <div class="loading-content">
+    <img src="nura-logo.png" alt="Nura AI Loading..." class="loading-logo mb-8">
+
+    <!-- Pulsating App Preview Container -->
+    <div class="pulsating-preview-container">
+      <div class="preview-frame">
+        <!-- Skeleton Previews Container -->
+        <div class="skeleton-previews">
+          <!-- Tafsir Chat Skeleton -->
+          <div class="skeleton-preview tafsir-skeleton">
+            <div class="skeleton-header"></div>
+            <div class="skeleton-line arabic large"></div>
+            <div class="skeleton-line short"></div>
+            <div class="skeleton-box with-icon">
+              <div class="skeleton-icon"></div>
+              <div class="skeleton-box-content">
+                <div class="skeleton-line very-short"></div>
+                <div class="skeleton-line tiny"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dua Search Skeleton -->
+          <div class="skeleton-preview dua-search-skeleton">
+            <div class="skeleton-header"></div>
+            <div class="skeleton-box with-icon input">
+               <div class="skeleton-icon"></div>
+               <div class="skeleton-input-line"></div>
+            </div>
+            <div class="skeleton-tags">
+              <div class="skeleton-tag"></div>
+              <div class="skeleton-tag"></div>
+              <div class="skeleton-tag"></div>
+            </div>
+             <div class="skeleton-box small">
+                <div class="skeleton-line medium"></div>
+             </div>
+          </div>
+
+          <!-- Dua Insights Skeleton -->
+          <div class="skeleton-preview dua-insights-skeleton">
+             <div class="skeleton-header"></div>
+             <div class="skeleton-box">
+                <div class="skeleton-line arabic medium"></div>
+                <div class="skeleton-line short gold"></div>
+                <div class="skeleton-line medium"></div>
+             </div>
+          </div>
+
+          <!-- Quran Reader Skeleton -->
+          <div class="skeleton-preview quran-reader-skeleton">
+             <div class="skeleton-header controls">
+               <div class="skeleton-button small"></div>
+               <div class="skeleton-select"></div>
+               <div class="skeleton-button small"></div>
+             </div>
+             <div class="skeleton-quran-page">
+                <div class="skeleton-line arabic"></div>
+                <div class="skeleton-line arabic"></div>
+                <div class="skeleton-line arabic"></div>
+                <div class="skeleton-line arabic"></div>
+                <div class="skeleton-line arabic"></div>
+                <div class="skeleton-line arabic"></div>
+             </div>
+             <div class="skeleton-footer-controls">
+                <div class="skeleton-button"></div>
+                <div class="skeleton-button large"></div>
+                <div class="skeleton-button"></div>
+             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="loading-text mt-4">Loading Nura AI...</p>
+    <!-- Optional: Spinner can remain as a fallback or be removed -->
+    <!-- <mat-spinner diameter="40" [strokeWidth]="3"></mat-spinner> -->
+  </div>
 </div>
 
-<div id="app-container" [class.blurred]="isLoading$ | async"> <!-- Optional: blur content -->
+<div id="app-container" [class.blurred]="displayLoading$ | async">
   <!-- Conditionally show header -->
   <app-header *ngIf="showHeader$ | async"></app-header>
-  <router-outlet></router-outlet> <!-- Top-level outlet for layouts -->
+  <router-outlet></router-outlet>
+  <!-- Conditionally show theme toggle -->
+  <app-theme-toggle *ngIf="showThemeToggle$ | async"></app-theme-toggle>
 </div>

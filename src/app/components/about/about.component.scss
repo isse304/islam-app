@@ -6,24 +6,26 @@
   max-width: 950px;
   margin: 30px auto;
   animation: fadeIn 0.6s ease-in-out;
-  background: linear-gradient(135deg, var(--app-background-light, #f8f9fa) 0%, var(--app-background-medium, #e9ecef) 100%);
+  // Background set by Tailwind dark:bg-[#1A365D]
+  // background: linear-gradient(135deg, var(--app-background-light, #f8f9fa) 0%, var(--app-background-medium, #e9ecef) 100%);
   border-radius: 12px;
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
 }
 
 .about-card {
-  background-color: var(--app-card-background, #ffffff);
-  color: var(--app-text-color, #333);
+  // Background set by Tailwind dark:bg-[#2A4365]
+  // color: var(--app-text-color, #333);
   border-radius: 8px;
   box-shadow: none; // Shadow is on the container now
   overflow: hidden; // Ensures content respects border radius
 }
 
 mat-card-header {
-  background-color: var(--app-primary-color, #1A365D);
-  color: var(--app-header-text-color, #ffffff);
+  // Background set by Tailwind dark:bg-[#1A365D]
+  // color: var(--app-header-text-color, #ffffff);
   padding: 25px 30px;
-  border-bottom: 5px solid var(--app-accent-color, #B7A57A);
+  // Border set by Tailwind dark:border-[#B7A57A]
+  // border-bottom: 5px solid var(--app-accent-color, #B7A57A);
 
   mat-card-title {
     font-size: 2.2em;
@@ -35,21 +37,25 @@ mat-card-header {
 
   mat-card-subtitle {
     font-size: 1.2em;
-    color: rgba(var(--app-header-text-rgb, 255, 255, 255), 0.85); // Slightly transparent white
+    // Color set by Tailwind dark:text-[#FAF3E0]/85
+    // color: rgba(var(--app-header-text-rgb, 255, 255, 255), 0.85);
     margin-bottom: 0;
   }
 }
 
 mat-card-content {
   padding: 30px;
+  // Base text color set by Tailwind dark:text-[#d1d5db]
 }
 
 .section {
   margin-bottom: 35px;
   padding: 25px;
   border-radius: 8px;
-  background-color: rgba(var(--app-section-background-rgb, 240, 240, 240), 0.5); // Subtle background for sections
-  border: 1px solid var(--app-divider-color, #e0e0e0);
+  // Background set by Tailwind dark:bg-[#1A365D]/70
+  // background-color: rgba(var(--app-section-background-rgb, 240, 240, 240), 0.5); 
+  // Border set by Tailwind dark:border-gray-700
+  // border: 1px solid var(--app-divider-color, #e0e0e0);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 
   &:hover {
@@ -66,15 +72,18 @@ mat-card-content {
     align-items: center;
     font-size: 1.6em;
     font-weight: 600;
-    color: var(--app-primary-color, #1A365D);
+    // Color set by Tailwind dark:text-[#B7A57A]
+    // color: var(--app-primary-color, #1A365D);
     margin-top: 0;
     margin-bottom: 20px;
     padding-bottom: 10px;
-    border-bottom: 2px solid var(--app-accent-color, #B7A57A);
+    // Border set by Tailwind dark:border-[#B7A57A]
+    // border-bottom: 2px solid var(--app-accent-color, #B7A57A);
 
     mat-icon {
       margin-right: 12px;
-      color: var(--app-accent-color, #B7A57A);
+      // Color set by Tailwind dark:text-[#B7A57A]
+      // color: var(--app-accent-color, #B7A57A);
       font-size: 1.4em; // Make icon slightly larger
       vertical-align: middle;
     }
@@ -83,12 +92,14 @@ mat-card-content {
   p {
     line-height: 1.75;
     margin-bottom: 15px;
-    color: var(--app-secondary-text-color, #555);
+    // Color set by Tailwind dark:text-[#d1d5db]
+    // color: var(--app-secondary-text-color, #555);
   }
 
   ul {
     list-style: none;
     padding-left: 5px; // Reduced padding
+    // Text color set by Tailwind dark:text-[#d1d5db]
 
     li {
       margin-bottom: 14px;
@@ -101,7 +112,8 @@ mat-card-content {
         position: absolute;
         left: 0;
         top: 2px;
-        color: var(--app-accent-color, #B7A57A);
+        // Color set by Tailwind dark:before:text-[#B7A57A]
+        // color: var(--app-accent-color, #B7A57A);
         font-size: 1.1em;
         line-height: 1;
       }
@@ -110,8 +122,10 @@ mat-card-content {
 }
 
 .creator-section {
-  background-color: rgba(var(--app-accent-rgb, 183, 165, 122), 0.1); // Slightly stronger accent background
-  border-left: 4px solid var(--app-accent-color, #B7A57A);
+  // Background set by Tailwind dark:bg-[#B7A57A]/10
+  // background-color: rgba(var(--app-accent-rgb, 183, 165, 122), 0.1);
+  // Border set by Tailwind dark:border-[#B7A57A]
+  // border-left: 4px solid var(--app-accent-color, #B7A57A);
   padding: 25px;
   margin-top: 25px;
 
@@ -121,24 +135,34 @@ mat-card-content {
   }
 
   p strong {
-      color: var(--app-primary-color, #1A365D);
+      // Color set by Tailwind dark:text-[#B7A57A]
+      // color: var(--app-primary-color, #1A365D);
   }
 
   a[mat-stroked-button] {
     margin-top: 20px;
     border-width: 2px;
-    border-color: var(--app-primary-color, #1A365D);
-    color: var(--app-primary-color, #1A365D);
+    // Border/text/hover set by Tailwind dark:...
+    // border-color: var(--app-primary-color, #1A365D);
+    // color: var(--app-primary-color, #1A365D);
     font-weight: 600;
     transition: background-color 0.3s ease, color 0.3s ease;
 
 
     mat-icon {
-       color: var(--app-primary-color, #1A365D);
+       // Color set by Tailwind dark:text-[#B7A57A]
+       // color: var(--app-primary-color, #1A365D);
        margin-right: 8px;
        transition: color 0.3s ease;
     }
+    
+    i.fab.fa-instagram {
+       // Color set by Tailwind dark:text-[#B7A57A]
+       margin-right: 8px;
+    }
 
+    // Hover set by Tailwind dark:hover:...
+    /*
     &:hover {
        background-color: var(--app-primary-color, #1A365D);
        color: var(--app-header-text-color, #ffffff);
@@ -146,6 +170,7 @@ mat-card-content {
          color: var(--app-header-text-color, #ffffff);
        }
     }
+    */
   }
 }
 
@@ -160,7 +185,7 @@ mat-card-content {
   }
 }
 
-// Responsive adjustments
+// Responsive adjustments (keep these as they affect layout)
 @media (max-width: 768px) {
   .about-container {
       padding: 20px 15px;
@@ -196,4 +221,91 @@ mat-card-content {
         font-size: 1.2em;
     }
   }
+}
+
+/* Reintroduce dark mode block with !important */
+body.dark app-about {
+  .about-container {
+    background-color: transparent !important; // Ensure inner container is transparent
+  }
+  .about-card {
+    background-color: #2A4365 !important; 
+    color: #d1d5db !important; 
+  }
+  mat-card-header {
+    background-color: #1A365D !important; 
+    color: #FAF3E0 !important; 
+    border-bottom-color: #B7A57A !important; 
+    
+    mat-card-title {
+      color: #FAF3E0 !important; 
+    }
+    mat-card-subtitle {
+      color: rgba(250, 243, 224, 0.85) !important; 
+    }
+  }
+  mat-card-content {
+    color: #d1d5db !important; 
+  }
+  .section {
+    background-color: rgba(26, 54, 93, 0.7) !important; 
+    border-color: #4b5563 !important; // Darker gray border
+
+    h2 {
+      color: #B7A57A !important; 
+      border-bottom-color: #B7A57A !important; 
+      mat-icon {
+        color: #B7A57A !important; 
+      }
+    }
+    p {
+      color: #d1d5db !important; 
+    }
+    ul {
+      color: #d1d5db !important; 
+      li::before {
+        color: #B7A57A !important; 
+      }
+      li strong {
+        color: #FAF3E0 !important; // Make list item strong text cream
+      }
+    }
+    strong { // General strong text within section
+        color: #FAF3E0 !important; // Make strong text cream
+    }
+  }
+  .creator-section {
+    background-color: rgba(183, 165, 122, 0.1) !important; 
+    border-left-color: #B7A57A !important; 
+    
+    h2 {
+      color: #B7A57A !important; 
+    }
+    p {
+      color: #d1d5db !important; 
+    }
+    p strong {
+      color: #B7A57A !important; 
+    }
+    a[mat-stroked-button] {
+      border-color: #B7A57A !important; 
+      color: #B7A57A !important; 
+      mat-icon, i.fab {
+        color: #B7A57A !important; 
+      }
+      &:hover {
+        background-color: rgba(183, 165, 122, 0.15) !important; 
+        color: #FAF3E0 !important; 
+         mat-icon, i.fab {
+           color: #FAF3E0 !important; 
+         }
+      }
+    }
+  }
+}
+
+/* ADDING HIGH SPECIFICITY RULE FOR HOST BACKGROUND */
+html.dark body.dark app-about :host {
+  display: block; // Ensure host can have background
+  background-color: #1A365D !important; // MAX specificity attempt
 }

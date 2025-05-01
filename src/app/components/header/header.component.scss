@@ -3,12 +3,29 @@
     top: 0;
     width: 100%;
     z-index: 100;
-    background-image: 
-      linear-gradient(to right, rgba(183, 165, 122, 0.95), rgba(155, 138, 101, 0.95)),
-      url('/islamic-pattern-2.png');
-    background-size: cover;
-    background-position: center;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    // Define base variables
+    --header-bg: rgba(183, 165, 122, 0.85); /* Semi-transparent Gold */
+    --header-text: white;
+    // Apply base colors using variables
+    background-color: var(--header-bg); /* Apply semi-transparent bg */
+    color: var(--header-text, white); /* Default: White text */
+    // box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); // REMOVE existing shadow
+    backdrop-filter: blur(8px); // ADD Glassmorphism blur
+    border-bottom: 1px solid rgba(26, 54, 93, 0.1); // ADD faint dark border for light mode
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; // Added border-color transition
+    position: relative; // Needed for pseudo-element positioning
+    overflow: hidden; // Needed to contain pseudo-element
+
+    &::before {
+        content: '';
+        position: absolute;
+        inset: 0; // top, left, right, bottom = 0
+        background-image: url('/islamic-pattern-2.png');
+        background-size: 700px; // Adjust size if needed
+        background-position: center;
+        opacity: 0.1; // Slightly reduced opacity for light mode glass
+        z-index: 0; // Behind the content
+    }
   }
   
   .nav-container {
@@ -18,6 +35,8 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative; // Ensure content is above the ::before pseudo-element
+    z-index: 1;
   }
   
   .logo-container {
@@ -48,21 +67,22 @@
   }
   
   .nav-link {
-    color: white;
+    color: var(--header-text, white); /* Use CSS var */
     font-size: 1rem;
     font-weight: 500;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
     text-decoration: none;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Add subtle text shadow */
     transition: all 0.3s ease;
   
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: var(--header-link-hover-bg, rgba(255, 255, 255, 0.1)); /* Use CSS var */
     }
   }
   
   .nav-link-active {
-    background-color: rgba(255, 255, 255, 0.2);
+    background-color: var(--header-link-active-bg, rgba(255, 255, 255, 0.2)); /* Use CSS var */
   }
   
   .upgrade-container {
@@ -73,7 +93,7 @@
   
   .upgrade-button {
     background-color: #ffc107;
-    color: #1A365D;
+    color: #1f2937;
     padding: 0.6rem 1.2rem;
     border-radius: 20px;
     font-weight: 600;
@@ -97,7 +117,7 @@
   .mobile-menu-btn {
     display: block;
     padding: 0.5rem;
-    color: white;
+    color: var(--header-text, white); /* Use CSS var */
     border-radius: 0.5rem;
     background: none;
     border: none;
@@ -108,15 +128,19 @@
     }
   
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: var(--header-link-hover-bg, rgba(255, 255, 255, 0.1)); /* Use CSS var */
     }
   }
   
   .mobile-menu {
     display: none;
     flex-direction: column;
-    background-color: rgba(183, 165, 122, 0.98);
+    // Use a slightly more opaque background for mobile menu readability
+    --mobile-menu-bg: rgba(183, 165, 122, 0.95); /* More opaque Gold */
+    background-color: var(--mobile-menu-bg); 
     padding: 1rem;
+    // Add backdrop-filter here too if desired, or keep solid for readability
+    backdrop-filter: blur(8px); 
   
     &.mobile-menu-active {
       display: flex;
@@ -124,14 +148,15 @@
   }
   
   .mobile-link {
-    color: white;
+    color: var(--header-text, white); /* Use CSS var */
     text-decoration: none;
     padding: 0.75rem 1rem;
     border-radius: 0.5rem;
     transition: background-color 0.3s ease;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); /* Add subtle text shadow */
   
     &:hover {
-      background-color: rgba(255, 255, 255, 0.1);
+      background-color: var(--header-link-hover-bg, rgba(255, 255, 255, 0.1)); /* Use CSS var */
     }
   }
   
@@ -155,10 +180,6 @@
   .mobile-auth-container {
     margin-top: 0.5rem;
   }
-  
-  .nav-spacer {
-    height: 5rem;
-  }
 
 // Media query to hide elements on mobile
 @media (max-width: 767px) { // Target screens smaller than the desktop breakpoint
@@ -166,3 +187,54 @@
     display: none !important; // Use !important to ensure override if necessary
   }
 } 
+
+/* Add dark mode styles at the end */
+.dark .header-nav {
+  // Define variables for dark mode
+  --header-bg: rgba(26, 54, 93, 0.85); /* Semi-transparent Dark Blue */
+  --header-text: #FAF3E0; /* Cream text */
+  --header-link-hover-bg: rgba(250, 243, 224, 0.1); /* Light Cream hover bg */
+  --header-link-active-bg: rgba(250, 243, 224, 0.2); /* Light Cream active bg */
+  --mobile-menu-bg: rgba(26, 54, 93, 0.98); /* More opaque Dark Blue for mobile menu */
+  
+  // Apply colors DIRECTLY 
+  background-color: var(--header-bg); // Use semi-transparent var
+  color: var(--header-text); 
+  border-bottom-color: rgba(250, 243, 224, 0.1); // ADD faint cream border for dark mode
+
+  // Restore ::before styling for dark mode pattern
+  &::before {
+      opacity: 0.15; // Slightly increased opacity for dark mode glass
+  }
+  
+  // Ensure mobile menu specific styles apply correctly
+  .mobile-menu {
+    background-color: var(--mobile-menu-bg) !important; 
+    backdrop-filter: blur(8px); 
+  }
+  .mobile-link,
+  .mobile-menu-btn {
+     color: var(--header-text) !important; // Ensure cream text
+     text-shadow: none !important; // Remove shadow if it causes contrast issues
+  }
+  .mobile-link:hover {
+     background-color: var(--header-link-hover-bg) !important; // Use hover var
+  }
+  .mobile-upgrade-link {
+      // Ensure correct colors for upgrade link in dark mobile menu
+      color: #1A365D !important;
+      background-color: #ffc107 !important;
+      &:hover {
+        background-color: #ffca2c !important;
+      }
+  }
+}
+
+// Remove body.dark prefix from other rules
+// These rules are now redundant as they are handled inside .dark .header-nav
+/*
+.dark .nav-spacer { ... }
+.dark .upgrade-button { ... }
+.dark .mobile-upgrade-link { ... }
+.dark .mobile-menu { ... } 
+*/ 

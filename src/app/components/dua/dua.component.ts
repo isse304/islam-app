@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Input } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, Input, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { DuaService, Dua, DuaCategory, ResponseType } from '../../services/dua.service';
 import { Subscription, timer } from 'rxjs';
@@ -59,6 +59,7 @@ interface SpiritualAdvice {
     selector: 'app-dua',
     templateUrl: './dua.component.html',
     styleUrls: ['./dua.component.css'],
+    encapsulation: ViewEncapsulation.None,
     standalone: true,
     imports: [
         CommonModule,

@@ -32,7 +32,8 @@
 
   <!-- Main Content -->
   <div class="container mx-auto px-4 -mt-8 relative z-20" *ngIf="!isLoading">
-    <mat-tab-group animationDuration="200" class="profile-tabs">
+    <mat-tab-group animationDuration="200" class="profile-tabs" 
+                   (selectedTabChange)="onTabChanged($event)">
       <!-- Reading Preferences - COMMENTED OUT -->
       <!-- 
       <mat-tab>
@@ -97,7 +98,8 @@
         </ng-template>
         
         <div class="p-6">
-          <mat-card class="profile-card">
+          <mat-card class="profile-card"
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
             <mat-card-content>
               <!-- Empty State: Check both bookmark arrays -->
               <div *ngIf="translationBookmarks.length === 0 && mushafBookmarks.length === 0" class="text-center py-12">
@@ -178,7 +180,8 @@
         </ng-template>
         
         <div class="p-6">
-          <mat-card class="profile-card">
+          <mat-card class="profile-card"
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
             <mat-card-content class="min-h-[200px] flex flex-col justify-center">
 
               <!-- History Loading State -->
@@ -268,7 +271,7 @@
       </mat-tab>
 
       <!-- Account Settings -->
-      <mat-tab>
+      <mat-tab aria-label="Account">
         <ng-template mat-tab-label>
           <div class="tab-label">
             <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">manage_accounts</mat-icon>
@@ -278,7 +281,8 @@
         
         <div class="p-6 space-y-6">
           <!-- Account Info -->
-          <mat-card class="profile-card">
+          <mat-card class="profile-card" 
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
             <mat-card-content>
               <div class="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
@@ -294,7 +298,8 @@
           </mat-card>
 
           <!-- Subscription -->
-          <mat-card class="profile-card">
+          <mat-card class="profile-card"
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
             <mat-card-content>
               <div class="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
@@ -328,7 +333,8 @@
           </mat-card>
 
           <!-- Usage Statistics -->
-          <mat-card class="profile-card">
+          <mat-card class="profile-card"
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
              <mat-card-header>
                  <mat-card-title class="text-[#1A365D] dark:text-[#FAF3E0]">Usage Statistics</mat-card-title>
              </mat-card-header>
@@ -338,7 +344,9 @@
           </mat-card>
 
           <!-- Danger Zone -->
-          <mat-card class="profile-card border-2 border-red-200 dark:border-red-700/50">
+          <mat-card class="profile-card border-2 border-red-200 dark:border-red-700/50"
+                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null"
+                    [style.border-color]="(themeService.currentTheme$ | async) === 'dark' ? '#ef4444' : null">
             <mat-card-content>
               <div class="flex flex-col md:flex-row md:items-center justify-between">
                 <div>
@@ -468,18 +476,8 @@
     background-color: transparent !important; /* Ensure tab content area doesn't interfere */
   }
 
-  /* Card Styles */
-  .profile-card {
-    background-color: white;
-    border-radius: 0.75rem; /* Tailwind rounded-xl */
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* Tailwind shadow-sm */
-    overflow: hidden;
-  }
-  .dark .profile-card {
-    background-color: #2A4365; /* Dark Blue */
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Tailwind shadow-md approx */
-  }
-
+  /* Card Styles - REMOVING THESE RULES */
+  
   /* Button Styles - Keep Tailwind classes on buttons in HTML */
 
   /* Card Hover Effects */

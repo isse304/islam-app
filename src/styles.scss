@@ -15,6 +15,45 @@ html, body {
   -webkit-text-size-adjust: 100%;
   -moz-text-size-adjust: 100%;
   text-size-adjust: 100%;
+  /* Base colors */
+  background-color: #FAF3E0; /* Light Cream */
+  color: #1f2937; /* Tailwind gray-800 */
+}
+
+/* Base dark mode colors */
+html.dark {
+  background-color: #1A365D !important; // Ensure HTML root is dark too
+}
+.dark body {
+  background-color: #1A365D; /* Original Dark Blue */
+  color: #FAF3E0; /* Cream text */
+}
+
+/* Define a lighter blue for content backgrounds in dark mode */
+.dark .content-bg-dark {
+  background-color: #2A4365; /* Lighter Blue for cards/sections */
+}
+
+/* Default text colors in dark mode */
+.dark {
+  color: #FAF3E0; /* Default: Cream */
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #B7A57A; /* Default Headings: Gold */
+  }
+
+  p, span, div, li {
+    /* Ensure base paragraph/span/div text defaults correctly */
+    /* This might need adjustment based on specific component styles */
+    /* color: #FAF3E0; */ /* Avoid overly broad rules, let components specify */
+  }
+
+  a {
+    color: #B7A57A; /* Default links: Gold */
+    &:hover {
+       color: lighten(#B7A57A, 10%);
+    }
+  }
 }
 
 /* Material Icons fix */
@@ -40,11 +79,14 @@ html, body {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(255, 255, 255, 0.7);
+  /* Use theme colors */
+  background-color: rgba(250, 243, 224, 0.95); /* Light Cream with slight transparency */
   display: flex;
+  flex-direction: column; /* Align items vertically */
   justify-content: center;
   align-items: center;
   z-index: 1000;
+  transition: background-color 0.3s ease;
 }
 
 #app-container.blurred {
@@ -52,18 +94,309 @@ html, body {
   transition: filter 0.2s ease-in-out;
 }
 
-.loading-overlay mat-spinner::ng-deep circle {
-  stroke: #3f51b5; /* Indigo color - adjust if needed */
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
-/* Dark mode adjustments for loading overlay */
+.loading-logo {
+  max-width: 150px;
+  height: auto;
+  margin-bottom: 2rem; /* Tailwind mb-8 */
+}
+
+.loading-text {
+  font-size: 1.1rem;
+  color: #1A365D; /* Dark Blue */
+  margin-top: 1rem; /* Tailwind mt-4 */
+}
+
+/* Pulsating App Preview */
+.pulsating-preview-container {
+  width: 100%;
+  max-width: 280px; /* Adjust as needed */
+  height: 400px; /* Adjust height to match aspect ratio */
+  perspective: 1000px;
+  margin-bottom: 1rem;
+}
+
+.preview-frame {
+  width: 100%;
+  height: 100%;
+  background-color: #f8fafc; /* Light background for skeletons */
+  border-radius: 1rem; /* Tailwind rounded-xl */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e2e8f0; /* Light border */
+  padding: 1rem; /* Add padding for skeletons */
+  box-sizing: border-box;
+}
+
+/* Remove old image styles */
+/* .preview-image { ... } */
+/* .tafsir-preview { ... } */
+/* .dua-preview { ... } */
+/* .quran-preview { ... } */
+
+/* Skeleton Styles */
+.skeleton-previews {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.skeleton-preview {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  animation: pulseFadeSkeletons 12s infinite ease-in-out;
+  padding: 1rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem; /* Spacing between skeleton elements */
+}
+
+/* Animation Delays */
+.tafsir-skeleton { animation-delay: 0s; }
+.dua-search-skeleton { animation-delay: 3s; }
+.dua-insights-skeleton { animation-delay: 6s; }
+.quran-reader-skeleton { animation-delay: 9s; }
+
+/* Common Skeleton Elements */
+.skeleton-header,
+.skeleton-line,
+.skeleton-box,
+.skeleton-icon,
+.skeleton-tag,
+.skeleton-button,
+.skeleton-select,
+.skeleton-input-line {
+  background-color: #e2e8f0; /* Default skeleton color (gray-200) */
+  border-radius: 0.25rem; /* Tailwind rounded */
+  position: relative; /* Needed for pseudo-element */
+  overflow: hidden; /* Hide overflowing shimmer */
+}
+
+/* Add the shimmer pseudo-element */
+.skeleton-header::before,
+.skeleton-line::before,
+.skeleton-box::before,
+.skeleton-icon::before,
+.skeleton-tag::before,
+.skeleton-button::before,
+.skeleton-select::before,
+.skeleton-input-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%; /* Start off-screen */
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.skeleton-header {
+  height: 2rem;
+  width: 60%;
+  margin-bottom: 0.5rem;
+}
+
+.skeleton-line {
+  height: 0.75rem;
+  width: 100%;
+}
+.skeleton-line.short { width: 60%; }
+.skeleton-line.medium { width: 80%; }
+.skeleton-line.large { width: 95%; height: 1rem; }
+.skeleton-line.very-short { width: 40%; }
+.skeleton-line.tiny { width: 25%; height: 0.5rem; }
+.skeleton-line.gold { background-color: #fde68a; } /* Simulate gold color */
+.skeleton-line.arabic {
+  background-color: #d1d5db; /* Slightly darker gray for Arabic */
+  height: 1.2rem; /* Taller for Arabic script */
+  margin-bottom: 0.25rem;
+}
+
+.skeleton-box {
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.skeleton-box.small { padding: 0.5rem; }
+.skeleton-box.with-icon {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+.skeleton-box.input {
+  padding: 0.5rem 0.75rem;
+  align-items: center;
+}
+
+.skeleton-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex-shrink: 0;
+  background-color: #cbd5e1; /* Slightly darker */
+}
+
+.skeleton-box-content {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.skeleton-input-line {
+  height: 1rem;
+  flex-grow: 1;
+  background-color: #f1f5f9; /* Lighter for input area */
+}
+
+.skeleton-tags {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.skeleton-tag {
+  height: 1.25rem;
+  width: 4rem;
+  border-radius: 9999px; /* Pill shape */
+  background-color: #e2e8f0;
+}
+
+.skeleton-button {
+  height: 2rem;
+  width: 5rem;
+}
+.skeleton-button.small { width: 2rem; height: 1.75rem; }
+.skeleton-button.large { width: 3rem; height: 2.5rem; }
+
+.skeleton-select {
+  height: 2rem;
+  flex-grow: 1;
+  margin: 0 0.5rem;
+}
+
+/* Specific Skeleton Layouts */
+.quran-reader-skeleton .skeleton-header.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.25rem 0;
+  margin-bottom: 0.5rem;
+  height: auto; /* Override default height */
+  width: 100%;
+  background-color: transparent;
+}
+
+.quran-reader-skeleton .skeleton-quran-page {
+  flex-grow: 1;
+  background-color: #f8fafc;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.quran-reader-skeleton .skeleton-footer-controls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  padding-top: 0.5rem;
+  background-color: transparent;
+}
+
+/* Remove old animation */
+/* @keyframes pulseFade { ... } */
+
+/* New Skeleton Animation */
+@keyframes pulseFadeSkeletons {
+  0%, 100% { opacity: 0; transform: scale(0.98); }
+  /* Skeleton 1 (0s - 3s) */
+  4.17% { opacity: 1; transform: scale(1); } /* Fade In (0.5s / 12s) */
+  20.83% { opacity: 1; transform: scale(1); } /* Hold (2.5s / 12s) */
+  25% { opacity: 0; transform: scale(0.98); } /* Fade Out (0.5s / 12s) */
+  /* Skeleton 2 (3s - 6s) */
+  29.17% { opacity: 1; transform: scale(1); }
+  45.83% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0; transform: scale(0.98); }
+  /* Skeleton 3 (6s - 9s) */
+  54.17% { opacity: 1; transform: scale(1); }
+  70.83% { opacity: 1; transform: scale(1); }
+  75% { opacity: 0; transform: scale(0.98); }
+  /* Skeleton 4 (9s - 12s) */
+  79.17% { opacity: 1; transform: scale(1); }
+  95.83% { opacity: 1; transform: scale(1); }
+  /* 100% is Fade Out (handled by 0%) */
+}
+
+/* Dark mode adjustments */
 .dark .loading-overlay {
-  background-color: rgba(0, 0, 0, 0.6); /* Darker overlay */
+  background-color: rgba(17, 24, 39, 0.95); /* Use dark body bg color with transparency */
 }
 
-.dark .loading-overlay mat-spinner::ng-deep circle {
-  stroke: #bb86fc; /* Example Material dark theme accent */
+.dark .loading-text {
+  color: #FAF3E0; /* Light Cream */
 }
+
+.dark .preview-frame {
+  background-color: #1f2937; /* Darker background for skeletons */
+  border-color: #374151; /* Darker border */
+}
+
+/* Dark Skeleton Elements */
+.dark .skeleton-header,
+.dark .skeleton-line,
+.dark .skeleton-box,
+.dark .skeleton-icon,
+.dark .skeleton-tag,
+.dark .skeleton-button,
+.dark .skeleton-select,
+.dark .skeleton-input-line {
+  background-color: #374151; /* Default dark skeleton color (gray-700) */
+  position: relative; /* Needed for pseudo-element */
+  overflow: hidden; /* Hide overflowing shimmer */
+}
+
+/* Dark mode shimmer pseudo-element */
+.dark .skeleton-header::before,
+.dark .skeleton-line::before,
+.dark .skeleton-box::before,
+.dark .skeleton-icon::before,
+.dark .skeleton-tag::before,
+.dark .skeleton-button::before,
+.dark .skeleton-select::before,
+.dark .skeleton-input-line::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%; /* Start off-screen */
+  width: 100%;
+  height: 100%;
+  /* Use a darker shimmer for dark mode */
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 1.5s infinite linear;
+}
+
+.dark .skeleton-line.gold { background-color: #ca8a04; } /* Simulate darker gold */
+.dark .skeleton-line.arabic { background-color: #4b5563; } /* Slightly darker gray for Arabic */
+.dark .skeleton-box { border-color: #374151; }
+.dark .skeleton-icon { background-color: #4b5563; }
+.dark .skeleton-input-line { background-color: #111827; } /* Darker for input */
+.dark .quran-reader-skeleton .skeleton-quran-page { background-color: #1f2937; }
 
 /* Arabic Fonts */
 @font-face {
@@ -120,4 +453,14 @@ html, body {
 .success-snackbar {
   background-color: #4CAF50; /* Green */
   color: white;
+}
+
+/* Define Shimmer Animation */
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
 } 

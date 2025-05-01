@@ -27,6 +27,8 @@
   grid-template-columns: 1fr 2fr;
   gap: 4rem;
   align-items: start;
+  background-color: #FAF3E0; /* Light Cream */
+  min-height: calc(100vh - 64px); /* Adjust 64px based on header height */
 }
 
 .contact-info {
@@ -233,67 +235,99 @@
   }
 }
 
-// Dark mode styles
-@media (prefers-color-scheme: dark) {
-  .contact-header {
-    h1 {
-      color: #90caf9;
-    }
+/* Base Styles (for elements not covered by Tailwind/Material defaults) */
+.contact-card {
+  background-color: white;
+}
 
-    p {
-      color: #bdbdbd;
+.contact-input,
+.contact-textarea {
+  background-color: #f9fafb; /* Tailwind gray-50 */
+  border-color: #d1d5db; /* Tailwind gray-300 */
+  color: #1f2937; /* Tailwind gray-800 */
+}
+
+.contact-input:focus,
+.contact-textarea:focus {
+  border-color: #B7A57A; /* Gold */
+  box-shadow: 0 0 0 2px rgba(183, 165, 122, 0.3); /* Gold focus ring */
+}
+
+.contact-button {
+  background-color: #B7A57A; /* Gold */
+  color: white;
+}
+
+.contact-button:hover {
+  background-color: #a8966c; /* Darker Gold */
+}
+
+/* Consolidated Dark Mode Styles */
+body.dark app-contact {
+  .contact-page {
+    background-color: transparent !important;
+  }
+
+  .contact-header h1, 
+  .text-gray-800 {
+    color: #FAF3E0 !important;
+  }
+  .contact-header p, 
+  .text-gray-600, 
+  .text-gray-300 {
+     color: #d1d5db !important;
+  }
+
+  .contact-card, .info-card, .contact-form {
+    background-color: #2A4365 !important;
+    color: #d1d5db !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+  }
+
+  .contact-info .info-card h3 { color: #B7A57A !important; }
+  .contact-info .info-card p { color: #d1d5db !important; }
+  .contact-info .info-card .icon i { color: #B7A57A !important; }
+  .contact-info .info-card .icon { background-color: #1A365D !important; }
+
+  label { 
+     color: #FAF3E0 !important; 
+  }
+  
+  .contact-input,
+  .contact-textarea,
+  input,
+  textarea {
+    background-color: #1A365D !important;
+    border-color: #B7A57A !important;
+    color: #FAF3E0 !important;
+    &::placeholder {
+      color: #9ca3af !important;
     }
   }
 
-  .contact-info .info-card {
-    background: #1e1e1e;
-
-    .icon {
-      background: #333;
-    }
-
-    h3 {
-      color: #90caf9;
-    }
-
-    p {
-      color: #bdbdbd;
-    }
+  .contact-input:focus,
+  .contact-textarea:focus,
+  input:focus,
+  textarea:focus {
+    border-color: #FAF3E0 !important;
+    box-shadow: 0 0 0 2px rgba(250, 243, 224, 0.4) !important;
+    background-color: #1A365D !important;
   }
 
-  .contact-form {
-    background: #1e1e1e;
-
-    label {
-      color: #90caf9;
+  .contact-button,
+  button[type="submit"] {
+    background-color: #B7A57A !important;
+    color: #1A365D !important;
+    &:hover:not(:disabled) {
+      background-color: darken(#B7A57A, 5%) !important;
     }
-
-    input,
-    textarea {
-      background: #333;
-      border-color: #424242;
-      color: white;
-
-      &:focus {
-        border-color: #90caf9;
-        box-shadow: 0 0 0 3px rgba(144, 202, 249, 0.1);
-      }
-
-      &::placeholder {
-        color: #757575;
-      }
-    }
+    span { color: inherit !important; }
+    i.fas { color: inherit !important; }
   }
+}
 
-  .success-modal .modal-content {
-    background: #1e1e1e;
-
-    h3 {
-      color: #90caf9;
-    }
-
-    p {
-      color: #bdbdbd;
-    }
-  }
-} 
+/* Ensure HIGH SPECIFICITY RULE FOR HOST BACKGROUND is present */
+html.dark body.dark app-contact :host {
+  display: block;
+  background-color: #1A365D !important;
+}

@@ -241,4 +241,182 @@ button:active {
   flex: 1;
   line-height: 1.6;
   color: #4a5568;
+}
+
+/* Dark Mode Overrides */
+.dark app-dua {
+  .min-h-screen,
+  .dua-page-container {
+    background-color: #1A365D !important;
+  }
+
+  .dua-card {
+    background-color: #2A4365;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    color: #d1d5db;
+  }
+
+  .dua-card:hover {
+    background-color: #3A5F8A;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+  }
+
+  .dua-title {
+    color: #B7A57A;
+  }
+
+  .dua-translation {
+    color: #FAF3E0;
+  }
+
+  .dua-transliteration {
+    color: #9ca3af;
+  }
+
+  .dua-reference {
+    color: #6b7280;
+  }
+
+  .dua-virtue {
+    background-color: rgba(26, 54, 93, 0.5);
+    color: #B7A57A;
+    border: 1px solid rgba(183, 165, 122, 0.2);
+  }
+
+  .arabic-text {
+    color: #FAF3E0;
+    background-color: #1A365D;
+    border-color: rgba(183, 165, 122, 0.4);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .arabic-text:hover {
+    border-color: rgba(183, 165, 122, 0.7);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .search-section {
+    background-color: #2A4365 !important;
+    border-color: rgba(183, 165, 122, 0.2) !important;
+    background-image: none !important;
+  }
+
+  .search-input {
+    background-color: #1A365D !important;
+    border-color: #B7A57A !important;
+    color: #FAF3E0 !important;
+    &::placeholder {
+      color: #9ca3af !important;
+    }
+    &:focus {
+      ring-color: #B7A57A !important;
+      box-shadow: 0 4px 6px rgba(183, 165, 122, 0.1) !important;
+      border-color: #B7A57A !important;
+      background-color: #1A365D !important;
+    }
+  }
+
+  .emotion-tag {
+    background-color: #B7A57A !important;
+    color: #1A365D !important;
+    button span.material-icons {
+      color: #1A365D !important;
+    }
+  }
+
+  .emotion-suggestions {
+    border-top-color: rgba(183, 165, 122, 0.2) !important;
+  }
+  .suggestion-label {
+    color: #B7A57A !important;
+  }
+  .suggestion-tag {
+    background-color: rgba(183, 165, 122, 0.1) !important;
+    color: #B7A57A !important;
+    &:hover {
+      background-color: rgba(183, 165, 122, 0.2) !important;
+    }
+  }
+  
+  .ai-insights > div {
+    background-color: #2A4365 !important;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3) !important;
+  }
+  .ai-insights h3, .ai-insights h4, .ai-insights h5 {
+    color: #B7A57A !important;
+  }
+  .ai-insights .text-gray-800, .ai-insights .text-gray-700, .ai-insights .text-gray-600 { 
+    color: #d1d5db !important;
+  }
+  .ai-insights p, .ai-insights div {
+    color: inherit;
+  }
+  .ai-insights .font-medium {
+    color: #B7A57A !important;
+  }
+  .ai-insights i.fas {
+    color: #B7A57A !important;
+  }
+  .ai-insights .bg-\[\#B7A57A\]\/5,
+  .ai-insights .bg-gray-50 { 
+    background-color: #1A365D !important;
+    border: 1px solid rgba(183, 165, 122, 0.15) !important;
+    .text-gray-800, .text-gray-700, .text-gray-600 {
+      color: #FAF3E0 !important;
+    }
+    .font-arabic {
+      color: #FAF3E0 !important;
+    }
+    p, div {
+      color: inherit;
+    }
+    .italic {
+      color: #9ca3af !important;
+    }
+  }
+  .ai-insights button span.material-icons {
+    color: #9ca3af !important;
+    &:hover {
+      color: #B7A57A !important;
+    }
+  }
+
+  .practical-steps {
+    background-color: #1A365D;
+  }
+
+  .practical-step-item {
+    background-color: #2A4365;
+  }
+
+  .practical-step-item:hover {
+    background-color: #3A5F8A;
+  }
+
+  .step-icon {
+    color: #B7A57A;
+  }
+
+  .step-content {
+    color: #FAF3E0;
+  }
+
+  .loading-indicator p {
+    color: #B7A57A;
+  }
+
+  button.bg-white.text-\[\#B7A57A\] {
+    background-color: #3A5F8A !important;
+    color: #B7A57A !important;
+    &:hover {
+      background-color: #2A4365 !important;
+    }
+  }
+  button.bg-\[\#B7A57A\].text-white {
+    background-color: #B7A57A !important;
+    color: #1A365D !important;
+    &:hover {
+      background-color: darken(#B7A57A, 5%) !important;
+    }
+  }
 } 

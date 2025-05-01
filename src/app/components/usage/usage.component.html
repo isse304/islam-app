@@ -2,14 +2,15 @@
 
   <!-- Loading State -->
   <div *ngIf="loading" class="flex justify-center items-center py-8">
-    <mat-spinner diameter="40"></mat-spinner>
+    <mat-spinner diameter="40" class="dark:text-[#FAF3E0]"></mat-spinner>
   </div>
 
   <!-- Error State -->
-  <div *ngIf="!loading && error" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+  <div *ngIf="!loading && error" 
+       class="bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-700/50 text-red-700 dark:text-red-300 px-4 py-3 rounded relative mb-4" role="alert">
     <strong class="font-bold">Error:</strong>
     <span class="block sm:inline"> {{ error }}</span>
-    <button mat-icon-button (click)="error = null; fetchUsageLimits()" *ngIf="isPremiumUser" class="absolute top-0 bottom-0 right-0 px-4 py-3" matTooltip="Try Again">
+    <button mat-icon-button (click)="error = null; fetchUsageLimits()" *ngIf="isPremiumUser" class="absolute top-0 bottom-0 right-0 px-4 py-3 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50" matTooltip="Try Again">
       <mat-icon>refresh</mat-icon>
     </button>
   </div>
@@ -17,8 +18,8 @@
   <!-- Main Content (Premium User) -->
   <div *ngIf="!loading && !error && isPremiumUser">
     <div class="mb-4">
-      <h2 class="text-2xl font-bold mb-2">AI Usage</h2>
-      <div class="status-banner p-4 rounded-lg mb-4 bg-green-100 text-green-800">
+      <h2 class="text-2xl font-bold mb-2 text-gray-800 dark:text-[#FAF3E0]">AI Usage</h2>
+      <div class="status-banner p-4 rounded-lg mb-4 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
         <div class="font-semibold">
           {{ getStatusMessage() }}
         </div>
@@ -26,18 +27,18 @@
     </div>
 
     <!-- AI Requests -->
-    <div class="feature-card p-4 border rounded-lg">
-      <h3 class="text-lg font-semibold mb-2">AI Requests</h3>
-      <div class="progress-bar mb-2 bg-gray-200 rounded-full h-2">
-        <div class="bg-blue-500 h-2 rounded-full" 
+    <div class="feature-card p-4 border dark:border-gray-700 rounded-lg bg-white dark:bg-[#2A4365]">
+      <h3 class="text-lg font-semibold mb-2 text-gray-800 dark:text-[#FAF3E0]">AI Requests</h3>
+      <div class="progress-bar mb-2 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+        <div class="bg-blue-500 dark:bg-[#B7A57A] h-2 rounded-full" 
              [style.width]="getProgressWidth() + '%'">
         </div>
       </div>
-      <p class="text-sm text-gray-600">
+      <p class="text-sm text-gray-600 dark:text-gray-400">
         {{ getUsedRequests() }} / {{ getTotalRequests() }} daily requests used
       </p>
       <!-- Add Timer Display Here -->
-      <div *ngIf="resetTimeRemaining" class="text-sm text-blue-600 mt-2 flex items-center gap-1">
+      <div *ngIf="resetTimeRemaining" class="text-sm text-blue-600 dark:text-[#B7A57A] mt-2 flex items-center gap-1">
         <mat-icon class="text-sm">timer</mat-icon>
         <span>Resets in: {{ resetTimeRemaining }}</span>
       </div>
@@ -46,13 +47,13 @@
   </div>
 
   <!-- Upgrade Message (Free User) -->
-  <div *ngIf="!loading && !error && !isPremiumUser" class="text-center py-12 px-6 bg-gray-50 rounded-lg">
+  <div *ngIf="!loading && !error && !isPremiumUser" class="text-center py-12 px-6 bg-gray-50 dark:bg-gray-800 rounded-lg">
     <mat-icon class="text-[#B7A57A] text-6xl mb-4">lock_outline</mat-icon>
-    <h3 class="text-xl font-semibold mb-2">Usage Details Unavailable</h3>
-    <p class="text-gray-600 mb-6">Detailed usage tracking is a premium feature. Upgrade to monitor your AI request limits.</p>
+    <h3 class="text-xl font-semibold mb-2 text-gray-800 dark:text-gray-100">Usage Details Unavailable</h3>
+    <p class="text-gray-600 dark:text-gray-400 mb-6">Detailed usage tracking is a premium feature. Upgrade to monitor your AI request limits.</p>
     <button mat-raised-button color="primary" 
             routerLink="/subscription"
-            class="bg-[#B7A57A] hover:bg-[#9b8a65] text-white px-6 py-2">
+            class="bg-[#B7A57A] hover:bg-[#9b8a65] text-[#1A365D] dark:text-[#1A365D] dark:bg-[#B7A57A] dark:hover:bg-[#a8966c] px-6 py-2">
       Upgrade to Premium
     </button>
   </div>

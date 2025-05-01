@@ -80,7 +80,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       // localStorage.removeItem('signupIntent'); 
     } else {
       this.routeSub = this.route.queryParams.subscribe(params => {
-        this.loginIntent = params['get']('intent');
+        this.loginIntent = params['intent'];
         // console.log(`[LoginComponent OnInit] Intent read from queryParams: ${this.loginIntent}`);
       });
     }

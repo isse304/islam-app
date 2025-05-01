@@ -85,14 +85,12 @@
 .features-section,
 .ai-features-section {
   padding: 5rem 2rem;
-  background-color: #f5f5f5;
 
   h2 {
     text-align: center;
     font-size: 2.5rem;
     font-weight: 700;
     margin-bottom: 3rem;
-    color: #1a237e;
   }
 }
 
@@ -232,38 +230,13 @@
   }
 }
 
-// Dark mode styles
-@media (prefers-color-scheme: dark) {
-  .features-section {
-    background-color: #1a1a1a;
-  }
+.inspirational-showcase {
+  // Add any specific non-Tailwind structural or animation styles here if necessary
+  // Example: transition timings if different from Tailwind defaults
+  // .slide { ... }
+}
 
-  .ai-features-section {
-    background-color: #121212;
-  }
-
-  .feature-card {
-    background: #1e1e1e;
-    
-    &.ai {
-      background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
-      border-color: #333;
-    }
-
-    .feature-icon {
-      background: #333;
-    }
-
-    h3 {
-      color: #90caf9;
-    }
-
-    p, .feature-list li {
-      color: #bdbdbd;
-    }
-  }
-
-  h2 {
-    color: #90caf9;
-  }
+:host-context(.dark) {
+  // Define dark mode specific variables if needed globally for this component
+  // Example: --component-specific-dark-color: #value;
 } 
