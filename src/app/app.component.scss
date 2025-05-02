@@ -13,4 +13,28 @@
 
 .content {
   flex: 1;
+}
+
+// Add padding to the main container when the header is visible
+#app-container.header-visible {
+  // Use a variable or fixed value for header height
+  --header-height: 4rem; // Define header height (adjust if necessary)
+  padding-top: var(--header-height);
+  
+  // Ensure router-outlet content flows correctly
+  > router-outlet + * { // Selects siblings following router-outlet if needed
+      // Adjustments might be needed depending on layout
+  }
+}
+
+// Ensure loading overlay covers the potentially padded container
+.loading-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: #1A365D; // Match dark background
+  z-index: 1000; // Above everything else
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
 } 

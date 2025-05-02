@@ -112,7 +112,6 @@ interface TimingData {
   ],
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss'],
-  encapsulation: ViewEncapsulation.None // Add this line
 })
 export class QuranReaderComponent implements OnInit, OnDestroy {
   @Input() selectedSurah: number = 1;
@@ -309,6 +308,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   isTafsirModalOpen: boolean = false; // <<< Add this property declaration
 
+  isMobileHeaderHidden = false; // State for mobile header visibility
+  private lastScrollPosition = 0;
+
   // Method to toggle the minimized state
   public toggleControlsView(): void {
     this.isControlsMinimized = !this.isControlsMinimized;
@@ -357,7 +359,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private metaService: Meta,    // Inject Meta
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private preferencesService: PreferencesService
+    private preferencesService: PreferencesService,
+    private cdr: ChangeDetectorRef
   ) {
     // Initialize displayPageNumber$ observable (adjust logic as needed)
     this.displayPageNumber$ = this.route.queryParams.pipe(
@@ -2624,41 +2627,30 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   }
 
   // +++ ADD Scroll Listener +++
-  @HostListener('window:scroll', ['$event'])
+  @HostListener('window:scroll')
   onWindowScroll(): void {
-    // --- Handle Popup Closure and Control Minimization (Keep this logic) ---
-    const st = window.scrollY || document.documentElement.scrollTop;
-    const scrollDifference = st - this.lastScrollTop;
+    if (!this.isMobile) return; // Only apply on mobile
 
-    // Close popup on scroll (Applies only on desktop due to *ngIf on popup)
-    if (this.isPopupOpen) {
-        if (Math.abs(scrollDifference) > 5) { // Close popup on any significant scroll
-            this.ngZone.run(() => {
-                this.isPopupOpen = false;
-                this.changeDetector.markForCheck();
-            });
+    const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
+    const scrollDifference = currentScrollPosition - this.lastScrollPosition;
+
+    // Use the existing scrollThreshold property (assuming it exists)
+    if (Math.abs(scrollDifference) >= this.scrollThreshold) { 
+      if (currentScrollPosition > this.lastScrollPosition && currentScrollPosition > 100) {
+        // Scrolling Down & past a certain point
+        if (!this.isMobileHeaderHidden) {
+          this.isMobileHeaderHidden = true;
+          this.cdr.markForCheck(); 
         }
-    // Minimize controls on scroll down (Only applies on DESKTOP)
-    } else if (!this.isMobile && !this.isMushafView && Math.abs(scrollDifference) > this.scrollThreshold) {
-      // Only minimize/handle verse tracking if NOT in Mushaf view and scroll is significant
-      if (scrollDifference > 0 && !this.isMainControlsMinimized) {
-          // Scrolling Down & Controls are Expanded In-Flow -> Minimize
-          this.ngZone.run(() => {
-              this.isMainControlsMinimized = true;
-              this.changeDetector.markForCheck();
-          });
+      } else {
+        // Scrolling Up or near the top
+        if (this.isMobileHeaderHidden) {
+          this.isMobileHeaderHidden = false;
+          this.cdr.markForCheck(); 
+        }
       }
-      // --- End Control Minimization ---
-      
-      // --- Debounced Verse Detection (Runs on both desktop/mobile if not mushaf) --- 
-      clearTimeout(this.scrollDebounceTimer);
-      this.scrollDebounceTimer = setTimeout(() => {
-        this.detectAndUpdateCurrentVerse();
-      }, this.SCROLL_DEBOUNCE_TIME);
-      // --- End Debounced Verse Detection ---
+      this.lastScrollPosition = currentScrollPosition <= 0 ? 0 : currentScrollPosition; // For Mobile or negative scrolling
     }
-
-    this.lastScrollTop = Math.max(0, st); // Update last scroll position
   }
 
   // +++ NEW Method to Detect and Update Verse on Scroll +++

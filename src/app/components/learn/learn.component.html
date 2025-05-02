@@ -3,18 +3,19 @@
         <!-- Main Content Area (Render only AFTER initial premium check AND if user IS premium) -->
         <div class="grid lg:grid-cols-2 gap-8 h-[calc(100vh-4rem)] overflow-hidden" *ngIf="initialPremiumCheckComplete && isPremium">
             <!-- Left Column: Current Verse Section -->
-            <div class="hidden lg:block rounded-xl shadow-lg p-6 overflow-y-auto custom-scrollbar"
+            <div #verseDisplayContainer 
+                 class="hidden lg:block rounded-xl shadow-lg p-6 overflow-y-auto custom-scrollbar"
                  [ngClass]="{ 'learn-verse-dark': (currentTheme$ | async) === 'dark' }">
                 <!-- Verse Selection Controls MOVED OUTSIDE -->
                 
-                <div class="verse-meaning space-y-6 dark:bg-[#2A4365]">
+                <div class="verse-meaning space-y-6"> 
                     <div class="arabic-verse">
-                        <p class="text-right text-4xl leading-[2] font-uthmanic dark:text-[#FAF3E0]" dir="rtl">
+                        <p class="text-right text-4xl leading-[2] font-uthmanic" dir="rtl">
                             {{ currentVerse }}
                         </p>
                     </div>
                     <div class="translation">
-                        <p class="text-gray-800 text-lg leading-relaxed dark:text-gray-300">
+                        <p class="text-gray-800 text-lg leading-relaxed">
                             {{ translation }}
                         </p>
                     </div>
@@ -24,7 +25,7 @@
             <!-- Right Column (Chat & Controls) -->
             <div class="flex flex-col gap-6 h-full overflow-hidden">
               <!-- MOVED: Verse Selection Controls -->
-              <div class="bg-white rounded-xl shadow-lg p-4 flex-shrink-0">
+              <div class="rounded-xl shadow-lg p-4 flex-shrink-0">
                 <!-- Modified layout: Stack vertically on mobile -->
                 <div class="flex flex-col md:flex-row items-stretch md:items-center gap-3">
                     <!-- Removed flex-1 from Surah select -->
@@ -64,7 +65,7 @@
               </div>
 
               <!-- Chat Interface -->
-              <div class="bg-white rounded-xl shadow-lg p-4 flex flex-col flex-grow min-h-0">
+              <div class="rounded-xl shadow-lg p-4 flex flex-col flex-grow min-h-0">
                  <div class="flex justify-between items-center mb-4 flex-shrink-0">
                   <div class="flex items-center gap-4">
                     <h2 class="text-2xl font-semibold text-[#B7A57A] flex items-center">

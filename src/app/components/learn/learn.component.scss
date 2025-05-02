@@ -104,8 +104,30 @@
      }
   }
   
+  // ADD THIS BLOCK BACK
+  // == Styles for Verse Display Dark Mode (tied to [ngClass]) ==
+  // Use highest specificity AND ensure it overrides Tailwind defaults if any slip through
+  :host-context(html.dark body.dark) .learn-verse-dark,
+  html.dark body.dark app-learn .learn-verse-dark {
+     background-color: #1A365D !important; // Dark blue outer container
+     
+     // Style the inner container and text elements
+     .verse-meaning {
+        background-color: #2A4365 !important; // Lighter Blue inner container
+        border-top: 1px solid rgba(183, 165, 122, 0.3) !important; // Subtle separator
+        padding-top: 1rem !important; // Add some padding if needed
+     }
+     
+     .arabic-verse p { 
+        color: #FAF3E0 !important; // Cream for Arabic text
+     }
+     
+     .translation p {
+         color: #d1d5db !important; // Light Gray for translation text
+     }
+  }
+  
   // --- Dark Mode Styles for OTHER elements within Learn Component --- 
-  // FIX: Use highest specificity
   html.dark body.dark app-learn { // Use component selector
 
     // Ensure the main container background is dark (targeting element within app-learn)

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewEncapsulation, ChangeDetectionStrategy, HostListener, HostBinding } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewEncapsulation, ChangeDetectionStrategy, HostListener, HostBinding, ApplicationRef } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router, RouterModule } from '@angular/router';
@@ -24,6 +24,7 @@ import { ThemeService, Theme } from '../../services/theme.service';
 import { map, takeUntil, finalize } from 'rxjs/operators';
 import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
 import { ToastService } from '../../services/toast.service';
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -78,6 +79,7 @@ interface AIResponse {
 })
 export class LearnComponent implements OnInit, OnDestroy {
   @ViewChild('chatContainer') private chatContainer!: ElementRef;
+  @ViewChild('verseDisplayContainer') private verseDisplayContainer!: ElementRef;
   selectedSurah: number = 1;
   selectedVerse: number = 1;
   isLoading: boolean = false;
@@ -98,7 +100,8 @@ export class LearnComponent implements OnInit, OnDestroy {
   private initSubscription: Subscription | null = null; // Subscription for ngOnInit async ops
   initialPremiumCheckComplete: boolean = false; // Flag for initial check
   isPremium: boolean = false; // Store premium status
-  currentTheme$: Observable<Theme>; // Use correct observable name and type
+  currentTheme$: Observable<string>; // Changed Theme to string
+  private destroy$ = new Subject<void>();
 
   private conversationContext: {
     lastTopic?: string;
@@ -127,12 +130,14 @@ export class LearnComponent implements OnInit, OnDestroy {
     private titleService: Title,
     private metaService: Meta,
     public themeService: ThemeService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private elementRef: ElementRef,
+    private appRef: ApplicationRef
   ) {
-    this.currentTheme$ = this.themeService.currentTheme$; // Assign correct observable
+    this.currentTheme$ = this.themeService.currentTheme$;
   }
 
-  ngOnInit() {
+  async ngOnInit(): Promise<void> {
     this.titleService.setTitle('Learn Quran & AI Tafsir Chat | Nura AI');
     this.metaService.addTags([
       { name: 'description', content: 'Learn Quran interactively. Select Surah/Verse, view translation, and chat with Nura AI for Tafsir explanations from Ibn Kathir or Tabari.' },
@@ -141,6 +146,7 @@ export class LearnComponent implements OnInit, OnDestroy {
 
     this.initialPremiumCheckComplete = false;
     this.isLoading = true;
+    this.cdr.markForCheck(); // Initial mark for check
     // Restore state synchronously first
     this.restoreState();
     this.cdr.detectChanges(); // Manually trigger change detection after restoring state
@@ -172,6 +178,40 @@ export class LearnComponent implements OnInit, OnDestroy {
         // Handle initialization error (e.g., show error message)
       }
     });
+
+    // Force change detection AND trigger reflow after initialization
+    setTimeout(() => {
+      try {
+        // Use the ViewChild if available, otherwise querySelector
+        const containerElement = this.verseDisplayContainer?.nativeElement ?? 
+                                 this.elementRef.nativeElement.querySelector('.hidden.lg\:block.rounded-xl'); // Find the specific container
+        if (containerElement) {
+          // Reading offsetHeight forces the browser to recalculate layout
+          const _ = containerElement.offsetHeight;
+          console.log('[LearnComponent] Triggered reflow for verse container.');
+        }
+      } catch (e) {
+        console.error('[LearnComponent] Error triggering reflow:', e);
+      }
+      this.cdr.markForCheck(); // Mark for check after triggering reflow
+    }, 50); // Increased timeout slightly 
+
+    // Subscribe to theme changes
+    this.themeService.currentTheme$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        // console.log('[LearnComponent] Theme changed, marking for check');
+        this.cdr.markForCheck(); // Mark for check on theme changes
+      });
+
+    // Force application tick after initialization is likely complete
+    setTimeout(() => {
+      console.log('[LearnComponent OnInit] Forcing appRef.tick()');
+      this.appRef.tick(); 
+    }, 100); 
+    
+    this.isLoading = false;
+    this.cdr.markForCheck(); // Final mark for check
   }
 
   ngOnDestroy() {
@@ -181,6 +221,8 @@ export class LearnComponent implements OnInit, OnDestroy {
     }
     // Unsubscribe from the initialization subscription
     this.initSubscription?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   private setupAuthCheck() {
@@ -317,68 +359,68 @@ export class LearnComponent implements OnInit, OnDestroy {
   async loadVerse() {
     // console.log(`[LearnComponent] loadVerse called for ${this.selectedSurah}:${this.selectedVerse}`);
     this.isLoading = true;
+    this.cdr.markForCheck();
+    let verseData: any = null; // To store verse data if successful
+
+    // --- Step 1: Try fetching essential verse data --- 
     try {
-      // Fetch verse data first
-      const verseData = await firstValueFrom(this.quranService.getVerse(this.selectedSurah, this.selectedVerse));
+      verseData = await firstValueFrom(this.quranService.getVerse(this.selectedSurah, this.selectedVerse));
       
-      // Reset isFirstResponse flag if the verse actually changed
+      // Handle Bismillah logic and update component properties
       const currentVerseRef = `${this.selectedSurah}:${this.selectedVerse}`;
       if (this.lastSurahVerse !== currentVerseRef) {
         this.isFirstResponse = true;
         this.lastSurahVerse = currentVerseRef;
-        // Save state immediately after confirming a new verse is being processed
-        this.saveState(); // Save to localStorage
-
-        // Save history to backend (async, fire-and-forget for now)
+        this.saveState(); 
         this.firebaseAuthService.saveReadingHistory({ type: 'verse', surah: this.selectedSurah, verse: this.selectedVerse })
-        .catch(err => {
-          console.warn('Failed to save reading history to backend:', err);
-          // Optionally inform the user if saving fails consistently
-        });
-
-        // Added logging
-        // console.log(`[LearnComponent] Verse changed to ${currentVerseRef}, state saved locally and history save triggered.`);
+          .catch(err => console.warn('Failed to save reading history to backend:', err));
       }
       
-      // Handle Bismillah for first verses
-      if (this.selectedVerse === 1) {
-        if (this.selectedSurah === 1 || this.selectedSurah === 9) {
-          // For Al-Fatiha (1) and At-Tawbah (9), show verse as is
-          this.currentVerse = verseData.text;
-        } else {
-          // For other surahs, remove Bismillah from first verse
-          this.currentVerse = verseData.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ/, '').trim();
-        }
+      if (this.selectedVerse === 1 && this.selectedSurah !== 1 && this.selectedSurah !== 9) {
+        this.currentVerse = verseData.text.replace(/^بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ/, '').trim();
       } else {
-        // For non-first verses, show as is
         this.currentVerse = verseData.text;
       }
-      
       this.translation = verseData.translation;
-      
-      // Load tafsir entries from all sources
-      const tafsirEntries = await firstValueFrom(
-        this.tafsirDatabaseService.getTafsirEntries(this.selectedSurah, this.selectedVerse)
-      );
-      this.tafsirEntries = tafsirEntries;
-      
-      // Get AI summary for the verse
-      // await this.getAISummary(); // Commented out to prevent automatic call on verse load
-      
-      // Removed saveState() from the end of the try block
 
     } catch (error) {
-      console.error(`Error loading verse ${this.selectedSurah}:${this.selectedVerse}:`, error);
+      // --- Catch block ONLY for essential verse data failure --- 
+      console.error(`Error loading essential verse data for ${this.selectedSurah}:${this.selectedVerse}:`, error);
+      this.currentVerse = 'Error'; // Indicate error visually
+      this.translation = 'Could not load verse content.';
       this.messages.push({
          role: 'assistant',
-         content: 'Error loading verse data. Please try again or select a different verse.',
+         content: 'Error loading verse data. Please try again or select a different verse.', 
          timestamp: new Date(),
          type: 'error'
       });
-    } finally {
-      this.isLoading = false; // Ensure loading is false after completion or error
-      this.scrollToLatestMessage(); // Scroll after potential new messages (like errors)
+      // Set loading false and exit early if essential data fails
+      this.isLoading = false;
+      this.cdr.markForCheck();
+      this.scrollToLatestMessage();
+      return; // Stop further processing
     }
+
+    // --- Step 2: Try fetching Tafsir data (only if verse data loaded) ---
+    if (verseData) { // Proceed only if verseData was successfully fetched
+        try {
+            const tafsirEntries = await firstValueFrom(
+                this.tafsirDatabaseService.getTafsirEntries(this.selectedSurah, this.selectedVerse)
+            );
+            this.tafsirEntries = tafsirEntries;
+        } catch (tafsirError) {
+            // --- Catch block ONLY for Tafsir data failure --- 
+            console.warn(`Warning: Failed to load Tafsir entries for ${this.selectedSurah}:${this.selectedVerse}:`, tafsirError);
+            this.tafsirEntries = []; // Clear any previous tafsir
+            // Optionally, add a non-blocking warning message if desired
+            // this.messages.push({ role: 'assistant', content: 'Could not load Tafsir details for this verse.', timestamp: new Date(), type: 'warning' });
+        }
+    }
+
+    // --- Final steps (always run if essential data loaded) --- 
+    this.isLoading = false;
+    this.cdr.markForCheck();
+    this.scrollToLatestMessage();
   }
 
   async getAISummary() {

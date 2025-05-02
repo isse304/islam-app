@@ -13,6 +13,10 @@ import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { enableProdMode } from '@angular/core';
 import 'hammerjs'; // Import HammerJS
+import { provideServiceWorker } from '@angular/service-worker'; // Import provideServiceWorker
+import { withComponentInputBinding } from '@angular/router'; // Import if using input binding
+import { withInterceptors } from '@angular/common/http'; // Import if using interceptors
+// import { authInterceptorFn } from './app/interceptors/auth.interceptor'; // Assuming this exists if needed
 
 // Import the provider functions
 import { FirebaseAuthService } from './app/services/firebase-auth.service';
@@ -90,11 +94,21 @@ bootstrapApplication(AppComponent, {
     ToastService,
     DatePipe, // Provide DatePipe if needed globally
     // Provide APP_INITIALIZER to ensure auth is ready before app loads fully
-    { provide: APP_INITIALIZER, useFactory: initializeAppFactory, deps: [FirebaseAuthService, PreferencesService, SubscriptionService, ToastService], multi: true }
+    { provide: APP_INITIALIZER, useFactory: initializeAppFactory, deps: [FirebaseAuthService, PreferencesService, SubscriptionService, ToastService], multi: true },
+    // Add Service Worker Provider here
+    provideServiceWorker('ngsw-worker.js', {
+      enabled: !isDevMode(),
+      registrationStrategy: 'registerWhenStable:30000'
+    }),
+    // If you need interceptors, uncomment and add here:
+    // provideHttpClient(withInterceptors([authInterceptorFn])),
+    // If you need component input binding, add it to provideRouter:
+    // provideRouter(routes, withComponentInputBinding()),
   ]
 })
 .catch((err) => console.error(err));
 
+// Remove the entire commented-out bootstrapApplication block below
 // Commenting out the standalone bootstrap with SW provider
 // bootstrapApplication(AppComponent, {
 //   providers: [

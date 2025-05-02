@@ -13,7 +13,6 @@
     backdrop-filter: blur(8px); // ADD Glassmorphism blur
     border-bottom: 1px solid rgba(26, 54, 93, 0.1); // ADD faint dark border for light mode
     transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease; // Added border-color transition
-    position: relative; // Needed for pseudo-element positioning
     overflow: hidden; // Needed to contain pseudo-element
 
     &::before {

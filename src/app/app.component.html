@@ -80,7 +80,9 @@
   </div>
 </div>
 
-<div id="app-container" [class.blurred]="displayLoading$ | async">
+<div id="app-container" 
+     [class.blurred]="displayLoading$ | async"
+     [class.header-visible]="isHeaderVisible">
   <!-- Conditionally show header -->
   <app-header *ngIf="showHeader$ | async"></app-header>
   <router-outlet></router-outlet>
