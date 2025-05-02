@@ -1358,96 +1358,10 @@ html.dark body.dark app-quran-reader {
   }
   
   // === Controls Popup Dark Mode (Increased Specificity) ===
-  .controls-popup {
-      background-color: #2A4365 !important; // Lighter blue background
-      border: 1px solid #B7A57A !important; // Gold border
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
-      color: #FAF3E0 !important; // Default Cream text
-
-      // Close button
-      button[mat-icon-button] { // Assuming a generic close button
-          .mat-icon { color: #FAF3E0 !important; } // Cream icon
-          &:hover { background-color: rgba(250, 243, 224, 0.1) !important; } 
-      }
-
-      // Labels
-      label {
-          color: #B7A57A !important; // Gold labels
-      }
-
-      // Search Input
-      .search-input { // Assuming this class exists inside
-          background-color: #1A365D !important; 
-          border-color: #B7A57A !important; 
-          color: #FAF3E0 !important; 
-          &::placeholder { color: #9ca3af !important; }
-          &:focus { 
-              border-color: #FAF3E0 !important; 
-              box-shadow: 0 0 0 1px #FAF3E0 !important; 
-              background-color: #1F3A5F !important;
-          }
-      }
-      
-      // Material Selects (Surah, Translation, Reciter, Tafsir)
-      mat-form-field {
-         .mat-mdc-form-field-flex {
-            background-color: #1A365D !important;
-            border: 1px solid #B7A57A !important;
-            border-radius: 8px !important;
-         }
-         .mat-mdc-select-value, .mat-mdc-select-arrow {
-             color: #FAF3E0 !important; // Cream text/arrow
-         }
-         .mat-mdc-floating-label, .mat-mdc-form-field-label {
-             color: #9ca3af !important; // Lighter gray label
-         }
-         &.mat-focused {
-            .mat-mdc-floating-label { color: #FAF3E0 !important; } // Cream focused label
-            .mat-mdc-form-field-outline-thick, .mdc-notched-outline > * { // Focused outline
-                 border-color: #FAF3E0 !important;
-            }
-            .mat-mdc-form-field-flex { // Focused background
-               background-color: #1F3A5F !important; 
-            }
-         }
-         // Remove outline/underline if using fill/standard
-         .mdc-notched-outline, .mat-mdc-form-field-underline { border: none !important; }
-      }
-      
-      // Audio Player Button
-      button[mat-flat-button] { // Play Full Surah button
-         background-color: #B7A57A !important; 
-         color: #1A365D !important; // Dark Blue text
-         .mat-icon { color: #1A365D !important; }
-         &:hover:not(:disabled) { background-color: darken(#B7A57A, 5%) !important; }
-      }
-
-      // View Mode Toggle
-      mat-button-toggle-group {
-          background-color: #1A365D !important; 
-          border: 1px solid #B7A57A !important; 
-      }
-      mat-button-toggle {
-          .mat-button-toggle-button {
-              color: #9ca3af !important; // Lighter Gray inactive
-              .mat-icon { color: #9ca3af !important; }
-          }
-          &.mat-button-toggle-checked {
-              background-color: #B7A57A !important; // Gold background active
-              .mat-button-toggle-button {
-                  color: #1A365D !important; // Dark Blue text active
-                  .mat-icon { color: #1A365D !important; }
-              }
-          }
-          &:hover:not(.mat-button-toggle-checked) {
-              background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
-              .mat-button-toggle-button {
-                  color: #B7A57A !important; // Gold text hover
-                  .mat-icon { color: #B7A57A !important; }
-              }
-          }
-      }
-  }
+  // REMOVE THIS BLOCK FROM HERE
+  /*
+  .controls-popup { ... styles ... }
+  */
 
 } // End of html.dark body.dark app-quran-reader
 
@@ -1543,15 +1457,109 @@ html.dark body.dark app-quran-reader .mushaf-controls-header {
           background-color: #B7A57A !important; // Gold background active
           .mat-button-toggle-button {
               color: #1A365D !important; // Dark Blue text active
+              .mat-icon { color: #1A365D !important; }
           }
       }
       &:hover:not(.mat-button-toggle-checked) {
           background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
           .mat-button-toggle-button {
-              color: #B7A57A !important; // Gold text on hover
+              color: #B7A57A !important; // Gold text hover
+              .mat-icon { color: #B7A57A !important; }
           }
       }
   }
 
 } // End html.dark body.dark app-quran-reader .mushaf-controls-header
+
+// === ADD SEPARATE BLOCK for Controls Popup Dark Mode ===
+html.dark body.dark app-quran-reader .controls-popup {
+    background-color: #2A4365 !important; // Lighter blue background
+    border: 1px solid #B7A57A !important; // Gold border
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+    color: #FAF3E0 !important; // Default Cream text
+
+    // Close button
+    button[mat-icon-button] { // Assuming a generic close button
+        .mat-icon { color: #FAF3E0 !important; } // Cream icon
+        &:hover { background-color: rgba(250, 243, 224, 0.1) !important; } 
+    }
+
+    // Labels
+    label {
+        color: #B7A57A !important; // Gold labels
+    }
+
+    // Search Input
+    .search-input { // Assuming this class exists inside
+        background-color: #1A365D !important; 
+        border-color: #B7A57A !important; 
+        color: #FAF3E0 !important; 
+        &::placeholder { color: #9ca3af !important; }
+        &:focus { 
+            border-color: #FAF3E0 !important; 
+            box-shadow: 0 0 0 1px #FAF3E0 !important; 
+            background-color: #1F3A5F !important;
+        }
+    }
+    
+    // Material Selects (Surah, Translation, Reciter, Tafsir)
+    mat-form-field {
+       .mat-mdc-form-field-flex {
+          background-color: #1A365D !important;
+          border: 1px solid #B7A57A !important;
+          border-radius: 8px !important;
+       }
+       .mat-mdc-select-value, .mat-mdc-select-arrow {
+           color: #FAF3E0 !important; // Cream text/arrow
+       }
+       .mat-mdc-floating-label, .mat-mdc-form-field-label {
+           color: #9ca3af !important; // Lighter gray label
+       }
+       &.mat-focused {
+          .mat-mdc-floating-label { color: #FAF3E0 !important; } // Cream focused label
+          .mat-mdc-form-field-outline-thick, .mdc-notched-outline > * { // Focused outline
+               border-color: #FAF3E0 !important;
+          }
+          .mat-mdc-form-field-flex { // Focused background
+             background-color: #1F3A5F !important; 
+          }
+       }
+       // Remove outline/underline if using fill/standard
+       .mdc-notched-outline, .mat-mdc-form-field-underline { border: none !important; }
+    }
+    
+    // Audio Player Button
+    button[mat-flat-button] { // Play Full Surah button
+       background-color: #B7A57A !important; 
+       color: #1A365D !important; // Dark Blue text
+       .mat-icon { color: #1A365D !important; }
+       &:hover:not(:disabled) { background-color: darken(#B7A57A, 5%) !important; }
+    }
+
+    // View Mode Toggle
+    mat-button-toggle-group {
+        background-color: #1A365D !important; 
+        border: 1px solid #B7A57A !important; 
+    }
+    mat-button-toggle {
+        .mat-button-toggle-button {
+            color: #9ca3af !important; // Lighter Gray inactive
+            .mat-icon { color: #9ca3af !important; }
+        }
+        &.mat-button-toggle-checked {
+            background-color: #B7A57A !important; // Gold background active
+            .mat-button-toggle-button {
+                color: #1A365D !important; // Dark Blue text active
+                .mat-icon { color: #1A365D !important; }
+            }
+        }
+        &:hover:not(.mat-button-toggle-checked) {
+            background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
+            .mat-button-toggle-button {
+                color: #B7A57A !important; // Gold text hover
+                .mat-icon { color: #B7A57A !important; }
+            }
+        }
+    }
+}
 
