@@ -7,14 +7,14 @@
                  [ngClass]="{ 'learn-verse-dark': (currentTheme$ | async) === 'dark' }">
                 <!-- Verse Selection Controls MOVED OUTSIDE -->
                 
-                <div class="verse-meaning space-y-6">
+                <div class="verse-meaning space-y-6 dark:bg-[#2A4365]">
                     <div class="arabic-verse">
-                        <p class="text-right text-4xl leading-[2] font-uthmanic" dir="rtl">
+                        <p class="text-right text-4xl leading-[2] font-uthmanic dark:text-[#FAF3E0]" dir="rtl">
                             {{ currentVerse }}
                         </p>
                     </div>
                     <div class="translation">
-                        <p class="text-gray-800 text-lg leading-relaxed">
+                        <p class="text-gray-800 text-lg leading-relaxed dark:text-gray-300">
                             {{ translation }}
                         </p>
                     </div>

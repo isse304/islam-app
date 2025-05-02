@@ -1262,43 +1262,6 @@ html.dark body.dark app-quran-reader {
     color: #B7A57A !important;
   }
 
-  // --- Translation View Card --- 
-  .verse-card {
-      background-color: #1F3A5F !important;
-      border-color: rgba(183, 165, 122, 0.2) !important;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-      color: #FAF3E0 !important; // Default text inside card
-
-      .verse-meaning {
-          background-color: #2A4365 !important;
-          border-top-color: rgba(183, 165, 122, 0.2) !important;
-          border-left-color: #B7A57A !important; // Ensure border is gold
-          background-image: none !important;
-          // FIX: Apply color directly to parent divs, let it inherit
-          .translation-text,
-          .transliteration-text { 
-             color: #B7A57A !important; 
-             // Ensure inner paragraphs also inherit if needed
-             p { color: inherit !important; } 
-          }
-          .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
-      }
-      .verse-number {
-         background-color: rgba(183, 165, 122, 0.15) !important;
-         border-color: rgba(183, 165, 122, 0.3) !important;
-         color: #B7A57A !important;
-      }
-      .verse-actions button.mat-icon-button { 
-         .mat-icon { color: #FAF3E0 !important; } // Cream icons
-         &:hover:not(:disabled) { 
-             background-color: rgba(250, 243, 224, 0.1) !important;
-             .mat-icon { color: #B7A57A !important; } // Gold hover
-         } 
-         &.bookmarked .mat-icon { color: #B7A57A !important; } // Gold if bookmarked
-      }
-      > .p-6 > .verse-text { color: #B7A57A !important; } // Arabic Gold
-  }
-
   // === Default Arabic text color ===
   .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // Gold
 
@@ -1561,5 +1524,42 @@ html.dark body.dark app-quran-reader .selected-verse {
   
   .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // Keep Cream
   .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #B7A57A !important; } // Keep Gold
+}
+
+// === ADD SEPARATE BLOCK for Verse Card Dark Mode ===
+html.dark body.dark app-quran-reader .verse-card {
+    background-color: #1F3A5F !important;
+    border-color: rgba(183, 165, 122, 0.2) !important;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+    color: #FAF3E0 !important; // Default text inside card
+
+    .verse-meaning {
+        background-color: #2A4365 !important;
+        border-top-color: rgba(183, 165, 122, 0.2) !important;
+        border-left-color: #B7A57A !important; // Ensure border is gold
+        background-image: none !important;
+        // FIX: Apply color directly to parent divs, let it inherit
+        .translation-text,
+        .transliteration-text { 
+           color: #B7A57A !important; 
+           // Ensure inner paragraphs also inherit if needed
+           p { color: inherit !important; } 
+        }
+        .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
+    }
+    .verse-number {
+       background-color: rgba(183, 165, 122, 0.15) !important;
+       border-color: rgba(183, 165, 122, 0.3) !important;
+       color: #B7A57A !important;
+    }
+    .verse-actions button.mat-icon-button { 
+       .mat-icon { color: #FAF3E0 !important; } // Cream icons
+       &:hover:not(:disabled) { 
+           background-color: rgba(250, 243, 224, 0.1) !important;
+           .mat-icon { color: #B7A57A !important; } // Gold hover
+       } 
+       &.bookmarked .mat-icon { color: #B7A57A !important; } // Gold if bookmarked
+    }
+    > .p-6 > .verse-text { color: #B7A57A !important; } // Arabic Gold
 }
 
