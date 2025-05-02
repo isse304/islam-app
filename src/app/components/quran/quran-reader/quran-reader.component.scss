@@ -1302,31 +1302,6 @@ html.dark body.dark app-quran-reader {
   // === Default Arabic text color ===
   .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // Gold
 
-  // --- Highlighted Verse Colors --- 
-  .highlighted-verse, .selected-verse { 
-    background-color: #3A5F8A !important;
-    border-color: #B7A57A !important;
-    border-left-color: #B7A57A !important; // Ensure border is gold
-    color: #FAF3E0 !important; // Default text when highlighted
-    .verse-text, .word-tooltip-trigger { 
-        color: #FAF3E0 !important; // Highlighted Arabic Cream 
-    }
-    .verse-meaning {
-      background-color: #2A4365 !important;
-      border-top-color: rgba(183, 165, 122, 0.4) !important;
-      border-left-color: #B7A57A !important; // Ensure border is gold
-       // FIX: Apply color directly to parent divs, let it inherit
-       .translation-text,
-       .transliteration-text { 
-          color: #B7A57A !important; 
-          p { color: inherit !important; }
-       }
-      .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
-    }
-    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // Keep Cream
-    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #B7A57A !important; } // Keep Gold
-  } 
-
   // --- Tafsir section dark mode ---
   .bg-gray-50 { // Assuming this targets the tafsir container
      background-color: #1A365D !important;
@@ -1357,11 +1332,7 @@ html.dark body.dark app-quran-reader {
        span { color: #B7A57A !important; } // Style text inside if needed
   }
   
-  // === Controls Popup Dark Mode (Increased Specificity) ===
-  // REMOVE THIS BLOCK FROM HERE
-  /*
-  .controls-popup { ... styles ... }
-  */
+  // REMOVED .controls-popup styles from here
 
 } // End of html.dark body.dark app-quran-reader
 
@@ -1561,5 +1532,34 @@ html.dark body.dark app-quran-reader .controls-popup {
             }
         }
     }
+}
+
+// === ADD SEPARATE BLOCK for Highlighted/Selected Verse Dark Mode ===
+html.dark body.dark app-quran-reader .highlighted-verse,
+html.dark body.dark app-quran-reader .selected-verse {
+  background-color: #3A5F8A !important;
+  border-color: #B7A57A !important;
+  border-left-color: #B7A57A !important; // Ensure border is gold
+  color: #FAF3E0 !important; // Default text when highlighted
+  
+  .verse-text, .word-tooltip-trigger { 
+      color: #FAF3E0 !important; // Highlighted Arabic Cream 
+  }
+  
+  .verse-meaning {
+    background-color: #2A4365 !important;
+    border-top-color: rgba(183, 165, 122, 0.4) !important;
+    border-left-color: #B7A57A !important; // Ensure border is gold
+    // FIX: Apply color directly to parent divs, let it inherit
+    .translation-text,
+    .transliteration-text { 
+        color: #B7A57A !important; 
+        p { color: inherit !important; }
+    }
+    .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
+  }
+  
+  .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // Keep Cream
+  .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #B7A57A !important; } // Keep Gold
 }
 
