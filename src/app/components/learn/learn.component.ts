@@ -182,19 +182,19 @@ export class LearnComponent implements OnInit, OnDestroy {
     // Force change detection AND trigger reflow after initialization
     setTimeout(() => {
       try {
-        // Use the ViewChild if available, otherwise querySelector
-        const containerElement = this.verseDisplayContainer?.nativeElement ?? 
-                                 this.elementRef.nativeElement.querySelector('.hidden.lg\:block.rounded-xl'); // Find the specific container
-        if (containerElement) {
+        // Use the ViewChild reference
+        if (this.verseDisplayContainer?.nativeElement) {
           // Reading offsetHeight forces the browser to recalculate layout
-          const _ = containerElement.offsetHeight;
-          console.log('[LearnComponent] Triggered reflow for verse container.');
+          const _ = this.verseDisplayContainer.nativeElement.offsetHeight;
+          console.log('[LearnComponent] Triggered reflow for verse display container.');
+        } else {
+          console.warn('[LearnComponent] verseDisplayContainer not found, skipping reflow trigger.');
         }
       } catch (e) {
         console.error('[LearnComponent] Error triggering reflow:', e);
       }
       this.cdr.markForCheck(); // Mark for check after triggering reflow
-    }, 50); // Increased timeout slightly 
+    }, 50); // Increased timeout slightly
 
     // Subscribe to theme changes
     this.themeService.currentTheme$

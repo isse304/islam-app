@@ -1296,11 +1296,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   private readonly onTimeUpdate = (): void => {
     this.ngZone.run(() => {
-      if (!this.audioPlayer.duration) return;
+      if (!this.audioPlayer || !this.audioPlayer.duration || isNaN(this.audioPlayer.duration)) return; // Add NaN check
       this.currentTime = this.formatTime(this.audioPlayer.currentTime);
       this.duration = this.formatTime(this.audioPlayer.duration);
       this.progress = (this.audioPlayer.currentTime / this.audioPlayer.duration) * 100;
       this.updateRecitingVerse(this.audioPlayer.currentTime);
+      this.changeDetector.markForCheck(); // Ensure change detection runs
     });
   };
 
@@ -1327,6 +1328,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       this.currentTime = '0:00';
       this.currentPlayingVerse = null; // Reset currently playing verse
       this.currentRecitingVerse = null; // Reset reciting verse highlight
+      // Add call to fully stop and potentially close the player
+      this.stopAndCloseAudioPlayer(); 
+      this.changeDetector.markForCheck(); // Ensure change detection runs
     });
   };
 
