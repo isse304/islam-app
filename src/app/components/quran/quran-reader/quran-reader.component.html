@@ -333,12 +333,19 @@
 
             <!-- Translation and Transliteration -->
             <div class="verse-meaning space-y-3 mb-6">
-              <p class="translation text-gray-800 text-lg leading-relaxed">
-                {{verse.translation}}
-              </p>
-              <p *ngIf="verse.transliteration" class="transliteration text-gray-600 italic leading-relaxed">
-                {{verse.transliteration}}
-              </p>
+              <!-- Translation -->
+              <div *ngIf="showingTranslation && verse.translation" 
+                   [style.color]="isDarkMode ? '#B7A57A' : null"
+                   class="translation-text mt-4 pt-4 border-t border-gray-200 dark:border-gray-700/50">
+                <p [innerHTML]="verse.translation | safeHtml"></p>
+              </div>
+
+              <!-- Transliteration -->
+              <div *ngIf="verse.transliteration" 
+                   [style.color]="isDarkMode ? '#B7A57A' : null"
+                   class="transliteration-text mt-3 text-sm text-gray-500 dark:text-gray-400 italic">
+                 <p [innerHTML]="verse.transliteration | safeHtml"></p>
+              </div>
             </div>
 
             <!-- Actions -->
@@ -364,7 +371,7 @@
     </div>
 
     <!-- Mushaf View -->
-    <div *ngIf="isMushafView" class="mushaf-container bg-[#FAF3E0] min-h-screen pb-[80px] md:pb-0">
+    <div *ngIf="isMushafView" class="mushaf-container bg-[#FAF3E0] dark:bg-[#1A365D] min-h-screen pb-[80px] md:pb-0">
       <!-- Enhanced Mushaf Controls Header -->
       <div class="mushaf-controls-header bg-[#E6DACE] sticky top-0 z-50 shadow-md">
         <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-[3%] bg-repeat"></div>
@@ -484,7 +491,7 @@
 
       <!-- Mushaf Display Area -->
       <div class="mushaf-display-area">
-        <div class="bg-white rounded-xl shadow-lg overflow-hidden" 
+        <div class="bg-white dark:bg-[#1A365D] rounded-xl shadow-lg overflow-hidden" 
              (swipeleft)="nextPage()" 
              (swiperight)="previousPage()">
           <div class="flex justify-center" 

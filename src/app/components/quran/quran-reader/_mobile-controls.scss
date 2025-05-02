@@ -72,14 +72,19 @@
   box-shadow: 0 -2px 5px rgba(0,0,0,0.3) !important; // Slightly stronger shadow
 
   // Default icon color (cream for dark mode)
-  button.mat-mdc-icon-button .mat-icon {
-    color: #FAF3E0 !important; // Cream icons
-  }
-  button.mat-mdc-icon-button:hover:not(:disabled) .mat-icon {
-    color: #B7A57A !important; // Gold icon on hover
-  }
-  button.mat-mdc-icon-button:disabled .mat-icon {
-    color: #6b7280 !important; // Medium Gray disabled icon
+  button.mat-mdc-icon-button {
+    .mat-icon {
+      color: #FAF3E0 !important; // Cream icons
+    }
+    &:hover:not(:disabled) {
+       background-color: rgba(250, 243, 224, 0.1) !important; // Faint cream hover bg
+       .mat-icon {
+          color: #B7A57A !important; // Gold icon on hover
+       }
+    }
+    &:disabled .mat-icon {
+      color: #6b7280 !important; // Medium Gray disabled icon
+    }
   }
 
   // Style the bookmark icon specifically when bookmarked (Primary Gold)
@@ -88,7 +93,7 @@
   }
 
   // Make the input field readable 
-  input[type="number"].page-input-mobile { // Added specific class
+  input[type="number"].page-input-mobile { 
     color: #FAF3E0 !important; // Ensure Cream text
     background-color: #2A4365 !important; // Lighter Blue background
     border: 1px solid #B7A57A !important; // Gold border
@@ -115,32 +120,43 @@
   }
 
   // Style the Surah select dropdown 
-  .mobile-surah-select-styled {
+  .mobile-surah-select-styled { // Target the container div
     flex: 1 1 auto !important; // Allow select to grow and take available space
     min-width: 150px !important; // Ensure a minimum width
 
-    .mat-mdc-form-field-flex {
-      background-color: #1A365D !important; // Darkest blue bg for select
-    }
-    .mat-mdc-select-value,
-    .mat-mdc-select-arrow {
-      color: #FAF3E0 !important; // Cream text/arrow
-    }
-     // Ensure label is styled correctly if used
-     .mat-mdc-floating-label,
-     .mat-mdc-form-field-label {
-        color: #9ca3af !important; // Lighter Gray label
-     }
-     // Ensure focused label is cream
-    &.mat-focused .mat-mdc-floating-label {
-        color: #FAF3E0 !important;
-    }
-    // Ensure outline is gold
-    .mdc-notched-outline > * {
-        border-color: #B7A57A !important; // Gold outline
-    }
-    &.mat-focused .mdc-notched-outline > * {
-        border-color: #FAF3E0 !important; // Cream focus outline
+    // Target the underlying Material form field
+    mat-form-field {
+      .mat-mdc-form-field-flex {
+        background-color: #2A4365 !important; // Lighter blue bg for select
+        border: 1px solid #B7A57A !important; // Gold border
+        border-radius: 8px !important;
+        height: 38px !important;
+        padding: 0 8px !important;
+      }
+      .mat-mdc-select-value,
+      .mat-mdc-select-arrow {
+        color: #FAF3E0 !important; // Cream text/arrow
+      }
+       // Ensure label is styled correctly if used
+       .mat-mdc-floating-label,
+       .mat-mdc-form-field-label {
+          color: #9ca3af !important; // Lighter Gray label
+       }
+       // Ensure focused label is cream
+      &.mat-focused .mat-mdc-floating-label {
+          color: #FAF3E0 !important;
+      }
+      // Ensure outline is cream when focused
+      &.mat-focused .mdc-notched-outline > *,
+      &.mat-focused .mat-mdc-form-field-outline > * {
+          border-color: #FAF3E0 !important; 
+      }
+      // Remove default outline/underline
+      .mdc-notched-outline,
+      .mat-mdc-form-field-underline {
+         border: none !important;
+      }
+      .mat-mdc-form-field-subscript-wrapper { display: none !important; }
     }
   }
 

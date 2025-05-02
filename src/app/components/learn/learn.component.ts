@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef,
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router, RouterModule } from '@angular/router';
-import { firstValueFrom, Subscription, switchMap, tap, catchError, of, take, from, Observable } from 'rxjs';
+import { firstValueFrom, Subscription, switchMap, tap, catchError, of, take, from, Observable, Subject, throwError, forkJoin } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatButtonModule } from '@angular/material/button';
@@ -16,12 +16,14 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { TafsirDatabaseService, TafsirEntry } from '../../services/tafsir-database.service';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ApiService } from '../../services/api.service';
-import { FirebaseAuthService } from '../../services/firebase-auth.service';
-import { HttpClient } from '@angular/common/http';
+import { FirebaseAuthService, AppUser } from '../../services/firebase-auth.service';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Title, Meta } from '@angular/platform-browser';
 import { environment } from '../../../environments/environment';
 import { ThemeService, Theme } from '../../services/theme.service';
-import { map } from 'rxjs/operators';
+import { map, takeUntil, finalize } from 'rxjs/operators';
+import { CdkVirtualScrollViewport, ScrollingModule } from '@angular/cdk/scrolling';
+import { ToastService } from '../../services/toast.service';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -124,7 +126,8 @@ export class LearnComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private titleService: Title,
     private metaService: Meta,
-    private themeService: ThemeService // Inject ThemeService
+    public themeService: ThemeService,
+    private toastService: ToastService
   ) {
     this.currentTheme$ = this.themeService.currentTheme$; // Assign correct observable
   }

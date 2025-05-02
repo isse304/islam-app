@@ -1123,6 +1123,11 @@ select option {
     align-items: center !important;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05) !important;
   }
+  .mat-mdc-select-trigger {
+      height: 100%;
+      display: flex; // Use flex to align content
+      align-items: center; // Vertically center content
+  }
   .mat-mdc-select-value {
     color: #1A365D !important; 
     font-weight: 500 !important;
@@ -1141,16 +1146,13 @@ select option {
       padding-top: 0 !important;
       padding-bottom: 0 !important;
       margin-top:0 !important; // Adjust vertical alignment
+      display: flex; // Ensure infix itself uses flex
+      align-items: center; // Align content within infix
   }
   // Ensure label styling applies
   .mat-mdc-floating-label.mdc-floating-label {
      transform: translateY(-1.3em) scale(0.75) !important; 
      color: #B7A57A !important;
-  }
-  // Target the trigger specifically if needed
-  .mat-mdc-select-trigger {
-      height: 100%;
-      align-items: center;
   }
 }
 
@@ -1249,151 +1251,307 @@ select option {
   }
 }
 
-/* Dark Mode Overrides */
-.dark app-quran-reader {
-  background-color: #1A365D !important; /* Dark Blue */
-  display: block !important; /* Ensure host can have background applied */
-  color: #FAF3E0 !important; /* DEFAULT DARK MODE TEXT: Cream */
+/* === Quran Reader Dark Mode === */
+// FIX: Use html.dark body.dark app-quran-reader for highest specificity
+html.dark body.dark app-quran-reader {
+  background-color: #1A365D !important;
+  display: block !important;
+  color: #FAF3E0 !important; // Default Cream text
 
   h1 {
-    color: #B7A57A !important; /* Gold */
+    color: #B7A57A !important;
   }
 
-  // --- Force Override common light backgrounds/text --- 
-  .bg-white { 
-      background-color: #2A4365 !important; 
+  // --- Translation View Card --- 
+  .verse-card {
+      background-color: #1F3A5F !important;
       border-color: rgba(183, 165, 122, 0.2) !important;
-  }
-  .bg-gray-50, .bg-\[\#FAF3E0\] { 
-      background-color: #1A365D !important; 
-      border-color: rgba(183, 165, 122, 0.2) !important;
-  }
-  // REMOVED general text overrides - rely on inheritance
-  // .text-gray-800 { color: #FAF3E0 !important; }
-  // .text-gray-700 { color: #d1d5db !important; }
-  // .text-gray-600 { color: #9ca3af !important; }
-  // .text-gray-500 { color: #6b7280 !important; }
-  .text-\[\#1A365D\] { color: #FAF3E0 !important; } // Keep this override
-  .text-\[\#B7A57A\] { color: #B7A57A !important; } // Keep this override
-
-  // --- Translation View --- 
-  .verse-card { 
-      background-color: #1F3A5F !important; 
-      border-color: rgba(183, 165, 122, 0.2); 
-      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
-      // color: #d1d5db !important; // REMOVE - Inherit default
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+      color: #FAF3E0 !important; // Default text inside card
 
       .verse-meaning {
-          background-color: #2A4365 !important; 
-          border-top-color: rgba(183, 165, 122, 0.2) !important; 
-          background-image: none !important; 
-          // .translation-text, .translation-text p { color: #FAF3E0 !important; } // REMOVE - Inherit default
-          .transliteration-text, .transliteration-text p { color: #9ca3af !important; } // KEEP - Needs specific lighter gray
-          .verse-details, .verse-source { color: #6b7280 !important; } // KEEP - Needs specific medium gray
+          background-color: #2A4365 !important;
+          border-top-color: rgba(183, 165, 122, 0.2) !important;
+          border-left-color: #B7A57A !important; // Ensure border is gold
+          background-image: none !important;
+          // FIX: Apply color directly to parent divs, let it inherit
+          .translation-text,
+          .transliteration-text { 
+             color: #B7A57A !important; 
+             // Ensure inner paragraphs also inherit if needed
+             p { color: inherit !important; } 
+          }
+          .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
       }
       .verse-number {
-         background-color: rgba(183, 165, 122, 0.15) !important; 
-         border-color: rgba(183, 165, 122, 0.3) !important; 
-         color: #B7A57A !important; // KEEP - Needs gold
+         background-color: rgba(183, 165, 122, 0.15) !important;
+         border-color: rgba(183, 165, 122, 0.3) !important;
+         color: #B7A57A !important;
       }
       .verse-actions button.mat-icon-button { 
-         .mat-icon { color: #FAF3E0; } // KEEP - Needs default cream icons
+         .mat-icon { color: #FAF3E0 !important; } // Cream icons
          &:hover:not(:disabled) { 
-             background-color: rgba(250, 243, 224, 0.1); 
-             .mat-icon { color: #B7A57A; } // KEEP - Needs gold on hover
+             background-color: rgba(250, 243, 224, 0.1) !important;
+             .mat-icon { color: #B7A57A !important; } // Gold hover
          } 
-         &.bookmarked .mat-icon { color: #B7A57A !important; } // KEEP - Needs gold when bookmarked
+         &.bookmarked .mat-icon { color: #B7A57A !important; } // Gold if bookmarked
       }
-      > .p-6 > .verse-text { color: #B7A57A !important; } // KEEP - Verse text itself is Gold
+      > .p-6 > .verse-text { color: #B7A57A !important; } // Arabic Gold
   }
 
-  // === Default verse text color ===
-  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // KEEP - Verse text is Gold
+  // === Default Arabic text color ===
+  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // Gold
 
-  // --- Highlighted Verse Colors ---
+  // --- Highlighted Verse Colors --- 
   .highlighted-verse, .selected-verse { 
-    background-color: #3A5F8A !important; 
-    border-color: #B7A57A !important; 
-    .verse-text, .word-tooltip-trigger { color: #1A365D !important; } // KEEP - Highlighted verse text is dark
-    .verse-meaning {
-      background-color: #2A4365 !important; 
-      border-top-color: rgba(183, 165, 122, 0.4) !important;
-      // .translation-text, .translation-text p { color: #FAF3E0 !important; } // REMOVE - Inherit default
-      .transliteration-text, .transliteration-text p { color: #9ca3af !important; } // KEEP
-      .verse-details, .verse-source { color: #6b7280 !important; } // KEEP
+    background-color: #3A5F8A !important;
+    border-color: #B7A57A !important;
+    border-left-color: #B7A57A !important; // Ensure border is gold
+    color: #FAF3E0 !important; // Default text when highlighted
+    .verse-text, .word-tooltip-trigger { 
+        color: #FAF3E0 !important; // Highlighted Arabic Cream 
     }
-    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // KEEP
-    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #1A365D !important; } // KEEP - Dark icon when highlighted & bookmarked
+    .verse-meaning {
+      background-color: #2A4365 !important;
+      border-top-color: rgba(183, 165, 122, 0.4) !important;
+      border-left-color: #B7A57A !important; // Ensure border is gold
+       // FIX: Apply color directly to parent divs, let it inherit
+       .translation-text,
+       .transliteration-text { 
+          color: #B7A57A !important; 
+          p { color: inherit !important; }
+       }
+      .verse-details, .verse-source { color: #6b7280 !important; } // Keep dimmer
+    }
+    .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; } // Keep Cream
+    .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #B7A57A !important; } // Keep Gold
   } 
 
   // --- Tafsir section dark mode ---
-  .bg-gray-50 { 
-     background-color: #1A365D !important; 
-     // color: #d1d5db !important; // REMOVE - Inherit default
-     h3, h4 { color: #B7A57A !important; } // KEEP - Headings are Gold
+  .bg-gray-50 { // Assuming this targets the tafsir container
+     background-color: #1A365D !important;
+     color: #FAF3E0 !important; // Default text for tafsir
+     h3, h4 { color: #B7A57A !important; }
+  }
+  
+  // --- Mushaf View Dark Styles (Increased Specificity) ---
+  .mushaf-view {
+      background-color: #1A365D !important;
+  }
+  .page-frame {
+      background-color: #2A4365 !important; // Lighter blue page background
+      border-color: #B7A57A !important;
+       &::before { 
+          border-color: rgba(183, 165, 122, 0.5) !important;
+       }
+  }
+  .mushaf-line {
+      color: #FAF3E0 !important; // Cream text
+  }
+  .verse-marker {
+      color: #B7A57A !important; // Gold marker text
+      // Assuming SVG background, color might not affect it
+  }
+  .corner-ornament {
+      // Assuming SVG background, color might not affect it
+       span { color: #B7A57A !important; } // Style text inside if needed
+  }
+  
+  // === Controls Popup Dark Mode (Increased Specificity) ===
+  .controls-popup {
+      background-color: #2A4365 !important; // Lighter blue background
+      border: 1px solid #B7A57A !important; // Gold border
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4) !important;
+      color: #FAF3E0 !important; // Default Cream text
+
+      // Close button
+      button[mat-icon-button] { // Assuming a generic close button
+          .mat-icon { color: #FAF3E0 !important; } // Cream icon
+          &:hover { background-color: rgba(250, 243, 224, 0.1) !important; } 
+      }
+
+      // Labels
+      label {
+          color: #B7A57A !important; // Gold labels
+      }
+
+      // Search Input
+      .search-input { // Assuming this class exists inside
+          background-color: #1A365D !important; 
+          border-color: #B7A57A !important; 
+          color: #FAF3E0 !important; 
+          &::placeholder { color: #9ca3af !important; }
+          &:focus { 
+              border-color: #FAF3E0 !important; 
+              box-shadow: 0 0 0 1px #FAF3E0 !important; 
+              background-color: #1F3A5F !important;
+          }
+      }
+      
+      // Material Selects (Surah, Translation, Reciter, Tafsir)
+      mat-form-field {
+         .mat-mdc-form-field-flex {
+            background-color: #1A365D !important;
+            border: 1px solid #B7A57A !important;
+            border-radius: 8px !important;
+         }
+         .mat-mdc-select-value, .mat-mdc-select-arrow {
+             color: #FAF3E0 !important; // Cream text/arrow
+         }
+         .mat-mdc-floating-label, .mat-mdc-form-field-label {
+             color: #9ca3af !important; // Lighter gray label
+         }
+         &.mat-focused {
+            .mat-mdc-floating-label { color: #FAF3E0 !important; } // Cream focused label
+            .mat-mdc-form-field-outline-thick, .mdc-notched-outline > * { // Focused outline
+                 border-color: #FAF3E0 !important;
+            }
+            .mat-mdc-form-field-flex { // Focused background
+               background-color: #1F3A5F !important; 
+            }
+         }
+         // Remove outline/underline if using fill/standard
+         .mdc-notched-outline, .mat-mdc-form-field-underline { border: none !important; }
+      }
+      
+      // Audio Player Button
+      button[mat-flat-button] { // Play Full Surah button
+         background-color: #B7A57A !important; 
+         color: #1A365D !important; // Dark Blue text
+         .mat-icon { color: #1A365D !important; }
+         &:hover:not(:disabled) { background-color: darken(#B7A57A, 5%) !important; }
+      }
+
+      // View Mode Toggle
+      mat-button-toggle-group {
+          background-color: #1A365D !important; 
+          border: 1px solid #B7A57A !important; 
+      }
+      mat-button-toggle {
+          .mat-button-toggle-button {
+              color: #9ca3af !important; // Lighter Gray inactive
+              .mat-icon { color: #9ca3af !important; }
+          }
+          &.mat-button-toggle-checked {
+              background-color: #B7A57A !important; // Gold background active
+              .mat-button-toggle-button {
+                  color: #1A365D !important; // Dark Blue text active
+                  .mat-icon { color: #1A365D !important; }
+              }
+          }
+          &:hover:not(.mat-button-toggle-checked) {
+              background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
+              .mat-button-toggle-button {
+                  color: #B7A57A !important; // Gold text hover
+                  .mat-icon { color: #B7A57A !important; }
+              }
+          }
+      }
   }
 
-  // +++ DESKTOP MUSHAF CONTROLS DARK STYLES (NESTED HERE) +++
-  .mushaf-controls-header {
-    background-color: #1A365D !important; 
-    border-top: 1px solid rgba(183, 165, 122, 0.2) !important; 
-    box-shadow: 0 -2px 5px rgba(0,0,0,0.3) !important;
+} // End of html.dark body.dark app-quran-reader
 
-    // Surah Select (PC)
-    .pc-surah-select {
-      .mat-mdc-form-field-flex {
-        background-color: #2A4365 !important; // Lighter Blue background
-        // height: auto; // Remove fixed height if causing issues
-        // align-items: center !important; 
-      }
-      // Remove previous infix/trigger adjustments if flex align-items is enough
-      /* .mat-mdc-form-field-infix { ... } */
-      /* .mat-mdc-select-trigger { ... } */
-      .mat-mdc-select-value { color: #FAF3E0 !important; } // Ensure Cream text
-      .mat-mdc-select-arrow { color: #FAF3E0 !important; } // Ensure Cream arrow
-      .mat-mdc-floating-label { color: #9ca3af !important; } 
-      .mdc-notched-outline > * { border-color: rgba(183, 165, 122, 0.5) !important; }
-      &.mat-focused {
-        .mat-mdc-floating-label { color: #FAF3E0 !important; }
-        .mdc-notched-outline > * { border-color: #FAF3E0 !important; }
-      }
-    }
+// Specific block for Desktop Mushaf Controls Header Dark Mode
+// Using html.dark body.dark app-quran-reader for specificity
+html.dark body.dark app-quran-reader .mushaf-controls-header {
+  background-color: #1A365D !important; // Dark Blue background
+  border-top: 1px solid rgba(183, 165, 122, 0.2) !important; // Faint Gold border
+  box-shadow: 0 -1px 3px rgba(0,0,0,0.3) !important; // Darker shadow
 
-    // Page Input (PC)
-    .desktop-page-input-container { 
-       background-color: #2A4365 !important; 
-       border-color: rgba(183, 165, 122, 0.5) !important; 
+  // === Icon Buttons ===
+  button.mat-mdc-icon-button {
+    .mat-icon {
+      color: #FAF3E0 !important; // Cream icons
     }
-    .desktop-page-input { color: #FAF3E0 !important; background-color: transparent !important; }
-    .desktop-page-suffix { color: #B7A57A !important; }
+    &:hover:not(:disabled) {
+      background-color: rgba(250, 243, 224, 0.1) !important; // Faint Cream hover bg
+      .mat-icon { color: #B7A57A !important; } // Gold icon on hover
+    }
+    &:disabled .mat-icon {
+       color: #6b7280 !important; // Medium Gray disabled icon
+    }
+    &.bookmarked .mat-icon { 
+       color: #B7A57A !important; // Gold if bookmarked
+    }
+  }
 
-    // Icon Buttons
-    button.mat-mdc-icon-button .mat-icon { color: #FAF3E0 !important; }
-    button.mat-mdc-icon-button:hover:not(:disabled) {
-      background-color: rgba(250, 243, 224, 0.1) !important; 
-      .mat-icon { color: #B7A57A !important; }
+  // === Page Input (Desktop) ===
+  mat-form-field[appearance="outline"] { // Target page input
+    .mat-mdc-text-field-wrapper {
+      background-color: #2A4365 !important; // Lighter Blue background
     }
-    button.mat-mdc-icon-button:disabled .mat-icon { color: #6b7280 !important; }
-    button.bookmarked .mat-icon { color: #B7A57A !important; }
-
-    // Mat Button Toggle Group
-    mat-button-toggle-group {
-        background-color: #2A4365 !important; 
-        border: 1px solid #B7A57A !important; 
+    .mat-mdc-form-field-outline > * { // Outline color
+       border-color: #B7A57A !important; // Gold border
     }
-    mat-button-toggle {
-        background-color: transparent !important;
-        .mat-button-toggle-button { color: #9ca3af !important; }
-        &.mat-button-toggle-checked {
-            background-color: #B7A57A !important; 
-            .mat-button-toggle-button { color: #1A365D !important; }
+    input.mat-mdc-input-element { // Input text
+      color: #FAF3E0 !important; // Cream text
+      text-decoration: none !important; 
+    }
+    .mat-mdc-form-field-label { // Floating Label
+      color: #B7A57A !important; // Gold label
+    }
+    .mat-mdc-form-field-suffix span { // Page suffix text
+      color: #B7A57A !important; // Gold suffix
+    }
+    // Focused styles
+    &.mat-focused {
+       .mat-mdc-form-field-outline-thick {
+          border-color: #FAF3E0 !important; // Cream focused border
+       }
+       .mat-mdc-form-field-label { // Focused label
+          color: #FAF3E0 !important; // Cream label
+       }
+       .mat-mdc-text-field-wrapper {
+          background-color: #1F3A5F !important; // Slightly darker blue on focus
+       }
+    }
+  }
+  
+  // === Surah Select (Desktop) ===
+  .pc-surah-select {
+    .mat-mdc-form-field-flex {
+       background-color: #2A4365 !important; // Lighter Blue background
+    }
+    .mat-mdc-select-value {
+       color: #FAF3E0 !important; // Cream selected value text
+    }
+    .mat-mdc-select-arrow {
+       color: #B7A57A !important; // Gold arrow
+    }
+    // Focused styles (ensure consistency)
+    &.mat-focused {
+       .mat-mdc-floating-label.mdc-floating-label {
+          color: #FAF3E0 !important; // Cream label on focus
+       }
+        .mat-mdc-form-field-flex { // Focused background
+           background-color: #1F3A5F !important; 
         }
-        &:hover:not(.mat-button-toggle-checked) {
-            background-color: rgba(183, 165, 122, 0.1) !important; 
-            .mat-button-toggle-button { color: #B7A57A !important; }
-        }
     }
-  } // End .mushaf-controls-header
+  }
 
-} // End of .dark app-quran-reader
+  // === Button Toggle (Single/Double Page) ===
+  mat-button-toggle-group {
+      background-color: #2A4365 !important; // Lighter Blue background
+      border: 1px solid #B7A57A !important; // Gold border
+  }
+  mat-button-toggle {
+      background-color: transparent !important;
+      .mat-button-toggle-button {
+          color: #9ca3af !important; // Lighter Gray text inactive
+      }
+      &.mat-button-toggle-checked {
+          background-color: #B7A57A !important; // Gold background active
+          .mat-button-toggle-button {
+              color: #1A365D !important; // Dark Blue text active
+          }
+      }
+      &:hover:not(.mat-button-toggle-checked) {
+          background-color: rgba(183, 165, 122, 0.1) !important; // Faint gold hover
+          .mat-button-toggle-button {
+              color: #B7A57A !important; // Gold text on hover
+          }
+      }
+  }
+
+} // End html.dark body.dark app-quran-reader .mushaf-controls-header
 

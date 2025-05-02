@@ -69,32 +69,47 @@
   } 
   
   // == Styles for Verse Display Dark Mode (tied to [ngClass]) ==
-  .learn-verse-dark {
+  // FIX: Use highest specificity AND ensure it overrides Tailwind
+  :host-context(html.dark body.dark) #learn-verse-display.learn-verse-dark,
+  html.dark body.dark app-learn #learn-verse-display.learn-verse-dark {
      background-color: #2A4365 !important; // Lighter Blue
-     border: 1px solid rgba(183, 165, 122, 0.2) !important; // Faint gold border
+     border: 1px solid #4b5563 !important; // Gray-600 border
      
      .arabic-verse p {
         color: #FAF3E0 !important; // Cream for Arabic text
      }
-     .translation p {
-         color: #d1d5db !important; // Light Gray for translation
+     div.translation > p, // Target paragraphs directly under prose
+     div.translation ul, // Target lists
+     div.translation ol,
+     div.translation li { // Target list items
+         color: #d1d5db !important; // Light Gray for translation text
      }
      
      // Scrollbar
-     &.custom-scrollbar::-webkit-scrollbar-thumb { // Add .custom-scrollbar here if needed
+     &.custom-scrollbar {
+        scrollbar-width: thin !important;
+        scrollbar-color: #B7A57A #1A365D !important; // Thumb Track
+     }
+     &.custom-scrollbar::-webkit-scrollbar { 
+        width: 8px !important;
+     }
+     &.custom-scrollbar::-webkit-scrollbar-thumb { 
         background-color: #B7A57A !important; 
-        border-color: #2A4365 !important; 
+        border-radius: 10px !important;
+        border: 2px solid #1A365D !important; // Use track color for border
      }
      &.custom-scrollbar::-webkit-scrollbar-track {
         background: #1A365D !important; 
+        border-radius: 10px !important;
      }
   }
   
   // --- Dark Mode Styles for OTHER elements within Learn Component --- 
-  .dark app-learn { // Use component selector
+  // FIX: Use highest specificity
+  html.dark body.dark app-learn { // Use component selector
 
     // Ensure the main container background is dark (targeting element within app-learn)
-    .min-h-screen.bg-\[\#FAF3E0\] {
+    .min-h-screen.bg-\[\#FAF3E0\] { // Escaped brackets for Tailwind class
       background-color: #1A365D !important;
     }
 
