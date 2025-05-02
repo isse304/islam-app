@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewEncapsulation, ChangeDetectionStrategy, HostListener, HostBinding, ApplicationRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewChild, ElementRef, ChangeDetectorRef, ViewEncapsulation, ChangeDetectionStrategy, HostListener, HostBinding, ApplicationRef, AfterViewInit } from '@angular/core';
 import { QuranService } from '../../services/quran.service';
 import { SubscriptionService } from '../../services/subscription.service';
 import { Router, RouterModule } from '@angular/router';
@@ -77,7 +77,7 @@ interface AIResponse {
     '(document:keydown)': 'handleKeyboardNavigation($event)'
   }
 })
-export class LearnComponent implements OnInit, OnDestroy {
+export class LearnComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('chatContainer') private chatContainer!: ElementRef;
   @ViewChild('verseDisplayContainer') private verseDisplayContainer!: ElementRef;
   selectedSurah: number = 1;
@@ -131,8 +131,7 @@ export class LearnComponent implements OnInit, OnDestroy {
     private metaService: Meta,
     public themeService: ThemeService,
     private toastService: ToastService,
-    private elementRef: ElementRef,
-    private appRef: ApplicationRef
+    private elementRef: ElementRef
   ) {
     this.currentTheme$ = this.themeService.currentTheme$;
   }
@@ -179,39 +178,26 @@ export class LearnComponent implements OnInit, OnDestroy {
       }
     });
 
-    // Force change detection AND trigger reflow after initialization
-    setTimeout(() => {
-      try {
-        // Use the ViewChild reference
-        if (this.verseDisplayContainer?.nativeElement) {
-          // Reading offsetHeight forces the browser to recalculate layout
-          const _ = this.verseDisplayContainer.nativeElement.offsetHeight;
-          console.log('[LearnComponent] Triggered reflow for verse display container.');
-        } else {
-          console.warn('[LearnComponent] verseDisplayContainer not found, skipping reflow trigger.');
-        }
-      } catch (e) {
-        console.error('[LearnComponent] Error triggering reflow:', e);
-      }
-      this.cdr.markForCheck(); // Mark for check after triggering reflow
-    }, 50); // Increased timeout slightly
-
     // Subscribe to theme changes
     this.themeService.currentTheme$
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        // console.log('[LearnComponent] Theme changed, marking for check');
-        this.cdr.markForCheck(); // Mark for check on theme changes
+        this.cdr.markForCheck();
       });
 
-    // Force application tick after initialization is likely complete
-    setTimeout(() => {
-      console.log('[LearnComponent OnInit] Forcing appRef.tick()');
-      this.appRef.tick(); 
-    }, 100); 
-    
     this.isLoading = false;
-    this.cdr.markForCheck(); // Final mark for check
+    this.cdr.markForCheck();
+  }
+
+  ngAfterViewInit(): void {
+    if (this.verseDisplayContainer?.nativeElement) {
+      try {
+        const _ = this.verseDisplayContainer.nativeElement.offsetHeight;
+        console.log('[LearnComponent ngAfterViewInit] Triggered reflow for verse display container.');
+      } catch (e) {
+        console.error('[LearnComponent ngAfterViewInit] Error triggering reflow:', e);
+      }
+    }
   }
 
   ngOnDestroy() {

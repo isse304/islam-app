@@ -8,7 +8,6 @@ import { Subscription, Observable, timer, combineLatest, of, Subject } from 'rxj
 import { filter, map, startWith, switchMap, take, tap, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ThemeToggleComponent } from './components/theme-toggle/theme-toggle.component';
-import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 @Component({
@@ -39,7 +38,6 @@ export class AppComponent implements OnInit, OnDestroy {
     private themeService: ThemeService,
     private router: Router,
     private route: ActivatedRoute,
-    private swUpdate: SwUpdate,
     private snackBar: MatSnackBar,
     private cdr: ChangeDetectorRef
   ) {
@@ -78,29 +76,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.isHeaderVisible = isVisible;
       this.cdr.markForCheck();
     });
-
-    if (this.swUpdate.isEnabled) {
-      this.swUpdate.versionUpdates
-        .pipe(
-          filter((evt): evt is VersionReadyEvent => evt.type === 'VERSION_READY'),
-          takeUntil(this.destroy$)
-        )
-        .subscribe(evt => {
-          console.log(`New version available: ${evt.latestVersion.hash}. Current version: ${evt.currentVersion.hash}.`);
-          const snackBarRef = this.snackBar.open('New version available!', 'Reload', {
-            duration: 10000
-          });
-          snackBarRef.onAction().subscribe(() => {
-            document.location.reload();
-          });
-        });
-        
-      this.swUpdate.checkForUpdate().then(updateFound => {
-         console.log(updateFound ? 'Service worker update found on check.' : 'Service worker is up to date on check.');
-      }).catch(err => {
-         console.error('Service worker check failed:', err);
-      });
-    }
   }
 
   ngOnDestroy(): void {

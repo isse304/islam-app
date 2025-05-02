@@ -1599,7 +1599,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Stop audio playback and remove listeners
     if (this.audioPlayer) {
       this.audioPlayer.pause();
-      this.audioPlayer.src = '';
+      // ** ADDED: Remove listeners before clearing source **
+      this.removeAudioEvents(); 
+      // ** CHANGED: Use removeAttribute instead of empty string **
+      this.audioPlayer.removeAttribute('src'); 
     }
     // Clear timers
     if (this.debounceTimer) clearTimeout(this.debounceTimer);
