@@ -1,8 +1,11 @@
 :host {
+  /* Removed fixed positioning styles */
+  /* 
   position: fixed;
-  bottom: 2rem;
+  top: 2rem; 
   right: 2rem;
-  z-index: 999; /* Below loading overlay but above most content */
+  */
+  z-index: 999; /* Keep z-index for potential overlap needs */
 }
 
 button {

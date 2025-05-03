@@ -6,6 +6,7 @@ import { Subscription } from 'rxjs';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { AuthButtonsComponent } from '../../auth-buttons/auth-buttons.component';
 import { NgZone } from '@angular/core';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-header',
@@ -16,7 +17,8 @@ import { NgZone } from '@angular/core';
   imports: [
     CommonModule,
     RouterModule,
-    AuthButtonsComponent
+    AuthButtonsComponent,
+    ThemeToggleComponent
   ]
 })
 export class HeaderComponent implements OnInit, OnDestroy {

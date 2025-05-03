@@ -50,18 +50,26 @@ export class AppComponent implements OnInit, OnDestroy {
       startWith(true)
     );
 
-    const hiddenRoutes = ['/landing', '/auth'];
+    // Define routes where the header AND toggle should be hidden
+    const authPath = '/auth';
+    const rootPath = '/';
 
     const navigationEnd$ = this.router.events.pipe(
       filter((event): event is NavigationEnd => event instanceof NavigationEnd)
     );
 
     this.showHeader$ = navigationEnd$.pipe(
-      map(event => !event.urlAfterRedirects.startsWith('/auth')),
-      startWith(!this.router.url.startsWith('/auth')),
+      map(event => {
+        const url = event.urlAfterRedirects;
+        // Show header if URL is NOT exactly root AND does NOT start with /auth
+        return url !== rootPath && !url.startsWith(authPath);
+      }),
+      // Set initial state based on the current URL
+      startWith(this.router.url !== rootPath && !this.router.url.startsWith(authPath)),
       distinctUntilChanged()
     );
 
+    // Re-added: Theme toggle visibility mirrors header visibility
     this.showThemeToggle$ = this.showHeader$;
 
     console.log('[AppComponent] ThemeService injected and initialized.');
@@ -81,9 +89,5 @@ export class AppComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  private shouldShowHeader(url: string): boolean {
-    return !(url === '/' || url.startsWith('/auth'));
   }
 }

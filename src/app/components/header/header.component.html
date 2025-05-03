@@ -50,14 +50,13 @@
        </a>
     </div>
 
-    <!-- Auth Buttons -->
-    <!-- Hide Auth buttons container on mobile -->
+    <!-- Auth Buttons (Desktop Only) -->
     <div class="auth-container hide-on-mobile">
       <app-auth-buttons></app-auth-buttons>
     </div>
 
     <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn" (click)="toggleMobileMenu()">
+    <button class="mobile-menu-btn md:hidden ml-auto" (click)="toggleMobileMenu()">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
       </svg>
