@@ -459,13 +459,39 @@ export class FirebaseAuthService {
             // Update the main _user subject AFTER all processing
             if (finalAppUser) {
               this._user.next(finalAppUser);
-              // //console.log('[AuthService] onAuthStateChanged: _user subject updated with user.');
+              // //console.log(`[AuthService] onAuthStateChanged: _user subject updated with user: ${finalAppUser.email}`);
+
+              const intendedRedirectUrl = localStorage.getItem('redirectUrl');
+              // //console.log(`[AuthService] onAuthStateChanged: Checked localStorage for redirectUrl, found: '${intendedRedirectUrl}'`);
+
+              if (intendedRedirectUrl) {
+                localStorage.removeItem('redirectUrl'); // Clear immediately
+                // //console.log(`[AuthService] onAuthStateChanged: Removed redirectUrl ('${intendedRedirectUrl}') from localStorage.`);
+                // //console.log(`[AuthService] onAuthStateChanged: Attempting to navigate to: '${intendedRedirectUrl}'`);
+                this.router.navigateByUrl(intendedRedirectUrl)
+                  .then(navigated => {
+                    if (navigated) {
+                      // //console.log(`[AuthService] onAuthStateChanged: Successfully navigated to '${intendedRedirectUrl}'.`);
+                    } else {
+                      // //console.warn(`[AuthService] onAuthStateChanged: Navigation to '${intendedRedirectUrl}' was reported as not successful, but no error. Navigating to /home as fallback.`);
+                      this.router.navigate(['/home']);
+                    }
+                  })
+                  .catch(err => {
+                    //console.error(`[AuthService] onAuthStateChanged: Navigation to '${intendedRedirectUrl}' failed:`, err);
+                    // //console.log('[AuthService] onAuthStateChanged: Navigating to /home due to error.');
+                    this.router.navigate(['/home']); // Fallback to home on error
+                  });
+              } else if (isFirstCallback && !this.redirectUrl) { 
+                // //console.log('[AuthService] onAuthStateChanged: No redirectUrl in localStorage or class property, isFirstCallback: true. No automatic navigation will occur here.');
+                // Deliberately no automatic navigation to /home here
+                // Let guards or component-specific logic decide if user is already on a valid page or needs to go to a default.
+              }
+
             } else if (!firebaseUser) { 
-              // Ensure _user is null if firebaseUser was null and no error occurred
-              // handleUserSignedOut should have already done this, but double-check
               if (this._user.value !== null) { 
                  this._user.next(null); 
-                 // //console.log('[AuthService] onAuthStateChanged: _user subject set to null (explicitly).');
+                 // //console.log('[AuthService] onAuthStateChanged: _user subject set to null (explicitly because firebaseUser is null).');
               }
             } else {
                 //console.log('[AuthService] onAuthStateChanged: finalAppUser is null (likely due to error), _user subject not updated again.');
@@ -2228,5 +2254,11 @@ export class FirebaseAuthService {
     this.signalAuthReady(); 
     // Also try to settle the post-redirect state, as redirect is processed and auth is now ready (null)
     this.trySignalPostRedirectAuthSettled(); 
+
+    // Navigate to login when user signs out, ensuring it's clear they are logged out.
+    // This prevents staying on a page that might require auth after logout.
+    this.ngZone.run(() => {
+      // this.router.navigate(['/auth/login']); // This was stripping returnUrl
+    });
   }
 } 

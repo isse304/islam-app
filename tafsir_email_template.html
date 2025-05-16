@@ -1,0 +1,282 @@
+<!-- Email Subject: Weekly Tafsir: Insights on Surah An-Naba -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Weekly Tafsir Insights</title>
+    <style type="text/css">
+        /* Reset styles */
+        body, p, h1, h2, h3, h4, h5, h6 {
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #ecf0f1; /* Light text for dark background */
+            background-color: #26344a; /* Dark blue background */
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        
+        /* Container styles */
+        .container {
+            max-width: 600px;
+            margin: 20px auto; /* Added top/bottom margin */
+            background-color: #364d6e; /* Slightly lighter blue for content container */
+            padding: 0; /* Remove padding, will be handled by inner elements */
+            border-radius: 8px; /* Rounded corners like in the image */
+            overflow: hidden; /* To contain rounded corners of children */
+        }
+        
+        /* Header styles */
+        .header {
+            text-align: center;
+            padding: 20px;
+            background-color: #2c3e50; /* Darker blue for header */
+            color: #ecf0f1;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        .header p {
+            font-size: 14px;
+            color: #bdc3c7;
+        }
+
+        .greeting {
+            padding: 15px 20px;
+            font-size: 16px;
+            border-bottom: 1px solid #4a6585;
+        }
+        
+        /* Content styles */
+        .content-area {
+            padding: 20px;
+        }
+        
+        .surah-info-display { /* For displaying Surah Name and Ayah */
+            background-color: #2c3e50;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .surah-info-display h2 {
+            color: #f1c40f; /* Gold/yellow for Surah name */
+            font-size: 20px;
+            margin-bottom: 5px;
+        }
+
+        .surah-info-display .arabic-verse {
+            font-size: 24px; /* Larger font for Arabic */
+            color: #f1c40f; /* Gold/yellow for Arabic text */
+            margin-bottom: 10px;
+            direction: rtl;
+            font-family: 'Traditional Arabic', 'Noto Naskh Arabic', 'Arial', sans-serif;
+        }
+        
+        .surah-info-display .translation-text {
+            font-size: 16px;
+            color: #ecf0f1;
+        }
+
+        /* Chat interface styles */
+        .chat-container {
+            margin-top: 20px;
+        }
+
+        .chat-bubble {
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 12px;
+            max-width: 90%;
+            word-wrap: break-word;
+        }
+
+        .user-query-bubble {
+            background-color: #4a6585; /* Lighter blue for user query */
+            color: #ecf0f1;
+            margin-left: auto; /* Align to right, or remove for left */
+            /* For a more distinct user bubble, could align right if desired */
+            /* For now, keeping it left-aligned to be simpler for email */
+            border-bottom-left-radius: 0; /* Chat bubble tail effect */
+        }
+
+        .user-query-bubble p {
+            font-style: italic;
+        }
+
+        .ai-response-bubble {
+            background-color: #2c3e50; /* Darker blue for AI response */
+            color: #ecf0f1;
+            margin-right: auto; /* Align to left */
+            border-bottom-right-radius: 0; /* Chat bubble tail effect */
+        }
+
+        .ai-response-bubble h3 {
+            color: #f1c40f; /* Gold/yellow for headings within AI response */
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .ai-response-bubble p, .ai-response-bubble ul {
+            font-size: 15px;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .ai-response-bubble ul {
+            margin-left: 20px;
+            padding-left: 5px;
+        }
+        .ai-response-bubble li {
+            margin-bottom: 5px;
+        }
+        
+        /* Footer styles */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            background-color: #2c3e50; /* Darker blue for footer */
+            font-size: 12px;
+            color: #bdc3c7; /* Lighter gray for footer text */
+        }
+
+        .footer a {
+            color: #f1c40f; /* Gold/yellow for links */
+            text-decoration: none;
+        }
+        
+        /* Button styles */
+        .button {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #f1c40f; /* Gold/yellow button */
+            color: #2c3e50; /* Dark blue text on button */
+            text-decoration: none;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .button-container { /* To center the button */
+            text-align: center;
+            margin: 30px 0 20px 0;
+        }
+
+        .additional-resources {
+            background-color: #2c3e50;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .additional-resources h3 {
+            color: #f1c40f;
+            margin-bottom: 15px;
+            text-align:center;
+            font-size: 18px;
+        }
+        .additional-resources ul {
+            list-style-type: none; 
+            padding: 0; 
+            text-align: center;
+        }
+        .additional-resources li {
+            margin-bottom: 10px;
+        }
+        .additional-resources a {
+            color: #ecf0f1; 
+            text-decoration:none;
+            font-size: 15px;
+        }
+        
+        /* Responsive styles */
+        @media screen and (max-width: 600px) {
+            .container {
+                width: 100% !important;
+                margin: 0 auto;
+                border-radius: 0;
+            }
+            
+            .content-area {
+                padding: 15px;
+            }
+            .chat-bubble {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Weekly Tafsir Insights</h1>
+            <p>From Nura AI</p>
+        </div>
+
+        <div class="greeting">
+            <p>As-salamu alaykum [User Name],</p>
+            <p>Here is your weekly reflection:</p>
+        </div>
+        
+        <div class="content-area">
+            <div class="surah-info-display">
+                <h2>Surah An-Naba, Verse 1</h2>
+                <div class="arabic-verse">عَمَّ يَتَسَاءَلُونَ</div>
+                <div class="translation-text">
+                    <strong>Translation:</strong> What are they asking one another about?
+                </div>
+            </div>
+
+            <div class="chat-container">
+                <div class="chat-bubble user-query-bubble">
+                    <p>Can you explain the context behind this verse and what is being addressed in the subsequent verses of Surah An-Naba?</p>
+                </div>
+
+                <div class="chat-bubble ai-response-bubble">
+                    <h3>Tafsir Insights: Surah An-Naba, Verse 1</h3>
+                    <p>In Surah An-Naba (78), verse 1, Allah addresses the idolaters who deny the occurrence of the Day of Judgment. The verse emphasizes that they are questioning about a significant event, "the great news," which is the Day of Judgment. It highlights how people are divided into believers and disbelievers regarding this crucial matter.</p>
+                    <p>Allah warns those who reject the concept of the Day of Judgment by stating emphatically that they will come to know its reality eventually. This serves as a severe threat and a direct warning to those who deny this fundamental aspect of faith.</p>
+                    
+                    <h4>Further Context from Surah An-Naba:</h4>
+                    <p>The subsequent verses in Surah An-Naba further elaborate on Allah's power and ability to create extraordinary things as evidence of His capability to resurrect the dead. These include:</p>
+                    <ul>
+                        <li>The creation of Earth as a stable resting place.</li>
+                        <li>Mountains as pegs for stability.</li>
+                        <li>Human beings in pairs for procreation.</li>
+                        <li>Sleep for rest, and day and night for livelihood.</li>
+                        <li>The heavens with their perfection.</li>
+                        <li>Rain from clouds for sustenance and growth.</li>
+                    </ul>
+                    <p>All these serve as signs pointing towards Allah's greatness and His ability to bring about resurrection on the Day of Judgment.</p>
+                </div>
+            </div>
+            
+            <div class="button-container">
+                <a href="#" class="button">Explore More on Nura AI</a>
+            </div>
+            
+            <div class="additional-resources">
+                <h3>Additional Resources</h3>
+                <ul>
+                    <li><a href="#">Listen to Audio Recitation of Surah An-Naba</a></li>
+                    <li><a href="#">Ask Nura AI More About This Surah</a></li>
+                    <li><a href="#">View Related Hadiths</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 Nura AI. All rights reserved.</p>
+            <p>This email was sent to [Email Address]. You are receiving this because you opted in for weekly tafsir insights.</p>
+            <p><a href="#">Unsubscribe</a> | <a href="#">Manage Preferences</a></p>
+        </div>
+    </div>
+</body>
+</html> 

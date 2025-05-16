@@ -2,11 +2,12 @@ import { Component, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { filter, map, tap } from 'rxjs/operators';
-import { Subscription } from 'rxjs';
+import { Subscription, Observable } from 'rxjs';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { AuthButtonsComponent } from '../../auth-buttons/auth-buttons.component';
 import { NgZone } from '@angular/core';
 import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
+import { ThemeService } from '../../services/theme.service';
 
 @Component({
   selector: 'app-header',
@@ -29,13 +30,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private routerSubscription: Subscription | undefined;
   private authSubscription: Subscription | undefined;
   showHeader = true;
+  public currentTheme$: Observable<string>;
 
   constructor(
     public authService: FirebaseAuthService,
     private router: Router,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    public themeService: ThemeService
   ) {
     // console.log('[HeaderComponent] Constructor: Initializing...');
+    this.currentTheme$ = this.themeService.currentTheme$;
   }
 
   ngOnInit(): void {

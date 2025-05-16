@@ -1,28 +1,34 @@
 <!-- Subscription Page Container -->
-<div class="min-h-screen bg-[#FAF3E0] py-8 relative overflow-hidden">
+<div class="min-h-screen py-8 relative overflow-hidden"
+     [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-800' : 'bg-[#FAF3E0]'">
   <!-- Islamic Pattern Background -->
-  <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-10 bg-repeat"></div>
+  <div class="absolute inset-0 bg-[url('/islamic-pattern-2.png')] opacity-10 bg-repeat"
+       [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'dark:opacity-5' : 'opacity-10'"></div>
 
   <div class="container mx-auto px-4 relative z-10">
     <!-- Header -->
     <div class="text-center mb-12">
-      <h1 class="text-4xl font-bold text-[#1A365D] mb-4">Enhance Your Spiritual Journey</h1>
-      <p class="text-lg text-gray-600 max-w-2xl mx-auto">Access powerful AI features to deepen your understanding of the Quran and duas</p>
+      <h1 class="text-4xl font-bold mb-4"
+          [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-100' : 'text-[#1A365D]'">Enhance Your Spiritual Journey</h1>
+      <p class="text-lg max-w-2xl mx-auto"
+         [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">Access powerful AI features to deepen your understanding of the Quran and duas</p>
     </div>
 
     <!-- Subscription Cards Container -->
     <div class="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
       <!-- Free Tier -->
-      <div class="bg-white rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
+      <div class="rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300"
+           [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white'">
         <div class="text-center">
-          <h2 class="text-2xl font-bold text-[#1A365D] mb-2">Free Access</h2>
-          <p class="text-gray-500 mb-6">Essential Features</p>
-          <div class="text-4xl font-bold text-[#1A365D] mb-8">$0<span class="text-lg font-normal">/forever</span></div>
+          <h2 class="text-2xl font-bold mb-2"
+              [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-200' : 'text-[#1A365D]'">Free Access</h2>
+          <p class="mb-6" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-500'">Essential Features</p>
+          <div class="text-4xl font-bold mb-8" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-200' : 'text-[#1A365D]'">$0<span class="text-lg font-normal">/forever</span></div>
         </div>
 
         <div class="space-y-4">
-          <h3 class="font-semibold text-lg text-[#1A365D] mb-4">Included Features:</h3>
-          <ul class="space-y-3">
+          <h3 class="font-semibold text-lg mb-4" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-200' : 'text-[#1A365D]'">Included Features:</h3>
+          <ul class="space-y-3" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-300' : 'text-gray-700'">
             <li class="flex items-center">
               <mat-icon class="text-green-500 mr-2">check_circle</mat-icon>
               <span>Complete Quran Text</span>
@@ -47,44 +53,49 @@
         </div>
 
         <div class="mt-8 text-center">
-          <button mat-button disabled class="w-full py-3 px-6 rounded-lg bg-gray-100 text-gray-500">Current Plan</button>
+          <button mat-button disabled class="w-full py-3 px-6 rounded-lg"
+                  [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'">Current Plan</button>
         </div>
       </div>
 
       <!-- Premium Tier -->
-      <div class="bg-gradient-to-br from-[#1A365D] to-[#2A4365] rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
+      <div class="rounded-2xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300"
+           [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gradient-to-br from-gray-700 to-gray-800 border border-gray-600' : 'bg-gradient-to-br from-[#1A365D] to-[#2A4365]'">
         <div class="text-center text-white">
-          <h2 class="text-2xl font-bold mb-2">Premium Access</h2>
-          <p class="text-gray-300 mb-6">AI-Powered Features</p>
+          <h2 class="text-2xl font-bold mb-2" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-100' : 'text-white'">Premium Access</h2>
+          <p class="mb-6" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-300' : 'text-gray-300'">AI-Powered Features</p>
           <!-- Emphasize Free Trial -->
-          <p class="text-3xl font-bold text-yellow-300 mb-2">7-Day Free Trial</p>
+          <p class="text-3xl font-bold text-yellow-400 dark:text-yellow-300 mb-2">7-Day Free Trial</p>
           <!-- De-emphasize Price -->
-          <p class="text-xl text-gray-300 mb-6">then $5.99/month</p>
+          <p class="text-xl mb-6" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-300' : 'text-gray-300'">then $5.99/month</p>
         </div>
 
         <div class="space-y-4">
-          <h3 class="font-semibold text-lg text-white mb-4">Everything in Free, plus:</h3>
-          <ul class="space-y-3 text-white">
+          <h3 class="font-semibold text-lg mb-4" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-100' : 'text-white'">Everything in Free, plus:</h3>
+          <ul class="space-y-3" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-200' : 'text-white'">
             <li class="flex items-center" [class.highlight-feature]="feature === 'Emotional Dua Search'">
-              <mat-icon class="text-[#B7A57A] mr-2">auto_awesome</mat-icon>
+              <mat-icon class="mr-2" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-[#B7A57A]' : 'text-[#B7A57A]'">auto_awesome</mat-icon>
               <span>Emotional Dua Search</span>
             </li>
             <li class="flex items-center" [class.highlight-feature]="feature === 'AI Tafsir Chat'">
-              <mat-icon class="text-[#B7A57A] mr-2">psychology</mat-icon>
+              <mat-icon class="mr-2" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-[#B7A57A]' : 'text-[#B7A57A]'">psychology</mat-icon>
               <span>AI Tafsir Chat</span>
             </li>
             <li class="flex items-center" [class.highlight-feature]="feature === 'Dua Insights'">
-              <mat-icon class="text-[#B7A57A] mr-2">lightbulb</mat-icon>
+              <mat-icon class="mr-2" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-[#B7A57A]' : 'text-[#B7A57A]'">lightbulb</mat-icon>
               <span>Dua Insights & Analysis</span>
             </li>
           </ul>
         </div>
 
         <div class="mt-8 text-center">
-          <button mat-raised-button color="primary"
+          <button mat-raised-button 
                   (click)="startSubscription()"
                   [disabled]="isLoading"
-                  class="w-full py-3 text-lg font-semibold transition-colors duration-200 bg-[#1A365D] text-[#B7A57A] hover:bg-[#B7A57A] hover:text-[#FAF3E0]">
+                  class="w-full py-3 text-lg font-semibold transition-colors duration-200"
+                  [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
+                             'bg-[#B7A57A] text-[#1A365D] hover:bg-yellow-300 hover:text-gray-900' : 
+                             'bg-[#1A365D] text-[#B7A57A] hover:bg-[#B7A57A] hover:text-[#FAF3E0]'">
             <!-- Show spinner when loading, otherwise show text -->
             <mat-spinner *ngIf="isLoading" diameter="24" class="mx-auto"></mat-spinner>
             <span *ngIf="!isLoading">Subscribe Now</span>
@@ -95,11 +106,12 @@
 
     <!-- Current Subscription Status -->
     <div *ngIf="subscriptionStatus" class="mt-12 text-center">
-      <div class="bg-white rounded-lg shadow-sm p-6 max-w-md mx-auto">
-        <h2 class="text-xl font-semibold text-[#1A365D] mb-4">Your Subscription</h2>
-        <p class="text-gray-600">Status: {{ subscriptionStatus.status | titlecase }}</p>
-        <p class="text-gray-600">Plan: {{ subscriptionStatus.plan | titlecase }}</p>
-        <p *ngIf="subscriptionStatus.currentPeriodEnd" class="text-gray-600">
+      <div class="rounded-lg shadow-sm p-6 max-w-md mx-auto"
+           [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white'">
+        <h2 class="text-xl font-semibold mb-4" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-100' : 'text-[#1A365D]'">Your Subscription</h2>
+        <p [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">Status: {{ subscriptionStatus.status | titlecase }}</p>
+        <p [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">Plan: {{ subscriptionStatus.plan | titlecase }}</p>
+        <p *ngIf="subscriptionStatus.currentPeriodEnd" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">
           Next billing date: {{ subscriptionStatus.currentPeriodEnd | date }}
         </p>
       </div>

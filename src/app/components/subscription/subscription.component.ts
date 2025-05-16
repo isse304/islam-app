@@ -13,6 +13,7 @@ import { StripeService } from '../../services/stripe.service';
 import { ApiService } from '../../services/api.service';
 import { Subscription } from 'rxjs';
 import { AppUser } from '../../services/firebase-auth.service';
+import { ThemeService } from '../../services/theme.service';
 
 interface SubscriptionStatus {
   status: 'active' | 'canceled' | 'inactive';
@@ -76,10 +77,12 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private firebaseAuthService: FirebaseAuthService,
-    private apiService: ApiService
+    private apiService: ApiService,
+    public themeService: ThemeService
   ) {}
 
   ngOnInit() {
+    this.isLoading = false;
     // console.log('Subscription component initializing...');
     
     // Force check auth state
@@ -214,6 +217,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
         if (!isSignedIn) {
             // console.log('User not signed in, redirecting to login');
             localStorage.setItem('returnUrl', window.location.pathname);
+            this.isLoading = false;
             this.router.navigate(['/auth/login'], { 
                 queryParams: { 
                     returnUrl: window.location.pathname,
@@ -260,6 +264,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
                     const response = await this.apiService.createCheckoutSession(user.uid);
                     if (response?.url) {
                         window.location.href = response.url;
+                        this.isLoading = false;
                         return;
                     }
                 } catch (refreshError) {
@@ -269,6 +274,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
                         'Close',
                         { duration: 5000 }
                     );
+                    this.isLoading = false;
                     this.router.navigate(['/auth/login'], {
                         queryParams: {
                             returnUrl: window.location.pathname,
@@ -276,6 +282,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
                         }
                     });
                 }
+                this.isLoading = false;
                 return;
             }
             

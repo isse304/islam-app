@@ -45,7 +45,10 @@
 
     <!-- Upgrade Button (Desktop) - Show if authenticated & NOT premium -->
     <div class="upgrade-container hide-on-mobile" *ngIf="isAuthenticated && !isPremiumUser">
-       <a routerLink="/subscription" class="upgrade-button">
+       <a routerLink="/subscription" class="upgrade-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150"
+          [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
+                     'bg-[#B7A57A] text-[#1A365D] hover:bg-yellow-300' : 
+                     'bg-[#1A365D] text-[#B7A57A] hover:bg-[#0D2C4F]'">
          ☪️ Try Premium for 7 Days
        </a>
     </div>

@@ -38,7 +38,9 @@ export const authGuardFn: CanActivateFn = (
       } else { // User is logged out (null)
         // console.log(`[AuthGuard] User is null. REDIRECTING to /auth/login.`);
         authService.redirectUrl = state.url;
-        return router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } });
+        // Imperatively navigate and cancel the current navigation
+        router.navigateByUrl(`/auth/login?returnUrl=${encodeURIComponent(state.url)}`);
+        return false; // Cancel the current navigation
       }
     }),
     timeout(10000),
@@ -47,7 +49,9 @@ export const authGuardFn: CanActivateFn = (
       // Fallback: Redirect to login on error
       // console.log(`[AuthGuard] Redirecting to /auth/login from ${state.url} due to error`);
       authService.redirectUrl = state.url;
-      return of(router.createUrlTree(['/auth/login'], { queryParams: { returnUrl: state.url } }));
+      // Imperatively navigate and cancel the current navigation
+      router.navigateByUrl(`/auth/login?returnUrl=${encodeURIComponent(state.url)}`);
+      return of(false); // Cancel the current navigation
     })
   );
 };

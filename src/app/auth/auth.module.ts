@@ -22,7 +22,7 @@ import { publicGuard } from '../guards/public.guard';
 import { NoAuthGuard } from '../guards/no-auth.guard';
 
 const routes: Routes = [
-  { path: 'login', component: LoginComponent, canActivate: [NoAuthGuard] },
+  { path: 'login', component: LoginComponent , canActivate: [NoAuthGuard] },
   { path: 'signup', component: SignupComponent, canActivate: [NoAuthGuard] },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'verify-email', component: VerifyEmailComponent },

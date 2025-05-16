@@ -101,10 +101,15 @@
                                       'mr-auto bg-gradient-to-br from-[#FAF3E0] to-white'" 
                            class="rounded-2xl p-6 max-w-[85%] break-words shadow-lg hover:shadow-xl transition-all border border-[#B7A57A15]">
                         <div class="prose prose-lg max-w-none" 
-                             [ngClass]="{
-                               'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]': message.role === 'assistant',
-                               'prose-headings:text-[#1A365D] prose-a:text-[#1A365D] prose-strong:text-[#1A365D] text-[#1A365D]': message.role === 'user'
-                             }"
+                             [ngClass]="message.role === 'user' ?
+                                ((currentTheme$ | async) === 'dark' ?
+                                    'text-gray-200 prose-headings:text-gray-100 prose-a:text-gray-100 prose-strong:text-gray-100 [&_p]:text-gray-200 [&_li]:text-gray-200' :
+                                    'text-[#1A365D] prose-headings:text-[#1A365D] prose-a:text-[#1A365D] prose-strong:text-[#1A365D] [&_p]:text-[#1A365D] [&_li]:text-[#1A365D]'
+                                ) :
+                                (message.role === 'assistant' ?
+                                    'prose-headings:text-[#B7A57A] prose-a:text-[#B7A57A] prose-strong:text-[#B7A57A] font-[Poppins]' :
+                                    ''
+                                )" 
                              [innerHTML]="message.content | markdown">
                         </div>
                         <div [ngClass]="message.role === 'user' ? 'text-white/70' : 'text-gray-500'"

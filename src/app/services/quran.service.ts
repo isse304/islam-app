@@ -378,7 +378,7 @@ export class QuranService {
   }
 
   getVerse(surahNumber: number, verseNumber: number): Observable<QuranVerse> {
-    const url = `https://api.qurancdn.com/api/qdc/verses/by_key/${surahNumber}:${verseNumber}?words=true&translation_fields=text&translations=131&fields=text_uthmani,chapter_id,verse_number,verse_key`;
+    const url = `https://api.qurancdn.com/api/qdc/verses/by_key/${surahNumber}:${verseNumber}?words=true&translation_fields=text&translations=20&fields=text_uthmani,chapter_id,verse_number,verse_key`;
     
     return this.http.get<any>(url).pipe(
       map(response => {
