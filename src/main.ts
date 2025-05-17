@@ -1,7 +1,7 @@
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
 import { appConfig } from './app/app.config';
-import { provideRouter, withDebugTracing } from '@angular/router';
+import { provideRouter } from '@angular/router';
 import { routes } from './app/app.routes';
 import { provideHttpClient } from '@angular/common/http';
 import { provideAnimations } from '@angular/platform-browser/animations';
@@ -32,38 +32,38 @@ export function initializeAppFactory(
   toastService: ToastService
 ): () => Promise<any> {
   return async () => {
-    // console.log('[APP_INITIALIZER] Starting initialization...');
+    // //console.log('[APP_INITIALIZER] Starting initialization...');
     let initUser: any = null;
     try {
       // Start auth initialization immediately
       const authReadyPromise = authService.waitForAuthReady();
-      // console.log('[APP_INITIALIZER] Waiting for Firebase Auth ready...');
+      // //console.log('[APP_INITIALIZER] Waiting for Firebase Auth ready...');
       await authReadyPromise;
-      // console.log('[APP_INITIALIZER] Firebase Auth is ready.');
+      // //console.log('[APP_INITIALIZER] Firebase Auth is ready.');
 
       // Get the initialized user (or null)
       initUser = authService.getCurrentUser();
-      // console.log('[APP_INITIALIZER] Initial user state from authService:', initUser?.id);
+      // //console.log('[APP_INITIALIZER] Initial user state from authService:', initUser?.id);
 
       if (initUser) {
-        // console.log('[APP_INITIALIZER] User found. Preferences and subscription should load via their respective services.');
+        // //console.log('[APP_INITIALIZER] User found. Preferences and subscription should load via their respective services.');
         // Preferences and subscription status are loaded internally by their services
         // await Promise.all([
         //   prefsService.loadPreferences(initUser.id), // REMOVED: Incorrect method call
         //   subService.loadSubscriptionStatus(initUser.id) // REMOVED: Incorrect method call
         // ]);
       } else {
-        // console.log('[APP_INITIALIZER] No user found, skipping dependent loads.');
+        // //console.log('[APP_INITIALIZER] No user found, skipping dependent loads.');
       }
 
       // Toast service initialization (if needed)
       // toastService.init();
-      // console.log('[APP_INITIALIZER] Toast service initialized (if applicable).');
+      // //console.log('[APP_INITIALIZER] Toast service initialized (if applicable).');
 
-      // console.log('[APP_INITIALIZER] Initialization sequence complete.');
+      // //console.log('[APP_INITIALIZER] Initialization sequence complete.');
       return Promise.resolve(); // Resolve the promise indicating completion
     } catch (error) {
-      // console.error('[APP_INITIALIZER] Error during app initialization:', error);
+      // //console.error('[APP_INITIALIZER] Error during app initialization:', error);
       // You might want to display an error message to the user here
       // Return a resolved promise even on error to allow the app to potentially continue
       return Promise.resolve();
@@ -79,7 +79,7 @@ bootstrapApplication(AppComponent, {
   ...appConfig, // Spread existing app config
   providers: [
     ...(appConfig.providers || []), // Include existing providers
-    provideRouter(routes, withDebugTracing()),
+    provideRouter(routes),
     provideHttpClient(),
     provideAnimations(),
     importProvidersFrom(
@@ -116,4 +116,4 @@ bootstrapApplication(AppComponent, {
 //     })
 //   ]
 // })
-//   .catch(err => console.error(err));
+//   .catch(err => //console.error(err));

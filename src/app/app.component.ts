@@ -72,7 +72,7 @@ export class AppComponent implements OnInit, OnDestroy {
     // Re-added: Theme toggle visibility mirrors header visibility
     this.showThemeToggle$ = this.showHeader$;
 
-    console.log('[AppComponent] ThemeService injected and initialized.');
+    // console.log('[AppComponent] ThemeService injected and initialized.');
   }
 
   ngOnInit(): void {

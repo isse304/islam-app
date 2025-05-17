@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, NgZone, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -78,66 +78,53 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     private router: Router,
     private firebaseAuthService: FirebaseAuthService,
     private apiService: ApiService,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private ngZone: NgZone,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit() {
-    this.isLoading = false;
-    // console.log('Subscription component initializing...');
-    
-    // Force check auth state
-    this.firebaseAuthService.isAuthenticated().then(isAuth => {
-      // console.log('Auth state check result:', isAuth);
-      if (!isAuth) {
-        // console.log('User not authenticated, checking cached state...');
-        const cachedUser = localStorage.getItem('currentUser');
-        if (cachedUser) {
-          // console.log('Found cached user, reinitializing from cache...');
-          // REMOVED: this.firebaseAuthService['initFromCache']();
-        }
-      }
+    this.ngZone.run(() => {
+        // console.log('[SubComp ngOnInit] Setting isLoading = false (initial)');
+        this.isLoading = false;
+        this.cdr.detectChanges();
     });
-    
-    // Handle subscription success redirect
+
     this.routeSub = this.route.queryParams.pipe(take(1)).subscribe(params => {
       if (params['success']) {
+        // console.log('[SubComp ngOnInit] queryParams: success=true, handling...');
         this.handleSubscriptionSuccess();
       }
-      // ADD Check for initiateCheckout flag
       if (params['initiateCheckout'] === 'true') {
-        // Remove the flag from URL to prevent re-triggering on refresh
+        // console.log('[SubComp ngOnInit] queryParams: initiateCheckout=true, navigating and starting subscription...');
         this.router.navigate([], {
           relativeTo: this.route,
           queryParams: { initiateCheckout: null },
           queryParamsHandling: 'merge',
           replaceUrl: true
         });
-        console.log('initiateCheckout flag detected, starting subscription...');
         this.startSubscription();
       }
-      // --- END ADDED CHECK --- 
-      // Get feature from URL query params (can coexist with above checks)
       this.feature = params['feature'];
+      // if (this.feature) { console.log('[SubComp ngOnInit] queryParams: feature=', this.feature); }
     });
 
-    // Load initial status
-    this.loadSubscriptionStatus();
+    // console.log('[SubComp ngOnInit] Calling loadSubscriptionStatus');
+    this.loadSubscriptionStatus(); 
     
-    // Subscribe to user changes using FirebaseAuthService
     this.userSub = this.firebaseAuthService.user$.subscribe(user => {
-      // console.log('Current user updated:', user);
+      // console.log('[SubComp ngOnInit] user$ emitted:', user);
       this.currentUser = user;
-      
-      // REMOVED REDIRECTION LOGIC HERE
-      // The following block caused users to be redirected from /profile
-      // if (user?.isPremium && 
-      //     !currentUrl.includes('/subscription') && 
-      //     !currentUrl.includes('/checkout') &&
-      //     !currentUrl.includes('/success') &&
-      //     !currentUrl.includes('/cancel')) {
-      //   this.router.navigate(['/home']);
-      // }
     });
+
+    // Diagnostic: Force isLoading to false after a short delay
+    // setTimeout(() => {
+    //   this.ngZone.run(() => {
+    //     console.log('[SubComp DIAGNOSTIC TIMEOUT] Forcing isLoading = false after 2 seconds');
+    //     this.isLoading = false;
+    //     this.cdr.detectChanges(); // Explicitly run CD
+    //   });
+    // }, 2000);
   }
 
   ngOnDestroy() {
@@ -151,33 +138,41 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
   private async loadSubscriptionStatus() {
     try {
-      // Set loading state
-      this.isLoading = true;
+      this.ngZone.run(() => {
+        // console.log('[SubComp LSS] try: Setting isLoading = true');
+        this.isLoading = true;
+        this.cdr.detectChanges();
+      });
       this.loadError = null;
 
-      // Create a timeout promise
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 10000);
-      });
-
-      // Race between actual request and timeout
-      const response = await Promise.race([
-        firstValueFrom(this.stripeService.getSubscriptionStatus()),
-        timeoutPromise
-      ]) as SubscriptionResponse;
+      const statusPromise = firstValueFrom(this.stripeService.getSubscriptionStatus());
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request to load subscription status timed out.')), 10000)
+      );
+      const response = await Promise.race([statusPromise, timeoutPromise]) as SubscriptionResponse;
+      // console.log('[SubComp LSS] try: Got response', response);
 
       this.subscriptionStatus = {
-        status: response.status === 'canceled' ? 'canceled' : 
+        status: response.status === 'canceled' ? 'canceled' :
                response.status === 'active' ? 'active' : 'inactive',
         plan: response.plan,
         features: response.features
       };
-    } catch (error) {
-      // console.error('Error loading subscription status:', error);
-      this.loadError = 'Failed to load subscription status. Please try again.';
-      this.snackBar.open(this.loadError, 'Close', { duration: 5000 });
+      this.ngZone.run(() => { this.cdr.detectChanges(); }); 
+
+    } catch (error: any) {
+      // console.error('[SubComp LSS] catch: Error loading subscription status:', error);
+      this.loadError = error?.message || 'Failed to load subscription status. Please try again.';
+      if (!this.snackBar._openedSnackBarRef) {
+        this.snackBar.open(this.loadError || 'Error loading status.', 'Close', { duration: 5000 });
+      }
+      this.ngZone.run(() => { this.cdr.detectChanges(); });
     } finally {
-      this.isLoading = false;
+      this.ngZone.run(() => {
+        // console.log('[SubComp LSS] finally: Setting isLoading = false');
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      });
     }
   }
 
@@ -202,143 +197,150 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
   async startSubscription() {
     if (this.isLoading) {
-        // console.log('Already processing subscription request');
+        // console.log('[SubComp startSub] Already processing');
         return;
     }
-    
-    this.isLoading = true;
+    this.ngZone.run(() => { 
+        // console.log('[SubComp startSub] Setting isLoading = true');
+        this.isLoading = true; 
+        this.cdr.detectChanges();
+    });
     this.loadError = null;
-
     try {
-        // console.log('Starting subscription process...');
-        
-        // First check if user is signed in
         const isSignedIn = await this.firebaseAuthService.isAuthenticated();
         if (!isSignedIn) {
-            // console.log('User not signed in, redirecting to login');
+            // console.log('[SubComp startSub] User not signed in, redirecting to login');
             localStorage.setItem('returnUrl', window.location.pathname);
-            this.isLoading = false;
-            this.router.navigate(['/auth/login'], { 
-                queryParams: { 
-                    returnUrl: window.location.pathname,
-                    feature: 'premium'
-                }
+            this.ngZone.run(() => { 
+              this.isLoading = false; 
+              this.cdr.detectChanges();
+            });
+            this.router.navigate(['/auth/login'], {
+                queryParams: { returnUrl: window.location.pathname, feature: 'premium' }
             });
             return;
         }
 
-        // Get current user
         const user = await firstValueFrom(this.firebaseAuthService.user$.pipe(take(1)));
         if (!user || !user.uid) {
-            throw new Error('No valid user found');
+            // console.log('[SubComp startSub] No valid user found');
+            throw new Error('No valid user found'); // isLoading will be false via finally
         }
 
         try {
-            // Create checkout session - token refresh will be handled automatically
-            // console.log('Creating checkout session...');
-            const response = await this.apiService.createCheckoutSession(user.uid);
-            
+            // console.log('[SubComp startSub] Creating checkout session for user:', user.uid);
+            const checkoutPromise = this.apiService.createCheckoutSession(user.uid);
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Checkout session creation timed out.')), 15000)
+            );
+            const response = await Promise.race([checkoutPromise, timeoutPromise]) as CheckoutResponse;
+
             if (response?.url) {
+                // console.log('[SubComp startSub] Checkout session created, redirecting to Stripe:', response.url);
+                this.ngZone.run(() => { 
+                  this.isLoading = false; 
+                  this.cdr.detectChanges();
+                });
                 window.location.href = response.url;
+                return;
             } else {
-                throw new Error('Invalid checkout session response');
+                // console.log('[SubComp startSub] Invalid checkout session response or timeout did not yield URL.');
+                throw new Error('Invalid checkout session response or timeout did not yield URL.');
             }
         } catch (error: any) {
-            // console.error('Error during subscription process:', error);
-            
-            // Handle specific error cases
-            if (error?.code === 'auth/user-token-expired' || 
-                error?.code === 'auth/requires-recent-login') {
-                
-                this.snackBar.open(
-                    'Please wait while we refresh your session...',
-                    'Close',
-                    { duration: 3000 }
-                );
-                
-                try {
-                    // Attempt silent token refresh first
-                    await this.firebaseAuthService.refreshAuth();
-                    
-                    // Retry checkout session creation
-                    const response = await this.apiService.createCheckoutSession(user.uid);
-                    if (response?.url) {
-                        window.location.href = response.url;
-                        this.isLoading = false;
-                        return;
-                    }
-                } catch (refreshError) {
-                    // console.error('Session refresh failed:', refreshError);
-                    this.snackBar.open(
-                        'Please sign in again to continue with your subscription.',
-                        'Close',
-                        { duration: 5000 }
-                    );
-                    this.isLoading = false;
-                    this.router.navigate(['/auth/login'], {
-                        queryParams: {
-                            returnUrl: window.location.pathname,
-                            feature: 'premium'
-                        }
-                    });
-                }
-                this.isLoading = false;
-                return;
+            // console.error('[SubComp startSub] Inner catch during checkout creation:', error);
+            if (error?.message?.includes('timed out')) {
+                this.snackBar.open(error.message, 'Close', { duration: 5000 });
+                throw error; // Re-throw for outer finally
             }
-            
-            // Handle other errors
-            this.loadError = 'Failed to start subscription process. Please try again.';
-            this.snackBar.open(
-                'There was an error starting your subscription. Please try again.',
-                'Close',
-                { duration: 5000 }
-            );
+            if (error?.code === 'auth/user-token-expired' || error?.code === 'auth/requires-recent-login') {
+                // console.log('[SubComp startSub] Auth token expired/requires recent login, attempting refresh');
+                this.snackBar.open('Please wait while we refresh your session...', 'Close', { duration: 3000 });
+                try {
+                    await this.firebaseAuthService.refreshAuth();
+                    // console.log('[SubComp startSub] Session refreshed, retrying checkout session creation');
+                    const refreshedCheckoutPromise = this.apiService.createCheckoutSession(user.uid);
+                    const refreshedTimeoutPromise = new Promise((_, reject) =>
+                        setTimeout(() => reject(new Error('Checkout session timed out after session refresh.')), 15000)
+                    );
+                    const refreshedResponse = await Promise.race([refreshedCheckoutPromise, refreshedTimeoutPromise]) as CheckoutResponse;
+
+                    if (refreshedResponse?.url) {
+                        // console.log('[SubComp startSub] Checkout session created after refresh, redirecting to Stripe:', refreshedResponse.url);
+                        this.ngZone.run(() => { 
+                          this.isLoading = false; 
+                          this.cdr.detectChanges();
+                        });
+                        window.location.href = refreshedResponse.url;
+                        return;
+                    } else {
+                         // console.log('[SubComp startSub] Invalid checkout session response after refresh or timeout did not yield URL.');
+                         throw new Error('Invalid checkout session response after refresh or timeout did not yield URL.');
+                    }
+                } catch (refreshError: any) {
+                    // console.error('[SubComp startSub] Catch during session refresh or subsequent checkout:', refreshError);
+                    this.snackBar.open(
+                        refreshError?.message?.includes('timed out') ? refreshError.message : 'Please sign in again to continue.',
+                        'Close', { duration: 5000 }
+                    );
+                    this.ngZone.run(() => { 
+                      this.isLoading = false; 
+                      this.cdr.detectChanges();
+                    });
+                    this.router.navigate(['/auth/login'], {
+                        queryParams: { returnUrl: window.location.pathname, feature: 'premium' }
+                    });
+                    return;
+                }
+            } else {
+                // console.error('[SubComp startSub] Other error in inner catch, re-throwing:', error);
+                throw error; // Re-throw for outer finally
+            }
         }
     } catch (error: any) {
-        // console.error('Error in subscription process:', error);
-        this.loadError = error?.message || 'An unexpected error occurred';
-        this.snackBar.open(
-            'There was an error processing your request. Please try again.',
-            'Close',
-            { duration: 5000 }
-        );
+        // console.error('[SubComp startSub] Outer catch: Error in subscription process:', error);
+        this.loadError = error?.message || 'An unexpected error occurred.';
+        if (!this.snackBar._openedSnackBarRef) {
+             this.snackBar.open(this.loadError || 'An error occurred.', 'Close', { duration: 5000 });
+        }
+        this.ngZone.run(() => { this.cdr.detectChanges(); });
     } finally {
-        this.isLoading = false;
+        if (this.isLoading) {
+             this.ngZone.run(() => { 
+                // console.log('[SubComp startSub] finally: Setting isLoading = false');
+                this.isLoading = false; 
+                this.cdr.detectChanges();
+            });
+        }
     }
   }
-
+  
   private async handleSubscriptionSuccess() {
-    console.log('[SubComponent] Handling subscription success redirect...'); // Log: Start
-    this.isLoading = true;
+    // console.log('[SubComponent] Handling subscription success redirect...');
+    this.ngZone.run(() => {
+        // console.log('[SubComp handleSuccess] Setting isLoading = true');
+        this.isLoading = true;
+        this.cdr.detectChanges();
+    });
     const maxRetries = 3;
-    const retryDelay = 3000; // 3 seconds
+    const retryDelay = 3000; 
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`[SubComponent] Attempt ${attempt} to check subscription status...`); // Log: Attempt count
-        // Add a delay before checking, giving webhook/server time
+        // console.log(`[SubComp handleSuccess] Attempt ${attempt} to check subscription status...`);
         await new Promise(resolve => setTimeout(resolve, attempt === 1 ? 1500 : retryDelay));
-        console.log(`[SubComponent] Attempt ${attempt}: Delay complete. Calling getSubscriptionStatus...`); // Log: Before status check
+        // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Delay complete. Calling getSubscriptionStatus...`);
 
-        // Get latest subscription status directly from our backend first
-        // This GET request should trigger the interceptor to add the current token
         const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
-        console.log(`[SubComponent] Attempt ${attempt}: Received status response:`, response); // Log: Status response
+        // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Received status response:`, response);
 
-        if (response.status === 'active' || response.plan === 'premium') { // Check both status and plan
-          console.log(`[SubComponent] Attempt ${attempt}: Subscription confirmed active/premium. Forcing token refresh...`); // Log: Before refresh
-
-          // Explicitly force refresh of the Firebase Auth ID token
-          // This is crucial to pick up the custom claims set by the server webhook
+        if (response.status === 'active' || response.plan === 'premium') {
+          // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Subscription confirmed active/premium. Forcing token refresh...`);
           await this.firebaseAuthService.refreshAuth();
-          console.log(`[SubComponent] Attempt ${attempt}: Token refresh completed.`); // Log: After refresh
+          // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Token refresh completed.`);
+          await new Promise(resolve => setTimeout(resolve, 300));
+          // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Post-refresh delay completed.`);
 
-          // *** Add a slightly longer delay AFTER refresh for state propagation ***
-          await new Promise(resolve => setTimeout(resolve, 300)); // 300ms delay
-          console.log(`[SubComponent] Attempt ${attempt}: Post-refresh delay completed.`); // Log: After delay
-
-          // Update local component state based on the response from getSubscriptionStatus
-          // Note: The authService.user$ should also update due to the token refresh
           this.subscriptionStatus = {
             status: 'active',
             plan: 'premium',
@@ -346,70 +348,65 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
               emotionalDuaSearch: response.features?.emotionalDuaSearch || true,
               aiTafsirChat: response.features?.aiTafsirChat || true,
               duaInsights: response.features?.duaInsights || true,
-              aiChat: response.features?.aiChat || true, // Assuming these exist
-              tafsirAccess: response.features?.tafsirAccess || true, // Assuming these exist
-              wordByWord: response.features?.wordByWord || true // Assuming these exist
+              aiChat: response.features?.aiChat || true, 
+              tafsirAccess: response.features?.tafsirAccess || true, 
+              wordByWord: response.features?.wordByWord || true 
             }
           };
-          console.log('[SubComponent] Local subscriptionStatus updated:', this.subscriptionStatus); // Log: Local state updated
+          // console.log('[SubComp handleSuccess] Local subscriptionStatus updated:', this.subscriptionStatus);
 
-          // Show success message
           this.snackBar.open(
             'Subscription activated successfully! You now have access to premium features.',
             'Dismiss',
-            {
-              duration: 7000,
-              panelClass: ['success-snackbar']
-            }
+            { duration: 7000, panelClass: ['success-snackbar'] }
           );
 
-          // Clear success param from URL
           this.router.navigate([], {
             relativeTo: this.route,
             queryParams: { success: null },
             queryParamsHandling: 'merge',
-            replaceUrl: true // Prevent back button issues
+            replaceUrl: true
           });
-          console.log('[SubComponent] Success flow completed, navigating away.'); // Log: Success exit
+          // console.log('[SubComp handleSuccess] Success flow completed, navigating to /home');
+          this.router.navigate(['/home']);
 
-          // ADD NAVIGATION HERE
-          this.router.navigate(['/home']); // Navigate to home page after success
-
-          this.isLoading = false;
-          return; // Success, exit the loop and function
+          this.ngZone.run(() => { 
+            this.isLoading = false; 
+            this.cdr.detectChanges(); 
+          });
+          return; 
         }
-
-        console.log(`[SubComponent] Attempt ${attempt}: Status not active/premium yet (${response.status}/${response.plan}). Retrying...`); // Log: Retry needed
-
+        // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Status not active/premium yet (${response.status}/${response.plan}). Retrying...`);
       } catch (error) {
-        console.error(`[SubComponent] Error during subscription check attempt ${attempt}:`, error); // Log: Error
-        // Don't retry on critical errors, maybe break or handle differently
+        // console.error(`[SubComp handleSuccess] Error during subscription check attempt ${attempt}:`, error);
         if (attempt === maxRetries) {
             this.snackBar.open(
-              'There was an issue verifying your subscription status. Please contact support if the problem persists.',
-              'Close',
-              { duration: 7000 }
+              'There was an issue verifying your subscription. Please contact support if it persists.',
+              'Close', { duration: 7000 }
             );
-            this.isLoading = false;
+            this.ngZone.run(() => { 
+              this.isLoading = false; 
+              this.cdr.detectChanges(); 
+            });
             return;
         }
       }
     }
 
-    // If loop finishes without success
-    console.warn('[SubComponent] Subscription status did not become active after retries.'); // Log: Retries exhausted
+    // console.warn('[SubComp handleSuccess] Subscription status did not become active after retries.');
     this.snackBar.open(
-        'Subscription successful, but status update is delayed. Please refresh the page or sign out/in shortly.',
-        'Close',
-        { duration: 10000 }
+        'Subscription successful, but status update is delayed. Refresh or sign out/in shortly.',
+        'Close', { duration: 10000 }
     );
-    this.isLoading = false;
-    // Clear success param from URL anyway
     this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { success: null },
       queryParamsHandling: 'merge',
-      replaceUrl: true // Prevent back button issues
+      replaceUrl: true 
+    });
+    this.ngZone.run(() => { 
+      this.isLoading = false; 
+      this.cdr.detectChanges(); 
     });
   }
 } 
