@@ -9,7 +9,7 @@ import {
   HttpHandlerFn
 } from '@angular/common/http';
 import { Observable, throwError, from, of, BehaviorSubject } from 'rxjs';
-import { catchError, switchMap, tap, filter, take } from 'rxjs/operators';
+import { catchError, switchMap, tap, filter, take, retry } from 'rxjs/operators';
 import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
@@ -51,45 +51,37 @@ export class AuthInterceptor implements HttpInterceptor {
   private handle401Error(request: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     if (!this.isRefreshing) {
       this.isRefreshing = true;
-      this.refreshTokenSubject.next(null); // Signal start of refresh
+      this.refreshTokenSubject.next(null);
 
-      return from(this.authService.getToken(true)).pipe( // Force refresh the token
+      return from(this.authService.getToken(true)).pipe(
+        retry({
+          count: 2,
+          delay: 1000 // 1 second delay between retries
+        }),
         switchMap((newToken) => {
           this.isRefreshing = false;
           if (newToken) {
-            this.refreshTokenSubject.next(newToken); // Signal successful refresh
-            // Retry the original request with the new token
+            this.refreshTokenSubject.next(newToken);
             return next.handle(this.addTokenHeader(request, newToken));
-          } else {
-            // Refresh failed, logout or redirect
-            console.error('Failed to refresh token, logging out.');
-            this.authService.signOut(); // Or navigate to login
-            // Pass the original error along
-            return throwError(() => new Error('Token refresh failed'));
           }
+          this.isRefreshing = false;
+          return throwError(() => new Error('Token refresh failed after retries'));
         }),
         catchError((err) => {
           this.isRefreshing = false;
-          console.error('Error during token refresh, logging out.', err);
-          this.authService.signOut(); // Or navigate to login
-          return throwError(() => err); // Rethrow the refresh error
+          // Only log out after retries have failed
+          this.authService.signOut();
+          return throwError(() => err);
         })
       );
-
     } else {
-      // If already refreshing, wait for the new token
       return this.refreshTokenSubject.pipe(
-        filter(token => token != null), // Wait until token is available
-        take(1), // Take the first emitted token
-        switchMap(jwt => {
-          // Retry the request with the token obtained from the refresh process
-          return next.handle(this.addTokenHeader(request, jwt));
-        }),
+        filter(token => token != null),
+        take(1),
+        switchMap(jwt => next.handle(this.addTokenHeader(request, jwt))),
         catchError((err) => {
-          // If waiting failed, handle appropriately (e.g., logout)
-           console.error('Error while waiting for token refresh, logging out.', err);
-           this.authService.signOut();
-           return throwError(() => err);
+          this.authService.signOut();
+          return throwError(() => err);
         })
       );
     }

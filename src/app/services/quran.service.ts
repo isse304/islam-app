@@ -302,7 +302,7 @@ export class QuranService {
   ];
 
   readonly translations = [
-    { id: 131, name: 'Dr. Mustafa Khattab (English)', language: 'english', author: 'Dr. Mustafa Khattab' },
+    // { id: 131, name: 'Dr. Mustafa Khattab (English)', language: 'english', author: 'Dr. Mustafa Khattab' }, // Removed Dr. Mustafa Khattab
     { id: 20, name: 'Sahih International (English)', language: 'english', author: 'Sahih International' },
     { id: 95, name: 'Dr. Ghali (English)', language: 'english', author: 'Dr. Muhammad Mahmud Ghali' },
     { id: 85, name: 'Abdullah Yusuf Ali (English)', language: 'english', author: 'Abdullah Yusuf Ali' },
@@ -320,7 +320,7 @@ export class QuranService {
     }
   }
 
-  getSurah(surahNumber: number, translationId: string = '131', reciterId: number = 1): Observable<QuranVerse[]> {
+  getSurah(surahNumber: number, translationId: string = '20', reciterId: number = 1): Observable<QuranVerse[]> {
     // Check cache first
     const cacheKey = `${surahNumber}_${translationId}_${reciterId}`;
     const cachedData = this.cache.surahs[cacheKey];
@@ -343,20 +343,58 @@ export class QuranService {
         }
         
         const verses = response.verses.map((verse: any) => {
+          // +++ START MODIFIED: Robust finding of translation text by matching resource_id or id +++
+          let translationText = 'Translation not available';
+          
+          // Ensure verse.translations is an array before processing
+          if (Array.isArray(verse.translations)) {
+              // Attempt to find by resource_id first
+              let targetTranslation = verse.translations.find((t: any) =>
+                  t && typeof t.resource_id !== 'undefined' && String(t.resource_id) === safeTranslationId
+              );
+
+              // If not found by resource_id, attempt to find by id
+              if (!targetTranslation) {
+                  targetTranslation = verse.translations.find((t: any) =>
+                      t && typeof t.id !== 'undefined' && String(t.id) === safeTranslationId
+                  );
+              }
+
+              // If a matching translation was found and it has text, use it
+              if (targetTranslation && typeof targetTranslation.text === 'string') {
+                  // Clean HTML tags from the text
+                  translationText = targetTranslation.text.replace(/<[^>]*>.*?<\/[^>]*>/g, '');
+              }
+          }
+          // +++ END MODIFIED +++
+          
           const mappedVerse = {
             number: verse.verse_number,
             text: verse.text_uthmani,
-            translation: verse.translations?.[0]?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || 'Translation not available',
-            transliteration: verse.words?.map((word: any) => word.transliteration?.text || '').join(' ') || '',
-            audio: this.getVerseAudioUrl(reciterId, `${surahNumber}:${verse.verse_number}`),
+            translation: translationText, // Use the determined translation text
+            transliteration: verse.words?.map((word: any) => word.transliteration?.text).join(' ') || '',
+            audio: this.getVerseAudioUrl(reciterId, verse.verse_key),
             words: verse.words?.map((word: any) => ({
-              text: word.text_uthmani || '',
-              translation: word.translation?.text || '',
-              transliteration: word.transliteration?.text || ''
-            })) || []
+              text: word.text_uthmani,
+              translation: word.translation?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || '', // Also clean word translation
+              transliteration: word.transliteration?.text || '',
+              audioUrl: word.audio_url || '',
+              timestamp_from: word.char_type === 'word' ? word.audio?.timestamp_from : undefined,
+              timestamp_to: word.char_type === 'word' ? word.audio?.timestamp_to : undefined,
+            })) || [],
+            verse_key: verse.verse_key,
           };
+
+          // console.log(`[QuranService getSurah Map] Mapped verse ${mappedVerse.number}: Translation found? ${translationText !== 'Translation not available'}`); // Add logging
+          // if (translationText === 'Translation not available') {
+          //     console.log('[QuranService getSurah Map] Raw verse data for missing translation:', verse);
+          // }
+
           return mappedVerse;
         });
+
+        // console.log(`[QuranService getSurah] Successfully fetched and mapped ${verses.length} verses for Surah ${surahNumber}.` + 
+        //             `Requested translation ID: ${safeTranslationId}. First verse translation status: ${verses.length > 0 ? (verses[0].translation !== 'Translation not available' ? 'Available' : 'Not Available') : 'N/A'}`);
 
         // Cache the result
         this.cache.surahs[cacheKey] = verses;
@@ -365,14 +403,9 @@ export class QuranService {
         return verses;
       }),
       catchError(error => {
-        // console.error('Error fetching surah data:', error);
-        // console.log('Returning cached data as fallback after error');
-        return of(cachedData || []);
-      }),
-      retry({
-        count: 3,
-        delay: 1000,
-        resetOnSuccess: true
+        // console.error(`[QuranService getSurah] Error fetching Surah ${surahNumber} with translation ID ${safeTranslationId}:`, error);
+        // Return an empty array on error to avoid breaking the component
+        return of([]);
       })
     );
   }
@@ -564,8 +597,6 @@ export class QuranService {
     return this.http.get(`${this.baseUrl}/ayah/${surahNumber}:${ayahNumber}/en.word`);
   }
 
- 
-
   getWordDetails(wordId: number): Observable<WordDetails> {
     return this.http.get<WordDetails>(`${this.quranComUrl}/words/${wordId}?fields=text_uthmani,text_indopak,translation,transliteration,root,lemma,grammar`);
   }
@@ -621,7 +652,7 @@ export class QuranService {
 
   private searchVerses(query: string): Observable<VerseSearchResult[]> {
     return this.http.get<any>(
-      `${this.quranComUrl}/verses/by_key?language=en&words=false&translations=131&per_page=10&q=${encodeURIComponent(query)}`
+      `${this.quranComUrl}/verses/by_key?language=en&words=false&translations=20&per_page=10&q=${encodeURIComponent(query)}`
     ).pipe(
       map(response => 
         (response.verses || []).map((verse: any) => ({
@@ -687,7 +718,7 @@ export class QuranService {
 
   loadSurah(surahNumber: number): Observable<QuranVerse[]> {
     return this.http.get<any>(
-      `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&translations=131&fields=text_uthmani,chapter_id,verse_number,verse_key`
+      `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&translations=20&fields=text_uthmani,chapter_id,verse_number,verse_key`
     ).pipe(
       map(response => response.verses.map((verse: any) => ({
         number: verse.verse_number,
@@ -869,10 +900,10 @@ export class QuranService {
   getAvailableTranslations(): Observable<any[]> {
     // Use hardcoded translations as fallback in case the API endpoint fails
     const fallbackTranslations = [
-      { id: '131', name: 'Sahih International', language: 'en' },
-      { id: '20', name: 'Sahih Al-Bukhari', language: 'en' },
+      { id: '20', name: 'Sahih International (English)', language: 'english' },
+      { id: '95', name: 'Dr. Ghali (English)', language: 'english' },
       { id: '149', name: 'Abdel Haleem', language: 'en' },
-      { id: '85', name: 'Abdul Majid Daryabadi', language: 'en' },
+      { id: '85', name: 'Abdullah Yusuf Ali (English)', language: 'english', author: 'Abdullah Yusuf Ali' },
       { id: '203', name: 'Dr. Mustafa Khattab', language: 'en' },
       { id: '207', name: 'Saheeh International', language: 'en' },
       { id: '84', name: 'Abdullah Yusuf Ali', language: 'en' },

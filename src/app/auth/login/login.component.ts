@@ -58,8 +58,6 @@ export class LoginComponent implements OnInit, OnDestroy {
     private cdr: ChangeDetectorRef,
     private zone: NgZone
   ) {
-    console.log('LOGIN COMPONENT CONSTRUCTOR - URL:', window.location.href); // ADD THIS
-    debugger; // ADD THIS
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(6)]]
@@ -67,37 +65,34 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    console.log('LOGIN COMPONENT NGONINIT - URL:', window.location.href); // ADD THIS
-    debugger; // ADD THIS
-    console.log('[LoginComponent OnInit] Starting...');
 
     // Subscribe to queryParams to get returnUrl
     this.routeSub = this.route.queryParams.pipe(take(1)).subscribe(params => {
-        console.log('[LoginComponent OnInit via subscribe] Full params object:', params);
-        console.log('[LoginComponent OnInit via subscribe] Full route snapshot:', this.route.snapshot);
+        //console.log('[LoginComponent OnInit via subscribe] Full params object:', params);
+        //console.log('[LoginComponent OnInit via subscribe] Full route snapshot:', this.route.snapshot);
         const queryReturnUrl = params['returnUrl'];
-        console.log(`[LoginComponent OnInit via queryParams.subscribe] returnUrl from params: '${queryReturnUrl}'`);
+        //console.log(`[LoginComponent OnInit via queryParams.subscribe] returnUrl from params: '${queryReturnUrl}'`);
 
         if (queryReturnUrl && typeof queryReturnUrl === 'string') {
             this.returnUrl = queryReturnUrl;
-            console.log(`[LoginComponent OnInit via subscribe] Attempting to set localStorage item 'redirectUrl' to: '${this.returnUrl}'`);
+            //console.log(`[LoginComponent OnInit via subscribe] Attempting to set localStorage item 'redirectUrl' to: '${this.returnUrl}'`);
             localStorage.setItem('redirectUrl', this.returnUrl);
-            console.log('[LoginComponent OnInit via subscribe] localStorage.setItem(\'redirectUrl\') CALLED.');
+            //console.log('[LoginComponent OnInit via subscribe] localStorage.setItem(\'redirectUrl\') CALLED.');
             const storedRedirectUrl = localStorage.getItem('redirectUrl');
-            console.log(`[LoginComponent OnInit via subscribe] Value of 'redirectUrl' read back from localStorage: '${storedRedirectUrl}'`);
+            //console.log(`[LoginComponent OnInit via subscribe] Value of 'redirectUrl' read back from localStorage: '${storedRedirectUrl}'`);
             // debugger; // PAUSE EXECUTION HERE TO INSPECT LOCALSTORAGE
         } else {
-            console.log('[LoginComponent OnInit via subscribe] No returnUrl found in query params or not a string.');
+            //console.log('[LoginComponent OnInit via subscribe] No returnUrl found in query params or not a string.');
         }
 
         // Handle loginIntent (can also be inside this subscription or use snapshot if preferred)
         const storedIntent = localStorage.getItem('signupIntent');
         if (storedIntent) {
             this.loginIntent = storedIntent;
-            // console.log(`[LoginComponent OnInit via subscribe] Intent read from localStorage: ${this.loginIntent}`);
+            // //console.log(`[LoginComponent OnInit via subscribe] Intent read from localStorage: ${this.loginIntent}`);
         } else {
             this.loginIntent = params['intent']; // Get intent from the same params
-            // console.log(`[LoginComponent OnInit via subscribe] Intent read from query params: ${this.loginIntent}`);
+            // //console.log(`[LoginComponent OnInit via subscribe] Intent read from query params: ${this.loginIntent}`);
         }
     });
 
@@ -110,7 +105,7 @@ export class LoginComponent implements OnInit, OnDestroy {
         const initialRedirectUrl = (this.loginIntent === 'start_trial')
             ? '/subscription?initiateCheckout=true'
             : '/home'; // Default to home if already logged in without specific intent
-        // console.log(`[LoginComponent OnInit] User already logged in, navigating to: ${initialRedirectUrl}`);
+        // //console.log(`[LoginComponent OnInit] User already logged in, navigating to: ${initialRedirectUrl}`);
         this.zone.run(() => this.router.navigateByUrl(initialRedirectUrl));
       }
     });
@@ -159,7 +154,7 @@ export class LoginComponent implements OnInit, OnDestroy {
       // 'redirectUrl_temp_login' is used to avoid immediate clearing by auth service if it runs first
 
       if (this.loginIntent === 'start_trial') {
-        // //console.log(`[LoginComponent navigateOnLoginSuccess] Intent is 'start_trial'. Navigating to /subscription.`);
+        // ////console.log(`[LoginComponent navigateOnLoginSuccess] Intent is 'start_trial'. Navigating to /subscription.`);
         this.zone.run(() => {
             this.router.navigateByUrl('/subscription?initiateCheckout=true').catch(navError => {
                 //console.error('[LoginComponent] Navigation error for start_trial intent:', navError);
@@ -167,11 +162,11 @@ export class LoginComponent implements OnInit, OnDestroy {
             });
         });
       } else if (intendedRedirectUrl) {
-        // //console.log(`[LoginComponent navigateOnLoginSuccess] A returnUrl '${intendedRedirectUrl}' is present. FirebaseAuthService should handle this. LoginComponent will NOT navigate.`);
+        // ////console.log(`[LoginComponent navigateOnLoginSuccess] A returnUrl '${intendedRedirectUrl}' is present. FirebaseAuthService should handle this. LoginComponent will NOT navigate.`);
         // localStorage.removeItem('redirectUrl_temp_login'); // Clean up temp one if used
         // Do nothing here, let FirebaseAuthService.onAuthStateChanged handle it via 'redirectUrl' in localStorage.
       } else {
-        // //console.log(`[LoginComponent navigateOnLoginSuccess] No specific intent or returnUrl. Navigating to /home.`);
+        // ////console.log(`[LoginComponent navigateOnLoginSuccess] No specific intent or returnUrl. Navigating to /home.`);
         this.zone.run(() => {
             this.router.navigate(['/home']).catch(navError => {
                 //console.error('[LoginComponent] Navigation error to /home:', navError);
@@ -222,10 +217,10 @@ export class LoginComponent implements OnInit, OnDestroy {
 
   loginWithGoogle(): void {
     if (this.isLoading) {
-      console.log('[LoginComponent] loginWithGoogle called while already loading. Aborting.');
+      //console.log('[LoginComponent] loginWithGoogle called while already loading. Aborting.');
       return;
     }
-    console.log('[LoginComponent] loginWithGoogle initiated.'); // Log start
+    //console.log('[LoginComponent] loginWithGoogle initiated.'); // Log start
     this.isLoading = true;
     this.cdr.markForCheck(); // Update UI for loading state
 
@@ -233,7 +228,7 @@ export class LoginComponent implements OnInit, OnDestroy {
     const intentToStore = this.loginIntent || localStorage.getItem('signupIntent');
     if (intentToStore) {
       localStorage.setItem('signupIntent', intentToStore);
-      // console.log(`[LoginComponent loginWithGoogle] Stored intent: ${intentToStore}`);
+      // //console.log(`[LoginComponent loginWithGoogle] Stored intent: ${intentToStore}`);
     }
 
     // Run the Firebase call outside Angular zone
@@ -242,14 +237,14 @@ export class LoginComponent implements OnInit, OnDestroy {
         .then(async (credential) => { // Make the success handler async
           // Bring the result handling back into the Angular zone
           this.zone.run(async () => {
-            // console.log('[LoginComponent] signInWithGoogle promise resolved. Credential:', credential); // Log credential
+            // //console.log('[LoginComponent] signInWithGoogle promise resolved. Credential:', credential); // Log credential
             if (credential && credential.user) {
-              // console.log('[LoginComponent] Valid credential received from popup.');
+              // //console.log('[LoginComponent] Valid credential received from popup.');
               // Before calling navigateOnLoginSuccess, ensure 'redirectUrl' is in localStorage if it was in query
               // This is already handled by constructor/ngOnInit, but double check for Google flow
               if (this.returnUrl && !localStorage.getItem('redirectUrl')) {
                   localStorage.setItem('redirectUrl', this.returnUrl);
-                  // console.log(`[LoginComponent loginWithGoogle success] Ensured returnUrl '${this.returnUrl}' is in localStorage.`);
+                  // //console.log(`[LoginComponent loginWithGoogle success] Ensured returnUrl '${this.returnUrl}' is in localStorage.`);
               }
               this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
               await this.navigateOnLoginSuccess(); // Wait for navigation logic
@@ -276,7 +271,7 @@ export class LoginComponent implements OnInit, OnDestroy {
                   panelClass: ['error-snackbar']
               });
             } else {
-              console.log('[LoginComponent] Google Sign-In popup closed by user.');
+              //console.log('[LoginComponent] Google Sign-In popup closed by user.');
             }
             // Always reset loading state on error or popup close
             this.isLoading = false;

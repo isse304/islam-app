@@ -557,15 +557,44 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
         const userId = req.auth!.uid;
         const bookmark = req.params.bookmark;
 
-        // Validate bookmark format
-        const [surah, verse] = bookmark.split(':').map(Number);
-        if (isNaN(surah) || isNaN(verse) || surah < 1 || surah > 114 || verse < 1) {
+        // --- MODIFIED: Handle both verse and mushaf bookmark formats ---
+        let isValidFormat = false;
+        let bookmarkToRemove = '';
+
+        if (bookmark.startsWith('verse:')) {
+            const parts = bookmark.split(':');
+            // Expecting format like 'verse:surah:verse' - server DELETE expects 'surah:verse' in URL
+            if (parts.length === 3) {
+                 const surah = parseInt(parts[1], 10);
+                 const verse = parseInt(parts[2], 10);
+                 if (!isNaN(surah) && !isNaN(verse) && surah >= 1 && surah <= 114 && verse >= 1) {
+                      // The bookmark stored is 'verse:surah:verse', so we need to match that exactly
+                      bookmarkToRemove = bookmark; // Use the full string for filtering
+                      isValidFormat = true;
+                 }
+            }
+        } else if (bookmark.startsWith('mushaf:')) {
+             const parts = bookmark.split(':');
+             // Expecting format like 'mushaf:page'
+             if (parts.length === 2) {
+                  const page = parseInt(parts[1], 10);
+                  // Assuming page numbers are 1-604 for display, adjust if needed
+                  if (!isNaN(page) && page >= 1 && page <= 604) { 
+                       bookmarkToRemove = bookmark; // Use the full string for filtering
+                       isValidFormat = true;
+                  }
+             }
+        }
+
+        if (!isValidFormat || !bookmarkToRemove) {
             return res.status(400).json({
                 success: false,
-                message: 'Invalid bookmark format',
+                message: 'Invalid bookmark format. Expected format: verse:surah:verse or mushaf:page',
                 bookmarks: []
             });
         }
+        // --- End MODIFIED ---
+
 
         // Get or create user preferences with default values
         let userPrefs = await UserPreferences.findOne({ userId });
@@ -582,15 +611,19 @@ router.delete('/:userId/bookmarks/:bookmark', withAuth(async (req: Authenticated
         }
 
         // Remove bookmark
-        preferences.bookmarks = preferences.bookmarks.filter(b => b !== bookmark);
+        // --- MODIFIED: Filter using the determined bookmarkToRemove string ---
+        preferences.bookmarks = preferences.bookmarks.filter(b => b !== bookmarkToRemove);
+        // --- End MODIFIED ---
+
         await userPrefs.save();
 
         res.json({ 
             success: true, 
             message: 'Bookmark removed successfully',
-            bookmarks: preferences.bookmarks 
+            bookmarks: preferences.bookmarks // Return the updated list
         });
     } catch (error) {
+        console.error(`[User DELETE /:userId/bookmarks/:bookmark] Error removing bookmark:`, error);
         next(error);
     }
 }));
