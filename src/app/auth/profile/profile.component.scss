@@ -931,3 +931,23 @@ html.dark body.dark app-profile :host {
 // ::ng-deep .dark mat-tab-body[aria-label="Account"] .profile-card {
 //    ...
 // }
+
+.profile-advanced-settings {
+  padding: 20px;
+
+  .setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+
+    p {
+      margin: 0;
+      flex-grow: 1;
+    }
+
+    button {
+      margin-left: 16px;
+    }
+  }
+}

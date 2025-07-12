@@ -156,6 +156,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
     // *** End history subscription ***
   }
 
+  clearCache() {
+    try {
+      this.quranService.clearCache();
+      this.snackBar.open('Cache cleared successfully.', 'Close', { duration: 3000 });
+    } catch (error) {
+      this.snackBar.open('Failed to clear cache.', 'Close', { duration: 3000 });
+      console.error('Error clearing cache:', error);
+    }
+  }
+
   private clearMockData() {
     // Clear all mock data from localStorage and sessionStorage
     const keysToRemove = [

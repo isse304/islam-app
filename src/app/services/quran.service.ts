@@ -316,7 +316,18 @@ export class QuranService {
     try {
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.cache));
     } catch (error) {
-      console.error('Error saving Quran cache:', error);
+      if (error instanceof DOMException && (error.name === 'QuotaExceededError' || error.code === 22)) {
+        console.warn('Quota exceeded. Clearing cache and retrying.');
+        this.clearCache();
+        // Optionally, retry saving after clearing
+        try {
+          localStorage.setItem(this.CACHE_KEY, JSON.stringify(this.cache));
+        } catch (retryError) {
+          console.error('Failed to save cache even after clearing:', retryError);
+        }
+      } else {
+        console.error('Error saving Quran cache:', error);
+      }
     }
   }
 
@@ -594,7 +605,8 @@ export class QuranService {
 
   // Optional: If you want to fetch actual word-by-word translations later
   getWordByWordTranslation(surahNumber: number, ayahNumber: number): Observable<any> {
-    return this.http.get(`${this.baseUrl}/ayah/${surahNumber}:${ayahNumber}/en.word`);
+    const url = `${this.baseUrl}/surahs/${surahNumber}/ayahs/${ayahNumber}/word_by_word`;
+    return this.http.get<any>(url);
   }
 
   getWordDetails(wordId: number): Observable<WordDetails> {
@@ -651,9 +663,8 @@ export class QuranService {
   }
 
   private searchVerses(query: string): Observable<VerseSearchResult[]> {
-    return this.http.get<any>(
-      `${this.quranComUrl}/verses/by_key?language=en&words=false&translations=20&per_page=10&q=${encodeURIComponent(query)}`
-    ).pipe(
+    const url = `https://api.quran.com/api/v4/search?q=${query}&language=en`;
+    return this.http.get<any>(url).pipe(
       map(response => 
         (response.verses || []).map((verse: any) => ({
           surah: parseInt(verse.verse_key.split(':')[0]),
@@ -963,9 +974,17 @@ export class QuranService {
   }
 
   clearCache() {
-    this.cache = this.initializeCache();
-    this.saveCache();
-    // console.log('QuranService cache cleared');
+    this.cache = {
+      tafsirExplanations: {},
+      surahs: {}
+    };
+    try {
+      localStorage.removeItem(this.CACHE_KEY);
+      localStorage.removeItem(this.SURAH_CACHE_KEY); // Also clear surah list cache
+      console.log('Quran cache cleared.');
+    } catch (error) {
+      console.error('Error clearing Quran cache:', error);
+    }
   }
 
   // Method to call the backend Tafsir Chat endpoint

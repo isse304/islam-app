@@ -88,6 +88,26 @@
       </mat-tab>
       -->
 
+      <!-- Advanced Settings -->
+      <mat-tab label="Advanced">
+        <div class="profile-advanced-settings">
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>Advanced Settings</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="setting-row">
+                <p>Clear local cache to free up space and resolve potential data issues.</p>
+                <button mat-stroked-button color="warn" (click)="clearCache()">
+                  <mat-icon>delete_sweep</mat-icon>
+                  Clear Cache
+                </button>
+              </div>
+            </mat-card-content>
+          </mat-card>
+        </div>
+      </mat-tab>
+
       <!-- Bookmarks -->
       <mat-tab>
         <ng-template mat-tab-label>
