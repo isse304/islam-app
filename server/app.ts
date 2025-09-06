@@ -9,7 +9,8 @@ import subscriptionRoutes from './routes/subscription';
 import usageRoutes from './routes/usage';
 import contactRouter from './routes/contact';
 import mongoose from 'mongoose';
-import { AuthenticatedRequest, withAuth } from './middleware/auth';
+import { AuthenticatedRequest } from './types/express';
+import { withAuth } from './middleware/auth';
 
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
