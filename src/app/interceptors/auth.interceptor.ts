@@ -14,6 +14,9 @@ import { FirebaseAuthService } from '../services/firebase-auth.service';
 import { Router } from '@angular/router';
 import { environment } from '../../environments/environment';
 
+// Helper to check if a URL is for our backend API
+const isApiUrl = (url: string) => url.startsWith(environment.apiUrl);
+
 @Injectable()
 export class AuthInterceptor implements HttpInterceptor {
   private isRefreshing = false;
@@ -23,7 +26,7 @@ export class AuthInterceptor implements HttpInterceptor {
 
   intercept(req: HttpRequest<any>, next: HttpHandler): Observable<HttpEvent<any>> {
     // Only intercept requests to our API
-    if (!req.url.startsWith(environment.apiUrl)) {
+    if (!isApiUrl(req.url)) {
       return next.handle(req);
     }
 
@@ -36,11 +39,13 @@ export class AuthInterceptor implements HttpInterceptor {
           catchError((error) => {
             if (
               error instanceof HttpErrorResponse &&
+              isApiUrl(req.url) && // Only handle errors for our own API
               !req.url.includes('/auth/signin') && // Avoid retry loop on signin
               (error.status === 401 || error.status === 403) // Unauthorized or Forbidden
             ) {
               return this.handle401Error(req, next);
             }
+            // For all other errors (including 404s), just propagate them.
             return throwError(() => error);
           })
         );
@@ -161,7 +166,7 @@ export const authInterceptorFn: HttpInterceptorFn = (
   const router = inject(Router); // Inject if needed for navigation on error
 
   // Only intercept requests to our API
-  if (!req.url.startsWith(environment.apiUrl)) {
+  if (!isApiUrl(req.url)) {
     return next(req);
   }
 
@@ -177,22 +182,27 @@ export const authInterceptorFn: HttpInterceptorFn = (
         catchError(error => {
           if (
             error instanceof HttpErrorResponse &&
+            isApiUrl(authReq.url) && // Check if it's our API
             !authReq.url.includes('/auth/signin') && // Avoid retry loop on signin routes
             (error.status === 401 || error.status === 403) // Check for Unauthorized or Forbidden
           ) {
             // Call the specific 401/403 handler logic
             return handle401Error(authReq as HttpRequest<any>, next, authService);
           }
-          // For other errors, just pass them along
+          // For other errors (404, 500, etc.), just pass them along without logging out
           return throwError(() => error);
         })
       );
     }),
     catchError(initialTokenError => {
-      // Handle error during initial token retrieval if necessary
-      console.error('Error getting initial token:', initialTokenError);
-      // Decide how to proceed, e.g., sign out or throw
-      authService.signOut();
+      // This was the source of the logout on 404 issue.
+      // It incorrectly assumed any error in the chain was a token problem.
+      // We should only log out if token refresh fails, which is handled in handle401Error.
+      // For an initial token load failure, we can log it but should not sign out
+      // as the user might be navigating to a public part of the app.
+      console.error('Error during initial token retrieval (will not log out):', initialTokenError);
+      // We don't sign out here anymore.
+      // authService.signOut(); 
       return throwError(() => initialTokenError);
     })
   );

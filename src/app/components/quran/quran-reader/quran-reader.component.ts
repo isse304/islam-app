@@ -30,6 +30,7 @@ import { DragDropModule } from '@angular/cdk/drag-drop'; // <-- Import this
 import { MatButtonToggleModule } from '@angular/material/button-toggle'; // <-- ADD THIS LINE
 
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
+import { TafsirDatabaseService } from '../../../services/tafsir-database.service';
 import { SttService } from '../../../services/stt.service';
 import { QuranFlashService } from '../../../services/quran-flash.service';
 import { ToastService } from '../../../services/toast.service';
@@ -364,7 +365,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private preferencesService: PreferencesService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private tafsirDatabaseService: TafsirDatabaseService,
+    private zone: NgZone
   ) {
     // Initialize the debounced scroll handler here
     this.debouncedScrollHandler = this.debounce(() => {
@@ -1734,18 +1737,15 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
      this.quranService.getTafsir(surahNum, verse.number, this.selectedTafsir)
        .pipe(finalize(() => {
          this.isLoading = false;
-         // Open modal in finalize (redundant if opened above, but safe)
          this.isTafsirModalOpen = true; 
-         // Final check to ensure UI updates after loading finishes or error occurs
          this.changeDetector.markForCheck(); 
        }))
        .subscribe({
          next: (response) => {
            this.tafsir = response?.text || 'Tafsir not available for this selection.';
-           //console.log.log("Tafsir loaded:", this.tafsir.substring(0, 100));
          },
          error: (error) => {
-           //console.log.error('Error loading tafsir:', error);
+           console.error('Error loading tafsir:', error);
            this.tafsir = 'Error loading tafsir. Please try again later.';
          }
        });

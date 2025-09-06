@@ -248,6 +248,18 @@ app.use('/api/user', userRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);
 app.use('/api/subscription', subscriptionRouter);
+
+// Log the routes for debugging
+if (process.env.NODE_ENV === 'development') {
+    console.log('--- Tafsir Routes ---');
+    tafsirRoutes.stack.forEach((layer: any) => {
+        if (layer.route) {
+            console.log(layer.route.path);
+        }
+    });
+    console.log('---------------------');
+}
+
 app.use('/api/tafsir', tafsirRoutes);
 app.use('/api/contact', contactRouter);
 

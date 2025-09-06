@@ -32,6 +32,8 @@ import {
   getRedirectResult,
   reauthenticateWithPopup,
   FacebookAuthProvider,
+  setPersistence,
+  browserLocalPersistence,
 } from 'firebase/auth';
 
 import { UserInfo } from '@angular/fire/auth';
@@ -2199,6 +2201,8 @@ export class FirebaseAuthService {
         const app = initializeApp(environment.firebase);
         // Get Auth instance
         const auth = getAuth(app);
+        // ++ HARDENING: Set persistence explicitly
+        await setPersistence(auth, browserLocalPersistence);
         this.isAuthInitialized = true;
         // // //////console.log('[initializeAuth] Firebase Auth initialized successfully.');
         return auth; // Resolve the promise with the Auth instance
