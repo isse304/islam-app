@@ -1,5 +1,6 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { AuthenticatedRequest, withAuth, withPremium } from '../middleware/auth';
+import { AuthenticatedRequest } from '../types/express';
+import { withAuth, withPremium } from '../middleware/auth';
 import axios from 'axios';
 import { OpenAIService } from '../services/openai.service';
 import { TafsirCacheService } from '../services/tafsir-cache.service';

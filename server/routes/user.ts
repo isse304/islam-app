@@ -1,6 +1,7 @@
 import express, { Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
-import { AuthenticatedRequest, withAuth, withPremium } from '../middleware/auth';
+import { AuthenticatedRequest } from '../types/express';
+import { withAuth, withPremium } from '../middleware/auth';
 import mongoose, { Document, Schema } from 'mongoose';
 import { UserSubscription, IUserSubscription } from '../models/UserSubscription';
 import { StripeService } from '../services/stripe.service';

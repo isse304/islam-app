@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { StripeService } from '../services/stripe.service';
-import { withAuth, AuthenticatedRequest } from '../middleware/auth';
+import { AuthenticatedRequest } from '../types/express';
+import { withAuth } from '../middleware/auth';
 import { auth } from '../config/firebase';
 import { EmailService } from '../services/email.service';
 
