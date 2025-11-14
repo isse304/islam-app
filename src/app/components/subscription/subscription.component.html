@@ -129,21 +129,28 @@
       </div>
     </div>
     
-    <!-- Manual Refresh Option for Users Without Active Subscription -->
-    <div *ngIf="!subscriptionStatus || subscriptionStatus.status !== 'active'" class="mt-8 text-center">
+    <!-- Manual Refresh Option - Always Visible -->
+    <div class="mt-8 text-center">
       <div class="rounded-lg shadow-sm p-6 max-w-md mx-auto"
            [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white'">
+        <mat-icon class="text-4xl mb-3" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-[#B7A57A]' : 'text-[#1A365D]'">
+          sync
+        </mat-icon>
+        <h3 class="text-lg font-semibold mb-2" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-100' : 'text-[#1A365D]'">
+          Having Issues with Premium Access?
+        </h3>
         <p class="text-sm mb-4" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">
-          Just completed a payment but don't see premium access?
+          If you just completed a payment or premium features aren't working, click below to refresh your subscription status.
         </p>
         <button mat-raised-button 
                 (click)="refreshSubscriptionStatus()"
                 [disabled]="isLoading"
+                class="w-full py-3"
                 [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
                            'bg-[#B7A57A] text-[#1A365D]' : 
                            'bg-[#1A365D] text-white'">
           <mat-icon class="mr-2">refresh</mat-icon>
-          <span *ngIf="!isLoading">Refresh Subscription Status</span>
+          <span *ngIf="!isLoading">Refresh My Subscription Status</span>
           <mat-spinner *ngIf="isLoading" diameter="20" class="inline-block"></mat-spinner>
         </button>
       </div>

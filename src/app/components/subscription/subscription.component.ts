@@ -143,10 +143,11 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       });
 
-      console.log('🔄 [Manual Refresh] Forcing token refresh...');
       await this.firebaseAuthService.refreshAuth();
       
-      console.log('🔄 [Manual Refresh] Fetching subscription status...');
+      // Give the token refresh a moment to propagate
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
       
       if (response.status === 'active' || response.plan === 'premium') {

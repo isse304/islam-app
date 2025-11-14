@@ -1833,15 +1833,8 @@ export class FirebaseAuthService {
         
         this._user.next(updatedUser);
         this.cacheUserData(updatedUser); // Update cache as well
-        
-        console.log('✅ [refreshAuth] Token and claims refreshed successfully', {
-          isPremium: updatedUser.isPremium,
-          subscriptionStatus: updatedUser.subscriptionStatus,
-          role: updatedUser.role
-        });
       }
     } catch (error) {
-      console.error('❌ [refreshAuth] Error refreshing auth:', error);
       this.cachedToken = null;
       localStorage.removeItem(this.TOKEN_CACHE_KEY);
       throw error;
