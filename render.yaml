@@ -8,8 +8,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: NODE_VERSION
-        value: 20.18.0
       - key: PORT
         value: 3000
       - key: DOMAIN
@@ -41,8 +39,6 @@ services:
         value: production
       - key: PORT
         value: 3001
-      - key: NODE_VERSION
-        value: 20.11.1
       - key: CLERK_PUBLISHABLE_KEY
         sync: false
       - key: OPENAI_API_KEY
