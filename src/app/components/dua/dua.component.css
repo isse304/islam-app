@@ -319,7 +319,7 @@ button:active {
   .emotion-tag {
     background-color: #B7A57A !important;
     color: #1A365D !important;
-    button span.material-icons {
+    :is(button) span.material-icons {
       color: #1A365D !important;
     }
   }
@@ -367,7 +367,7 @@ button:active {
     .font-arabic {
       color: #FAF3E0 !important;
     }
-    p, div {
+    :is(p, div) {
       color: inherit;
     }
     .italic {
@@ -405,7 +405,7 @@ button:active {
     color: #B7A57A;
   }
 
-  button.bg-white.text-\[\#B7A57A\] {
+  :is(button).bg-white.text-\[\#B7A57A\] {
     background-color: #3A5F8A !important;
     color: #B7A57A !important;
     &:hover {

@@ -136,6 +136,64 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     }
   }
 
+  async refreshSubscriptionStatus() {
+    try {
+      this.ngZone.run(() => {
+        this.isLoading = true;
+        this.cdr.detectChanges();
+      });
+
+      console.log('🔄 [Manual Refresh] Forcing token refresh...');
+      await this.firebaseAuthService.refreshAuth();
+      
+      console.log('🔄 [Manual Refresh] Fetching subscription status...');
+      const response = await firstValueFrom(this.stripeService.getSubscriptionStatus());
+      
+      if (response.status === 'active' || response.plan === 'premium') {
+        this.subscriptionStatus = {
+          status: 'active',
+          plan: 'premium',
+          features: {
+            emotionalDuaSearch: response.features?.emotionalDuaSearch || true,
+            aiTafsirChat: response.features?.aiTafsirChat || true,
+            duaInsights: response.features?.duaInsights || true,
+            aiChat: response.features?.aiChat || true,
+            tafsirAccess: response.features?.tafsirAccess || true,
+            wordByWord: response.features?.wordByWord || true
+          }
+        };
+        
+        this.snackBar.open(
+          '✅ Subscription status refreshed! Premium access confirmed.',
+          'Dismiss',
+          { duration: 5000, panelClass: ['success-snackbar'] }
+        );
+      } else {
+        this.snackBar.open(
+          'No active subscription found. Please subscribe or contact support if you believe this is an error.',
+          'Dismiss',
+          { duration: 7000 }
+        );
+      }
+
+      this.ngZone.run(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      });
+    } catch (error) {
+      console.error('Error refreshing subscription status:', error);
+      this.snackBar.open(
+        'Failed to refresh subscription status. Please try again or contact support.',
+        'Close',
+        { duration: 5000 }
+      );
+      this.ngZone.run(() => {
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      });
+    }
+  }
+
   private async loadSubscriptionStatus() {
     try {
       this.ngZone.run(() => {

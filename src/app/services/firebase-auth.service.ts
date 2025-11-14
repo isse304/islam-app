@@ -1800,7 +1800,9 @@ export class FirebaseAuthService {
         throw new Error('No authenticated user');
       }
 
+      // Get fresh token AND parse its claims
       const newToken = await currentUser.getIdToken(true);
+      const idTokenResult = await currentUser.getIdTokenResult(true);
 
       this.cachedToken = {
         token: newToken,
@@ -1813,14 +1815,33 @@ export class FirebaseAuthService {
         this.startTokenRefreshTimer();
       }
 
+      // Extract updated claims from the fresh token
       const currentUserState = this._user.value;
       if (currentUserState) {
-        this._user.next({
+        const updatedUser = {
           ...currentUserState,
-          token: newToken
+          token: newToken,
+          // Update premium-related claims from the refreshed token
+          isPremium: idTokenResult.claims['premium'] === true || 
+                     idTokenResult.claims['subscriptionStatus'] === 'active' ||
+                     idTokenResult.claims['subscriptionStatus'] === 'trialing',
+          subscriptionStatus: idTokenResult.claims['subscriptionStatus'] || currentUserState.subscriptionStatus,
+          subscriptionEnd: idTokenResult.claims['subscriptionEnd'] || currentUserState.subscriptionEnd,
+          isAdmin: idTokenResult.claims['admin'] === true,
+          role: (idTokenResult.claims['role'] as string) || currentUserState.role
+        };
+        
+        this._user.next(updatedUser);
+        this.cacheUserData(updatedUser); // Update cache as well
+        
+        console.log('✅ [refreshAuth] Token and claims refreshed successfully', {
+          isPremium: updatedUser.isPremium,
+          subscriptionStatus: updatedUser.subscriptionStatus,
+          role: updatedUser.role
         });
       }
     } catch (error) {
+      console.error('❌ [refreshAuth] Error refreshing auth:', error);
       this.cachedToken = null;
       localStorage.removeItem(this.TOKEN_CACHE_KEY);
       throw error;

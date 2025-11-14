@@ -114,6 +114,38 @@
         <p *ngIf="subscriptionStatus.currentPeriodEnd" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">
           Next billing date: {{ subscriptionStatus.currentPeriodEnd | date }}
         </p>
+        
+        <button mat-stroked-button 
+                (click)="refreshSubscriptionStatus()"
+                [disabled]="isLoading"
+                class="mt-4"
+                [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
+                           'text-[#B7A57A] border-[#B7A57A]' : 
+                           'text-[#1A365D] border-[#1A365D]'">
+          <mat-icon class="mr-2">refresh</mat-icon>
+          <span *ngIf="!isLoading">Refresh Status</span>
+          <mat-spinner *ngIf="isLoading" diameter="20" class="inline-block"></mat-spinner>
+        </button>
+      </div>
+    </div>
+    
+    <!-- Manual Refresh Option for Users Without Active Subscription -->
+    <div *ngIf="!subscriptionStatus || subscriptionStatus.status !== 'active'" class="mt-8 text-center">
+      <div class="rounded-lg shadow-sm p-6 max-w-md mx-auto"
+           [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'bg-gray-800 border border-gray-700' : 'bg-white'">
+        <p class="text-sm mb-4" [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 'text-gray-400' : 'text-gray-600'">
+          Just completed a payment but don't see premium access?
+        </p>
+        <button mat-raised-button 
+                (click)="refreshSubscriptionStatus()"
+                [disabled]="isLoading"
+                [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
+                           'bg-[#B7A57A] text-[#1A365D]' : 
+                           'bg-[#1A365D] text-white'">
+          <mat-icon class="mr-2">refresh</mat-icon>
+          <span *ngIf="!isLoading">Refresh Subscription Status</span>
+          <mat-spinner *ngIf="isLoading" diameter="20" class="inline-block"></mat-spinner>
+        </button>
       </div>
     </div>
   </div>
