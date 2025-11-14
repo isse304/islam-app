@@ -4,10 +4,12 @@ services:
     env: node
     region: ohio  # Changed from frankfurt to ohio (closest to Chicago)
     buildCommand: cd server && npm install && npm run build
-    startCommand: cd server && npm run start:prod
+    startCommand: cd server && npm start
     envVars:
       - key: NODE_ENV
         value: production
+      - key: NODE_VERSION
+        value: 20.18.0
       - key: PORT
         value: 3000
       - key: DOMAIN
