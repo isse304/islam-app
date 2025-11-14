@@ -1,0 +1,100 @@
+<div class="p-6 bg-gray-50 dark:bg-[#1A365D] min-h-screen relative">
+  <div class="flex justify-between items-center mb-6">
+    <h3 class="text-2xl font-bold dark:text-[#B7A57A]">Grade Submission</h3>
+    <button 
+      (click)="closePanel()" 
+      class="btn btn-sm btn-circle btn-error text-white hover:btn-error/80"
+      title="Close">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Audio Recording Section -->
+  <div *ngIf="submission.audioBlobPath" class="mb-6 p-4 bg-white dark:bg-[#2A4365] rounded-lg border-2 border-gray-200 dark:border-[#B7A57A]/30">
+    <h4 class="font-semibold mb-3 flex items-center gap-2 dark:text-[#B7A57A]">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+      </svg>
+      Student Recording
+    </h4>
+    <div *ngIf="audioDownloadUrl; else loadingAudio">
+      <audio #audioPlayer controls class="w-full mb-3" style="filter: hue-rotate(0deg);" [src]="audioDownloadUrl" preload="metadata">
+        Your browser does not support the audio element.
+      </audio>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        Submitted: {{ submission.submittedAt.toDate() | date:'short' }}
+      </p>
+    </div>
+    <ng-template #loadingAudio>
+      <div class="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+        <div class="loading loading-spinner loading-sm"></div>
+        Loading audio...
+      </div>
+    </ng-template>
+  </div>
+  
+  <!-- Practice Progress (if available) -->
+  <div *ngIf="submission.practiceData" class="mb-6 p-4 bg-white dark:bg-[#2A4365] rounded-lg border-2 border-gray-200 dark:border-[#B7A57A]/30">
+    <h4 class="font-semibold mb-3 flex items-center gap-2 dark:text-[#B7A57A]">
+      <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      Practice Progress
+    </h4>
+    <div class="grid grid-cols-2 gap-3 text-sm">
+      <div>
+        <span class="text-gray-600 dark:text-gray-300">Verses Completed:</span>
+        <span class="font-semibold ml-2 dark:text-[#FAF3E0]">{{ submission.practiceData.versesCompleted }} / {{ submission.practiceData.totalVerses }}</span>
+      </div>
+      <div>
+        <span class="text-gray-600 dark:text-gray-300">Total Attempts:</span>
+        <span class="font-semibold ml-2 dark:text-[#FAF3E0]">{{ submission.practiceData.totalAttempts }}</span>
+      </div>
+      <div class="col-span-2">
+        <span class="text-gray-600 dark:text-gray-300">Completion:</span>
+        <span class="font-semibold ml-2 dark:text-[#FAF3E0]">{{ submission.practiceData.completionPercentage.toFixed(0) }}%</span>
+        <div class="w-full mt-2 bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+          <div class="bg-green-600 dark:bg-green-500 h-3 rounded-full transition-all" [style.width.%]="submission.practiceData.completionPercentage"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form [formGroup]="gradeForm" (ngSubmit)="submitGrade()" class="bg-white dark:bg-[#2A4365] p-6 rounded-lg border-2 border-gray-200 dark:border-[#B7A57A]/30">
+    <div class="mb-6">
+      <label class="block text-sm font-semibold mb-2 dark:text-[#B7A57A]">Overall Score (0-100)</label>
+      <input type="number" formControlName="score" class="input input-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30" placeholder="Enter score" />
+    </div>
+
+    <h4 class="font-semibold text-lg mt-6 mb-4 dark:text-[#B7A57A]">Rubric</h4>
+    <div class="grid grid-cols-3 gap-4 mb-4">
+      <div>
+        <label class="block text-sm font-medium mb-2 dark:text-[#FAF3E0]">Fluency (0-5)</label>
+        <input type="number" formControlName="fluency" class="input input-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30" placeholder="0-5" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2 dark:text-[#FAF3E0]">Tajweed (0-5)</label>
+        <input type="number" formControlName="tajweed" class="input input-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30" placeholder="0-5" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium mb-2 dark:text-[#FAF3E0]">Accuracy (0-5)</label>
+        <input type="number" formControlName="accuracy" class="input input-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30" placeholder="0-5" />
+      </div>
+    </div>
+    <div class="mb-6">
+      <label class="block text-sm font-medium mb-2 dark:text-[#FAF3E0]">Rubric Notes</label>
+      <textarea formControlName="rubricNotes" rows="3" class="textarea textarea-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30" placeholder="Add notes about the rubric scores..."></textarea>
+    </div>
+
+    <h4 class="font-semibold text-lg mt-6 mb-3 dark:text-[#B7A57A]">Teacher Comments</h4>
+    <textarea formControlName="comment" rows="4" class="textarea textarea-bordered w-full bg-white dark:bg-[#1A365D] dark:text-[#FAF3E0] dark:border-[#B7A57A]/30 mb-6" placeholder="Add feedback for the student..."></textarea>
+
+    <div class="mt-6">
+      <button type="submit" [disabled]="gradeForm.invalid" class="btn btn-primary w-full text-lg py-3 dark:bg-[#B7A57A] dark:text-[#1A365D] dark:hover:bg-[#B7A57A]/90 dark:border-[#B7A57A]">
+        💾 Save Grade
+      </button>
+    </div>
+  </form>
+</div>

@@ -38,6 +38,7 @@ import {
 
 import { UserInfo } from '@angular/fire/auth';
 import { Auth, User, IdTokenResult } from '@angular/fire/auth';
+import { Firestore, doc, getDoc } from '@angular/fire/firestore';
 
 export interface AppUser {
   id: string;
@@ -53,6 +54,7 @@ export interface AppUser {
   lastSignInAt?: Date;
   preferences?: UserPreferences;
   isAdmin: boolean;
+  role?: 'teacher' | 'student' | 'parent'; // Add role property
   token?: string;
   isPremium: boolean;
   features?: any;
@@ -200,7 +202,8 @@ export class FirebaseAuthService {
     private ngZone: NgZone,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private injector: Injector // Inject Injector
+    private injector: Injector, // Inject Injector
+    private firestore: Firestore // Inject Firestore
   ) {
     // ////console.log('[AuthService] Constructor called'); // Log: Constructor start
     // Start initialization immediately
@@ -233,6 +236,9 @@ export class FirebaseAuthService {
 
     const subEndClaim = claims['subscriptionEnd'];
     const subscriptionEnd = typeof subEndClaim === 'number' ? subEndClaim : null;
+    
+    const roleClaim = claims['role'] as string; // Assert as string
+    const role = ['teacher', 'student', 'parent'].includes(roleClaim) ? (roleClaim as 'teacher' | 'student' | 'parent') : undefined;
 
     return {
       id: firebaseUser.uid,
@@ -246,6 +252,7 @@ export class FirebaseAuthService {
       createdAt: new Date(firebaseUser.metadata.creationTime || Date.now()),
       lastSignInAt: firebaseUser.metadata.lastSignInTime ? new Date(firebaseUser.metadata.lastSignInTime) : undefined,
       isAdmin: claims['admin'] === true,
+      role: role, // Map role from claims
       isPremium: isPremium, // Use the updated calculation
       token: idTokenResult?.token || '',
       subscriptionEnd: subscriptionEnd,
@@ -2275,5 +2282,27 @@ export class FirebaseAuthService {
     this.ngZone.run(() => {
       // this.router.navigate(['/auth/login']); // This was stripping returnUrl
     });
+  }
+  
+  /**
+   * Get user data by ID from Firestore
+   */
+  async getUserById(userId: string): Promise<{ displayName?: string; email?: string } | null> {
+    try {
+      const userDocRef = doc(this.firestore, 'users', userId);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        return {
+          displayName: userData['displayName'] || userData['name'],
+          email: userData['email']
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user by ID:', error);
+      return null;
+    }
   }
 } 

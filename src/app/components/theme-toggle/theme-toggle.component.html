@@ -1,8 +1,9 @@
-<button mat-fab 
+<button mat-icon-button 
         [color]="currentTheme === 'dark' ? 'accent' : 'primary'" 
         (click)="cycleTheme()"
         [matTooltip]="getTooltip()"
-        matTooltipPosition="above"
-        aria-label="Toggle theme">
+        matTooltipPosition="below"
+        aria-label="Toggle theme"
+        class="theme-toggle-btn">
   <mat-icon>{{ getIcon() }}</mat-icon>
 </button>

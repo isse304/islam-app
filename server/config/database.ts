@@ -30,8 +30,8 @@ const configs: Record<string, DatabaseConfig> = {
             family: 4,
             retryWrites: true,
             retryReads: true,
-            maxPoolSize: 10,
-            minPoolSize: 5,
+            maxPoolSize: 5,  // Reduced from 10 for local development
+            minPoolSize: 2,  // Reduced from 5 for local development
             keepAlive: true,
             keepAliveInitialDelay: 300000,
             autoCreate: true,
@@ -47,8 +47,8 @@ const configs: Record<string, DatabaseConfig> = {
             family: 4,
             retryWrites: true,
             w: 'majority',
-            maxPoolSize: 50,
-            minPoolSize: 10,
+            maxPoolSize: 10,  // Reduced from 50 to prevent memory exhaustion
+            minPoolSize: 2,    // Reduced from 10 to save memory
             maxIdleTimeMS: 10000,
             compressors: ['zlib'],
             keepAlive: true,

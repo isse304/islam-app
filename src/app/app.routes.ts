@@ -4,6 +4,7 @@ import { authGuardFn } from './guards/auth.guard';
 import { premiumGuard } from './guards/premium.guard';
 import { NoAuthGuard } from './guards/no-auth.guard';
 import { premiumRedirectGuard } from './guards/premium-redirect.guard';
+import { assignmentGuard } from './guards/assignment.guard';
 
 
 export const routes: Routes = [
@@ -25,6 +26,24 @@ export const routes: Routes = [
     loadChildren: () => import('./auth/auth.module').then(m => m.AuthModule),
   },
 
+  // Classroom routes
+  {
+    path: '',
+    loadChildren: () => import('./features/classroom/classroom.routes').then(m => m.CLASSROOM_ROUTES),
+  },
+
+  // Reports routes
+  {
+    path: '',
+    loadChildren: () => import('./features/reports/reports.routes').then(m => m.REPORTS_ROUTES),
+  },
+
+  // Parent routes
+  {
+    path: '',
+    loadChildren: () => import('./features/parent/parent.routes').then(m => m.PARENT_ROUTES),
+  },
+
   // Main application routes - accessible only when logged in
   {
     path: 'home',
@@ -35,6 +54,11 @@ export const routes: Routes = [
     path: 'quran',
     loadComponent: () => import('./components/quran/quran-reader/quran-reader.component').then(m => m.QuranReaderComponent),
     canActivate: [authGuardFn],
+  },
+  {
+    path: 'reader',
+    loadComponent: () => import('./components/quran/quran-reader/quran-reader.component').then(m => m.QuranReaderComponent),
+    canActivate: [authGuardFn, assignmentGuard],
   },
   {
     path: 'learn',

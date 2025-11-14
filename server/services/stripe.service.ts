@@ -214,19 +214,23 @@ export class StripeService {
 
         let event: Stripe.Event;
         try {
+            console.log('[Webhook Handler] ========================================');
             console.log('[Webhook Handler] Attempting to construct event...');
             console.log(`[Webhook Handler] Using Webhook Secret (Prefix): ${this.webhookSecret?.substring(0, 8)}...`);
-            // console.log('[Webhook Handler] Raw Body (UTF8 String):', rawBody.toString('utf8')); // Keep for debugging if needed
+            console.log('[Webhook Handler] Raw Body Length:', rawBody.length);
             // Use the rawBody from req.body directly
             event = this.stripe.webhooks.constructEvent(rawBody, sig, this.webhookSecret);
-            console.log(`[Webhook Handler] Event constructed successfully. Type: ${event.type}, ID: ${event.id}`);
+            console.log(`[Webhook Handler] ✅ Event constructed successfully`);
+            console.log(`[Webhook Handler] Event Type: ${event.type}`);
+            console.log(`[Webhook Handler] Event ID: ${event.id}`);
+            console.log('[Webhook Handler] ========================================');
         } catch (err: any) {
-            console.error('[Webhook Handler] Signature verification failed:', err.message);
+            console.error('[Webhook Handler] ❌ Signature verification failed');
+            console.error('[Webhook Handler] Error:', err.message);
             console.error('[Webhook Handler] Webhook Secret Used (Prefix):', this.webhookSecret?.substring(0, 8));
             console.error('[Webhook Handler] Signature Header Received:', sig);
             console.error('[Webhook Handler] Raw Body Length:', rawBody.length);
-            // Avoid logging full raw body in production
-            // console.error('[Webhook Handler] Raw Body (shortened):\', rawBody.toString(\'utf8\').substring(0, 200)); 
+            console.error('[Webhook Handler] ========================================');
             res.status(400).send(`Webhook Error: ${err.message}`);
             return;
         }
@@ -247,19 +251,28 @@ export class StripeService {
                 case 'checkout.session.completed':
                     const session = event.data.object as Stripe.Checkout.Session;
                     userId = session.client_reference_id ?? session.metadata?.userId;
-                    // console.log(`[Webhook ${event.type}] Session ID: ${session.id}, User ID (from client_ref/metadata): ${userId}`);
+                    console.log(`[Webhook ${event.type}] 📝 Session ID: ${session.id}`);
+                    console.log(`[Webhook ${event.type}] 👤 User ID: ${userId}`);
+                    console.log(`[Webhook ${event.type}] 💳 Subscription ID: ${session.subscription}`);
                     if (!userId) {
-                        console.error('[Webhook] Error: userId missing in session client_reference_id and metadata', session.id);
+                        console.error(`[Webhook ${event.type}] ❌ Error: userId missing in session ${session.id}`);
                         // Send response directly from here
                         if (!res.headersSent) res.status(400).send('Webhook Error: Missing userId');
                         return;
                     }
                     if (session.subscription) {
                         const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+                        console.log(`[Webhook ${event.type}] 📥 Retrieving subscription details...`);
                         const subscriptionDetails = await this.stripe.subscriptions.retrieve(subscriptionId);
+                        console.log(`[Webhook ${event.type}] ✅ Subscription retrieved: ${subscriptionDetails.status}`);
+                        
+                        console.log(`[Webhook ${event.type}] 💾 Updating database...`);
                         userSub = await this.updateUserSubscriptionStatus(userId, subscriptionDetails);
                         if (userSub) {
+                            console.log(`[Webhook ${event.type}] ✅ Database updated: ${userSub.status}`);
+                            console.log(`[Webhook ${event.type}] 🔐 Updating Firebase claims...`);
                             await this.updateFirebaseClaims(userId, userSub.status, userSub.currentPeriodEnd ?? null);
+                            console.log(`[Webhook ${event.type}] ✅ Firebase claims updated`);
                             // Update UserUsage aiRequestLimit
                             try {
                                 const premiumLimit = parseInt(process.env['DAILY_USER_LIMIT'] || '30');
@@ -292,11 +305,13 @@ export class StripeService {
                                 }
                             }
                         } else {
-                            console.error(`[Webhook ${event.type}] Failed to update DB/claims after checkout for user ${userId}`);
+                            console.error(`[Webhook ${event.type}] ❌ Failed to update DB/claims after checkout for user ${userId}`);
+                            console.error(`[Webhook ${event.type}] This is critical - subscription payment succeeded but status not updated!`);
                         }
                     } else {
-                         console.warn(`[Webhook ${event.type}] Checkout session ${session.id} completed, but no subscription ID found.`);
+                         console.warn(`[Webhook ${event.type}] ⚠️  Checkout session ${session.id} completed, but no subscription ID found.`);
                     }
+                    console.log(`[Webhook ${event.type}] ✅ Processing complete`);
                     break;
 
                 case 'customer.subscription.created':
@@ -430,22 +445,38 @@ export class StripeService {
 
     private async updateFirebaseClaims(userId: string, status: string, periodEnd: Date | null): Promise<void> {
         const isActive = status === 'active' || status === 'trialing';
-        const claims = {
-            subscriptionStatus: status,
-            premium: isActive,
-            // Store period end only if the subscription is active/trialing, otherwise null
-            subscriptionEnd: isActive && periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null
-        };
-        // console.log(`[Claims] Preparing to set claims for user ${userId}:`, claims);
+        
+        console.log(`[Claims] 📝 Preparing to update claims for user ${userId}`);
+        
         try {
-            await auth.setCustomUserClaims(userId, claims);
-            // console.log(`[Claims] Successfully updated Firebase claims for user ${userId}.`);
-        } catch (error) {
-            // ADD LOG HERE
-            // console.error(`[Claims] Error during setCustomUserClaims for user ${userId}. Status trying to set was: ${status}`, error);
-            // console.error(`[Claims] Error setting custom claims for user ${userId}:`, error);
-            // Consider re-throwing or logging to a monitoring service
-            throw error; // Re-throw to see if this is the source
+            // Get existing claims first to preserve role and other custom claims
+            const userRecord = await auth.getUser(userId);
+            const existingClaims = userRecord.customClaims || {};
+            
+            console.log(`[Claims] 📋 Existing claims:`, JSON.stringify(existingClaims, null, 2));
+            
+            // Merge subscription claims with existing claims
+            const updatedClaims = {
+                ...existingClaims, // Preserve existing claims (like role, admin, etc.)
+                subscriptionStatus: status,
+                premium: isActive,
+                subscriptionEnd: isActive && periodEnd ? Math.floor(periodEnd.getTime() / 1000) : null
+            };
+            
+            console.log(`[Claims] 🔄 Updated claims:`, JSON.stringify(updatedClaims, null, 2));
+            
+            await auth.setCustomUserClaims(userId, updatedClaims);
+            console.log(`[Claims] ✅ Successfully updated Firebase claims for user ${userId}`);
+            console.log(`[Claims] Premium: ${updatedClaims.premium}, Status: ${updatedClaims.subscriptionStatus}`);
+            if (existingClaims.role) {
+                console.log(`[Claims] ✅ Role preserved: ${existingClaims.role}`);
+            }
+        } catch (error: any) {
+            console.error(`[Claims] ❌ Error during setCustomUserClaims for user ${userId}`);
+            console.error(`[Claims] Status trying to set: ${status}`);
+            console.error(`[Claims] Error details:`, error.message);
+            console.error(`[Claims] Stack:`, error.stack);
+            throw error;
         }
     }
 
@@ -456,28 +487,32 @@ export class StripeService {
         const updateData = {
             stripeCustomerId: typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id,
             stripeSubscriptionId: subscription.id,
-            status: currentStatus, // Use variable
-            plan: isPremiumActive ? 'premium' : 'free', // <-- Set plan based on status
+            status: currentStatus,
+            plan: isPremiumActive ? 'premium' : 'free',
             planId: subscription.items.data[0]?.price.id,
             currentPeriodEnd: subscription.current_period_end ? new Date(subscription.current_period_end * 1000) : null,
             cancelAtPeriodEnd: subscription.cancel_at_period_end,
             updatedAt: new Date()
         };
-        // console.log(`[DB Update] Preparing to update/insert UserSubscription for user ${userId} with data:`, updateData);
+        
+        console.log(`[DB Update] 📝 Preparing to update UserSubscription for user ${userId}`);
+        console.log(`[DB Update] Data:`, JSON.stringify(updateData, null, 2));
+        
         try {
             const userSub = await UserSubscription.findOneAndUpdate(
                 { userId },
                 updateData,
                 { upsert: true, new: true, setDefaultsOnInsert: true }
             );
-            // console.log(`[DB Update] Successfully upserted UserSubscription for user ${userId}, new status: ${userSub.status}, Doc ID: ${userSub._id}`);
+            console.log(`[DB Update] ✅ Successfully upserted UserSubscription for user ${userId}`);
+            console.log(`[DB Update] Status: ${userSub.status}, Plan: ${userSub.plan}, Doc ID: ${userSub._id}`);
             return userSub;
-        } catch (error) {
-             // ADD LOG HERE
-            // console.error(`[DB Update] Error during UserSubscription.findOneAndUpdate for user ${userId}. Status trying to set was: ${updateData.status}`, error);
-            // console.error(`[DB Update] Error updating/inserting UserSubscription for ${userId}:`, error);
-            return null; // Return null on failure
-            // throw error; // Optionally re-throw to halt execution here if this is the cause
+        } catch (error: any) {
+            console.error(`[DB Update] ❌ Error during UserSubscription.findOneAndUpdate for user ${userId}`);
+            console.error(`[DB Update] Status trying to set: ${updateData.status}`);
+            console.error(`[DB Update] Error details:`, error.message);
+            console.error(`[DB Update] Stack:`, error.stack);
+            return null;
         }
     }
 

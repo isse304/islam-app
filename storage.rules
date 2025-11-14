@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// Firebase Storage Security Rules for Nura AI
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is a teacher
+    function isTeacher() {
+      return isAuthenticated() && request.auth.token.role == 'teacher';
+    }
+    
+    // Helper function to check if user is a student
+    function isStudent() {
+      return isAuthenticated() && request.auth.token.role == 'student';
+    }
+    
+    // Helper function to check if user owns the file
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Assignment submission audio files
+    match /assignments/{assignmentId}/submissions/{filename} {
+      // Allow students to upload their own recordings
+      // Filename format: {studentId}_{timestamp}.{extension}
+      allow write: if isAuthenticated() 
+                   && isStudent()
+                   && filename.matches('.*' + request.auth.uid + '_.*');
+      
+      // Allow teachers to read all submissions
+      // Allow students to read only their own submissions
+      allow read: if isAuthenticated() 
+                  && (isTeacher() || filename.matches('.*' + request.auth.uid + '_.*'));
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

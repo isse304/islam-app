@@ -1,0 +1,46 @@
+<div class="assignment-list" [class]="categoryClass" *ngIf="assignments.length > 0">
+  <!-- Header -->
+  <div class="list-header" [class.collapsible]="collapsible" (click)="collapsible && toggleCollapse()">
+    <div class="header-left">
+      <span class="category-icon">{{ categoryIcon }}</span>
+      <h2 class="list-title">{{ title }}</h2>
+      <span class="count-badge" *ngIf="showCount">({{ assignments.length }})</span>
+    </div>
+    
+    <div class="header-right">
+      <button class="view-all-btn" *ngIf="!collapsible" (click)="viewAllClicked()">
+        View All →
+      </button>
+      <button class="collapse-btn" *ngIf="collapsible">
+        <span *ngIf="isCollapsed">▼</span>
+        <span *ngIf="!isCollapsed">▲</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Assignment Cards -->
+  <div class="assignments-container" *ngIf="!isCollapsed">
+    <app-assignment-card
+      *ngFor="let assignment of visibleAssignments"
+      [assignment]="assignment">
+    </app-assignment-card>
+
+    <!-- Show More Button -->
+    <div class="show-more-section" *ngIf="hiddenCount > 0">
+      <button class="show-more-btn" (click)="toggleShowAll()">
+        <span *ngIf="!showAll">Show {{ hiddenCount }} More ▼</span>
+        <span *ngIf="showAll">Show Less ▲</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Empty State (when collapsed) -->
+  <div class="collapsed-summary" *ngIf="isCollapsed">
+    <p>{{ assignments.length }} assignment{{ assignments.length === 1 ? '' : 's' }}</p>
+  </div>
+</div>
+
+
+
+
+

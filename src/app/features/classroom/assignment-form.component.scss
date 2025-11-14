@@ -1,0 +1,137 @@
+// Islamic Theme Variables
+$gold: #B7A57A;
+$gold-light: #D4C5A0;
+$gold-dark: #8B7355;
+$dark-blue: #1A365D;
+$cream: #FAF3E0;
+
+.font-arabic {
+  font-family: 'Traditional Arabic', 'Arial', sans-serif;
+  font-size: 1.1em;
+}
+
+/* Form Group Styling */
+.form-group {
+  position: relative;
+  
+  label {
+    cursor: pointer;
+    user-select: none;
+  }
+
+  input, textarea {
+    &:focus {
+      outline: none;
+    }
+  }
+}
+
+/* Custom scrollbar for dropdown */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba($gold, 0.05);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, $gold, $gold-dark);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: linear-gradient(180deg, $gold-dark, $gold);
+  }
+}
+
+/* Surah Dropdown Animation */
+.surah-dropdown {
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade In Animation for Selected Surah */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* Input Focus Glow Effect */
+input:focus, textarea:focus {
+  box-shadow: 0 0 0 4px rgba($gold, 0.1);
+}
+
+/* Button Hover Effects */
+button {
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+/* Dark Mode Adjustments */
+:host-context(.dark) {
+  input, textarea {
+    color-scheme: dark;
+  }
+}
+
+/* Number Input Styling */
+input[type="number"] {
+  -moz-appearance: textfield;
+  
+  &::-webkit-outer-spin-button,
+  &::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+/* Date Input Styling */
+input[type="date"] {
+  &::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+    filter: opacity(0.6);
+    transition: filter 0.3s ease;
+    
+    &:hover {
+      filter: opacity(1);
+    }
+  }
+}
+
+:host-context(.dark) input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.6);
+  
+  &:hover {
+    filter: invert(1) opacity(1);
+  }
+}
+
+/* Smooth Transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+}
+
+

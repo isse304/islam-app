@@ -1,0 +1,103 @@
+<div class="assignment-card" [class]="urgencyClass" [class.compact]="compact">
+  <!-- Header -->
+  <div class="card-header">
+    <div class="title-row">
+      <span class="type-icon">{{ typeIcon }}</span>
+      <h3 class="assignment-title" (click)="viewDetails()">{{ assignment.title }}</h3>
+      <span class="status-badge" *ngIf="assignment.status !== 'not_started'">
+        {{ statusIcon }} {{ statusText }}
+      </span>
+    </div>
+    <div class="meta-row">
+      <span class="class-name" [style.color]="assignment.classColor">
+        {{ assignment.className }}
+      </span>
+      <span class="separator">•</span>
+      <span class="assigned-date">Assigned {{ assignment.assignedDate | date:'MMM d' }}</span>
+    </div>
+  </div>
+
+  <!-- Description -->
+  <p class="assignment-description" *ngIf="!compact">
+    {{ assignment.description }}
+  </p>
+
+  <!-- Progress Bar (if in progress) -->
+  <div class="progress-section" *ngIf="assignment.progress !== undefined && assignment.progress > 0">
+    <div class="progress-bar">
+      <div class="progress-fill" [style.width.%]="assignment.progress"></div>
+    </div>
+    <span class="progress-text">{{ assignment.progress }}% complete</span>
+  </div>
+
+  <!-- Footer -->
+  <div class="card-footer">
+    <div class="info-row">
+      <!-- Due Date/Time -->
+      <span class="due-time" [class.urgent]="assignment.status === 'overdue'">
+        📍 {{ timeUntilDue }}
+      </span>
+
+      <!-- Points -->
+      <span class="points" *ngIf="assignment.earnedPoints !== undefined">
+        ⭐ {{ assignment.earnedPoints }}/{{ assignment.totalPoints }} points
+      </span>
+      <span class="points" *ngIf="assignment.earnedPoints === undefined">
+        ⭐ {{ assignment.totalPoints }} points
+      </span>
+
+      <!-- Estimated Time -->
+      <span class="estimated-time" *ngIf="assignment.estimatedTime">
+        {{ estimatedTimeText }}
+      </span>
+
+      <!-- Attachments Count -->
+      <span class="attachments" *ngIf="assignment.attachments && assignment.attachments.length > 0">
+        📎 {{ assignment.attachments.length }}
+      </span>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions-row">
+      <button 
+        class="btn btn-secondary" 
+        (click)="viewDetails()"
+        *ngIf="assignment.status !== 'overdue'">
+        View Details
+      </button>
+
+      <button 
+        class="btn btn-primary" 
+        (click)="startAssignment()"
+        *ngIf="assignment.status === 'not_started'">
+        Start Assignment
+      </button>
+
+      <button 
+        class="btn btn-primary" 
+        (click)="continueAssignment()"
+        *ngIf="assignment.status === 'in_progress'">
+        Continue
+      </button>
+
+      <button 
+        class="btn btn-success" 
+        (click)="viewDetails()"
+        *ngIf="assignment.status === 'submitted' || assignment.status === 'graded'">
+        View Submission
+      </button>
+
+      <button 
+        class="btn btn-danger" 
+        (click)="viewDetails()"
+        *ngIf="assignment.status === 'overdue'">
+        Submit Late
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+
+

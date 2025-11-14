@@ -1,0 +1,273 @@
+<div class="relative p-8 bg-gradient-to-br from-[#FAF3E0] to-white dark:from-[#1A365D] dark:to-slate-900 rounded-2xl shadow-2xl border-2 border-[#B7A57A]/30 overflow-hidden">
+  <!-- Islamic Pattern Overlay -->
+  <div class="absolute inset-0 opacity-5 dark:opacity-10 bg-repeat pointer-events-none" style="background-image: url('/islamic-pattern.png'); background-size: 100px;"></div>
+  
+  <!-- Gradient Border Top -->
+  <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#B7A57A] via-[#D4AF37] to-[#B7A57A]"></div>
+  
+  <!-- Header -->
+  <div class="relative mb-6 pb-4 border-b-2 border-[#B7A57A]/20">
+    <h4 class="text-2xl font-bold text-[#1A365D] dark:text-[#FAF3E0] flex items-center gap-3">
+      <span class="text-3xl">📝</span>
+      <span>New Assignment for <span class="text-[#B7A57A]">{{ targetName }}</span></span>
+    </h4>
+    <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">Create a new Quran recitation assignment</p>
+  </div>
+  
+  <form [formGroup]="assignmentForm" (ngSubmit)="onSubmit()" class="relative space-y-6">
+    <!-- Surah Selection with Search -->
+    <div class="relative form-group">
+      <label class="block mb-2">
+        <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+          </svg>
+          Select Surah
+        </span>
+      </label>
+      
+      <!-- Search Input -->
+      <div class="relative">
+        <div class="absolute left-4 top-1/2 transform -translate-y-1/2 text-[#B7A57A]">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        <input
+          formControlName="surahSearch"
+          type="text"
+          placeholder="Search by name, number, or translation..."
+          class="w-full pl-12 pr-12 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+                 bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+                 focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500
+                 shadow-sm hover:shadow-md"
+          (focus)="showSurahDropdown = true"
+          (input)="onSurahSearchChange($event)"
+        />
+        <button
+          type="button"
+          class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 rounded-lg
+                 text-[#B7A57A] hover:bg-[#B7A57A]/10 transition-all duration-200"
+          (click)="toggleSurahDropdown()"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      </div>
+
+      <!-- Dropdown List -->
+      <div
+        *ngIf="showSurahDropdown"
+        class="absolute z-50 w-full mt-3 bg-white dark:bg-slate-800 border-2 border-[#B7A57A]/30 
+               rounded-xl shadow-2xl max-h-96 overflow-hidden surah-dropdown"
+      >
+        <div class="max-h-96 overflow-y-auto custom-scrollbar">
+          <div class="p-2">
+            <div
+              *ngFor="let surah of filteredSurahs"
+              class="p-4 hover:bg-[#B7A57A]/10 dark:hover:bg-[#B7A57A]/20 
+                     cursor-pointer rounded-lg transition-all duration-200 
+                     border-b border-[#B7A57A]/10 last:border-0 group"
+              (click)="selectSurah(surah)"
+            >
+              <div class="flex justify-between items-center">
+                <div class="flex-1">
+                  <span class="font-bold text-[#B7A57A]">{{ surah.number }}.</span>
+                  <span class="font-semibold ml-2 text-[#1A365D] dark:text-[#FAF3E0]">{{ surah.transliteration }}</span>
+                  <span class="text-sm text-gray-600 dark:text-gray-400 ml-2">({{ surah.translation }})</span>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-xl font-arabic text-[#1A365D] dark:text-[#FAF3E0]">{{ surah.name }}</span>
+                  <span class="px-2 py-1 rounded-lg bg-[#B7A57A]/10 dark:bg-[#B7A57A]/20 
+                               text-[#B7A57A] text-xs font-bold">
+                    {{ surah.verses }} verses
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div *ngIf="filteredSurahs.length === 0" class="p-8 text-center">
+              <div class="text-gray-400 dark:text-gray-500 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-3 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <p class="text-gray-600 dark:text-gray-400">No surahs found matching "{{ surahSearchTerm }}"</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Selected Surah Display -->
+      <div *ngIf="selectedSurah" 
+           class="mt-3 p-5 bg-gradient-to-r from-[#B7A57A]/20 to-[#D4AF37]/10 
+                  dark:from-[#B7A57A]/10 dark:to-[#D4AF37]/5
+                  rounded-xl border-2 border-[#B7A57A]/40 shadow-lg
+                  animate-fadeIn">
+        <div class="flex justify-between items-center">
+          <div>
+            <span class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-lg">
+              {{ selectedSurah.number }}. {{ selectedSurah.transliteration }}
+            </span>
+            <span class="text-sm text-[#B7A57A] ml-2 font-semibold">({{ selectedSurah.translation }})</span>
+          </div>
+          <span class="text-2xl font-arabic text-[#1A365D] dark:text-[#FAF3E0]">{{ selectedSurah.name }}</span>
+        </div>
+        <div class="flex items-center gap-2 mt-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <p class="text-sm text-gray-700 dark:text-gray-300 font-medium">Total verses: {{ selectedSurah.verses }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Title -->
+    <div class="form-group">
+      <label class="block mb-2">
+        <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+          </svg>
+          Assignment Title
+        </span>
+      </label>
+      <input
+        formControlName="title"
+        type="text"
+        placeholder="e.g., Surah Al-Fatiha Practice"
+        class="w-full px-4 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+               bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+               focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+               transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500
+               shadow-sm hover:shadow-md"
+      />
+    </div>
+
+    <!-- Verse Range -->
+    <div class="grid grid-cols-2 gap-4">
+      <div class="form-group">
+        <label class="block mb-2">
+          <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M7 11l5-5m0 0l5 5m-5-5v12" />
+            </svg>
+            Start Verse
+          </span>
+        </label>
+        <input
+          formControlName="startAyah"
+          type="number"
+          min="1"
+          [max]="maxAyah"
+          placeholder="1"
+          class="w-full px-4 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+                 bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+                 focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500
+                 shadow-sm hover:shadow-md"
+        />
+      </div>
+      <div class="form-group">
+        <label class="block mb-2">
+          <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M17 13l-5 5m0 0l-5-5m5 5V6" />
+            </svg>
+            End Verse
+          </span>
+        </label>
+        <input
+          formControlName="endAyah"
+          type="number"
+          min="1"
+          [max]="maxAyah"
+          [placeholder]="maxAyah.toString()"
+          class="w-full px-4 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+                 bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+                 focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                 transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500
+                 shadow-sm hover:shadow-md"
+        />
+      </div>
+    </div>
+
+    <!-- Due Date -->
+    <div class="form-group">
+      <label class="block mb-2">
+        <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+          Due Date
+        </span>
+      </label>
+      <input
+        formControlName="dueAt"
+        type="date"
+        class="w-full px-4 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+               bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+               focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+               transition-all duration-300
+               shadow-sm hover:shadow-md cursor-pointer"
+      />
+    </div>
+
+    <!-- Notes -->
+    <div class="form-group">
+      <label class="block mb-2">
+        <span class="text-sm font-bold text-[#1A365D] dark:text-[#FAF3E0] uppercase tracking-wide flex items-center gap-2">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-[#B7A57A]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Notes <span class="text-xs text-gray-500 dark:text-gray-400 normal-case">(optional)</span>
+        </span>
+      </label>
+      <textarea
+        formControlName="notes"
+        placeholder="Focus on Tajweed rules for Noon Sakinah..."
+        rows="4"
+        class="w-full px-4 py-3 rounded-xl border-2 border-[#B7A57A]/30 
+               bg-white dark:bg-slate-800 text-gray-900 dark:text-white
+               focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+               transition-all duration-300 placeholder-gray-400 dark:placeholder-gray-500
+               shadow-sm hover:shadow-md resize-none"
+      ></textarea>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="flex gap-4 pt-6 border-t-2 border-[#B7A57A]/20">
+      <button
+        type="submit"
+        [disabled]="assignmentForm.invalid"
+        class="flex-1 px-6 py-4 bg-gradient-to-r from-[#B7A57A] to-[#D4AF37] 
+               hover:from-[#D4AF37] hover:to-[#B7A57A]
+               text-white font-bold rounded-xl shadow-lg hover:shadow-xl 
+               transition-all duration-300 transform hover:scale-[1.02]
+               disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
+               flex items-center justify-center gap-2 text-lg"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Create Assignment
+      </button>
+      <button
+        type="button"
+        (click)="onCancel()"
+        class="px-6 py-4 bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600
+               text-gray-700 dark:text-gray-200 font-bold rounded-xl shadow-md hover:shadow-lg 
+               transition-all duration-300 transform hover:scale-105
+               flex items-center justify-center gap-2"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+        Cancel
+      </button>
+    </div>
+  </form>
+</div>
+
+

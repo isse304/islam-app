@@ -1,0 +1,422 @@
+// Islamic Theme Colors
+$gold: #B7A57A;
+$gold-light: #D4C5A0;
+$gold-dark: #8B7355;
+$dark-blue: #1A365D;
+$dark-blue-light: #243F6B;
+$dark-blue-dark: #0F2847;
+$cream: #FAF3E0;
+$cream-light: #F5EFE0;
+
+// Smooth Transitions
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+// Custom Scrollbar - Islamic Style
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: $cream;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, $gold, $gold-dark);
+  border-radius: 10px;
+  border: 2px solid $cream;
+  
+  &:hover {
+    background: linear-gradient(to bottom, $gold-light, $gold);
+  }
+}
+
+// Dark mode scrollbar
+.dark {
+  ::-webkit-scrollbar-track {
+    background: $dark-blue-dark;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    border-color: $dark-blue;
+  }
+}
+
+// Islamic Pattern Overlay Animation
+@keyframes patternShift {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 400px 400px;
+  }
+}
+
+.islamic-pattern-animated {
+  animation: patternShift 60s linear infinite;
+}
+
+// Decorative Islamic Corner Elements
+.islamic-corner {
+  position: relative;
+  
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    opacity: 0.1;
+  }
+  
+  &::before {
+    top: -10px;
+    left: -10px;
+    background: radial-gradient(circle at top left, $gold 0%, transparent 70%);
+  }
+  
+  &::after {
+    bottom: -10px;
+    right: -10px;
+    background: radial-gradient(circle at bottom right, $gold 0%, transparent 70%);
+  }
+}
+
+// Card Hover Effects
+.assignment-card {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba($gold, 0.1), transparent);
+    transition: left 0.5s ease-in-out;
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
+}
+
+// Button Glow Effect
+.btn-glow {
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translate(-50%, -50%);
+    transition: width 0.6s, height 0.6s;
+  }
+  
+  &:hover::before {
+    width: 300px;
+    height: 300px;
+  }
+}
+
+// Stat Card Shimmer
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.stat-card-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba($gold-light, 0.1) 50%,
+    transparent 100%
+  );
+  background-size: 1000px 100%;
+  animation: shimmer 3s infinite;
+}
+
+// Islamic Geometric Pattern
+.geometric-pattern {
+  background-image: 
+    repeating-linear-gradient(45deg, transparent, transparent 35px, rgba($gold, 0.05) 35px, rgba($gold, 0.05) 70px),
+    repeating-linear-gradient(-45deg, transparent, transparent 35px, rgba($gold, 0.05) 35px, rgba($gold, 0.05) 70px);
+}
+
+// Floating Animation
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.float-animation {
+  animation: float 3s ease-in-out infinite;
+}
+
+// Gradient Text
+.gradient-text {
+  background: linear-gradient(135deg, $gold 0%, $gold-dark 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// Card Shadow Layers
+.card-shadow-islamic {
+  box-shadow: 
+    0 1px 3px rgba($gold-dark, 0.12),
+    0 1px 2px rgba($gold-dark, 0.24);
+  
+  &:hover {
+    box-shadow: 
+      0 10px 28px rgba($gold-dark, 0.25),
+      0 10px 10px rgba($gold-dark, 0.22);
+  }
+}
+
+// Custom Focus Styles
+input:focus,
+button:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba($gold, 0.2);
+}
+
+// Loading Spinner - Islamic
+@keyframes spin-islamic {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner-islamic {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba($gold, 0.2);
+  border-top-color: $gold;
+  border-radius: 50%;
+  animation: spin-islamic 1s linear infinite;
+}
+
+// Empty State Animation
+@keyframes emptyStatePulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 0.8;
+  }
+}
+
+.empty-state-icon {
+  animation: emptyStatePulse 2s ease-in-out infinite;
+}
+
+// Badge Styles
+.badge-islamic {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 0.75rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  &.urgent {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+    color: white;
+  }
+  
+  &.due-today {
+    background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%);
+    color: white;
+  }
+  
+  &.upcoming {
+    background: linear-gradient(135deg, $gold-light 0%, $gold 100%);
+    color: $dark-blue;
+  }
+  
+  &.completed {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+  }
+}
+
+// Responsive Typography
+@media (max-width: 640px) {
+  h1 {
+    font-size: 2rem !important;
+  }
+  
+  h2 {
+    font-size: 1.5rem !important;
+  }
+  
+  h3 {
+    font-size: 1.25rem !important;
+  }
+}
+
+// Print Styles
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  * {
+    background: white !important;
+    color: black !important;
+  }
+}
+
+// Accessibility
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+// High Contrast Mode
+@media (prefers-contrast: high) {
+  * {
+    border-width: 2px !important;
+  }
+  
+  button {
+    font-weight: bold !important;
+  }
+}
+
+// Dark Mode Enhancements
+.dark {
+  // Enhance card borders in dark mode
+  .card-border {
+    border-color: rgba($gold, 0.3) !important;
+  }
+  
+  // Text shadows for readability
+  h1, h2, h3, h4, h5, h6 {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+  
+  // Button enhancements
+  button {
+    &:hover {
+      box-shadow: 0 0 20px rgba($gold, 0.3);
+    }
+  }
+}
+
+// Islamic Decorative Elements
+.islamic-divider {
+  position: relative;
+  text-align: center;
+  margin: 2rem 0;
+  
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    width: 40%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, $gold, transparent);
+  }
+  
+  &::before {
+    left: 0;
+  }
+  
+  &::after {
+    right: 0;
+  }
+  
+  span {
+    background: white;
+    padding: 0 1rem;
+    position: relative;
+    z-index: 1;
+    color: $gold;
+    font-weight: bold;
+  }
+}
+
+// Tooltip Styles
+.tooltip-islamic {
+  position: relative;
+  
+  &:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0.5rem 1rem;
+    background: $dark-blue;
+    color: $cream;
+    border-radius: 0.5rem;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  &:hover::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-top-color: $dark-blue;
+    margin-bottom: -6px;
+  }
+}
+
+// Utility Classes
+.text-shadow-sm {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.text-shadow-md {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.text-shadow-lg {
+  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+}
+
+.backdrop-blur-islamic {
+  backdrop-filter: blur(10px) saturate(180%);
+}
+
+
+

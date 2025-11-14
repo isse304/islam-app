@@ -12,6 +12,8 @@ import quranRouter from './routes/quran';
 import subscriptionRouter from './routes/subscription';
 import tafsirRoutes from './routes/tafsir';
 import contactRouter from './routes/contact';
+import healthRouter from './routes/health';
+import lookupRouter from './routes/lookup';
 import { EmailService } from './services/email.service';
 import { StripeService } from './services/stripe.service';
 import helmet from 'helmet';
@@ -141,13 +143,13 @@ app.use((req, res, next) => {
   next();
 });
 
-// Configure body parsing AFTER webhook route
+// Configure body parsing AFTER webhook route with size limits
 app.use((req, res, next) => {
   if (req.originalUrl === '/api/subscription/webhook') {
     // Skip body parsing for webhook route
     next();
   } else {
-    express.json()(req, res, next);
+    express.json({ limit: '10mb' })(req, res, next);  // Add 10MB limit to prevent memory exhaustion
   }
 });
 
@@ -156,7 +158,7 @@ app.use((req, res, next) => {
     // Skip body parsing for webhook route
     next();
   } else {
-    express.urlencoded({ extended: true })(req, res, next);
+    express.urlencoded({ extended: true, limit: '10mb' })(req, res, next);  // Add 10MB limit
   }
 });
 
@@ -249,6 +251,7 @@ app.use('/api/user', userRouter);
 app.use('/api/usage', usageRouter);
 app.use('/api/quran', quranRouter);
 app.use('/api/subscription', subscriptionRouter);
+app.use('/api/lookup', lookupRouter);
 
 // Log the routes for debugging
 if (process.env.NODE_ENV === 'development') {
@@ -263,6 +266,7 @@ if (process.env.NODE_ENV === 'development') {
 
 app.use('/api/tafsir', tafsirRoutes);
 app.use('/api/contact', contactRouter);
+app.use('/api/health', healthRouter);
 
 // Basic session check endpoint
 app.get('/api/user-session', withAuth(async (req: AuthenticatedRequest, res: Response) => {

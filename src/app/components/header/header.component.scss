@@ -26,6 +26,23 @@
         z-index: 0; // Behind the content
     }
   }
+
+// Notification menu styling
+::ng-deep .notification-menu {
+  .mat-mdc-menu-panel {
+    max-width: 28rem !important;
+    min-width: 20rem !important;
+    border-radius: 12px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+    overflow: hidden !important;
+  }
+  
+  .mat-mdc-menu-content {
+    padding: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: visible !important;
+  }
+}
   
   .nav-container {
     max-width: 1280px;
@@ -174,6 +191,14 @@
     &:hover {
       background-color: #ffca2c;
     }
+  }
+  
+  .mobile-theme-toggle-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 0.5rem 0;
+    margin: 0.5rem 0;
   }
   
   .mobile-auth-container {

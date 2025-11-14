@@ -8,11 +8,13 @@ import { provideAnimations } from '@angular/platform-browser/animations';
 import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
+import { getStorage, provideStorage } from '@angular/fire/storage';
 import { environment } from './environments/environment';
 import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { enableProdMode } from '@angular/core';
 import 'hammerjs'; // Import HammerJS
+import { provideCharts, withDefaultRegisterables } from 'ng2-charts';
 // import { provideServiceWorker } from '@angular/service-worker'; // Import provideServiceWorker
 import { withComponentInputBinding } from '@angular/router'; // Import if using input binding
 import { withInterceptors } from '@angular/common/http'; // Import if using interceptors
@@ -85,8 +87,13 @@ bootstrapApplication(AppComponent, {
     importProvidersFrom(
       provideFirebaseApp(() => initializeApp(environment.firebase)),
       provideAuth(() => getAuth()),
-      provideFirestore(() => getFirestore())
+      provideFirestore(() => {
+        const app = initializeApp(environment.firebase);
+        return getFirestore(app, 'nura');
+      }),
+      provideStorage(() => getStorage())
     ),
+    provideCharts(withDefaultRegisterables()),
     // Provide your services
     FirebaseAuthService,
     PreferencesService,

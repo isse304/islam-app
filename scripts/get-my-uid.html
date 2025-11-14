@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get My UID</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .uid-display {
+            background: #1e1e1e;
+            color: #4CAF50;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 16px;
+            word-break: break-all;
+            margin: 20px 0;
+            display: none;
+        }
+        .uid-display.show {
+            display: block;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+        .error {
+            background: #fee;
+            border-left: 4px solid #f44336;
+            padding: 15px;
+            border-radius: 4px;
+            color: #c62828;
+            margin: 20px 0;
+            display: none;
+        }
+        .error.show {
+            display: block;
+        }
+        .success {
+            background: #e8f5e9;
+            border-left: 4px solid #4CAF50;
+            padding: 15px;
+            border-radius: 4px;
+            color: #2e7d32;
+            margin: 20px 0;
+            display: none;
+        }
+        .success.show {
+            display: block;
+        }
+        .steps {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+        }
+        .steps h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .steps ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .steps li {
+            margin: 8px 0;
+            color: #856404;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            color: #e83e8c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🆔 Get My User ID</h1>
+        <p class="subtitle">Find your Firebase UID to set your role</p>
+
+        <div class="info-box">
+            <strong>📌 What is this?</strong><br>
+            This page will show your Firebase User ID (UID) which you need to set your role as a student, teacher, or parent.
+        </div>
+
+        <button id="getUidBtn" onclick="getMyUID()">Get My UID</button>
+
+        <div id="loading" class="loading" style="display: none;">
+            Loading...
+        </div>
+
+        <div id="error" class="error"></div>
+        <div id="success" class="success"></div>
+
+        <div id="uidDisplay" class="uid-display"></div>
+
+        <div class="steps">
+            <h3>📝 Next Steps:</h3>
+            <ol>
+                <li>Click "Get My UID" above</li>
+                <li>Copy your UID</li>
+                <li>Open terminal in your project folder</li>
+                <li>Run: <code>node scripts/set-student-role.js YOUR_UID student</code></li>
+                <li>Sign out and sign in again in your app</li>
+            </ol>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Your Firebase config - replace with your actual config
+        const firebaseConfig = {
+            apiKey: "AIzaSyDLx7-2vKzlLLdVqBXOIaGOxBmPLLqkJlE",
+            authDomain: "nuraai.firebaseapp.com",
+            projectId: "nuraai",
+            storageBucket: "nuraai.firebasestorage.app",
+            messagingSenderId: "738878720430",
+            appId: "1:738878720430:web:8e6e0f0e0f0e0f0e0f0e0f"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+
+        let currentUser = null;
+
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            if (!user) {
+                showError('❌ You are not signed in. Please sign in to your app first, then come back to this page.');
+                document.getElementById('getUidBtn').disabled = true;
+            } else {
+                document.getElementById('getUidBtn').disabled = false;
+            }
+        });
+
+        window.getMyUID = async function() {
+            const btn = document.getElementById('getUidBtn');
+            const loading = document.getElementById('loading');
+            const uidDisplay = document.getElementById('uidDisplay');
+            
+            if (!currentUser) {
+                showError('❌ You are not signed in. Please sign in to your app first.');
+                return;
+            }
+
+            btn.disabled = true;
+            loading.style.display = 'block';
+            hideMessages();
+
+            try {
+                const uid = currentUser.uid;
+                const email = currentUser.email;
+
+                // Get token to show current claims
+                const tokenResult = await currentUser.getIdTokenResult();
+                const claims = tokenResult.claims;
+
+                uidDisplay.innerHTML = `
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #4CAF50;">✅ Your User ID (UID):</strong><br>
+                        <span style="font-size: 18px; color: #fff;">${uid}</span>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <strong style="color: #2196F3;">📧 Email:</strong><br>
+                        <span style="color: #fff;">${email}</span>
+                    </div>
+                    <div>
+                        <strong style="color: #FF9800;">🔑 Current Role:</strong><br>
+                        <span style="color: #fff;">${claims.role || 'Not set'}</span>
+                    </div>
+                `;
+                uidDisplay.classList.add('show');
+
+                showSuccess(`✅ Found your UID! Copy it from above and use it in the terminal command.`);
+
+                // Copy to clipboard
+                try {
+                    await navigator.clipboard.writeText(uid);
+                    showSuccess(`✅ UID copied to clipboard! Now run: node scripts/set-student-role.js ${uid} student`);
+                } catch (e) {
+                    // Clipboard API might not work in some browsers
+                }
+
+            } catch (error) {
+                showError(`❌ Error: ${error.message}`);
+            } finally {
+                btn.disabled = false;
+                loading.style.display = 'none';
+            }
+        };
+
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+        }
+
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.classList.add('show');
+        }
+
+        function hideMessages() {
+            document.getElementById('error').classList.remove('show');
+            document.getElementById('success').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
+

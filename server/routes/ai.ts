@@ -343,6 +343,18 @@ router.post('/dua/insights', withPremium(async (req: AuthenticatedRequest, res: 
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
 
+    // Set timeout for SSE connections to prevent memory leaks
+    const timeout = setTimeout(() => {
+        console.log('[Dua Insights] Connection timeout - closing SSE');
+        res.end();
+    }, 30000); // 30 second timeout
+
+    // Clean up timeout on connection close
+    req.on('close', () => {
+        clearTimeout(timeout);
+        console.log('[Dua Insights] Client disconnected - cleaning up');
+    });
+
     try {
         if (!req.auth?.uid) {
             res.write('data: ' + JSON.stringify({ 

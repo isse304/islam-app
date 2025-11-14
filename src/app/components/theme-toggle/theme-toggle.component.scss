@@ -1,26 +1,32 @@
 :host {
-  /* Removed fixed positioning styles */
-  /* 
-  position: fixed;
-  top: 2rem; 
-  right: 2rem;
-  */
-  z-index: 999; /* Keep z-index for potential overlap needs */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-button {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+.theme-toggle-btn {
+  transition: all 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.1);
+  }
 }
 
-/* Optional: Adjust colors if default primary/accent aren't suitable */
-/* Example for light mode primary */
-:host:not(.dark) button.mat-primary {
-  background-color: #B7A57A; /* Gold */
+/* Light mode styling */
+:host:not(.dark) .theme-toggle-btn {
   color: white;
+  
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
 }
 
-/* Example for dark mode accent */
-:host(.dark) button.mat-accent {
-  background-color: #FAF3E0; /* Cream */
-  color: #1A365D; /* Dark Blue */
+/* Dark mode styling */
+:host(.dark) .theme-toggle-btn,
+.dark :host .theme-toggle-btn {
+  color: #FAF3E0; /* Cream */
+  
+  &:hover {
+    background-color: rgba(250, 243, 224, 0.1);
+  }
 }

@@ -86,7 +86,7 @@
   <!-- Conditionally show header -->
   <app-header *ngIf="showHeader$ | async"></app-header>
   <router-outlet></router-outlet>
-  <!-- Theme Toggle as Floating Button (Bottom Left) -->
-  <app-theme-toggle *ngIf="showThemeToggle$ | async" 
-                    class="fixed bottom-4 left-4 z-50"></app-theme-toggle>
+  
+  <!-- Toast Notifications -->
+  <app-toast></app-toast>
 </div>

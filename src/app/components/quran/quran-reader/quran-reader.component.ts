@@ -1,11 +1,11 @@
 export {};
 
-import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation, Renderer2, ViewContainerRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml, Title, Meta } from '@angular/platform-browser';
+import { DomSanitizer, SafeHtml, Title, Meta, SafeResourceUrl } from '@angular/platform-browser';
 import { Observable, Subscription, Subject, of, forkJoin, from, throwError, timer, combineLatest, EMPTY, firstValueFrom, BehaviorSubject } from 'rxjs';
 import { catchError, map, switchMap, debounceTime, distinctUntilChanged, finalize, take, filter, tap, retry, takeUntil, mergeMap, shareReplay, timeout } from 'rxjs/operators';
 import { trigger, state, style, transition, animate } from '@angular/animations';
@@ -22,12 +22,12 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatListModule } from '@angular/material/list';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatDialogModule } from '@angular/material/dialog';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { DragDropModule } from '@angular/cdk/drag-drop'; // <-- Import this
 import { MatButtonToggleModule } from '@angular/material/button-toggle'; // <-- ADD THIS LINE
+import { MatBottomSheetModule, MatBottomSheet } from '@angular/material/bottom-sheet';
 
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
 import { TafsirDatabaseService } from '../../../services/tafsir-database.service';
@@ -44,6 +44,11 @@ import { PreferencesService } from '../../../services/preferences.service';
 import { PremiumFeaturesDialogComponent } from '../../dialogs/premium-features-dialog/premium-features-dialog.component';
 // Correct import for SafeHtmlPipe
 import { SafeHtmlPipe } from '../../../pipes/safe-html.pipe';
+import { ProgressService } from 'src/app/services/progress.service';
+import { SubmissionService } from 'src/app/services/submission.service';
+import { AudioRecordingService } from 'src/app/services/audio-recording.service';
+import { AudioUploadService } from 'src/app/services/audio-upload.service';
+import { Firestore } from '@angular/fire/firestore';
 
 interface SearchSuggestion {
   type: 'surah' | 'verse';
@@ -84,6 +89,14 @@ interface TimingData {
   stats: { insertions: number; deletions: number; transpositions: number; };
 }
 
+interface HomeworkBar {
+  visible: boolean;
+  title?: string;
+  notes?: string;
+  dueAt?: Date;
+  minimized?: boolean; // Add minimized state for compact view during playback
+}
+
 @Component({
   selector: 'app-quran-reader',
   standalone: true,
@@ -103,16 +116,25 @@ interface TimingData {
     MatSlideToggleModule,
     MatListModule,
     MatMenuModule,
-    MatTooltipModule,
     MatDialogModule,
+    MatTooltipModule,
+    MatBottomSheetModule,
+    // CDK Modules
+    DragDropModule,
     MatButtonToggleModule, // <-- ADD THIS LINE
     ClickOutsideDirective, // Ensure ClickOutsideDirective is imported
     // +++ ADD SafeHtmlPipe to imports +++
     SafeHtmlPipe,
-    DragDropModule, // <-- Add this to imports
   ],
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss'],
+  animations: [
+    trigger('slideInOut', [
+      state('in', style({ transform: 'translateY(0)' })),
+      state('out', style({ transform: 'translateY(-100%)' })),
+      transition('in => out', animate('300ms ease-in-out'))
+    ])
+  ]
 })
 export class QuranReaderComponent implements OnInit, OnDestroy {
   @Input() selectedSurah: number = 1;
@@ -163,6 +185,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   showWordByWord: boolean = false;
   arabicFont: 'uthmani' | 'naskh' = 'uthmani';
   showingTranslation: boolean = true;
+  showTajweedLegend: boolean = false;
   currentSurahDetails?: Surah;
   isRepeatEnabled: boolean = false;
   currentRecitingVerse: number | null = null;
@@ -312,41 +335,32 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   isMobileHeaderHidden = false; // State for mobile header visibility
   private lastScrollPosition = 0;
 
-  // Method to toggle the minimized state
-  public toggleControlsView(): void {
-    this.isControlsMinimized = !this.isControlsMinimized;
-    // Optionally, add change detection if needed, though usually handled by Angular
-    this.changeDetector.markForCheck();
-  }
+  public isSidebarVisible = false;
+  private resizeObserver!: ResizeObserver;
+  public homeworkBar: HomeworkBar = { visible: false };
+  private assignmentId: string | null = null;
+  public assignmentStartAyah: number | null = null;
+  public assignmentEndAyah: number | null = null;
+  public isPlayingAssignmentAudio: boolean = false;
+  public assignmentAudioPlaylist: number[] = [];
+  
+  // Audio recording state
+  public isRecording: boolean = false;
+  public recordingDuration: number = 0;
+  public recordedAudioBlob: Blob | null = null;
+  public recordedAudioUrl: string | null = null;
+  private recordingTimer: any = null;
+  private recordingAudioElement: HTMLAudioElement | null = null;
+  
+  // Properties that were removed and are causing errors
+  public isSettingsOpen: boolean = false;
+  public isTafsirOpen: boolean = false;
+  user: AppUser | null = null;
+  private destroy$ = new Subject<void>();
+  debouncedScrollHandler!: () => void;
+  @ViewChild('mainControlsElement') mainControlsElement!: ElementRef;
 
-  // +++ ADD Method to toggle the main controls minimized state +++
-  public toggleMainControlsView(source: 'bubble' | 'minimizeButton' | 'backdrop' | 'internalPopupMinimize' = 'minimizeButton'): void {
-    if (source === 'bubble') {
-      // Clicking the bubble (mobile or desktop minimized) ALWAYS opens the popup.
-      this.isPopupOpen = true;
-    } else if (source === 'minimizeButton') {
-      // Clicking minimize in the *in-flow* controls (DESKTOP ONLY)
-      if (!this.isMobile) { // Add safety check
-        this.isMainControlsMinimized = true;
-        this.isPopupOpen = false;
-      }
-    } else if (source === 'internalPopupMinimize' || source === 'backdrop') {
-      // Clicking minimize *inside* the popup, or the backdrop
-      this.isPopupOpen = false;
-      // isMainControlsMinimized remains true
-    }
-
-    this.changeDetector.markForCheck();
-  }
-
-  @ViewChild('mainControlsElement') mainControlsElement!: ElementRef; // Ensure this ViewChild exists
-
-  user: AppUser | null = null; // Add user property
-  private destroy$ = new Subject<void>(); // Add destroy subject
-
-  // Debounce utility function (can be moved to a shared utility service)
-  // Declare it as a class property to be accessible for add/remove listener
-  debouncedScrollHandler: () => void; // Declare the property
+  private firestore = inject(Firestore);
 
   constructor(
     public quranService: QuranService,
@@ -356,7 +370,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     private authService: FirebaseAuthService, // Ensure injected
     private toastService: ToastService,
-    private route: ActivatedRoute,
+    public route: ActivatedRoute,
     private changeDetector: ChangeDetectorRef, // Use changeDetector consistently
     private http: HttpClient,
     private ngZone: NgZone,
@@ -367,7 +381,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private preferencesService: PreferencesService,
     private cdr: ChangeDetectorRef,
     private tafsirDatabaseService: TafsirDatabaseService,
-    private zone: NgZone
+    private zone: NgZone,
+    private renderer: Renderer2,
+    private bottomSheet: MatBottomSheet,
+    private _elementRef: ElementRef,
+    private progressService: ProgressService,
+    private submissionService: SubmissionService,
+    private audioRecordingService: AudioRecordingService,
+    private audioUploadService: AudioUploadService
   ) {
     // Initialize the debounced scroll handler here
     this.debouncedScrollHandler = this.debounce(() => {
@@ -380,6 +401,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
        takeUntil(this.destroy$)
      );
     // Don't set reciters here, wait for ngOnInit
+    this.reciters = []; // Initialize as empty array
   }
 
   // Define the key for saving navigation state
@@ -407,28 +429,21 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   );
 
   async ngOnInit() {
-    // Detect if mobile for layout adjustments
-    this.isMobile = window.innerWidth < 768;
+    // --- Assignment Mode Check (Highest Priority) ---
+    const queryParams = this.route.snapshot.queryParams;
+    if (queryParams['mode'] === 'assignment') {
+      await this.handleAssignmentMode(queryParams);
+      // Restore any saved recording for this assignment
+      await this.restoreRecording();
+      // We might want to skip the rest of the default init
+      // or carefully merge the states. For now, let's assume it takes over.
+      return; 
+    }
 
-    // Set default zoom based on device
-    this.mushafZoom = this.isMobile ? 0.7 : 0.8;
-
-    // --- Add scroll listener for verse detection --- //
-    // Use Angular's NgZone to manage outside of Angular change detection if needed,
-    // but direct addEventListener with debounce is often sufficient.
-    // Bind the debounced function to `this`
-    const debouncedScrollHandler = this.debounce(() => {
-        this.detectAndUpdateCurrentVerse();
+    this.debouncedScrollHandler = this.debounce(() => {
+      this.detectAndUpdateCurrentVerse();
     }, this.SCROLL_DEBOUNCE_TIME);
-
-    // Add the scroll event listener to the window
-    window.addEventListener('scroll', debouncedScrollHandler);
-
-    // Store the debounced function to remove the listener later
-    // Note: If debouncedScrollHandler is created inside ngOnInit, you need to store it properly
-    // or use a consistent debounced function reference for add/remove.
-    // Let's make debouncedScrollHandler a class property and initialize it once.
-    // We'll adjust the definition below.
+    window.addEventListener('scroll', this.debouncedScrollHandler);
 
     this.isLoading = true;
     this.changeDetector.markForCheck();
@@ -555,6 +570,28 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.subscribeToRouteParams();
         // Load secondary data (bookmarks/history) in the background
         this.loadSecondaryData().catch(err => console.warn("Error loading secondary data:", err)); // Keep this one warn
+
+        this.route.queryParamMap.subscribe(async (params) => {
+          if (params.get('mode') === 'assignment') {
+            const surah = Number(params.get('surah') ?? 1);
+            const startAyah = Number(params.get('start') ?? 1);
+            const endAyah = Number(params.get('end') ?? startAyah);
+            this.assignmentId = params.get('aid');
+
+            // This is a simplified flow for assignment mode.
+            // You might need to integrate this more deeply with your existing `ngOnInit` logic.
+            await this.loadSurah(surah).toPromise();
+            // These methods need to be implemented or adapted:
+            // this.highlightRange(startAyah, endAyah); 
+            // this.queueVerseAudioRange(surah, startAyah, endAyah);
+            this.scrollToVerse(startAyah);
+            this.homeworkBar = { visible: true, title: 'Homework Assignment' }; // Fetch title from service
+            return; // Exit to not run the default init logic
+          }
+
+          // Default initialization logic
+          // ... (The rest of your existing ngOnInit)
+        });
 
     } catch (error) {
         //console.log.error('%c[QuranReader ngOnInit] Critical initialization error:', 'color: red; font-weight: bold;', error);
@@ -708,8 +745,26 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           });
           verseElement.classList.add('highlighted-verse');
 
-          // ++ Increased Manual Offset Again ++ 
-          const headerOffset = 500; // Increased offset further. Adjust based on actual header height.
+          // ++ Calculate offset based on homework bar and controls state ++
+          let headerOffset = 150; // Default offset for header
+          
+          // In assignment mode with minimized controls, use minimal offset
+          if (this.homeworkBar.visible && this.isMainControlsMinimized) {
+            headerOffset = 120; // Just enough for the header bar
+            if (this.homeworkBar.minimized) {
+              headerOffset += 80; // Add compact player height
+            } else {
+              headerOffset += 180; // Add full homework bar height
+            }
+          } else if (this.homeworkBar.visible) {
+            // Normal assignment mode with controls visible
+            if (this.homeworkBar.minimized) {
+              headerOffset += 100; // Compact mode height
+            } else {
+              headerOffset += 200; // Full mode height
+            }
+          }
+          
           const elementPosition = verseElement.getBoundingClientRect().top;
           const offsetPosition = elementPosition + window.scrollY - headerOffset;
           window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
@@ -3068,5 +3123,701 @@ getSurahName(surahNumber: string | number): string {
     }
   }
 
+  onVerseFinished(ayahKey: string) {
+    if (!this.assignmentId) return;
+    this.progressService.incrementAttempt(this.assignmentId, ayahKey);
+  }
+  
+  submitAssignment() {
+    if (!this.assignmentId) return;
+    // Implementation for creating a submission document
+    console.log('Submitting assignment:', this.assignmentId);
+    // You'd call a service here to create the submission
+  }
+
+  // Placeholder implementations
+  highlightRange(startAyah: number, endAyah: number) {
+    console.log(`Highlighting verses from ${startAyah} to ${endAyah}`);
+    // Future implementation: Add a CSS class to the verse elements in this range.
+  }
+
+  /**
+   * Queue verse-by-verse audio for a specific ayah range (DON'T auto-play)
+   */
+  private queueAyahRangeAudio(surah: number, startAyah: number, endAyah: number): void {
+    // Just prepare the playlist, don't auto-play
+    this.assignmentAudioPlaylist = [];
+    for (let ayah = startAyah; ayah <= endAyah; ayah++) {
+      this.assignmentAudioPlaylist.push(ayah);
+    }
+  }
+
+  /**
+   * Play all assignment ayahs with auto-scroll
+   */
+  public playAllAssignmentAyahs(): void {
+    if (this.assignmentAudioPlaylist.length === 0) return;
+    
+    // Scroll to the FIRST verse of the assignment at the TOP
+    const firstVerse = this.assignmentAudioPlaylist[0];
+    setTimeout(() => {
+      this.scrollToVerse(firstVerse);
+    }, 100);
+    
+    // Minimize the homework bar to show compact player
+    this.homeworkBar.minimized = true;
+    this.isPlayingAssignmentAudio = true;
+    this.changeDetector.markForCheck();
+    
+    this.playVerseSequence(this.currentSurah, this.assignmentAudioPlaylist, 0, true);
+  }
+
+  /**
+   * Pause assignment audio playback
+   */
+  public pauseAssignmentAudio(): void {
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+    }
+    this.audioPaused = true;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Resume assignment audio playback
+   */
+  public resumeAssignmentAudio(): void {
+    if (this.audioPlayer) {
+      this.audioPlayer.play();
+    }
+    this.audioPaused = false;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Stop assignment audio playback
+   */
+  public stopAssignmentAudio(): void {
+    this.isPlayingAssignmentAudio = false;
+    
+    // Expand the homework bar back to full view
+    this.homeworkBar.minimized = false;
+    
+    // Stop the audio player
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+      this.audioPlayer.currentTime = 0;
+    }
+    
+    // Reset playback state
+    this.isPlaying = false;
+    this.audioPaused = true;
+    this.currentPlayingVerse = null;
+    
+    // Remove currently playing highlight
+    document.querySelectorAll('.currently-playing-verse').forEach(el => {
+      el.classList.remove('currently-playing-verse');
+    });
+    
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Toggle play/pause for assignment audio
+   */
+  public togglePlayPause(): void {
+    if (!this.audioPlayer) {
+      return;
+    }
+
+    if (this.audioPaused) {
+      // Resume playback
+      this.audioPlayer.play().catch((error) => {
+        console.error('Error resuming audio:', error);
+        this.toastService.showError('Failed to resume audio playback');
+      });
+      this.audioPaused = false;
+    } else {
+      // Pause playback
+      this.audioPlayer.pause();
+      this.audioPaused = true;
+    }
+
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Seek to a position in the audio when user clicks on progress bar
+   */
+  public onSeek(event: MouseEvent): void {
+    if (!this.audioPlayer) return;
+
+    const progressBar = event.currentTarget as HTMLElement;
+    const clickPosition = event.offsetX;
+    const progressBarWidth = progressBar.offsetWidth;
+    const seekPercentage = clickPosition / progressBarWidth;
+    const newTime = seekPercentage * this.audioPlayer.duration;
+
+    if (!isNaN(newTime) && isFinite(newTime)) {
+      this.audioPlayer.currentTime = newTime;
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  /**
+   * Toggle homework bar between minimized and expanded
+   */
+  public toggleHomeworkBar(): void {
+    this.homeworkBar.minimized = !this.homeworkBar.minimized;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Play a sequence of verses one after another with auto-scroll
+   */
+  private async playVerseSequence(surah: number, verses: number[], currentIndex: number, autoScroll: boolean = false): Promise<void> {
+    if (currentIndex >= verses.length || !this.isPlayingAssignmentAudio) {
+      // Finished playing all verses or stopped
+      this.isPlayingAssignmentAudio = false;
+      // Expand homework bar back when playback completes
+      this.homeworkBar.minimized = false;
+      this.changeDetector.markForCheck();
+      return;
+    }
+
+    const verseNumber = verses[currentIndex];
+    const verse = this.verses.find(v => v.number === verseNumber);
+    
+    if (!verse) {
+      // Skip to next verse if not found
+      await this.playVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+      return;
+    }
+
+    // Scroll to the verse if auto-scroll is enabled
+    if (autoScroll) {
+      this.scrollToVerse(verseNumber);
+      this.highlightCurrentVerse(verseNumber);
+    }
+
+    // Construct the verse key and audio URL
+    const verseKey = `${surah}:${verseNumber}`;
+    const audioUrl = this.quranService.getVerseAudioUrl(this.selectedReciter.id, verseKey);
+    
+    if (!audioUrl) {
+      console.error(`Could not get audio URL for ${verseKey}`);
+      await this.playVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+      return;
+    }
+
+    // Update the display - Ensure currentSurahDetails is loaded
+    if (!this.currentSurahDetails || this.currentSurahDetails.number !== surah) {
+      this.currentSurahDetails = this.surahs.find(s => s.number === surah);
+    }
+    
+    const surahDetails = this.currentSurahDetails;
+    const surahName = surahDetails?.englishName || `Surah ${surah}`;
+    const arabicName = surahDetails?.name || '';
+    const surahDisplayName = arabicName ? `${surahName} (${arabicName})` : surahName;
+    
+    this.currentlyPlaying = `${surahDisplayName} - Verse ${verseNumber} of ${verses[verses.length - 1]}`;
+    this.currentPlayingVerse = verseNumber;
+
+    try {
+      // Create a new audio element for this verse
+      const audio = new Audio(audioUrl);
+      
+      // Wait for the audio to be loaded
+      await new Promise<void>((resolve, reject) => {
+        audio.addEventListener('loadeddata', () => resolve(), { once: true });
+        audio.addEventListener('error', (e) => reject(e), { once: true });
+        audio.load();
+      });
+
+      // Set up the ended handler before playing
+      const playNextVerse = () => {
+        audio.removeEventListener('ended', playNextVerse);
+        // Play next verse after a small delay
+        setTimeout(() => {
+          this.playVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+        }, 300);
+      };
+      
+      audio.addEventListener('ended', playNextVerse);
+
+      // Play the audio
+      await audio.play();
+      
+      // Store reference to current audio
+      if (this.audioPlayer) {
+        this.audioPlayer.pause();
+      }
+      this.audioPlayer = audio;
+      this.isPlaying = true;
+      this.audioPaused = false;
+      this.setupAudioEvents();
+      this.changeDetector.markForCheck();
+
+    } catch (error: any) {
+      console.error(`Error playing verse ${verseNumber}:`, error);
+      // Continue to next verse even if this one fails
+      await this.playVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+    }
+  }
+
+  /**
+   * Highlight the currently playing verse
+   */
+  private highlightCurrentVerse(verseNumber: number): void {
+    // Remove previous highlight
+    document.querySelectorAll('.currently-playing-verse').forEach(el => {
+      el.classList.remove('currently-playing-verse');
+    });
+
+    // Add highlight to current verse
+    const verseElement = document.getElementById(`verse-${verseNumber}`);
+    if (verseElement) {
+      verseElement.classList.add('currently-playing-verse');
+    }
+  }
+
+  /**
+   * Highlight a range of ayahs visually
+   */
+  private highlightAyahRange(startAyah: number, endAyah: number): void {
+    // Remove any existing highlights
+    document.querySelectorAll('.assignment-highlight').forEach(el => {
+      el.classList.remove('assignment-highlight');
+    });
+
+    // Add highlight class to the range
+    for (let ayah = startAyah; ayah <= endAyah; ayah++) {
+      const verseElement = document.getElementById(`verse-${ayah}`);
+      if (verseElement) {
+        verseElement.classList.add('assignment-highlight');
+      }
+    }
+  }
+
+  /**
+   * Load assignment metadata from Firestore
+   */
+  private async loadAssignmentMeta(aid: string): Promise<void> {
+    try {
+      const { doc, getDoc } = await import('@angular/fire/firestore');
+      const { genericConverter } = await import('../../../models/firestore-converters');
+      type Assignment = import('../../../models/classroom.models').Assignment;
+      
+      const assignmentRef = doc(this.firestore, `assignments/${aid}`).withConverter(
+        genericConverter<Assignment>()
+      );
+      const snap = await getDoc(assignmentRef);
+      
+      if (snap.exists()) {
+        const assignment = snap.data();
+        this.homeworkBar = {
+          visible: true,
+          title: assignment.title || 'Homework',
+          notes: assignment.notes,
+          dueAt: assignment.dueAt?.toDate(),
+          minimized: false, // Start in full mode
+        };
+      }
+    } catch (error) {
+      console.error('Error loading assignment metadata:', error);
+      // Use fallback values
+      this.homeworkBar = {
+        visible: true,
+        title: 'Homework',
+        notes: 'Practice these verses.',
+        minimized: false, // Start in full mode
+      };
+    }
+  }
+
+  /**
+   * Handle assignment mode initialization
+   */
+  private async handleAssignmentMode(params: any): Promise<void> {
+    this.isLoading = true;
+    this.changeDetector.markForCheck();
+
+    const surah = Number(params['surah'] ?? 1);
+    const startAyah = Number(params['start'] ?? 1);
+    const endAyah = Number(params['end'] ?? startAyah);
+    this.assignmentId = params['aid'] ?? null;
+    
+    // Store assignment params for later use
+    this.surahNumber = surah;
+    this.currentSurah = surah;
+    this.selectedSurah = surah;
+    this.assignmentStartAyah = startAyah;
+    this.assignmentEndAyah = endAyah;
+
+    // Set view to translation mode for assignments
+    this.isMushafView = false;
+    
+    // Minimize controls in assignment mode to show verses at the top
+    this.isMainControlsMinimized = true;
+    
+    try {
+      // Load essential data
+      await Promise.all([
+        this.loadSurahs(),
+        this.loadTranslationsData(),
+        this.loadRecitersData(),
+      ]);
+
+      // Load assignment metadata if available
+      if (this.assignmentId) {
+        await this.loadAssignmentMeta(this.assignmentId);
+      } else {
+        // Fallback if no assignment ID
+        this.homeworkBar = {
+          visible: true,
+          title: 'Quran Practice',
+          notes: `Practice Surah ${surah}, Ayah ${startAyah}-${endAyah}`,
+          minimized: false, // Start in full mode
+        };
+      }
+      
+      // Load the specific surah for the assignment
+      await firstValueFrom(this.loadSurah(surah));
+
+      // Filter verses to only show assignment range
+      this.verses = this.verses.filter(v => v.number >= startAyah && v.number <= endAyah);
+
+      // After content is loaded, scroll to the verse and highlight range
+      // Use a longer delay to ensure DOM is fully rendered
+      setTimeout(() => {
+        this.scrollToVerse(startAyah);
+        this.highlightAyahRange(startAyah, endAyah);
+        
+        // Queue up audio for the verse range (but don't auto-play)
+        this.queueAyahRangeAudio(surah, startAyah, endAyah);
+      }, 500);
+
+    } catch (error) {
+      console.error('Error initializing assignment mode:', error);
+      this.toastService.showError('Failed to load assignment. Please try again.');
+    } finally {
+      this.isLoading = false;
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  /**
+   * Mark the current assignment as practiced
+   */
+  public onMarkPracticed(): void {
+    if (!this.assignmentId || !this.surahNumber) return;
+
+    const startAyah = Number(this.route.snapshot.queryParams['start'] ?? 1);
+    const endAyah = Number(this.route.snapshot.queryParams['end'] ?? startAyah);
+
+    // Mark each ayah in the range as practiced
+    for (let ayah = startAyah; ayah <= endAyah; ayah++) {
+      const ayahKey = `${this.surahNumber}:${ayah}`;
+      this.progressService.recordProgress(this.assignmentId, ayahKey).catch((err: any) => {
+        console.error(`Error marking ${ayahKey} as practiced:`, err);
+      });
+    }
+
+    this.toastService.success('✓ Marked as practiced!');
+  }
+
+  /**
+   * Submit the current assignment
+   */
+  public async onSubmitAssignment(): Promise<void> {
+    if (!this.assignmentId) {
+      this.toastService.showError('No assignment ID found.');
+      return;
+    }
+
+    try {
+      let practiceData: any = null;
+      let audioBlobPath: string | undefined;
+
+      // Get practice progress data
+      if (this.assignmentStartAyah && this.assignmentEndAyah) {
+        const progress = await this.progressService.getAggregatedProgress(this.assignmentId);
+        if (progress) {
+          // Calculate total verses in assignment
+          const totalVerses = this.assignmentEndAyah - this.assignmentStartAyah + 1;
+          practiceData = {
+            ...progress,
+            totalVerses,
+            completionPercentage: (progress.versesCompleted / totalVerses) * 100,
+          };
+        }
+      }
+
+      // Upload audio recording if exists
+      if (this.recordedAudioBlob) {
+        this.toastService.showInfo('Uploading audio recording...');
+        const user = await this.authService.getCurrentUser();
+        if (user) {
+          audioBlobPath = await this.audioUploadService.uploadRecording(
+            this.recordedAudioBlob,
+            this.assignmentId,
+            user.uid
+          );
+        }
+      }
+
+      // Submit with practice data and audio path
+      await this.submissionService.submitAssignment(
+        this.assignmentId,
+        practiceData,
+        audioBlobPath
+      );
+      
+      this.toastService.success('✓ Assignment submitted successfully!');
+      
+      // Clean up
+      this.recordedAudioBlob = null;
+      this.recordedAudioUrl = null;
+      
+      // Clear saved recording from localStorage
+      if (this.assignmentId) {
+        this.clearSavedRecording(this.assignmentId);
+      }
+      
+      this.homeworkBar.visible = false;
+      this.changeDetector.markForCheck();
+      
+      // Navigate back to assignments page
+      setTimeout(() => {
+        this.router.navigate(['/s/assignments']);
+      }, 1500);
+      
+    } catch (error: any) {
+      console.error('Error submitting assignment:', error);
+      this.toastService.showError(error.message || 'Failed to submit assignment.');
+    }
+  }
+
+  /**
+   * Start audio recording
+   */
+  public async startRecording(): Promise<void> {
+    try {
+      await this.audioRecordingService.startRecording();
+      this.isRecording = true;
+      this.recordingDuration = 0;
+      
+      // Start timer
+      this.recordingTimer = setInterval(() => {
+        this.recordingDuration = this.audioRecordingService.getRecordingDuration();
+        this.changeDetector.markForCheck();
+      }, 1000);
+      
+      this.toastService.success('🎤 Recording started');
+      this.changeDetector.markForCheck();
+    } catch (error: any) {
+      console.error('Error starting recording:', error);
+      this.toastService.showError(error.message || 'Failed to start recording');
+    }
+  }
+
+  /**
+   * Stop audio recording
+   */
+  public async stopRecording(): Promise<void> {
+    try {
+      const audioBlob = await this.audioRecordingService.stopRecording();
+      this.isRecording = false;
+      
+      // Stop timer
+      if (this.recordingTimer) {
+        clearInterval(this.recordingTimer);
+        this.recordingTimer = null;
+      }
+      
+      // Store the recording
+      this.recordedAudioBlob = audioBlob;
+      this.recordedAudioUrl = URL.createObjectURL(audioBlob);
+      
+      // Save to localStorage for persistence
+      if (this.assignmentId) {
+        await this.saveRecording(this.assignmentId, audioBlob);
+      }
+      
+      this.toastService.success(`✓ Recording saved (${this.recordingDuration}s)`);
+      this.changeDetector.markForCheck();
+    } catch (error: any) {
+      console.error('Error stopping recording:', error);
+      this.toastService.showError(error.message || 'Failed to stop recording');
+    }
+  }
+
+  /**
+   * Play recorded audio
+   */
+  public playRecordedAudio(): void {
+    if (!this.recordedAudioUrl) {
+      this.toastService.showError('No recording available');
+      return;
+    }
+
+    // Stop any existing playback
+    if (this.recordingAudioElement) {
+      this.recordingAudioElement.pause();
+      this.recordingAudioElement = null;
+    }
+
+    // Create and play new audio element
+    this.recordingAudioElement = new Audio(this.recordedAudioUrl);
+    this.recordingAudioElement.play().catch((error) => {
+      console.error('Error playing recording:', error);
+      this.toastService.showError('Failed to play recording');
+    });
+
+    this.recordingAudioElement.addEventListener('ended', () => {
+      this.recordingAudioElement = null;
+    });
+  }
+
+  /**
+   * Re-record (delete current recording and start new one)
+   */
+  public async reRecord(): Promise<void> {
+    // Clean up old recording
+    if (this.recordedAudioUrl) {
+      URL.revokeObjectURL(this.recordedAudioUrl);
+    }
+    if (this.recordingAudioElement) {
+      this.recordingAudioElement.pause();
+      this.recordingAudioElement = null;
+    }
+    
+    this.recordedAudioBlob = null;
+    this.recordedAudioUrl = null;
+    
+    // Clear from localStorage
+    if (this.assignmentId) {
+      this.clearSavedRecording(this.assignmentId);
+    }
+    
+    this.changeDetector.markForCheck();
+    
+    // Start new recording
+    await this.startRecording();
+  }
+
+  /**
+   * Discard the current recording without starting a new one
+   */
+  public discardRecording(): void {
+    // Clean up old recording
+    if (this.recordedAudioUrl) {
+      URL.revokeObjectURL(this.recordedAudioUrl);
+    }
+    if (this.recordingAudioElement) {
+      this.recordingAudioElement.pause();
+      this.recordingAudioElement = null;
+    }
+    
+    this.recordedAudioBlob = null;
+    this.recordedAudioUrl = null;
+    
+    // Clear from localStorage
+    if (this.assignmentId) {
+      this.clearSavedRecording(this.assignmentId);
+    }
+    
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Save recording to localStorage for persistence across page reloads
+   */
+  private async saveRecording(assignmentId: string, audioBlob: Blob): Promise<void> {
+    try {
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+      
+      const base64Audio = await base64Promise;
+      
+      // Save to localStorage with assignment ID as key
+      const recordingData = {
+        audio: base64Audio,
+        duration: this.recordingDuration,
+        timestamp: Date.now(),
+      };
+      
+      localStorage.setItem(`recording_${assignmentId}`, JSON.stringify(recordingData));
+    } catch (error) {
+      console.error('Error saving recording to localStorage:', error);
+      // Non-critical error, don't throw
+    }
+  }
+
+  /**
+   * Restore recording from localStorage
+   */
+  private async restoreRecording(): Promise<void> {
+    if (!this.assignmentId) return;
+    
+    try {
+      const savedData = localStorage.getItem(`recording_${this.assignmentId}`);
+      if (!savedData) return;
+      
+      const recordingData = JSON.parse(savedData);
+      
+      // Check if recording is not too old (e.g., 24 hours)
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+      if (Date.now() - recordingData.timestamp > maxAge) {
+        this.clearSavedRecording(this.assignmentId);
+        return;
+      }
+      
+      // Convert base64 back to blob
+      const response = await fetch(recordingData.audio);
+      const blob = await response.blob();
+      
+      // Restore recording state
+      this.recordedAudioBlob = blob;
+      this.recordedAudioUrl = URL.createObjectURL(blob);
+      this.recordingDuration = recordingData.duration || 0;
+      
+      this.changeDetector.markForCheck();
+      this.toastService.showInfo('📼 Previous recording restored');
+    } catch (error) {
+      console.error('Error restoring recording:', error);
+      // Clear corrupted data
+      if (this.assignmentId) {
+        this.clearSavedRecording(this.assignmentId);
+      }
+    }
+  }
+
+  /**
+   * Clear saved recording from localStorage
+   */
+  private clearSavedRecording(assignmentId: string): void {
+    localStorage.removeItem(`recording_${assignmentId}`);
+  }
+
+  // Re-add the toggle method for the controls
+  public toggleMainControlsView(source: 'bubble' | 'minimizeButton' | 'backdrop' | 'internalPopupMinimize' = 'minimizeButton'): void {
+    if (source === 'bubble') {
+      this.isPopupOpen = true;
+    } else if (source === 'minimizeButton') {
+      if (!this.isMobile) {
+        this.isMainControlsMinimized = true;
+        this.isPopupOpen = false;
+      }
+    } else if (source === 'internalPopupMinimize' || source === 'backdrop') {
+      this.isPopupOpen = false;
+    }
+    this.changeDetector.markForCheck();
+  }
 }
 

@@ -1,13 +1,17 @@
-import { Component, OnInit, OnDestroy, ViewEncapsulation } from '@angular/core';
+import { Component, OnInit, OnDestroy, ViewEncapsulation, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
-import { filter, map, tap } from 'rxjs/operators';
-import { Subscription, Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { filter, takeUntil, map } from 'rxjs/operators';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
 import { AuthButtonsComponent } from '../../auth-buttons/auth-buttons.component';
-import { NgZone } from '@angular/core';
-import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 import { ThemeService } from '../../services/theme.service';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatIconModule } from '@angular/material/icon';
+import { MatBadgeModule } from '@angular/material/badge';
+import { NotificationService } from 'src/app/services/notification.service';
+import { Notification } from 'src/app/models/classroom.models';
+import { ThemeToggleComponent } from '../theme-toggle/theme-toggle.component';
 
 @Component({
   selector: 'app-header',
@@ -19,7 +23,10 @@ import { ThemeService } from '../../services/theme.service';
     CommonModule,
     RouterModule,
     AuthButtonsComponent,
-    ThemeToggleComponent
+    MatMenuModule,
+    MatIconModule,
+    MatBadgeModule,
+    ThemeToggleComponent,
   ]
 })
 export class HeaderComponent implements OnInit, OnDestroy {
@@ -27,16 +34,21 @@ export class HeaderComponent implements OnInit, OnDestroy {
   isLandingPage = false;
   isAuthenticated = false;
   isPremiumUser = false;
-  private routerSubscription: Subscription | undefined;
-  private authSubscription: Subscription | undefined;
+  userRole: 'teacher' | 'student' | 'parent' | undefined;
+  private routerSubscription: Subject<void> | undefined;
+  private authSubscription: Subject<void> | undefined;
   showHeader = true;
   public currentTheme$: Observable<string>;
+  public theme: string = 'light';
+  notifications$!: Observable<Notification[]>;
+  unreadCount$!: Observable<number>;
 
   constructor(
     public authService: FirebaseAuthService,
     private router: Router,
     private ngZone: NgZone,
-    public themeService: ThemeService
+    public themeService: ThemeService,
+    private notificationService: NotificationService,
   ) {
     // console.log('[HeaderComponent] Constructor: Initializing...');
     this.currentTheme$ = this.themeService.currentTheme$;
@@ -44,37 +56,46 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Subscribe to route changes for header visibility
-    this.routerSubscription = this.router.events.pipe(
+    this.routerSubscription = new Subject<void>();
+    this.router.events.pipe(
       filter(event => event instanceof NavigationEnd),
-      tap(event => {
-        if (event instanceof NavigationEnd) {
-          // console.log(`[HeaderComponent] NavigationEnd: ${event.url}`);
-          this.updateHeaderVisibility(event.url);
-          this.closeMobileMenu();
-        }
-      })
-    ).subscribe();
+      takeUntil(this.routerSubscription)
+    ).subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        // console.log(`[HeaderComponent] NavigationEnd: ${event.url}`);
+        this.updateHeaderVisibility(event.url);
+        this.closeMobileMenu();
+      }
+    });
 
     // Subscribe to auth state for authentication and premium status
-    this.authSubscription = this.authService.user$.pipe(
-      tap(user => {
-        this.isAuthenticated = !!user;
-        this.isPremiumUser = user?.isPremium ?? false;
-        this.updateHeaderVisibility(this.router.url);
-      })
-    ).subscribe();
+    this.authSubscription = new Subject<void>();
+    this.authService.user$.pipe(
+      takeUntil(this.authSubscription)
+    ).subscribe(user => {
+      this.isAuthenticated = !!user;
+      this.isPremiumUser = user?.isPremium ?? false;
+      this.userRole = user?.role;
+      this.updateHeaderVisibility(this.router.url);
+    });
 
     // Initial check in case user is already logged in and on a specific page
     // console.log('[HeaderComponent] ngOnInit: Checking initial route.');
     this.updateHeaderVisibility(this.router.url);
+    
+    // Use real-time notifications
+    this.notifications$ = this.notificationService.listenToMyNotifications();
+    this.unreadCount$ = this.notificationService.getUnreadCount();
   }
 
   ngOnDestroy(): void {
     if (this.routerSubscription) {
-      this.routerSubscription.unsubscribe();
+      this.routerSubscription.next();
+      this.routerSubscription.complete();
     }
     if (this.authSubscription) {
-      this.authSubscription.unsubscribe();
+      this.authSubscription.next();
+      this.authSubscription.complete();
     }
   }
 
@@ -98,5 +119,117 @@ export class HeaderComponent implements OnInit, OnDestroy {
 
   closeMobileMenu(): void {
     this.isMobileMenuOpen = false;
+  }
+
+  async markAsRead(notification: Notification) {
+    // Mark as read
+    if (!notification.read) {
+      await this.notificationService.markAsRead(notification.id);
+    }
+    
+    // Navigate to relevant location
+    this.navigateToNotification(notification);
+  }
+
+  navigateToNotification(notification: Notification) {
+    if (!notification.ref) return;
+
+    switch (notification.type) {
+      case 'assignment_posted':
+        // Navigate to assignments page
+        if (this.userRole === 'student') {
+          this.router.navigate(['/s/assignments']);
+        } else if (this.userRole === 'teacher') {
+          this.router.navigate(['/t/classes']);
+        }
+        break;
+      
+      case 'submission_received':
+        // Navigate to teacher dashboard
+        if (this.userRole === 'teacher') {
+          this.router.navigate(['/t/classes']);
+        }
+        break;
+      
+      case 'graded':
+        // Navigate to student assignments to see graded work
+        if (this.userRole === 'student') {
+          this.router.navigate(['/s/assignments']);
+        }
+        break;
+      
+      case 'due_soon':
+        // Navigate to assignments
+        if (this.userRole === 'student') {
+          this.router.navigate(['/s/assignments']);
+        }
+        break;
+      
+      case 'comment':
+        // Navigate based on user role
+        if (this.userRole === 'student') {
+          this.router.navigate(['/s/assignments']);
+        } else if (this.userRole === 'teacher') {
+          this.router.navigate(['/t/classes']);
+        }
+        break;
+      
+      default:
+        console.log('Unknown notification type:', notification.type);
+    }
+  }
+
+  async deleteNotification(event: Event, notificationId: string) {
+    event.stopPropagation(); // Prevent marking as read
+    await this.notificationService.deleteNotification(notificationId);
+  }
+
+  async clearAllNotifications() {
+    if (confirm('Are you sure you want to clear all notifications?')) {
+      await this.notificationService.clearAllNotifications();
+    }
+  }
+
+  getNotificationTime(notification: Notification): string {
+    if (!notification.createdAt) return '';
+    
+    const notifDate = notification.createdAt.toDate();
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const notifDay = new Date(notifDate.getFullYear(), notifDate.getMonth(), notifDate.getDate());
+    
+    const diffMs = today.getTime() - notifDay.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    // Format time
+    const timeStr = notifDate.toLocaleTimeString('en-US', { 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    });
+    
+    // Same day - show only time
+    if (diffDays === 0) {
+      return timeStr;
+    }
+    
+    // Yesterday
+    if (diffDays === 1) {
+      return `Yesterday, ${timeStr}`;
+    }
+    
+    // This week
+    if (diffDays < 7) {
+      const dayName = notifDate.toLocaleDateString('en-US', { weekday: 'long' });
+      return `${dayName}, ${timeStr}`;
+    }
+    
+    // Older - show full date
+    const dateStr = notifDate.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: notifDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
+    return `${dateStr}, ${timeStr}`;
   }
 }

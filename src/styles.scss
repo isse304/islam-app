@@ -6,6 +6,205 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===== UTHMANIC QURAN FONT ===== */
+/* Using Google Fonts CDN for Uthmanic fonts */
+@import url('https://fonts.googleapis.com/css2?family=Scheherazade+New:wght@400;700&family=Amiri+Quran&display=swap');
+
+/* Fallback to system fonts if CDN fails */
+@font-face {
+  font-family: 'Quran Uthmanic';
+  src: local('Scheherazade New'), local('Amiri Quran'), local('KFGQPC Uthman Taha Naskh'), local('Traditional Arabic');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ===== TAJWEED COLOR CLASSES ===== */
+/* These classes apply Tajweed coloring to Quranic text */
+.tajweed {
+  /* Ghunnah - Nasal sound (Green) */
+  &-ghunnah {
+    color: #4CAF50 !important; /* Green */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #66BB6A !important; /* Lighter, more vibrant green */
+      text-shadow: 0 0 2px rgba(102, 187, 106, 0.3);
+    }
+  }
+  
+  /* Qalqalah - Echo sound (Purple/Magenta) */
+  &-qalqalah {
+    color: #9C27B0 !important; /* Purple */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #BA68C8 !important; /* Lighter purple */
+      text-shadow: 0 0 2px rgba(186, 104, 200, 0.3);
+    }
+  }
+  
+  /* Idghaam - Merging (Gray) */
+  &-idghaam {
+    color: #757575 !important; /* Gray */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #BDBDBD !important; /* Lighter gray for visibility */
+      text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
+    }
+  }
+  
+  /* Ikhfa - Hidden (Yellow/Amber) */
+  &-ikhfa {
+    color: #FFC107 !important; /* Amber */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #FFD54F !important; /* Brighter amber */
+      text-shadow: 0 0 3px rgba(255, 213, 79, 0.4);
+    }
+  }
+  
+  /* Madd - Elongation (Red) */
+  &-madd {
+    color: #F44336 !important; /* Red */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #EF5350 !important; /* Lighter red */
+      text-shadow: 0 0 3px rgba(239, 83, 80, 0.4);
+    }
+  }
+  
+  /* Iqlab - Conversion (Orange) */
+  &-iqlab {
+    color: #FF9800 !important; /* Orange */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #FFB74D !important; /* Lighter orange */
+      text-shadow: 0 0 2px rgba(255, 183, 77, 0.3);
+    }
+  }
+  
+  /* Idghaam with Ghunnah (Blue) */
+  &-idghaam-ghunnah {
+    color: #2196F3 !important; /* Blue */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #42A5F5 !important; /* Lighter blue */
+      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
+    }
+  }
+  
+  /* Izhar - Clear pronunciation (No color change) */
+  &-izhar {
+    /* Keep default color */
+  }
+  
+  /* Hamzat Wasl (Light Blue) */
+  &-hamzat-wasl {
+    color: #00BCD4 !important; /* Cyan */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #26C6DA !important; /* Lighter cyan */
+      text-shadow: 0 0 2px rgba(38, 198, 218, 0.3);
+    }
+  }
+  
+  /* Silent letters (Light Gray) */
+  &-silent {
+    color: #BDBDBD !important; /* Light Gray */
+    
+    /* Enhanced for dark mode */
+    .dark & {
+      color: #9E9E9E !important; /* Medium gray for better visibility */
+      text-shadow: 0 0 1px rgba(158, 158, 158, 0.2);
+    }
+  }
+}
+
+/* ===== QURAN PAUSE MARKS (WAQF) ===== */
+/* Styling for Quranic pause symbols */
+.waqf {
+  font-family: 'Quran Uthmanic', 'Scheherazade New', 'Amiri Quran', serif !important;
+  font-weight: bold;
+  font-size: 0.9em;
+  vertical-align: super;
+  
+  /* Mandatory stop - ۘ (Lam Alif with Meem) */
+  &-lazim {
+    color: #D32F2F !important; /* Dark Red - MUST stop */
+    
+    .dark & {
+      color: #EF5350 !important; /* Brighter red for dark mode */
+      text-shadow: 0 0 2px rgba(239, 83, 80, 0.3);
+    }
+  }
+  
+  /* Preferred stop - ۗ (Qaf) */
+  &-qala {
+    color: #F57C00 !important; /* Orange - Better to stop */
+    
+    .dark & {
+      color: #FFB74D !important; /* Brighter orange for dark mode */
+      text-shadow: 0 0 2px rgba(255, 183, 77, 0.3);
+    }
+  }
+  
+  /* Permissible stop - ۖ (Jeem) */
+  &-ja {
+    color: #7CB342 !important; /* Green - Can stop */
+    
+    .dark & {
+      color: #9CCC65 !important; /* Brighter green for dark mode */
+      text-shadow: 0 0 2px rgba(156, 204, 101, 0.3);
+    }
+  }
+  
+  /* Better to continue - ۚ (Sad Lam Alif) */
+  &-sla {
+    color: #1976D2 !important; /* Blue - Better to continue */
+    
+    .dark & {
+      color: #42A5F5 !important; /* Brighter blue for dark mode */
+      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
+    }
+  }
+  
+  /* General pause marks */
+  color: #757575; /* Gray for unspecified marks */
+  margin: 0 2px;
+  
+  .dark & {
+    color: #BDBDBD; /* Lighter gray for dark mode */
+  }
+}
+
+/* ===== UTHMANIC ARABIC TEXT STYLING ===== */
+.quran-text-uthmanic {
+  font-family: 'Amiri Quran', 'Scheherazade New', 'Quran Uthmanic', 'Traditional Arabic', serif !important;
+  direction: rtl;
+  text-align: justify;
+  line-height: 2.5;
+  letter-spacing: 0.02em;
+  word-spacing: 0.1em;
+  font-size: 2.2rem;
+  color: #000000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
+  
+  /* Dark mode */
+  .dark & {
+    color: #B7A57A; /* Gold in dark mode */
+  }
+}
+
 /* Global styles */
 html, body {
   height: 100%;

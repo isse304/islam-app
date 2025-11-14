@@ -30,6 +30,18 @@
          class="nav-link">
         Dua
       </a>
+      <a routerLink="/t/classes"
+         routerLinkActive="nav-link-active"
+         class="nav-link"
+         *ngIf="isAuthenticated && userRole === 'teacher'">
+        👥 Classes
+      </a>
+      <a routerLink="/s/assignments"
+         routerLinkActive="nav-link-active"
+         class="nav-link"
+         *ngIf="isAuthenticated && userRole === 'student'">
+        📚 Assignments
+      </a>
       <a routerLink="/about" 
          routerLinkActive="nav-link-active"
          class="nav-link">
@@ -53,8 +65,90 @@
        </a>
     </div>
 
-    <!-- Auth Buttons (Desktop Only) -->
-    <div class="auth-container hide-on-mobile">
+    <!-- Right side navigation items -->
+    <div class="hidden md:flex items-center space-x-4">
+      <!-- Notification Bell -->
+      <button mat-icon-button [matMenuTriggerFor]="notificationsMenu" [attr.aria-label]="'Notifications. ' + ((unreadCount$ | async) || 0) + ' unread'">
+        <mat-icon [matBadge]="unreadCount$ | async" matBadgeColor="warn" aria-hidden="false">notifications</mat-icon>
+      </button>
+      <mat-menu #notificationsMenu="matMenu" class="notification-menu">
+        <div class="p-4 w-full max-w-md bg-white dark:bg-[#1A365D]" (click)="$event.stopPropagation()">
+          <!-- Header -->
+          <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-slate-600">
+            <h3 class="font-bold text-lg dark:text-[#B7A57A]">Notifications</h3>
+            <button 
+              *ngIf="(notifications$ | async)?.length ?? 0 > 0"
+              (click)="clearAllNotifications()" 
+              class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              title="Clear all notifications">
+              🗑️ Clear All
+            </button>
+          </div>
+          
+          <!-- Notifications List -->
+          <div *ngIf="(notifications$ | async) as notifications">
+            <div *ngFor="let notification of notifications" 
+                 class="relative p-3 mb-2 rounded-lg border transition-all cursor-pointer group"
+                 [ngClass]="{
+                   'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30': !notification.read,
+                   'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700': notification.read
+                 }"
+                 (click)="markAsRead(notification)">
+              
+              <!-- Delete Button -->
+              <button 
+                (click)="deleteNotification($event, notification.id)"
+                class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30"
+                title="Delete notification">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              <!-- Notification Content -->
+              <div class="pr-6">
+                <p class="font-semibold text-sm dark:text-gray-100" 
+                   [ngClass]="{
+                     'font-bold text-gray-900': !notification.read,
+                     'text-gray-600 dark:text-gray-300': notification.read
+                   }">
+                  {{ notification.title }}
+                </p>
+                <p class="text-xs mt-1 dark:text-gray-300"
+                   [ngClass]="{
+                     'text-gray-700': !notification.read,
+                     'text-gray-500 dark:text-gray-400': notification.read
+                   }">
+                  {{ notification.body }}
+                </p>
+                <p class="text-xs mt-2 flex items-center gap-1"
+                   [ngClass]="{
+                     'text-blue-600 dark:text-blue-400': !notification.read,
+                     'text-gray-400 dark:text-gray-500': notification.read
+                   }">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {{ getNotificationTime(notification) }}
+                </p>
+              </div>
+              
+              <!-- Unread Indicator -->
+              <div *ngIf="!notification.read" class="absolute top-3 left-2 w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
+            </div>
+            
+            <!-- Empty State -->
+            <div *ngIf="notifications.length === 0" class="text-center py-8">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              <p class="text-gray-500 dark:text-gray-400">No notifications yet</p>
+            </div>
+          </div>
+        </div>
+      </mat-menu>
+      
+      <app-theme-toggle></app-theme-toggle>
       <app-auth-buttons></app-auth-buttons>
     </div>
 
@@ -72,6 +166,8 @@
     <a routerLink="/quran" class="mobile-link" (click)="closeMobileMenu()">Quran Reader</a>
     <a routerLink="/learn" class="mobile-link" (click)="closeMobileMenu()">AI Tafsir Chat</a>
     <a routerLink="/dua" class="mobile-link" (click)="closeMobileMenu()">Dua</a>
+    <a *ngIf="isAuthenticated && userRole === 'teacher'" routerLink="/t/classes" class="mobile-link" (click)="closeMobileMenu()">👥 Classes</a>
+    <a *ngIf="isAuthenticated && userRole === 'student'" routerLink="/s/assignments" class="mobile-link" (click)="closeMobileMenu()">📚 Assignments</a>
     <a routerLink="/about" class="mobile-link" (click)="closeMobileMenu()">About</a>
     <a routerLink="/profile" class="mobile-link" (click)="closeMobileMenu()">Profile</a>
     <a routerLink="/contact" class="mobile-link" (click)="closeMobileMenu()">Contact Us</a>
@@ -80,6 +176,11 @@
     <a *ngIf="isAuthenticated && !isPremiumUser" routerLink="/subscription" class="mobile-upgrade-link" (click)="closeMobileMenu()">
       ✨ Upgrade to Premium
     </a>
+
+    <!-- Theme Toggle (Mobile) -->
+    <div class="mobile-theme-toggle-container">
+      <app-theme-toggle></app-theme-toggle>
+    </div>
 
     <!-- Auth Buttons in Mobile Menu (Profile is already here, Sign Out is part of app-auth-buttons) -->
     <div class="mobile-auth-container">

@@ -1,0 +1,183 @@
+<div class="assignment-hub">
+  <!-- Header -->
+  <div class="hub-header">
+    <div class="header-content">
+      <h1 class="page-title">📚 My Assignments</h1>
+      <button class="refresh-btn" (click)="refresh()" [disabled]="loading">
+        <span class="refresh-icon" [class.spinning]="loading">↻</span>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="quick-stats" *ngIf="stats">
+      <div class="stat-card urgent" *ngIf="stats.dueToday > 0">
+        <div class="stat-number">{{ stats.dueToday }}</div>
+        <div class="stat-label">Due Today</div>
+      </div>
+      <div class="stat-card warning" *ngIf="stats.upcoming > 0">
+        <div class="stat-number">{{ stats.upcoming }}</div>
+        <div class="stat-label">This Week</div>
+      </div>
+      <div class="stat-card danger" *ngIf="stats.overdue > 0">
+        <div class="stat-number">{{ stats.overdue }}</div>
+        <div class="stat-label">Overdue</div>
+      </div>
+      <div class="stat-card success">
+        <div class="stat-number">{{ stats.completed }}</div>
+        <div class="stat-label">Completed</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-number">{{ stats.completionRate.toFixed(0) }}%</div>
+        <div class="stat-label">Completion Rate</div>
+      </div>
+    </div>
+
+    <!-- Search & Filters -->
+    <div class="search-filters">
+      <div class="search-box">
+        <input 
+          type="text" 
+          placeholder="Search assignments..." 
+          [(ngModel)]="searchTerm"
+          (input)="onSearch(searchTerm)">
+        <span class="search-icon">🔍</span>
+      </div>
+
+      <div class="filter-group">
+        <button 
+          class="filter-btn" 
+          [class.active]="selectedFilter === 'all'"
+          (click)="selectedFilter = 'all'; resetFilters()">
+          All
+        </button>
+        <button 
+          class="filter-btn" 
+          [class.active]="selectedFilter === 'class'"
+          (click)="selectedFilter = 'class'">
+          By Class
+        </button>
+        <button 
+          class="filter-btn" 
+          [class.active]="selectedFilter === 'type'"
+          (click)="selectedFilter = 'type'">
+          By Type
+        </button>
+      </div>
+
+      <!-- Class Filter Dropdown -->
+      <select 
+        *ngIf="selectedFilter === 'class'" 
+        class="filter-dropdown"
+        [(ngModel)]="selectedClass"
+        (change)="filterByClass(selectedClass)">
+        <option [value]="null">All Classes</option>
+        <option *ngFor="let class of availableClasses" [value]="class.id">
+          {{ class.name }}
+        </option>
+      </select>
+
+      <!-- Type Filter Dropdown -->
+      <select 
+        *ngIf="selectedFilter === 'type'" 
+        class="filter-dropdown"
+        [(ngModel)]="selectedType"
+        (change)="filterByType(selectedType)">
+        <option [value]="null">All Types</option>
+        <option *ngFor="let type of availableTypes" [value]="type">
+          {{ type | titlecase }}
+        </option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="loading-spinner"></div>
+    <p>Loading assignments...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error">
+    <p class="error-message">{{ error }}</p>
+    <button class="retry-btn" (click)="refresh()">Try Again</button>
+  </div>
+
+  <!-- Assignment Lists -->
+  <div class="assignments-content" *ngIf="!loading && !error">
+    <!-- Overdue (Critical) -->
+    <app-assignment-list
+      *ngIf="overdueAssignments.length > 0"
+      [assignments]="overdueAssignments"
+      [category]="'overdue'"
+      [title]="'Overdue'"
+      [icon]="'❌'">
+    </app-assignment-list>
+
+    <!-- Due Today -->
+    <app-assignment-list
+      *ngIf="dueTodayAssignments.length > 0"
+      [assignments]="dueTodayAssignments"
+      [category]="'due_today'"
+      [title]="'Due Today'"
+      [icon]="'🔴'">
+    </app-assignment-list>
+
+    <!-- Upcoming This Week -->
+    <app-assignment-list
+      *ngIf="upcomingAssignments.length > 0"
+      [assignments]="upcomingAssignments"
+      [category]="'upcoming'"
+      [title]="'Upcoming This Week'"
+      [icon]="'⚠️'"
+      [maxVisible]="3"
+      [collapsible]="false">
+    </app-assignment-list>
+
+    <!-- Draft/In Progress -->
+    <app-assignment-list
+      *ngIf="draftAssignments.length > 0"
+      [assignments]="draftAssignments"
+      [category]="'draft'"
+      [title]="'In Progress'"
+      [icon]="'💭'"
+      [collapsible]="true"
+      [initiallyCollapsed]="true">
+    </app-assignment-list>
+
+    <!-- Due Later -->
+    <app-assignment-list
+      *ngIf="dueLaterAssignments.length > 0"
+      [assignments]="dueLaterAssignments"
+      [category]="'due_later'"
+      [title]="'Due Later'"
+      [icon]="'📅'"
+      [collapsible]="true"
+      [initiallyCollapsed]="true">
+    </app-assignment-list>
+
+    <!-- Completed -->
+    <app-assignment-list
+      *ngIf="completedAssignments.length > 0"
+      [assignments]="completedAssignments"
+      [category]="'completed'"
+      [title]="'Recently Completed'"
+      [icon]="'✅'"
+      [maxVisible]="5"
+      [collapsible]="true"
+      [initiallyCollapsed]="false">
+    </app-assignment-list>
+
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="allAssignments.length === 0">
+      <div class="empty-icon">📚</div>
+      <h2>No Assignments Yet</h2>
+      <p>You don't have any assignments at the moment. Check back later!</p>
+    </div>
+  </div>
+</div>
+
+
+
+
+

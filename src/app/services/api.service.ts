@@ -3,7 +3,7 @@ import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http
 import { environment } from '../../environments/environment';
 import { Observable, from, throwError, firstValueFrom, retry, mergeMap, TimeoutError } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
-import { NotificationService } from './notification.service';
+import { SnackbarService } from './snackbar.service';
 import { FirebaseAuthService } from './firebase-auth.service';
 
 interface TafsirResponse {
@@ -52,7 +52,7 @@ export class ApiService {
 
   constructor(
     private http: HttpClient,
-    private notificationService: NotificationService,
+    private snackbarService: SnackbarService,
     private injector: Injector
   ) {}
 
@@ -143,7 +143,7 @@ export class ApiService {
       const token = await this.authService.getToken(true);
       if (!token) {
         // console.error('❌ No auth token available');
-        this.notificationService.warning('Please sign in to use AI features');
+        this.snackbarService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
 
@@ -210,7 +210,7 @@ export class ApiService {
     try {
       const token = await this.authService.getToken();
       if (!token) {
-        this.notificationService.warning('Please sign in to use AI features');
+        this.snackbarService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
 
@@ -288,7 +288,7 @@ export class ApiService {
       const token = await this.authService.getToken(true); // Force refresh if needed for premium
       if (!token) {
         // console.error('No auth token available');
-        this.notificationService.warning('Please sign in to use AI features');
+        this.snackbarService.warning('Please sign in to use AI features');
         throw new Error('Authentication required');
       }
 
@@ -411,7 +411,7 @@ export class ApiService {
       // Get auth token first
       const token = await this.authService.getToken();
       if (!token) {
-        this.notificationService.warning('Please sign in to access AI features');
+        this.snackbarService.warning('Please sign in to access AI features');
         // Redirect to login page
         await this.authService.login();
         throw new Error('Authentication required');
@@ -435,7 +435,7 @@ export class ApiService {
     } catch (error: any) {
       console.error('API Request Error:', error);
       if (error.status === 401) {
-        this.notificationService.warning('Please sign in to access AI features');
+        this.snackbarService.warning('Please sign in to access AI features');
         // Redirect to login page
         await this.authService.login();
         return null;
@@ -489,7 +489,7 @@ export class ApiService {
     }
 
     // Notify the user
-    this.notificationService.error(errorMessage);
+    this.snackbarService.error(errorMessage);
 
     // Return an observable with a user-facing error message.
     // console.error('Something bad happened; please try again later.'); // Fallback error
@@ -563,7 +563,7 @@ export class ApiService {
       return response;
     } catch (error) {
       console.error('Error creating customer portal session:', error);
-      this.notificationService.error('Could not open billing portal. Please try again later.');
+      this.snackbarService.error('Could not open billing portal. Please try again later.');
       throw error;
     }
   }

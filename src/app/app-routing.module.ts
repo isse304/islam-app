@@ -95,6 +95,37 @@ const routes: Routes = [
         path: 'profile',
         loadComponent: () => import('./auth/profile/profile.component').then(m => m.ProfileComponent)
       },
+      // Student Dashboard Routes
+      {
+        path: 'student',
+        children: [
+          {
+            path: '',
+            redirectTo: 'assignments',
+            pathMatch: 'full'
+          },
+          {
+            path: 'assignments',
+            loadComponent: () => import('./student-dashboard/assignment-hub/assignment-hub.component').then(m => m.AssignmentHubComponent),
+            data: { title: 'My Assignments' }
+          },
+          {
+            path: 'assignments/:id',
+            loadComponent: () => import('./student-dashboard/assignment-hub/assignment-hub.component').then(m => m.AssignmentHubComponent),
+            data: { title: 'Assignment Details' }
+          },
+          {
+            path: 'progress',
+            loadComponent: () => import('./student-dashboard/assignment-hub/assignment-hub.component').then(m => m.AssignmentHubComponent),
+            data: { title: 'Progress & Analytics' }
+          },
+          {
+            path: 'calendar',
+            loadComponent: () => import('./student-dashboard/assignment-hub/assignment-hub.component').then(m => m.AssignmentHubComponent),
+            data: { title: 'Calendar' }
+          }
+        ]
+      }
     ]
   },
   { path: 'premium', redirectTo: '/subscription', pathMatch: 'full' },

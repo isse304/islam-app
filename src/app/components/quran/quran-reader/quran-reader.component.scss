@@ -1,5 +1,6 @@
 // Variables
-$arabic-font-family: 'Scheherazade New', 'Noto Naskh Arabic', 'Amiri', serif;
+$arabic-font-family-uthmanic: 'Amiri Quran', 'Scheherazade New', 'Quran Uthmanic', 'Traditional Arabic', serif;
+$arabic-font-family: $arabic-font-family-uthmanic; // Use Uthmanic as default
 $primary-color: #B7A57A;
 $text-dark: #2D3748;
 $text-medium: #4A5568;
@@ -21,14 +22,29 @@ $text-medium: #4A5568;
 .arabic-text {
   @include arabic-text-base;
   font-size: 42px;
-  line-height: 3.2;
-  letter-spacing: -0.01em;
+  line-height: 2.8; // Reduced from 3.2
+  letter-spacing: 0.02em; // Slightly increased for Uthmanic script
   word-spacing: 0.15em;
   overflow-wrap: break-word;
   max-width: 100%;
   word-break: keep-all;
-  margin-bottom: 1.5rem;
-  padding: 3rem 4rem;
+  margin-bottom: 1rem; // Reduced from 1.5rem
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1; // Enable ligatures for Uthmanic script
+  
+  /* Support for Tajweed colored text */
+  span[class*="tajweed-"] {
+    font-weight: inherit;
+    font-size: inherit;
+    font-family: inherit;
+  }
+  
+  /* Support for pause marks */
+  span.waqf {
+    font-size: 0.85em;
+    vertical-align: super;
+    margin: 0 3px;
+  }
+  padding: 1.5rem 2rem; // Reduced from 3rem 4rem
   background-color: #FFFEF7;
 }
 
@@ -77,13 +93,48 @@ $text-medium: #4A5568;
   50% { opacity: 0.5; }
 }
 
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
+}
+
 .verse-text {
-  font-family: 'Traditional Arabic', serif;
-  font-size: 2.2rem;
-  line-height: 1.8;
-  text-align: right;
+  font-family: $arabic-font-family-uthmanic;
+  font-size: 2.8rem; // Larger for better readability with Uthmanic script
+  line-height: 2.5; // More spacing for diacritical marks
+  text-align: justify; // Better for Uthmanic script
   direction: rtl;
   padding: 20px 0;
+  letter-spacing: 0.02em;
+  word-spacing: 0.15em;
+  color: #1a1a1a;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
+  
+  // Enhanced styling for Tajweed colors
+  .word-tooltip-trigger {
+    transition: all 0.2s ease;
+    display: inline-block;
+    padding: 0 0.15em;
+    
+    &:hover {
+      transform: scale(1.05);
+      text-shadow: 0 0 8px rgba(183, 165, 122, 0.3);
+    }
+  }
 }
 
 // Tooltip styles
@@ -115,6 +166,9 @@ $text-medium: #4A5568;
   background: linear-gradient(to right, #FAF3E0, #FFF);
   border-radius: 1rem;
   border-left: 4px solid $primary-color;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
 }
 
 .translation {
@@ -490,8 +544,9 @@ $text-medium: #4A5568;
   }
 
   .verse-text {
-    font-size: 32px;
-    line-height: 2.5;
+    font-size: 2rem; // Responsive size for mobile
+    line-height: 2.3;
+    padding: 15px 0;
   }
 
   .translation, .transliteration {
@@ -700,6 +755,32 @@ select option {
   background-color: rgba(255, 255, 0, 0.2);
   transition: background-color 0.5s ease-in-out;
   border-radius: 8px;
+}
+
+.assignment-highlight {
+  background-color: rgba(183, 165, 122, 0.15) !important;
+  border-left: 4px solid #B7A57A;
+  padding-left: 12px;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 2px 8px rgba(183, 165, 122, 0.1);
+}
+
+.currently-playing-verse {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border-left: 4px solid #3b82f6;
+  padding-left: 12px;
+  transition: all 0.3s ease-in-out;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  animation: pulse-playing 2s ease-in-out infinite;
+}
+
+@keyframes pulse-playing {
+  0%, 100% {
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+  }
+  50% {
+    box-shadow: 0 4px 20px rgba(59, 130, 246, 0.4);
+  }
 }
 
 @keyframes pulse-highlight {
@@ -1517,6 +1598,63 @@ select option {
     .verse-actions button.mat-icon-button.bookmarked .mat-icon { color: #B7A57A !important; }
   } // End .highlighted-verse / .selected-verse
   
+  // === Currently Playing Verse Dark Mode ===
+  .currently-playing-verse {
+    background-color: rgba(183, 165, 122, 0.35) !important; // More prominent background
+    border: 3px solid #B7A57A !important; // Thicker gold border around entire card
+    border-left: 8px solid #B7A57A !important; // Even thicker left border
+    box-shadow: 0 0 32px rgba(183, 165, 122, 0.7), 0 0 16px rgba(183, 165, 122, 0.5) !important; // Layered glow
+    animation: pulse-playing-dark 2s ease-in-out infinite;
+    transform: scale(1.03); // More prominent enlargement
+    transition: all 0.3s ease-in-out;
+    
+    // Ensure the entire card background is visible with stronger gradient
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(183, 165, 122, 0.25), rgba(183, 165, 122, 0.1));
+      border-radius: inherit;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    // Ensure content is above the background overlay
+    > * {
+      position: relative;
+      z-index: 1;
+    }
+    
+    // Keep Arabic text GOLD
+    .verse-text,
+    .word-tooltip-trigger {
+      color: #B7A57A !important; // Gold Arabic text
+    }
+    
+    .verse-meaning {
+      background-color: rgba(42, 67, 101, 0.9) !important; // More opaque for better contrast
+      border-left-color: #B7A57A !important;
+      .translation-text,
+      .transliteration-text { 
+          color: #FAF3E0 !important;
+          p { color: inherit !important; }
+      }
+    }
+  }
+  
+  @keyframes pulse-playing-dark {
+    0%, 100% {
+      box-shadow: 0 0 32px rgba(183, 165, 122, 0.7), 0 0 16px rgba(183, 165, 122, 0.5);
+      border-color: #B7A57A;
+      background-color: rgba(183, 165, 122, 0.35);
+    }
+    50% {
+      box-shadow: 0 0 48px rgba(183, 165, 122, 0.9), 0 0 24px rgba(183, 165, 122, 0.7);
+      border-color: #d4c49a;
+      background-color: rgba(183, 165, 122, 0.4);
+    }
+  }
+  
   // === Verse Card Dark Mode ===
   .verse-card {
     background-color: #1F3A5F !important;
@@ -1630,5 +1768,31 @@ select option {
   .mushaf-controls-header.mobile-header-hidden {
     transform: translateY(-100%);
   }
+}
+
+// ==========================================
+// Quick UI Fixes - Assignment Reader
+// ==========================================
+
+// Floating audio player animations
+.floating-audio-player {
+  animation: slideUpFade 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUpFade {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+// Ensure homework bar doesn't have border
+.homework-bar {
+  border-top: none !important;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
 }
 

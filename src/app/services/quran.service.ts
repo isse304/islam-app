@@ -100,9 +100,12 @@ export interface WordDetails {
 export interface Word {
   text: string;
   translation: string;
+  transliteration?: string;
   audioUrl?: string;
   timestamp_from?: number;
   timestamp_to?: number;
+  tajweed?: string; // Tajweed rule for this word (e.g., 'ghunnah', 'qalqalah', 'madd')
+  char_type?: string; // Type of character (word, pause, etc.)
 }
 
 interface SurahSuggestion {
@@ -344,7 +347,7 @@ export class QuranService {
     const safeTranslationId = String(translationId);
     // console.log(`QuranService: Getting surah ${surahNumber} with translation ID: "${safeTranslationId}" and reciter ID: ${reciterId}`);
     
-    const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,translation,transliteration&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
+    const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,translation,transliteration,char_type_name&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
     
     return this.http.get(quranComUrl).pipe(
       map((response: any) => {
@@ -392,6 +395,8 @@ export class QuranService {
               audioUrl: word.audio_url || '',
               timestamp_from: word.char_type === 'word' ? word.audio?.timestamp_from : undefined,
               timestamp_to: word.char_type === 'word' ? word.audio?.timestamp_to : undefined,
+              char_type: word.char_type_name || word.char_type,
+              tajweed: this.detectTajweed(word.text_uthmani, word.char_type_name),
             })) || [],
             verse_key: verse.verse_key,
           };
@@ -1016,5 +1021,49 @@ export class QuranService {
     // return this.http.get<TranslationMeta[]>(url).pipe(
     //   tap(translations => (this as any).translations = translations) // Assuming 'translations' property exists
     // );
+  }
+
+  /**
+   * Detects Tajweed rules based on Arabic text characteristics
+   * This is a simplified detection based on common Tajweed markers in Uthmanic text
+   */
+  private detectTajweed(text: string, charType?: string): string | undefined {
+    if (!text || charType === 'pause') {
+      return undefined;
+    }
+
+    // Detect Ghunnah (Nasalization) - words with shadda on noon or meem
+    // ں ن م with shadda (ّ) or following nasalized letters
+    if (/[نم][\u0651\u0652]/.test(text) || /[نم][نم]/.test(text)) {
+      return 'ghunnah';
+    }
+
+    // Detect Qalqalah (Echo) - specific letters: ق ط ب ج د
+    if (/[قطبجد][\u0652]/.test(text)) {
+      return 'qalqalah';
+    }
+
+    // Detect Madd (Elongation) - elongated vowels with madda
+    // Words containing آ or vowels with special marks
+    if (/[اوي][\u0653\u0654\u0655]/.test(text) || /آ/.test(text) || /[اوي]{2,}/.test(text)) {
+      return 'madd';
+    }
+
+    // Detect Idghaam (Merging) - noon sakinah followed by specific letters
+    if (/ن[\u0652][يرملون]/.test(text)) {
+      return 'idghaam';
+    }
+
+    // Detect Ikhfa (Hiding) - noon sakinah followed by certain letters
+    if (/ن[\u0652][صذثكجشقسدطزفتضظ]/.test(text)) {
+      return 'ikhfa';
+    }
+
+    // Detect Iqlab (Conversion) - noon sakinah followed by ba
+    if (/ن[\u0652]ب/.test(text)) {
+      return 'iqlab';
+    }
+
+    return undefined;
   }
 }

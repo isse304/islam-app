@@ -1,81 +1,164 @@
-import { Injectable } from '@angular/core';
-import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
-import { Observable, Subject } from 'rxjs';
-import { ErrorDialogComponent } from '../components/shared/error-dialog/error-dialog.component';
-export interface NotificationConfig {
-  message: string;
-  action?: string;
-  duration?: number;
-  type?: 'success' | 'error' | 'warning' | 'info';
-}
+import { Injectable, inject } from '@angular/core';
+import {
+  Firestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  updateDoc,
+  doc,
+  collectionData,
+  onSnapshot,
+  deleteDoc,
+  addDoc,
+  serverTimestamp,
+  Timestamp,
+} from '@angular/fire/firestore';
+import { Observable, from, of } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { Notification } from '../models/classroom.models';
+import { genericConverter } from '../models/firestore-converters';
+import { Auth } from '@angular/fire/auth';
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: 'root',
 })
 export class NotificationService {
-  private errorSubject = new Subject<string>();
-  errors$ = this.errorSubject.asObservable();
+  private firestore = inject(Firestore);
+  private auth = inject(Auth);
 
-  constructor(
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog
-  ) {}
+  private notificationsCollection = collection(
+    this.firestore,
+    'notifications'
+  ).withConverter(genericConverter<Notification>());
 
-  success(message: string, duration: number = 3000) {
-    this.showNotification({
-      message,
-      type: 'success',
-      duration
-    });
-  }
+  /**
+   * Get notifications (one-time fetch) - DEPRECATED, use listenToMyNotifications instead
+   */
+  listMyNotifications(limitCount: number = 20): Observable<Notification[]> {
+    const user = this.auth.currentUser;
+    if (!user) return from([]);
 
-  error(message: string, duration: number = 5000) {
-    this.showNotification({
-      message,
-      type: 'error',
-      duration
-    });
-    this.errorSubject.next(message);
-  }
-
-  warning(message: string, duration: number = 4000) {
-    this.showNotification({
-      message,
-      type: 'warning',
-      duration
-    });
-  }
-
-  info(message: string, duration: number = 3000) {
-    this.showNotification({
-      message,
-      type: 'info',
-      duration
-    });
-  }
-
-  private showNotification(config: NotificationConfig) {
-    const cssClass = config.type ? [`notification-${config.type}`] : [];
-    
-    this.snackBar.open(
-      config.message,
-      config.action || 'Close',
-      {
-        duration: config.duration || 3000,
-        horizontalPosition: 'center',
-        verticalPosition: 'bottom',
-        panelClass: cssClass
-      }
+    const q = query(
+      this.notificationsCollection,
+      where('toUid', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    return from(getDocs(q)).pipe(
+      map((snapshot) => snapshot.docs.map((doc) => doc.data()))
     );
   }
 
-  // For critical errors that need user acknowledgment
-  showErrorDialog(title: string, message: string): Observable<void> {
-    const dialogRef = this.dialog.open(ErrorDialogComponent, {
-      width: '400px',
-      data: { title, message }
-    });
-    return dialogRef.afterClosed();
+  /**
+   * Listen to notifications in real-time
+   */
+  listenToMyNotifications(limitCount: number = 20): Observable<Notification[]> {
+    const user = this.auth.currentUser;
+    if (!user) return of([]);
+
+    const q = query(
+      this.notificationsCollection,
+      where('toUid', '==', user.uid),
+      orderBy('createdAt', 'desc'),
+      limit(limitCount)
+    );
+    
+    return collectionData(q, { idField: 'id' }) as Observable<Notification[]>;
   }
-} 
+
+  /**
+   * Get unread notification count in real-time
+   */
+  getUnreadCount(): Observable<number> {
+    const user = this.auth.currentUser;
+    if (!user) return of(0);
+
+    const q = query(
+      this.notificationsCollection,
+      where('toUid', '==', user.uid),
+      where('read', '==', false)
+    );
+    
+    return collectionData(q).pipe(
+      map(notifications => notifications.length)
+    );
+  }
+
+  /**
+   * Mark a notification as read
+   */
+  async markAsRead(notificationId: string): Promise<void> {
+    const notificationRef = doc(this.notificationsCollection, notificationId);
+    await updateDoc(notificationRef, { read: true });
+  }
+
+  /**
+   * Mark all notifications as read for current user
+   */
+  async markAllAsRead(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) return;
+
+    const q = query(
+      this.notificationsCollection,
+      where('toUid', '==', user.uid),
+      where('read', '==', false)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    // Update each notification individually
+    const updatePromises = snapshot.docs.map((docSnap) => 
+      updateDoc(docSnap.ref, { read: true })
+    );
+    
+    await Promise.all(updatePromises);
+  }
+
+  /**
+   * Delete a single notification
+   */
+  async deleteNotification(notificationId: string): Promise<void> {
+    const notificationRef = doc(this.notificationsCollection, notificationId);
+    await deleteDoc(notificationRef);
+  }
+
+  /**
+   * Clear all notifications for current user
+   */
+  async clearAllNotifications(): Promise<void> {
+    const user = this.auth.currentUser;
+    if (!user) return;
+
+    const q = query(
+      this.notificationsCollection,
+      where('toUid', '==', user.uid)
+    );
+    
+    const snapshot = await getDocs(q);
+    
+    // Delete each notification individually
+    const deletePromises = snapshot.docs.map((docSnap) => 
+      deleteDoc(docSnap.ref)
+    );
+    
+    await Promise.all(deletePromises);
+  }
+
+  /**
+   * Create a new notification
+   */
+  async createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<string> {
+    const notificationData = {
+      ...notification,
+      createdAt: serverTimestamp() as Timestamp,
+    };
+    
+    const docRef = await addDoc(this.notificationsCollection, notificationData);
+    console.log('[NotificationService] Created notification:', docRef.id, notificationData);
+    return docRef.id;
+  }
+}

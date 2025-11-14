@@ -1,0 +1,86 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{db}/documents {
+    // TEMPORARY: Allow all authenticated users (for testing)
+    // TODO: Restore role-based rules after testing
+    match /{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Individual students collection
+    match /individualStudents/{studentId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.resource.data.teacherId == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.teacherId == request.auth.uid;
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if request.auth != null && resource.data.toUid == request.auth.uid;
+      // Only Cloud Functions can write notifications
+      allow write: if false;
+      // Users can mark their own notifications as read
+      allow update: if request.auth != null 
+                    && resource.data.toUid == request.auth.uid
+                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+    }
+    
+    // PRODUCTION RULES (commented out for testing):
+    // function isSignedIn() { 
+    //   return request.auth != null; 
+    // }
+    // function hasRole(role) { 
+    //   return isSignedIn() && request.auth.token.role == role; 
+    // }
+    // function isStudent() {
+    //   return hasRole('student');
+    // }
+    // function isTeacher() {
+    //   return hasRole('teacher');
+    // }
+    // function isParent() {
+    //   return hasRole('parent');
+    // }
+
+    // match /users/{uid} {
+    //   allow read: if isSignedIn() && (request.auth.uid == uid || hasRole('teacher'));
+    //   allow write: if request.auth.uid == uid;
+    // }
+
+    // match /classes/{classId} {
+    //   allow read: if isSignedIn();
+    //   allow create: if hasRole('teacher');
+    //   allow update, delete: if hasRole('teacher') && resource.data.ownerId == request.auth.uid;
+    // }
+
+    // match /assignments/{aid} {
+    //   allow read: if isSignedIn();
+    //   allow create, update, delete: if hasRole('teacher') && request.resource.data.teacherId == request.auth.uid;
+    // }
+
+    // match /submissions/{sid} {
+    //   allow read: if isSignedIn();
+    //   allow create, update: if isStudent() && request.resource.data.studentId == request.auth.uid;
+    //   // teachers may update grading fields
+    //   allow update: if isTeacher();
+    // }
+
+    // match /progress/{pid} {
+    //   allow read: if isSignedIn();
+    //   allow create, update: if hasRole('student') && request.resource.data.studentId == request.auth.uid;
+    // }
+    
+    // match /reports/{rid} {
+    //   // Teachers can read all reports for their classes; parents can read reports of linked students
+    //   allow read: if isTeacher() || (isParent() && request.auth.token.linkedStudentIds != null &&
+    //                                  request.auth.token.linkedStudentIds.size() > 0);
+    //   allow create: if isTeacher();
+    // }
+
+    // match /notifications/{nid} {
+    //   allow read, update: if isSignedIn() && request.auth.uid == resource.data.toUid;
+    //   allow create: if isSignedIn();
+    // }
+  }
+}
