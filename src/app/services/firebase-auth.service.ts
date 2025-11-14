@@ -1825,10 +1825,10 @@ export class FirebaseAuthService {
           isPremium: idTokenResult.claims['premium'] === true || 
                      idTokenResult.claims['subscriptionStatus'] === 'active' ||
                      idTokenResult.claims['subscriptionStatus'] === 'trialing',
-          subscriptionStatus: idTokenResult.claims['subscriptionStatus'] || currentUserState.subscriptionStatus,
-          subscriptionEnd: idTokenResult.claims['subscriptionEnd'] || currentUserState.subscriptionEnd,
+          subscriptionStatus: (idTokenResult.claims['subscriptionStatus'] as string | undefined) || currentUserState.subscriptionStatus,
+          subscriptionEnd: (idTokenResult.claims['subscriptionEnd'] as number | null | undefined) || currentUserState.subscriptionEnd,
           isAdmin: idTokenResult.claims['admin'] === true,
-          role: (idTokenResult.claims['role'] as string) || currentUserState.role
+          role: (idTokenResult.claims['role'] as 'teacher' | 'student' | 'parent' | undefined) || currentUserState.role
         };
         
         this._user.next(updatedUser);

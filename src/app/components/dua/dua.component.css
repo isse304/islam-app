@@ -412,7 +412,7 @@ button:active {
       background-color: #2A4365 !important;
     }
   }
-  button.bg-\[\#B7A57A\].text-white {
+  :is(button).bg-\[\#B7A57A\].text-white {
     background-color: #B7A57A !important;
     color: #1A365D !important;
     &:hover {
