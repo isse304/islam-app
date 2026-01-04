@@ -344,6 +344,20 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   public isPlayingAssignmentAudio: boolean = false;
   public assignmentAudioPlaylist: number[] = [];
   
+  // Reader playback state (separate from assignment mode)
+  public isPlayingReaderAudio: boolean = false;
+  public readerAudioPlaylist: number[] = [];
+  public currentReaderVerseIndex: number = 0;
+  public showPlaybackOptions: boolean = false;
+  public customRangeStart: number = 1;
+  public customRangeEnd: number = 1;
+  public lastClickedVerse: number | null = null;
+  public isReaderLoopEnabled: boolean = false;
+  
+  // Jump to verse feature
+  public showJumpToVerseDialog: boolean = false;
+  public jumpToVerseNumber: number = 1;
+  
   // Audio recording state
   public isRecording: boolean = false;
   public recordingDuration: number = 0;
@@ -3244,6 +3258,464 @@ getSurahName(surahNumber: string | number): string {
     }
 
     this.changeDetector.markForCheck();
+  }
+
+  // ============================================================================
+  // READER PLAYBACK METHODS (Ayah-by-Ayah with Auto-Scroll)
+  // ============================================================================
+
+  /**
+   * Open playback options dialog
+   */
+  public openPlaybackOptions(): void {
+    this.showPlaybackOptions = true;
+    this.detectCurrentVerse();
+    // Initialize custom range to current surah's verse range
+    if (this.verses.length > 0) {
+      this.customRangeStart = 1;
+      this.customRangeEnd = this.verses.length;
+    }
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Close playback options dialog
+   */
+  public closePlaybackOptions(): void {
+    this.showPlaybackOptions = false;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Detect current verse in viewport or last clicked
+   */
+  private detectCurrentVerse(): void {
+    // Priority 1: Last clicked verse
+    if (this.lastClickedVerse && this.lastClickedVerse >= 1 && this.lastClickedVerse <= this.verses.length) {
+      this.currentVerse = this.lastClickedVerse;
+      return;
+    }
+    
+    // Priority 2: First visible verse in viewport
+    const visibleVerse = this.findFirstVisibleVerse();
+    if (visibleVerse) {
+      this.currentVerse = visibleVerse;
+      return;
+    }
+    
+    // Priority 3: Default to verse 1
+    this.currentVerse = 1;
+  }
+
+  /**
+   * Find first visible verse in viewport
+   */
+  private findFirstVisibleVerse(): number | null {
+    const verses = Array.from(document.querySelectorAll('[id^="verse-"]'));
+    for (const verseEl of verses) {
+      const rect = verseEl.getBoundingClientRect();
+      if (rect.top >= 0 && rect.top <= window.innerHeight / 2) {
+        const verseId = (verseEl as HTMLElement).id.replace('verse-', '');
+        return parseInt(verseId);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Play from beginning (verse 1)
+   */
+  public playFromBeginning(): void {
+    this.closePlaybackOptions();
+    if (this.verses.length === 0) {
+      this.toastService.showError('No verses loaded');
+      return;
+    }
+    this.playReaderVerseRange(1, this.verses.length);
+  }
+
+  /**
+   * Play from current verse to end
+   */
+  public playFromCurrent(): void {
+    this.closePlaybackOptions();
+    if (this.verses.length === 0) {
+      this.toastService.showError('No verses loaded');
+      return;
+    }
+    this.detectCurrentVerse();
+    this.playReaderVerseRange(this.currentVerse, this.verses.length);
+  }
+
+  /**
+   * Play custom range
+   */
+  public playCustomRange(): void {
+    // Convert to numbers (in case dropdown returns strings)
+    const startVerse = Number(this.customRangeStart);
+    const endVerse = Number(this.customRangeEnd);
+    
+    // Validate range
+    if (endVerse < startVerse) {
+      this.toastService.showError('End verse must be greater than or equal to start verse');
+      return;
+    }
+    
+    if (startVerse < 1 || endVerse > this.verses.length) {
+      this.toastService.showError('Invalid verse range');
+      return;
+    }
+    
+    this.closePlaybackOptions();
+    this.playReaderVerseRange(startVerse, endVerse);
+  }
+
+  /**
+   * Play full surah in background (no verse tracking)
+   */
+  public playFullSurahBackground(): void {
+    this.closePlaybackOptions();
+    this.playFullSurah(); // Use existing method
+  }
+
+  /**
+   * Main playback method for reader mode
+   */
+  private playReaderVerseRange(startVerse: number, endVerse: number): void {
+    // Stop any existing playback (including existing reader audio)
+    if (this.isPlayingReaderAudio) {
+      this.stopReaderAudio();
+    }
+    if (this.isPlayingAssignmentAudio) {
+      this.stopAssignmentAudio();
+    }
+    if (this.isPlayingFullSurah) {
+      this.stopFullSurah();
+    }
+    
+    // Clear any residual audio player state
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+      this.audioPlayer.currentTime = 0;
+    }
+    this.isPlaying = false;
+    this.audioPaused = true;
+
+    // Build playlist
+    this.readerAudioPlaylist = [];
+    for (let v = startVerse; v <= endVerse; v++) {
+      this.readerAudioPlaylist.push(v);
+    }
+    
+    if (this.readerAudioPlaylist.length === 0) {
+      this.toastService.showError('No verses to play');
+      return;
+    }
+    
+    // Scroll to first verse
+    setTimeout(() => {
+      this.scrollToVerse(startVerse);
+    }, 100);
+    
+    // Minimize controls if desktop
+    if (!this.isMobile && !this.isMainControlsMinimized) {
+      this.isMainControlsMinimized = true;
+    }
+    
+    // Start playback
+    this.isPlayingReaderAudio = true;
+    this.currentReaderVerseIndex = 0;
+    this.changeDetector.markForCheck();
+    
+    // Start playing the sequence
+    this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, 0, true);
+  }
+
+  /**
+   * Sequential verse playback for reader mode
+   */
+  private async playReaderVerseSequence(
+    surah: number, 
+    verses: number[], 
+    currentIndex: number, 
+    autoScroll: boolean = false
+  ): Promise<void> {
+    // Check if playback stopped or completed
+    if (!this.isPlayingReaderAudio) {
+      // Manually stopped
+      this.isPlayingReaderAudio = false;
+      this.currentReaderVerseIndex = 0;
+      this.currentPlayingVerse = null;
+      
+      // IMPORTANT: Clear audio player state to prevent old player from showing
+      this.isPlaying = false;
+      this.audioPaused = true;
+      
+      // Remove highlight
+      document.querySelectorAll('.currently-playing-verse').forEach(el => {
+        el.classList.remove('currently-playing-verse');
+      });
+      this.changeDetector.markForCheck();
+      return;
+    }
+    
+    // Check if reached end of playlist
+    if (currentIndex >= verses.length) {
+      if (this.isReaderLoopEnabled) {
+        // Loop back to beginning
+        await new Promise(resolve => setTimeout(resolve, 500)); // Brief pause before looping
+        this.playReaderVerseSequence(surah, verses, 0, autoScroll);
+      } else {
+        // End playback
+        this.isPlayingReaderAudio = false;
+        this.currentReaderVerseIndex = 0;
+        this.currentPlayingVerse = null;
+        
+        // Clear audio player state
+        this.isPlaying = false;
+        this.audioPaused = true;
+        
+        // Remove highlight
+        document.querySelectorAll('.currently-playing-verse').forEach(el => {
+          el.classList.remove('currently-playing-verse');
+        });
+        this.changeDetector.markForCheck();
+      }
+      return;
+    }
+
+    const verseNumber = verses[currentIndex];
+    const verse = this.verses.find(v => v.number === verseNumber);
+    
+    if (!verse) {
+      console.warn(`Verse ${verseNumber} not found in verses array, skipping...`);
+      // Try to continue with next verse instead of stopping
+      await this.playReaderVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+      return;
+    }
+
+    // Scroll and highlight
+    if (autoScroll) {
+      this.scrollToVerse(verseNumber);
+      this.highlightCurrentVerse(verseNumber);
+    }
+
+    // Get audio URL
+    const verseKey = `${surah}:${verseNumber}`;
+    const audioUrl = this.quranService.getVerseAudioUrl(this.selectedReciter.id, verseKey);
+    
+    if (!audioUrl) {
+      console.error(`Could not get audio URL for ${verseKey}`);
+      await this.playReaderVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+      return;
+    }
+
+    // Update display
+    const surahDetails = this.surahs.find(s => s.number === surah);
+    const surahName = surahDetails?.englishName || `Surah ${surah}`;
+    const arabicName = surahDetails?.name || '';
+    const surahDisplayName = arabicName ? `${surahName} (${arabicName})` : surahName;
+    
+    this.currentlyPlaying = `${surahDisplayName} - Verse ${verseNumber}`;
+    this.currentPlayingVerse = verseNumber;
+    this.currentReaderVerseIndex = currentIndex;
+
+    // Create new audio element
+    const audio = new Audio(audioUrl);
+    this.audioPlayer = audio;
+    this.isPlaying = true;
+    this.audioPaused = false;
+
+    try {
+      // Wait for audio to load
+      await new Promise<void>((resolve, reject) => {
+        audio.addEventListener('loadeddata', () => resolve(), { once: true });
+        audio.addEventListener('error', reject, { once: true });
+        audio.load();
+      });
+
+      // Set up ended event before playing
+      audio.addEventListener('ended', async () => {
+        if (!this.isPlayingReaderAudio) return;
+        
+        // Wait 300ms before next verse
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Play next verse
+        await this.playReaderVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+      }, { once: true });
+
+      // Play the audio
+      await audio.play();
+      this.changeDetector.markForCheck();
+
+    } catch (error) {
+      console.error(`Error playing verse ${verseKey}:`, error);
+      await this.playReaderVerseSequence(surah, verses, currentIndex + 1, autoScroll);
+    }
+  }
+
+  /**
+   * Stop reader audio playback
+   */
+  public stopReaderAudio(): void {
+    this.isPlayingReaderAudio = false;
+    
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+      this.audioPlayer.currentTime = 0;
+    }
+    
+    this.isPlaying = false;
+    this.audioPaused = true;
+    this.currentPlayingVerse = null;
+    this.currentReaderVerseIndex = 0;
+    
+    // Remove highlight
+    document.querySelectorAll('.currently-playing-verse').forEach(el => {
+      el.classList.remove('currently-playing-verse');
+    });
+    
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Pause reader audio playback
+   */
+  public pauseReaderAudio(): void {
+    if (this.audioPlayer && !this.audioPaused) {
+      this.audioPlayer.pause();
+      this.audioPaused = true;
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  /**
+   * Resume reader audio playback
+   */
+  public resumeReaderAudio(): void {
+    if (this.audioPlayer && this.audioPaused) {
+      this.audioPlayer.play().catch((error) => {
+        console.error('Error resuming audio:', error);
+        this.toastService.showError('Failed to resume audio playback');
+      });
+      this.audioPaused = false;
+      this.changeDetector.markForCheck();
+    }
+  }
+
+  /**
+   * Skip to next verse in reader playback
+   */
+  public skipNextReaderVerse(): void {
+    if (!this.isPlayingReaderAudio || this.readerAudioPlaylist.length === 0) {
+      return;
+    }
+    
+    // Stop current audio
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+      this.audioPlayer.currentTime = 0;
+    }
+    
+    // Move to next verse
+    const nextIndex = this.currentReaderVerseIndex + 1;
+    
+    if (nextIndex < this.readerAudioPlaylist.length) {
+      // Play next verse
+      this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, nextIndex, true);
+    } else if (this.isReaderLoopEnabled) {
+      // Loop back to beginning
+      this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, 0, true);
+    } else {
+      // End of playlist, stop playback
+      this.stopReaderAudio();
+    }
+  }
+
+  /**
+   * Skip to previous verse in reader playback
+   */
+  public skipPreviousReaderVerse(): void {
+    if (!this.isPlayingReaderAudio || this.readerAudioPlaylist.length === 0) {
+      return;
+    }
+    
+    // Stop current audio
+    if (this.audioPlayer) {
+      this.audioPlayer.pause();
+      this.audioPlayer.currentTime = 0;
+    }
+    
+    // Move to previous verse
+    const previousIndex = this.currentReaderVerseIndex - 1;
+    
+    if (previousIndex >= 0) {
+      // Play previous verse
+      this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, previousIndex, true);
+    } else if (this.isReaderLoopEnabled) {
+      // Loop to end
+      this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, this.readerAudioPlaylist.length - 1, true);
+    } else {
+      // Already at beginning, stay at first verse
+      this.playReaderVerseSequence(this.currentSurah, this.readerAudioPlaylist, 0, true);
+    }
+  }
+
+  /**
+   * Toggle loop mode for reader playback
+   */
+  public toggleReaderLoop(): void {
+    this.isReaderLoopEnabled = !this.isReaderLoopEnabled;
+    this.toastService.success(
+      this.isReaderLoopEnabled ? '🔁 Loop enabled' : '🔁 Loop disabled'
+    );
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Open jump to verse dialog
+   */
+  public openJumpToVerseDialog(): void {
+    // Initialize with current verse or first verse
+    this.jumpToVerseNumber = this.currentVerse || 1;
+    this.showJumpToVerseDialog = true;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Close jump to verse dialog
+   */
+  public closeJumpToVerseDialog(): void {
+    this.showJumpToVerseDialog = false;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Jump to selected verse
+   */
+  public executeJumpToVerse(): void {
+    const verseNumber = Number(this.jumpToVerseNumber);
+    
+    // Validate verse number
+    if (verseNumber < 1 || verseNumber > this.verses.length) {
+      this.toastService.showError(`Please enter a verse between 1 and ${this.verses.length}`);
+      return;
+    }
+    
+    // Close dialog
+    this.closeJumpToVerseDialog();
+    
+    // Scroll to verse
+    setTimeout(() => {
+      const scrolled = this.scrollToVerse(verseNumber);
+      if (scrolled) {
+        this.toastService.success(`Jumped to verse ${verseNumber}`);
+        this.lastClickedVerse = verseNumber;
+      } else {
+        this.toastService.showError('Verse not found');
+      }
+    }, 100);
   }
 
   /**
