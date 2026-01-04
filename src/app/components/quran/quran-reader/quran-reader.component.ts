@@ -2911,10 +2911,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             this.fontSize = prefs.fontSize;
             // ////////console.log.log(`[loadUserPreferences] Applied font size pref: ${this.fontSize}`);
         }
-        // Load tajweed preference (default to true if not set)
-        if (typeof prefs.tajweedEnabled === 'boolean') {
-            this.tajweedEnabled = prefs.tajweedEnabled;
-        }
+        // Load tajweed preference (default to true if not set or undefined)
+        // Explicitly default to true for new users or when preference is missing
+        this.tajweedEnabled = prefs.tajweedEnabled !== false; // Only false if explicitly set to false
 
          // Apply isMainControlsMinimized state (regardless of initialLoad? Check logic)
          if (prefs.lastState && typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
