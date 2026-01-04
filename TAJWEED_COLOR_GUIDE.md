@@ -292,3 +292,5 @@ May Allah make it easy for you to learn and apply Tajweed correctly. 🤲
 
 
 
+
+

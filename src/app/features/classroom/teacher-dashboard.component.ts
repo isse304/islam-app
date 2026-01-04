@@ -1,5 +1,6 @@
 import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterModule } from '@angular/router';
 import {
   FormBuilder,
   FormGroup,
@@ -24,7 +25,7 @@ import { FirebaseAuthService } from 'src/app/services/firebase-auth.service';
   templateUrl: './teacher-dashboard.component.html',
   styleUrls: ['./teacher-dashboard.component.scss'],
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, GradePanelComponent, AssignmentFormComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, GradePanelComponent, AssignmentFormComponent],
 })
 export class TeacherDashboardComponent implements OnInit {
   private fb = inject(FormBuilder);
@@ -62,7 +63,6 @@ export class TeacherDashboardComponent implements OnInit {
   editingAssignment: Assignment | null = null; // Track assignment being edited
   
   // Ungraded submission counts (for badges)
-  ungradedCountForStudent: { [studentId: string]: Observable<number> } = {};
   ungradedCountForAssignment: { [assignmentId: string]: Observable<number> } = {};
   
   // Student names cache
@@ -114,14 +114,7 @@ export class TeacherDashboardComponent implements OnInit {
       // Load ungraded counts for each student
       this.myStudents$.subscribe({
         next: (students) => {
-          students.forEach(student => {
-            try {
-              this.ungradedCountForStudent[student.id] = 
-                this.submissionService.countUngradedSubmissionsForStudent(student.id);
-            } catch (error) {
-              console.error(`Error loading ungraded count for student ${student.id}:`, error);
-            }
-          });
+          // Students loaded successfully
         },
         error: (error) => {
           console.error('Error loading students:', error);
@@ -242,6 +235,12 @@ export class TeacherDashboardComponent implements OnInit {
           assignments.forEach(assignment => {
             this.ungradedCountForAssignment[assignment.id] = 
               this.submissionService.countUngradedSubmissionsForAssignment(assignment.id);
+            
+            // Subscribe to cache the count for categorization
+            this.ungradedCountForAssignment[assignment.id].subscribe(count => {
+              this.ungradedCountsCache[assignment.id] = count;
+              this.cdr.detectChanges();
+            });
           });
           
           // Trigger change detection
@@ -285,13 +284,42 @@ export class TeacherDashboardComponent implements OnInit {
   }
 
   onGraded() {
-    const gradedAssignmentId = this.selectedSubmissionForGrading?.assignmentId;
+    const gradedSubmission = this.selectedSubmissionForGrading;
+    const gradedAssignmentId = gradedSubmission?.assignmentId;
     this.selectedSubmissionForGrading = null;
     
     // Refresh the submissions list to show updated status
     if (gradedAssignmentId) {
       this.submissionsForAssignment[gradedAssignmentId] = this.submissionService.listSubmissionsForAssignment(gradedAssignmentId);
+      
+      // Force refresh the assignments list to show the updated graded status on the dashboard
+      // Check if this is a classroom or individual assignment
+      if (this.mode === 'classroom') {
+        // Find which class this assignment belongs to
+        this.myClasses$.subscribe(classes => {
+          for (const cls of classes) {
+            const assignmentObs = this.assignmentsForClass[cls.id];
+            if (assignmentObs) {
+              // Refresh assignments for this class
+              this.assignmentsForClass[cls.id] = this.assignmentService.listAssignmentsForClass(cls.id);
+            }
+          }
+        }).unsubscribe();
+      } else if (this.mode === 'individual') {
+        // Find which student this assignment belongs to
+        this.myStudents$.subscribe(students => {
+          for (const student of students) {
+            const assignmentObs = this.assignmentsForStudent[student.studentId];
+            if (assignmentObs) {
+              // Refresh assignments for this student
+              this.assignmentsForStudent[student.studentId] = this.assignmentService.listAssignmentsForIndividualStudent(student.studentId);
+            }
+          }
+        }).unsubscribe();
+      }
+      
       this.cdr.detectChanges();
+      this.toastService.success('✓ Dashboard updated with latest grades!');
     }
   }
   
@@ -374,7 +402,6 @@ export class TeacherDashboardComponent implements OnInit {
         
         // Clear assignments cache for this student
         delete this.assignmentsForStudent[studentId];
-        delete this.ungradedCountForStudent[studentId];
         
         // Dynamically refresh students list
         this.myStudents$ = this.individualStudentService.listMyStudents();
@@ -413,6 +440,18 @@ export class TeacherDashboardComponent implements OnInit {
           assignments.forEach(assignment => {
             this.ungradedCountForAssignment[assignment.id] = 
               this.submissionService.countUngradedSubmissionsForAssignment(assignment.id);
+            
+            // Subscribe to cache the count for categorization
+            this.ungradedCountForAssignment[assignment.id].subscribe(count => {
+              this.ungradedCountsCache[assignment.id] = count;
+              this.cdr.detectChanges();
+            });
+            
+            // Auto-load submissions to show grading status
+            if (!this.submissionsForAssignment[assignment.id]) {
+              this.submissionsForAssignment[assignment.id] = 
+                this.submissionService.listSubmissionsForAssignment(assignment.id);
+            }
           });
           
           // Trigger change detection
@@ -424,6 +463,49 @@ export class TeacherDashboardComponent implements OnInit {
         }
       });
     }
+  }
+  
+  // Helper properties to cache ungraded counts
+  private ungradedCountsCache: { [assignmentId: string]: number } = {};
+
+  // Helper methods to categorize assignments
+  getUngradedAssignments(assignments: Assignment[]): Assignment[] {
+    // Only show assignments that we know have ungraded submissions
+    return assignments.filter(a => {
+      const count = this.ungradedCountsCache[a.id];
+      return count && count > 0;
+    }).sort((a, b) => {
+      // Sort by creation date, newest first
+      return (b.createdAt?.toMillis() || 0) - (a.createdAt?.toMillis() || 0);
+    });
+  }
+  
+  getActiveAssignments(assignments: Assignment[]): Assignment[] {
+    const now = new Date();
+    return assignments.filter(a => {
+      const hasUngraded = this.ungradedCountsCache[a.id] > 0;
+      const dueDate = a.dueAt?.toDate();
+      const isUpcoming = !dueDate || dueDate >= now;
+      return !hasUngraded && isUpcoming;
+    }).sort((a, b) => {
+      // Sort by due date, soonest first
+      const aTime = a.dueAt?.toMillis() || Infinity;
+      const bTime = b.dueAt?.toMillis() || Infinity;
+      return aTime - bTime;
+    });
+  }
+  
+  getPastAssignments(assignments: Assignment[]): Assignment[] {
+    const now = new Date();
+    return assignments.filter(a => {
+      const hasUngraded = this.ungradedCountsCache[a.id] > 0;
+      const dueDate = a.dueAt?.toDate();
+      const isPast = dueDate && dueDate < now;
+      return !hasUngraded && isPast;
+    }).sort((a, b) => {
+      // Sort by due date, most recent first
+      return (b.dueAt?.toMillis() || 0) - (a.dueAt?.toMillis() || 0);
+    });
   }
 
   // Toggle methods for expanding/collapsing

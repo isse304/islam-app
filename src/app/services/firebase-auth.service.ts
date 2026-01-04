@@ -38,7 +38,7 @@ import {
 
 import { UserInfo } from '@angular/fire/auth';
 import { Auth, User, IdTokenResult } from '@angular/fire/auth';
-import { Firestore, doc, getDoc } from '@angular/fire/firestore';
+import { Firestore, doc, getDoc, setDoc, updateDoc, serverTimestamp } from '@angular/fire/firestore';
 
 export interface AppUser {
   id: string;
@@ -349,6 +349,9 @@ export class FirebaseAuthService {
       if (this.lastEmailVerifiedState === null) {
           this.lastEmailVerifiedState = partialAppUser.emailVerified;
       }
+
+      // 1.5. Ensure user profile exists in Firestore
+      await this.ensureUserProfileExists(firebaseUser);
       
       // 2. Cache token immediately
       this.cachedToken = { token: tokenResult.token, timestamp: Date.now() };
@@ -433,6 +436,52 @@ export class FirebaseAuthService {
       // Ensure user state is cleared on error
       this.ngZone.run(() => { this.clearAuthData(); });
       return null; 
+    }
+  }
+
+  /**
+   * Ensure user profile document exists in Firestore
+   * Creates the document if it doesn't exist
+   */
+  private async ensureUserProfileExists(firebaseUser: FirebaseUser): Promise<void> {
+    try {
+      const userRef = doc(this.firestore, 'users', firebaseUser.uid);
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        // User document doesn't exist - create it
+        console.log(`[AuthService] Creating Firestore profile for user: ${firebaseUser.uid}`);
+        
+        // Parse display name into first and last name
+        const names = (firebaseUser.displayName || '').split(' ');
+        const firstName = names[0] || '';
+        const lastName = names.slice(1).join(' ') || '';
+
+        await setDoc(userRef, {
+          uid: firebaseUser.uid,
+          email: firebaseUser.email?.toLowerCase() || '',
+          firstName: firstName,
+          lastName: lastName,
+          displayName: firebaseUser.displayName || '',
+          photoURL: firebaseUser.photoURL || null,
+          emailVerified: firebaseUser.emailVerified,
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+          bookmarks: [],
+          history: []
+          // Note: role will be assigned when user joins Nura Academy
+        });
+        
+        console.log(`[AuthService] Firestore profile created successfully for: ${firebaseUser.uid}`);
+      } else {
+        // Document exists, optionally update lastLoginAt
+        await updateDoc(userRef, {
+          lastLoginAt: serverTimestamp()
+        });
+      }
+    } catch (error) {
+      console.error(`[AuthService] Error ensuring profile exists for ${firebaseUser.uid}:`, error);
+      // Don't throw - let the auth flow continue even if profile creation fails
     }
   }
 

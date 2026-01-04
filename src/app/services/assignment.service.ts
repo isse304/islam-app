@@ -736,4 +736,36 @@ export class AssignmentService {
       })();
     });
   }
+
+  /**
+   * List all assignments for a teacher (for grade book)
+   */
+  listAssignmentsForTeacher(teacherId: string): Observable<ClassroomAssignment[]> {
+    console.log('[AssignmentService] listAssignmentsForTeacher called for teacherId:', teacherId);
+    
+    const assignmentsRef = collection(this.firestore, 'assignments');
+    const q = query(
+      assignmentsRef,
+      where('teacherId', '==', teacherId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    return new Observable(observer => {
+      getDocs(q).then(snapshot => {
+        console.log(`[AssignmentService] Found ${snapshot.size} assignments for teacher ${teacherId}`);
+        
+        const assignments = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as ClassroomAssignment));
+        
+        observer.next(assignments);
+        observer.complete();
+      }).catch(error => {
+        console.error('[AssignmentService] Error fetching assignments for teacher:', error);
+        observer.next([]);
+        observer.complete();
+      });
+    });
+  }
 }

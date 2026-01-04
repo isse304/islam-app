@@ -127,6 +127,103 @@
   }
 }
 
+/* ===== QURAN.COM API TAJWEED HTML TAGS ===== */
+/* Styling for <rule> elements from Quran.com API (they use <rule class="...">) */
+
+/* Disable tajweed colors when toggle is off */
+.tajweed-disabled rule {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+rule {
+  /* Ghunnah and variations */
+  &[class*="ghunnah"] {
+    color: #4CAF50 !important;
+    .dark & {
+      color: #66BB6A !important;
+      text-shadow: 0 0 2px rgba(102, 187, 106, 0.3);
+    }
+  }
+  
+  /* Qalqalah (with various spellings) */
+  &[class*="qalqalah"], &[class*="qalaqalah"] {
+    color: #9C27B0 !important;
+    .dark & {
+      color: #BA68C8 !important;
+      text-shadow: 0 0 2px rgba(186, 104, 200, 0.3);
+    }
+  }
+  
+  /* Madd (elongation) and variations */
+  &[class*="madd"] {
+    color: #F44336 !important;
+    .dark & {
+      color: #EF5350 !important;
+      text-shadow: 0 0 3px rgba(239, 83, 80, 0.4);
+    }
+  }
+  
+  /* Idghaam (merging) */
+  &[class*="idgham"]:not([class*="ghunnah"]), &[class*="idghaam"]:not([class*="ghunnah"]) {
+    color: #757575 !important;
+    .dark & {
+      color: #BDBDBD !important;
+      text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
+    }
+  }
+  
+  /* Idghaam with Ghunnah */
+  &[class*="idgham"][class*="ghunnah"], &[class*="idghaam"][class*="ghunnah"] {
+    color: #2196F3 !important;
+    .dark & {
+      color: #42A5F5 !important;
+      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
+    }
+  }
+  
+  /* Ikhfa (hiding) */
+  &[class*="ikhfa"], &[class*="ikhfaa"] {
+    color: #FFC107 !important;
+    .dark & {
+      color: #FFD54F !important;
+      text-shadow: 0 0 3px rgba(255, 213, 79, 0.4);
+    }
+  }
+  
+  /* Iqlab (conversion) */
+  &[class*="iqlab"], &[class*="iqlb"] {
+    color: #FF9800 !important;
+    .dark & {
+      color: #FFB74D !important;
+      text-shadow: 0 0 2px rgba(255, 183, 77, 0.3);
+    }
+  }
+  
+  /* Hamzat Wasl */
+  &[class*="ham_wasl"], &[class*="hamzat_wasl"] {
+    color: #00BCD4 !important;
+    .dark & {
+      color: #26C6DA !important;
+      text-shadow: 0 0 2px rgba(38, 198, 218, 0.3);
+    }
+  }
+  
+  /* Silent letters */
+  &[class*="slnt"], &[class*="silent"] {
+    color: #BDBDBD !important;
+    .dark & {
+      color: #9E9E9E !important;
+      text-shadow: 0 0 1px rgba(158, 158, 158, 0.2);
+    }
+  }
+  
+  /* Izhar (clear pronunciation - no color) */
+  &[class*="izhar"] {
+    /* Keep default color */
+  }
+}
+
 /* ===== QURAN PAUSE MARKS (WAQF) ===== */
 /* Styling for Quranic pause symbols */
 .waqf {

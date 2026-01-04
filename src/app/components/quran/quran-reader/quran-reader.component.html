@@ -578,6 +578,176 @@
   </div>
 </div>
 
+<!-- Tajweed Legend Dialog -->
+<div *ngIf="showTajweedLegendDialog" 
+     class="fixed inset-0 bg-black/60 z-[250] flex items-center justify-center p-4 backdrop-blur-sm"
+     (click)="closeTajweedLegend()">
+  <div class="bg-gradient-to-br from-[#FAF3E0] via-[#E6DACE] to-[#D3C1BD] dark:from-[#1A365D] dark:via-[#2A4365] dark:to-[#3A5F8A] rounded-2xl shadow-2xl p-4 md:p-6 max-w-4xl w-full mx-4 max-h-[85vh] md:max-h-[90vh] overflow-y-auto relative" 
+       (click)="$event.stopPropagation()">
+    
+    <!-- Subtle Islamic Pattern -->
+    <div class="absolute inset-0 opacity-5 dark:opacity-[3%] bg-repeat rounded-xl pointer-events-none"
+         style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 0l30 30-30 30L0 30 30 0z\' fill=\'%23000\' fill-opacity=\'0.1\'/%3E%3C/svg%3E');"></div>
+    
+    <div class="relative z-10">
+      <!-- Icon & Header Combined (Mobile-optimized) -->
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#B7A57A] dark:bg-yellow-400 flex items-center justify-center shadow-md flex-shrink-0">
+            <i class="fas fa-book-open text-white dark:text-[#1A365D] text-xl md:text-2xl"></i>
+          </div>
+          <h3 class="text-xl md:text-2xl font-bold text-[#1A365D] dark:text-[#FAF3E0]">
+            Tajweed Guide
+          </h3>
+        </div>
+        <button (click)="closeTajweedLegend()" 
+                class="text-gray-500 hover:text-[#1A365D] dark:text-gray-400 dark:hover:text-[#FAF3E0] transition-colors p-2 flex-shrink-0">
+          <i class="fas fa-times text-xl"></i>
+        </button>
+      </div>
+
+      <!-- Description -->
+      <p class="text-sm md:text-base text-gray-700 dark:text-gray-300 mb-4 md:mb-6">
+        Color-coded tajweed rules from Quran.com's authentic system to help you learn proper recitation.
+      </p>
+
+      <!-- Tajweed Rules Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+        
+        <!-- Madd (Elongation) -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">ـٰ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Madd (مَدّ)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Elongation</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">Prolonged vowel sounds (2-6 beats)</p>
+        </div>
+
+        <!-- Ghunnah -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">نّ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Ghunnah (غُنَّة)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Nasalization</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">Nasal sound with ن or م (2 beats)</p>
+        </div>
+
+        <!-- Qalqalah -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">قْ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Qalqalah (قَلْقَلَة)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Echo/Bounce</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">Letters: ق ط ب ج د with sukun</p>
+        </div>
+
+        <!-- Idghaam -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">نْ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Idghaam (إِدْغَام)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Merging</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">ن with sukun + يرملون</p>
+        </div>
+
+        <!-- Ikhfa -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">نْ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Ikhfa (إِخْفَاء)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Hiding</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">ن with sukun + 15 letters</p>
+        </div>
+
+        <!-- Iqlab -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-orange-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">نْب</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Iqlab (إِقْلاب)</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Conversion</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">ن with sukun + ب</p>
+        </div>
+
+        <!-- Idghaam with Ghunnah -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">نْم</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Idghaam + Ghunnah</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Merging with Nasal</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">Merging with nasal sound</p>
+        </div>
+
+        <!-- Hamzat Wasl -->
+        <div class="p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30 backdrop-blur-sm">
+          <div class="flex items-center gap-2 md:gap-3 mb-1 md:mb-2">
+            <div class="w-8 h-8 rounded-full bg-cyan-500 flex items-center justify-center flex-shrink-0">
+              <span class="text-white text-lg md:text-xl">ٱ</span>
+            </div>
+            <div class="min-w-0">
+              <h4 class="font-bold text-[#1A365D] dark:text-[#FAF3E0] text-sm md:text-base">Hamzat Wasl</h4>
+              <p class="text-xs md:text-sm text-gray-600 dark:text-gray-400">Connecting Hamza</p>
+            </div>
+          </div>
+          <p class="text-xs md:text-sm text-gray-700 dark:text-gray-300">Pronounced when starting, dropped when continuing</p>
+        </div>
+
+      </div>
+
+      <!-- Footer Note -->
+      <div class="mt-4 md:mt-6 p-3 md:p-4 bg-white/50 dark:bg-black/20 rounded-lg border border-[#B7A57A]/30">
+        <p class="text-xs md:text-sm text-center text-gray-700 dark:text-gray-300">
+          <i class="fas fa-info-circle text-[#B7A57A] mr-2"></i>
+          <span class="block sm:inline">Colors are learning aids from Quran.com. Toggle in settings.</span>
+        </p>
+      </div>
+
+      <!-- Close Button -->
+      <button 
+        (click)="closeTajweedLegend()"
+        class="w-full mt-3 md:mt-4 bg-[#B7A57A] dark:bg-yellow-400 text-white dark:text-[#1A365D] px-4 py-2.5 md:py-3 rounded-lg hover:bg-[#9b8a65] dark:hover:bg-yellow-300 active:scale-95 transition-all font-medium shadow-md text-sm md:text-base">
+        <i class="fas fa-check mr-2"></i>
+        Got it!
+      </button>
+
+    </div>
+  </div>
+</div>
+
 <!-- Main content of the Quran Reader -->
 <div class="quran-reader-container" [class.blur-background]="isSettingsOpen || isTafsirOpen">
 
@@ -775,6 +945,29 @@
             </div>
           </div>
 
+          <!-- Tajweed Toggle (Translation View Only) -->
+          <div *ngIf="!isMushafView" class="space-y-2">
+            <label class="text-gray-700 font-medium block">Tajweed Colors</label>
+            <button (click)="toggleTajweed()"
+                    class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] font-medium transition-colors flex items-center justify-center gap-2"
+                    [class.bg-[#B7A57A]]="tajweedEnabled"
+                    [class.text-white]="tajweedEnabled"
+                    [class.text-[#B7A57A]]="!tajweedEnabled">
+              <i class="fas fa-palette"></i>
+              {{ tajweedEnabled ? 'Enabled' : 'Disabled' }}
+            </button>
+          </div>
+
+          <!-- Tajweed Legend Button (Translation View Only) -->
+          <div *ngIf="!isMushafView" class="space-y-2">
+            <label class="text-gray-700 font-medium block">Tajweed Guide</label>
+            <button (click)="openTajweedLegend()"
+                    class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] text-[#B7A57A] font-medium hover:bg-[#B7A57A] hover:text-white transition-colors flex items-center justify-center gap-2">
+              <i class="fas fa-book-open"></i>
+              View Legend
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
@@ -969,19 +1162,17 @@
               {{currentSurah}}:{{verse.number}}
             </div>
 
-            <!-- Arabic Text -->
+            <!-- Arabic Text with Tajweed -->
             <div class="verse-container">
-              <div class="verse-text mb-4 quran-text-uthmanic" dir="rtl">
+              <div class="verse-text mb-4 quran-text-uthmanic" 
+                   [class.tajweed-disabled]="!tajweedEnabled"
+                   dir="rtl">
                 <span *ngFor="let word of verse.words" 
                       class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
-                      [class.tajweed-ghunnah]="word.tajweed?.includes('ghunnah')"
-                      [class.tajweed-qalqalah]="word.tajweed?.includes('qalqalah')"
-                      [class.tajweed-idghaam]="word.tajweed?.includes('idghaam')"
-                      [class.tajweed-ikhfa]="word.tajweed?.includes('ikhfa')"
-                      [class.tajweed-madd]="word.tajweed?.includes('madd')"
-                      [class.tajweed-iqlab]="word.tajweed?.includes('iqlab')"
                       (click)="showWordTranslation(word, $event)">
-                  {{word.text}}
+                  <!-- Render tajweed-annotated text from Quran.com API (if enabled) -->
+                  <span [innerHTML]="(tajweedEnabled ? (word.text_uthmani_tajweed || word.text) : word.text) | safeHtml"></span>
+                  <!-- Tooltip -->
                   <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50 pointer-events-none">
                     {{word.translation}}
                     <div class="absolute bottom-0 left-1/2 transform -translate-x-1/2 translate-y-1/2 rotate-45 w-2 h-2 bg-black"></div>
@@ -1389,6 +1580,29 @@
                     [class.text-[#B7A57A]]="!isMushafView">
               <i class="fas" [class.fa-book-open]="isMushafView" [class.fa-list-alt]="!isMushafView"></i>
               {{ isMushafView ? 'Translation View' : 'Mushaf View' }}
+            </button>
+          </div>
+
+          <!-- Tajweed Toggle -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">Tajweed Colors</label>
+            <button (click)="toggleTajweed()"
+                    class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] font-medium transition-colors flex items-center justify-center gap-2"
+                    [class.bg-[#B7A57A]]="tajweedEnabled"
+                    [class.text-white]="tajweedEnabled"
+                    [class.text-[#B7A57A]]="!tajweedEnabled">
+              <i class="fas fa-palette"></i>
+              {{ tajweedEnabled ? 'Enabled' : 'Disabled' }}
+            </button>
+          </div>
+
+          <!-- Tajweed Legend Button -->
+          <div class="space-y-2">
+            <label class="text-gray-700 font-medium block">Tajweed Guide</label>
+            <button (click)="openTajweedLegend()"
+                    class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A] text-[#B7A57A] font-medium hover:bg-[#B7A57A] hover:text-white transition-colors flex items-center justify-center gap-2">
+              <i class="fas fa-book-open"></i>
+              View Legend
             </button>
           </div>
 

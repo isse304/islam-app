@@ -632,3 +632,5 @@ export class QuranReaderComponent {
 
 
 
+
+

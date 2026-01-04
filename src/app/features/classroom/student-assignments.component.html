@@ -109,11 +109,18 @@
       </div>
     </div>
 
-    <!-- Stats Overview - Islamic Card Design -->
+    <!-- Stats Overview - Islamic Card Design (Clickable) -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8 relative">
       <!-- Active Assignments Card -->
-      <div class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
-                  transition-all duration-300 transform hover:scale-105 border-2 border-[#B7A57A]/30 overflow-hidden">
+      <button
+        (click)="switchTab('active')"
+        [ngClass]="{
+          'border-[#4F9CF9] ring-4 ring-[#4F9CF9]/20': activeTab === 'active',
+          'border-[#B7A57A]/30': activeTab !== 'active'
+        }"
+        class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
+               transition-all duration-300 transform hover:scale-105 border-2 overflow-hidden text-left w-full
+               focus:outline-none focus:ring-4 focus:ring-[#4F9CF9]/30">
         <!-- Islamic Pattern Background -->
         <div class="absolute inset-0 opacity-5 bg-repeat" style="background-image: url('/islamic-pattern-2.png'); background-size: 100px;"></div>
         
@@ -134,13 +141,27 @@
           <p class="text-5xl font-bold text-[#2E86DE] dark:text-[#4F9CF9] mb-1">{{ activeCount }}</p>
           <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Pending assignments</p>
         </div>
-      </div>
+      </button>
       
       <!-- Completed Assignments Card -->
-      <div class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
-                  transition-all duration-300 transform hover:scale-105 border-2 border-[#B7A57A]/30 overflow-hidden">
+      <button
+        (click)="switchTab('completed')"
+        [ngClass]="{
+          'border-[#47BE7D] ring-4 ring-[#47BE7D]/20': activeTab === 'completed',
+          'border-[#B7A57A]/30': activeTab !== 'completed'
+        }"
+        class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
+               transition-all duration-300 transform hover:scale-105 border-2 overflow-hidden text-left w-full
+               focus:outline-none focus:ring-4 focus:ring-[#47BE7D]/30">
         <div class="absolute inset-0 opacity-5 bg-repeat" style="background-image: url('/islamic-pattern-2.png'); background-size: 100px;"></div>
         <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#47BE7D] via-[#2ECC71] to-[#47BE7D]"></div>
+        
+        <!-- New Grade Badge -->
+        <div *ngIf="newlyGradedCount > 0" 
+             class="absolute -top-2 -right-2 w-12 h-12 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full 
+                    flex items-center justify-center shadow-lg animate-pulse z-10 border-4 border-white dark:border-[#1A365D]">
+          <span class="text-white font-bold text-sm">{{ newlyGradedCount }}</span>
+        </div>
         
         <div class="relative p-6">
           <div class="flex justify-between items-start mb-4">
@@ -154,13 +175,23 @@
           </div>
           <h3 class="text-gray-600 dark:text-[#B7A57A] font-semibold mb-2 uppercase text-sm tracking-wide">Completed</h3>
           <p class="text-5xl font-bold text-[#2ECC71] dark:text-[#47BE7D] mb-1">{{ completedCount }}</p>
-          <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">Masha'Allah! Well done!</p>
+          <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">
+            <span *ngIf="newlyGradedCount > 0" class="text-amber-600 dark:text-amber-400 font-bold">{{ newlyGradedCount }} New Grade{{ newlyGradedCount > 1 ? 's' : '' }}!</span>
+            <span *ngIf="newlyGradedCount === 0">Masha'Allah! Well done!</span>
+          </p>
         </div>
-      </div>
+      </button>
       
       <!-- Total Assignments Card -->
-      <div class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
-                  transition-all duration-300 transform hover:scale-105 border-2 border-[#B7A57A]/30 overflow-hidden">
+      <button
+        (click)="switchTab('all')"
+        [ngClass]="{
+          'border-[#B7A57A] ring-4 ring-[#B7A57A]/20': activeTab === 'all',
+          'border-[#B7A57A]/30': activeTab !== 'all'
+        }"
+        class="group relative bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg hover:shadow-2xl 
+               transition-all duration-300 transform hover:scale-105 border-2 overflow-hidden text-left w-full
+               focus:outline-none focus:ring-4 focus:ring-[#B7A57A]/30">
         <div class="absolute inset-0 opacity-5 bg-repeat" style="background-image: url('/islamic-pattern-2.png'); background-size: 100px;"></div>
         <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#B7A57A] via-[#D4C5A0] to-[#B7A57A]"></div>
         
@@ -178,99 +209,9 @@
           <p class="text-5xl font-bold text-[#B7A57A] dark:text-[#D4C5A0] mb-1">{{ totalCount }}</p>
           <p class="text-sm text-gray-500 dark:text-gray-400 font-medium">All assignments</p>
         </div>
-      </div>
+      </button>
     </div>
 
-    <!-- Tabs and Filter - Islamic Style -->
-    <div class="mb-8 bg-white/80 dark:bg-[#1A365D]/80 backdrop-blur-sm rounded-2xl shadow-lg p-2 border-2 border-[#B7A57A]/20 relative overflow-hidden">
-      <div class="absolute inset-0 opacity-5 bg-repeat" style="background-image: url('/islamic-pattern-2.png'); background-size: 150px;"></div>
-      
-      <!-- Tabs -->
-      <div class="grid grid-cols-3 gap-2 relative mb-3">
-        <button 
-          class="py-4 px-4 rounded-xl font-bold transition-all duration-300 transform flex items-center justify-center gap-2"
-          [class.bg-gradient-to-r]="activeTab === 'active'"
-          [class.from-[#4F9CF9]]="activeTab === 'active'"
-          [class.to-[#2E86DE]]="activeTab === 'active'"
-          [class.text-white]="activeTab === 'active'"
-          [class.shadow-lg]="activeTab === 'active'"
-          [class.scale-105]="activeTab === 'active'"
-          [class.text-gray-600]="activeTab !== 'active'"
-          [class.dark:text-gray-300]="activeTab !== 'active'"
-          [class.hover:bg-gray-100]="activeTab !== 'active'"
-          [class.dark:hover:bg-[#243F6B]]="activeTab !== 'active'"
-          (click)="switchTab('active')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span class="hidden sm:inline">Active ({{ activeCount }})</span>
-          <span class="sm:hidden">{{ activeCount }}</span>
-        </button>
-        
-        <button 
-          class="py-4 px-4 rounded-xl font-bold transition-all duration-300 transform flex items-center justify-center gap-2"
-          [class.bg-gradient-to-r]="activeTab === 'completed'"
-          [class.from-[#47BE7D]]="activeTab === 'completed'"
-          [class.to-[#2ECC71]]="activeTab === 'completed'"
-          [class.text-white]="activeTab === 'completed'"
-          [class.shadow-lg]="activeTab === 'completed'"
-          [class.scale-105]="activeTab === 'completed'"
-          [class.text-gray-600]="activeTab !== 'completed'"
-          [class.dark:text-gray-300]="activeTab !== 'completed'"
-          [class.hover:bg-gray-100]="activeTab !== 'completed'"
-          [class.dark:hover:bg-[#243F6B]]="activeTab !== 'completed'"
-          (click)="switchTab('completed')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span class="hidden sm:inline">Done ({{ completedCount }})</span>
-          <span class="sm:hidden">{{ completedCount }}</span>
-        </button>
-        
-        <button 
-          class="py-4 px-4 rounded-xl font-bold transition-all duration-300 transform flex items-center justify-center gap-2"
-          [class.bg-gradient-to-r]="activeTab === 'all'"
-          [class.from-[#B7A57A]]="activeTab === 'all'"
-          [class.to-[#8B7355]]="activeTab === 'all'"
-          [class.text-white]="activeTab === 'all'"
-          [class.shadow-lg]="activeTab === 'all'"
-          [class.scale-105]="activeTab === 'all'"
-          [class.text-gray-600]="activeTab !== 'all'"
-          [class.dark:text-gray-300]="activeTab !== 'all'"
-          [class.hover:bg-gray-100]="activeTab !== 'all'"
-          [class.dark:hover:bg-[#243F6B]]="activeTab !== 'all'"
-          (click)="switchTab('all')">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-          </svg>
-          <span class="hidden sm:inline">All ({{ totalCount }})</span>
-          <span class="sm:hidden">{{ totalCount }}</span>
-        </button>
-      </div>
-      
-      <!-- Hide Graded Toggle -->
-      <div class="relative px-2 pt-2 border-t border-[#B7A57A]/20">
-        <button 
-          (click)="toggleHideGraded()"
-          class="w-full py-2 px-4 rounded-lg font-semibold transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-center gap-2"
-          [class.bg-gradient-to-r]="hideGradedAssignments"
-          [class.from-amber-500]="hideGradedAssignments"
-          [class.to-amber-600]="hideGradedAssignments"
-          [class.text-white]="hideGradedAssignments"
-          [class.shadow-md]="hideGradedAssignments"
-          [class.bg-gray-100]="!hideGradedAssignments"
-          [class.dark:bg-[#243F6B]]="!hideGradedAssignments"
-          [class.text-gray-700]="!hideGradedAssignments"
-          [class.dark:text-gray-300]="!hideGradedAssignments">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path *ngIf="!hideGradedAssignments" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path *ngIf="!hideGradedAssignments" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-            <path *ngIf="hideGradedAssignments" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-          </svg>
-          <span class="text-sm">{{ hideGradedAssignments ? 'Show Graded' : 'Hide Graded' }}</span>
-        </button>
-      </div>
-    </div>
 
     <!-- Active Tab Content -->
     <div *ngIf="activeTab === 'active'" class="space-y-8">
@@ -507,17 +448,33 @@
       <div *ngIf="completedAssignments.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div *ngFor="let assignment of completedAssignments" 
              class="group relative bg-white dark:bg-[#1A365D] rounded-xl shadow-lg hover:shadow-2xl 
-                    transition-all duration-300 transform hover:scale-[1.02] border-l-4 border-green-500 overflow-hidden">
+                    transition-all duration-300 transform hover:scale-[1.02] overflow-hidden"
+             [class.border-l-4]="!isNewlyGraded(assignment)"
+             [class.border-green-500]="!isNewlyGraded(assignment)"
+             [class.ring-4]="isNewlyGraded(assignment)"
+             [class.ring-amber-400]="isNewlyGraded(assignment)"
+             [class.border-4]="isNewlyGraded(assignment)"
+             [class.border-amber-400]="isNewlyGraded(assignment)">
           <div class="absolute inset-0 opacity-5 bg-repeat" style="background-image: url('/islamic-pattern-2.png'); background-size: 80px;"></div>
           
+          <!-- New Grade Banner -->
+          <div *ngIf="isNewlyGraded(assignment)" 
+               class="absolute top-0 left-0 right-0 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-center py-2 font-bold text-sm shadow-lg z-10">
+            ⭐ NEW GRADE! ⭐
+          </div>
+          
           <!-- Success Badge -->
-          <div class="absolute top-4 right-4 w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg animate-pulse-slow">
+          <div class="absolute w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-green-600 flex items-center justify-center shadow-lg animate-pulse-slow"
+               [class.top-4]="!isNewlyGraded(assignment)"
+               [class.top-12]="isNewlyGraded(assignment)"
+               [class.right-4]="true">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor">
               <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
             </svg>
           </div>
           
-          <div class="relative p-6 pr-24">
+          <div class="relative p-6 pr-24"
+               [class.pt-14]="isNewlyGraded(assignment)">
             <h3 class="text-xl font-bold text-gray-900 dark:text-[#FAF3E0] mb-3 group-hover:text-[#B7A57A] transition-colors">
               {{ assignment.title }}
             </h3>
@@ -564,21 +521,34 @@
                   <span class="text-blue-900 dark:text-blue-300">Accuracy:</span>
                   <span class="font-bold">{{ assignment.submission.rubric.accuracy }}/5</span>
                 </div>
+                
+                <!-- Rubric Notes -->
+                <div *ngIf="assignment.submission.rubric.notes" class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                  <p class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">📝 Rubric Notes:</p>
+                  <p class="text-sm text-gray-700 dark:text-gray-300 italic">{{ assignment.submission.rubric.notes }}</p>
+                </div>
               </div>
               
-              <div *ngIf="assignment.submission.comments" class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
-                <p class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-1">Teacher's Comments:</p>
-                <p class="text-sm text-gray-700 dark:text-gray-300 italic">{{ assignment.submission.comments }}</p>
+              <!-- Teacher Comments (from array) -->
+              <div *ngIf="assignment.submission.teacherComments && assignment.submission.teacherComments.length > 0" 
+                   class="mt-3 pt-3 border-t border-blue-200 dark:border-blue-700">
+                <p class="text-sm font-semibold text-blue-900 dark:text-blue-300 mb-2 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                  </svg>
+                  Teacher's Comments:
+                </p>
+                <div class="space-y-2">
+                  <div *ngFor="let comment of assignment.submission.teacherComments" 
+                       class="p-3 bg-blue-50 dark:bg-blue-900/10 rounded-lg border border-blue-200 dark:border-blue-700">
+                    <p class="text-sm text-gray-700 dark:text-gray-300">{{ comment.text }}</p>
+                    <p class="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                      {{ comment.at?.toDate() | date:'short' }}
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
-            
-            <button 
-              (click)="openAssignment(assignment)" 
-              class="w-full mt-4 py-3 bg-gradient-to-r from-[#B7A57A] to-[#8B7355] hover:from-[#C8B68A] hover:to-[#B7A57A]
-                     text-white font-bold rounded-lg shadow-md hover:shadow-xl 
-                     transition-all duration-300 transform hover:scale-105">
-              Revisit Assignment →
-            </button>
           </div>
         </div>
       </div>

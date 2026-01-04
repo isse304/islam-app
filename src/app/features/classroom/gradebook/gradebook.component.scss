@@ -1,0 +1,89 @@
+// Grade Book Component Styles
+
+// Ensure smooth scrolling for horizontal table
+.overflow-x-auto {
+  scrollbar-width: thin;
+  scrollbar-color: #B7A57A transparent;
+
+  &::-webkit-scrollbar {
+    height: 8px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background-color: #B7A57A;
+    border-radius: 4px;
+
+    &:hover {
+      background-color: #8B7355;
+    }
+  }
+}
+
+// Table styles
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+// Sticky column shadow effect
+.sticky {
+  position: sticky;
+  z-index: 1;
+
+  &.left-0 {
+    box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+  }
+}
+
+// Score cell hover effect
+button {
+  &:hover {
+    cursor: pointer;
+  }
+}
+
+// Badge animations
+@keyframes badge-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.badge-animate {
+  animation: badge-pulse 2s infinite;
+}
+
+// Responsive table for mobile
+@media (max-width: 1023px) {
+  .overflow-x-auto {
+    overflow-x: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+// Loading animation
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+// Smooth transitions
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 200ms;
+}
+
+

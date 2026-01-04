@@ -25,6 +25,16 @@ export class ThemeService implements OnDestroy {
   constructor(@Inject(PLATFORM_ID) private platformId: Object) {
     if (typeof window !== 'undefined' && typeof document !== 'undefined' && typeof localStorage !== 'undefined') {
       this.isBrowser = true;
+      
+      // Migrate old 'darkMode' key to new 'theme-preference' system
+      const oldDarkMode = localStorage.getItem('darkMode');
+      if (oldDarkMode !== null && !localStorage.getItem(this.storageKey)) {
+        // Migrate: if old darkMode was 'true', set preference to 'dark', otherwise 'light'
+        const migratedPreference: ThemePreference = oldDarkMode === 'true' ? 'dark' : 'light';
+        localStorage.setItem(this.storageKey, migratedPreference);
+        localStorage.removeItem('darkMode'); // Clean up old key
+      }
+      
       this.userPreference = (localStorage.getItem(this.storageKey) as ThemePreference | null) || 'system';
       this.systemThemeListener = (e) => {
         this.systemPrefersDark.next(e.matches);

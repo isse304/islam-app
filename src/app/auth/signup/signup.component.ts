@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
@@ -15,6 +15,7 @@ import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatCardModule } from '@angular/material/card';
 import { MatDividerModule } from '@angular/material/divider';
 import { take } from 'rxjs/operators';
+import { Firestore, doc, setDoc, serverTimestamp } from '@angular/fire/firestore';
 
 // Password matching validator
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
@@ -57,6 +58,8 @@ export class SignupComponent implements OnInit {
   errorMessage: string | null = null;
   private signupIntent: string | null = null;
 
+  private firestore = inject(Firestore);
+
   constructor(
     private fb: FormBuilder,
     private authService: FirebaseAuthService,
@@ -98,14 +101,37 @@ export class SignupComponent implements OnInit {
     this.errorMessage = null;
     const { email, password, firstName, lastName } = this.signupForm.value;
 
+    let userUid: string;
+    
     this.authService.createUserWithEmailAndPassword(email, password)
       .then(result => {
+        userUid = result.user.uid;
         return this.authService.sendEmailVerification().then(() => result);
       })
       .then(result => {
         return this.authService.updateUserProfile({
           displayName: `${firstName} ${lastName}`
+        }).then(() => result);
+      })
+      .then(async (result) => {
+        // Create user document in Firestore
+        const userRef = doc(this.firestore, 'users', userUid);
+        await setDoc(userRef, {
+          uid: userUid,
+          email: email.toLowerCase(),
+          firstName: firstName,
+          lastName: lastName,
+          displayName: `${firstName} ${lastName}`,
+          photoURL: null,
+          emailVerified: result.user.emailVerified,
+          createdAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
+          bookmarks: [],
+          history: []
+          // Note: role will be assigned later when user joins Nura Academy
         });
+        console.log('[SignupComponent] User profile created in Firestore:', userUid);
+        return result;
       })
       .then(() => {
         this.isLoading = false;

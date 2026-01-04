@@ -50,6 +50,7 @@ export class StudentAssignmentsComponent implements OnInit {
   activeCount = 0;
   completedCount = 0;
   totalCount = 0;
+  newlyGradedCount = 0;
   
   // Filter for hiding graded assignments
   hideGradedAssignments = false;
@@ -153,10 +154,28 @@ export class StudentAssignmentsComponent implements OnInit {
       }
     });
     
+    // Sort completed assignments by submission date (newest first)
+    this.completedAssignments.sort((a, b) => {
+      const dateA = a.submission?.submittedAt?.toDate()?.getTime() || 0;
+      const dateB = b.submission?.submittedAt?.toDate()?.getTime() || 0;
+      return dateB - dateA; // Descending order (newest first)
+    });
+    
     // Update counts (use original assignments for accurate totals)
     this.activeCount = filteredAssignments.length - this.completedAssignments.length;
     this.completedCount = this.completedAssignments.length;
     this.totalCount = filteredAssignments.length;
+    
+    // Count newly graded assignments (graded within last 7 days and student hasn't seen them yet)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    this.newlyGradedCount = this.completedAssignments.filter(a => {
+      if (a.submission?.status === 'graded' && a.submission?.gradedAt) {
+        const gradedDate = a.submission.gradedAt.toDate();
+        return gradedDate >= sevenDaysAgo;
+      }
+      return false;
+    }).length;
   }
   
   toggleHideGraded(): void {
@@ -268,6 +287,19 @@ export class StudentAssignmentsComponent implements OnInit {
    */
   isGraded(assignment: AssignmentWithSubmission): boolean {
     return assignment.submission?.status === 'graded';
+  }
+  
+  /**
+   * Check if assignment is newly graded (within last 7 days)
+   */
+  isNewlyGraded(assignment: AssignmentWithSubmission): boolean {
+    if (assignment.submission?.status === 'graded' && assignment.submission?.gradedAt) {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const gradedDate = assignment.submission.gradedAt.toDate();
+      return gradedDate >= sevenDaysAgo;
+    }
+    return false;
   }
 
   /**

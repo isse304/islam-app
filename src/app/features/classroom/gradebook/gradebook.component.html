@@ -1,0 +1,417 @@
+<div class="min-h-screen bg-gradient-to-br from-[#FAF3E0] via-white to-[#F5EFE0] dark:from-[#0F1F3D] dark:via-[#1A365D] dark:to-[#0F2847]">
+  <div class="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    
+    <!-- Islamic Pattern Overlay -->
+    <div class="fixed inset-0 pointer-events-none opacity-5 dark:opacity-10" 
+         style="background-image: url('/islamic-pattern-2.png'); background-size: 400px; background-repeat: repeat;"></div>
+    
+    <!-- Header -->
+    <div class="relative mb-8 rounded-2xl overflow-hidden">
+      <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#B7A57A] via-[#D4C5A0] to-[#B7A57A]"></div>
+      <div class="absolute bottom-0 left-0 right-0 h-2 bg-gradient-to-r from-[#B7A57A] via-[#D4C5A0] to-[#B7A57A]"></div>
+      
+      <div class="bg-white/80 dark:bg-[#1A365D]/80 backdrop-blur-sm p-8 border-2 border-[#B7A57A]/20">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div class="relative">
+            <h1 class="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#B7A57A] to-[#8B7355] bg-clip-text text-transparent mb-2">
+              📊 Grade Book
+            </h1>
+            <p class="text-gray-700 dark:text-[#FAF3E0] text-lg font-medium">
+              Track student performance at a glance • بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
+            </p>
+          </div>
+          
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-3">
+            <button
+              (click)="refreshData()"
+              class="px-4 py-2 bg-gradient-to-r from-[#4F9CF9] to-[#2E86DE] hover:from-[#5FA9FF] hover:to-[#4F9CF9]
+                     text-white font-bold rounded-lg shadow-md hover:shadow-xl 
+                     transition-all duration-300 transform hover:scale-105 text-sm flex items-center gap-2"
+              title="Refresh data">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              Refresh
+            </button>
+            
+            <button
+              (click)="exportToCSV()"
+              class="px-4 py-2 bg-gradient-to-r from-[#47BE7D] to-[#2ECC71] hover:from-[#52D489] hover:to-[#47BE7D]
+                     text-white font-bold rounded-lg shadow-md hover:shadow-xl 
+                     transition-all duration-300 transform hover:scale-105 text-sm flex items-center gap-2"
+              title="Export to CSV">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              Export
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div *ngIf="gradeBookStats$ | async as stats" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+      <!-- Total Students -->
+      <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-[#B7A57A]/30 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0]"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm font-semibold uppercase tracking-wide">Total Students</p>
+            <p class="text-4xl font-bold text-[#B7A57A] dark:text-[#D4C5A0] mt-2">{{ stats.totalStudents }}</p>
+          </div>
+          <span class="text-3xl opacity-50">👥</span>
+        </div>
+      </div>
+
+      <!-- Needs Attention -->
+      <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-orange-500/30 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-500 to-red-500"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm font-semibold uppercase tracking-wide">Needs Attention</p>
+            <p class="text-4xl font-bold text-orange-600 dark:text-orange-400 mt-2">{{ stats.needsAttention }}</p>
+          </div>
+          <span class="text-3xl opacity-50">⚠️</span>
+        </div>
+      </div>
+
+      <!-- Top Performers -->
+      <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-purple-500/30 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm font-semibold uppercase tracking-wide">Top Performers</p>
+            <p class="text-4xl font-bold text-purple-600 dark:text-purple-400 mt-2">{{ stats.topPerformers }}</p>
+          </div>
+          <span class="text-3xl opacity-50">⭐</span>
+        </div>
+      </div>
+
+      <!-- Pending Grading -->
+      <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-blue-500/30 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm font-semibold uppercase tracking-wide">Pending</p>
+            <p class="text-4xl font-bold text-blue-600 dark:text-blue-400 mt-2">{{ stats.pendingGrading }}</p>
+          </div>
+          <span class="text-3xl opacity-50">📝</span>
+        </div>
+      </div>
+
+      <!-- Class Average -->
+      <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-green-500/30 relative overflow-hidden">
+        <div class="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-gray-600 dark:text-gray-400 text-sm font-semibold uppercase tracking-wide">Class Average</p>
+            <p class="text-4xl font-bold text-green-600 dark:text-green-400 mt-2">{{ stats.averageClassScore.toFixed(1) }}</p>
+          </div>
+          <span class="text-3xl opacity-50">📊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 mb-8 border-2 border-[#B7A57A]/20">
+      <form [formGroup]="filterForm" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Search -->
+        <div>
+          <label class="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            Search Students
+          </label>
+          <input
+            type="text"
+            formControlName="search"
+            placeholder="Name or email..."
+            class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A]/30 bg-white dark:bg-[#0F2847] 
+                   text-gray-900 dark:text-white focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                   transition-all duration-200"
+          />
+        </div>
+
+        <!-- Performance Filter -->
+        <div>
+          <label class="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            Performance Level
+          </label>
+          <select
+            formControlName="performanceLevel"
+            class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A]/30 bg-white dark:bg-[#0F2847] 
+                   text-gray-900 dark:text-white focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                   transition-all duration-200">
+            <option value="all">All Students</option>
+            <option value="needs_attention">Needs Attention</option>
+            <option value="top_performers">Top Performers</option>
+          </select>
+        </div>
+
+        <!-- Sort By -->
+        <div>
+          <label class="block text-sm font-semibold mb-2 text-gray-700 dark:text-gray-300">
+            Sort By
+          </label>
+          <select
+            formControlName="sortBy"
+            class="w-full px-4 py-2 rounded-lg border-2 border-[#B7A57A]/30 bg-white dark:bg-[#0F2847] 
+                   text-gray-900 dark:text-white focus:border-[#B7A57A] focus:ring-2 focus:ring-[#B7A57A]/20 
+                   transition-all duration-200">
+            <option value="name_asc">Name (A-Z)</option>
+            <option value="name_desc">Name (Z-A)</option>
+            <option value="average_desc">Average (High-Low)</option>
+            <option value="average_asc">Average (Low-High)</option>
+            <option value="completion_desc">Completion (High-Low)</option>
+            <option value="completion_asc">Completion (Low-High)</option>
+          </select>
+        </div>
+      </form>
+    </div>
+
+    <!-- Loading State -->
+    <div *ngIf="isLoading" class="text-center py-16">
+      <div class="inline-block w-16 h-16 border-4 border-[#B7A57A] border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-gray-600 dark:text-gray-400 font-medium">Loading grade book...</p>
+    </div>
+
+    <!-- Grade Book Grid (Desktop) -->
+    <div *ngIf="!isLoading && viewMode === 'grid'" class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border-2 border-[#B7A57A]/20">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <!-- Header -->
+          <thead class="bg-gradient-to-r from-[#B7A57A] to-[#8B7355] text-white sticky top-0 z-10">
+            <tr>
+              <th class="px-6 py-4 text-left font-bold text-sm uppercase tracking-wide sticky left-0 bg-gradient-to-r from-[#B7A57A] to-[#8B7355] z-20">
+                Student
+              </th>
+              <th class="px-4 py-4 text-center font-bold text-sm uppercase tracking-wide">
+                Avg
+              </th>
+              <th class="px-4 py-4 text-center font-bold text-sm uppercase tracking-wide">
+                Trend
+              </th>
+              <th class="px-4 py-4 text-center font-bold text-sm uppercase tracking-wide">
+                Completion
+              </th>
+              <th *ngFor="let assignment of assignmentColumns" class="px-4 py-4 text-center font-bold text-xs uppercase tracking-wide min-w-[100px]">
+                <div class="flex flex-col items-center">
+                  <span class="truncate max-w-[80px]" [title]="assignment.title">{{ assignment.title }}</span>
+                  <span class="text-xs font-normal opacity-80 mt-1">
+                    {{ assignment.surah }}:{{ assignment.startAyah }}-{{ assignment.endAyah }}
+                  </span>
+                </div>
+              </th>
+            </tr>
+          </thead>
+
+          <!-- Body -->
+          <tbody>
+            <tr *ngFor="let entry of visibleStudents; let i = index" 
+                class="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-[#243F6B] transition-colors">
+              <!-- Student Name (Sticky) -->
+              <td class="px-6 py-4 sticky left-0 bg-white dark:bg-[#1A365D] z-10 border-r-2 border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                  <img *ngIf="entry.studentPhotoURL" 
+                       [src]="entry.studentPhotoURL" 
+                       [alt]="entry.studentName"
+                       class="w-10 h-10 rounded-full object-cover border-2 border-[#B7A57A]"
+                  />
+                  <div *ngIf="!entry.studentPhotoURL" 
+                       class="w-10 h-10 rounded-full bg-gradient-to-br from-[#B7A57A] to-[#8B7355] flex items-center justify-center text-white font-bold text-lg border-2 border-[#B7A57A]">
+                    {{ entry.studentName.charAt(0).toUpperCase() }}
+                  </div>
+                  <div>
+                    <button 
+                      (click)="viewStudentPerformance(entry.studentId)"
+                      class="font-semibold text-gray-900 dark:text-white hover:text-[#B7A57A] dark:hover:text-[#D4C5A0] transition-colors text-left">
+                      {{ entry.studentName }}
+                    </button>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">{{ entry.studentEmail }}</p>
+                    <!-- Badges -->
+                    <div class="flex flex-wrap gap-1 mt-1">
+                      <span *ngFor="let badge of entry.performanceBadges" 
+                            [title]="badge.description"
+                            class="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold"
+                            [style.background-color]="badge.color"
+                            [style.color]="'white'">
+                        {{ badge.icon }} {{ badge.label }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+
+              <!-- Average -->
+              <td class="px-4 py-4 text-center">
+                <span class="inline-flex items-center justify-center w-16 h-16 rounded-full font-bold text-lg"
+                      [class]="getScoreColor(entry.average)">
+                  {{ entry.average.toFixed(0) }}
+                </span>
+              </td>
+
+              <!-- Trend -->
+              <td class="px-4 py-4 text-center">
+                <span class="text-3xl font-bold" [class]="getTrendColor(entry.trend)">
+                  {{ getTrendIcon(entry.trend) }}
+                </span>
+              </td>
+
+              <!-- Completion -->
+              <td class="px-4 py-4 text-center">
+                <div class="flex flex-col items-center">
+                  <span class="font-semibold text-gray-900 dark:text-white">
+                    {{ entry.completedAssignments }}/{{ entry.totalAssignments }}
+                  </span>
+                  <span class="text-xs text-gray-500">{{ completionRate(entry) }}%</span>
+                </div>
+              </td>
+
+              <!-- Assignment Scores -->
+              <td *ngFor="let assignment of assignmentColumns" class="px-4 py-4 text-center">
+                <button
+                  *ngIf="entry.assignments[assignment.id]"
+                  (click)="onCellClick(entry.studentId, assignment.id, entry.assignments[assignment.id].status)"
+                  class="w-14 h-14 rounded-lg font-bold text-lg transition-all duration-200 hover:scale-110 hover:shadow-lg"
+                  [class]="getScoreColor(entry.assignments[assignment.id].score)"
+                  [title]="'Click to view/grade | Status: ' + entry.assignments[assignment.id].status">
+                  <span *ngIf="entry.assignments[assignment.id].score !== null">
+                    {{ entry.assignments[assignment.id].score }}
+                  </span>
+                  <span *ngIf="entry.assignments[assignment.id].score === null && entry.assignments[assignment.id].status === 'submitted'">
+                    📝
+                  </span>
+                  <span *ngIf="entry.assignments[assignment.id].score === null && entry.assignments[assignment.id].status === 'in_progress'">
+                    ⏳
+                  </span>
+                  <span *ngIf="entry.assignments[assignment.id].score === null && entry.assignments[assignment.id].status === 'not_started'">
+                    —
+                  </span>
+                </button>
+                <div *ngIf="!entry.assignments[assignment.id]" class="w-14 h-14 flex items-center justify-center text-gray-400">
+                  —
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="visibleStudents.length === 0" class="text-center py-16">
+        <div class="text-6xl mb-4">📚</div>
+        <h3 class="text-2xl font-bold text-gray-700 dark:text-white mb-2">No Students Found</h3>
+        <p class="text-gray-600 dark:text-gray-400">Try adjusting your filters or add students to your classes</p>
+      </div>
+    </div>
+
+    <!-- Card View (Mobile) -->
+    <div *ngIf="!isLoading && viewMode === 'cards'" class="grid grid-cols-1 gap-4">
+      <div *ngFor="let entry of visibleStudents" 
+           class="bg-white/90 dark:bg-[#1A365D]/90 backdrop-blur-sm rounded-xl shadow-lg p-6 border-2 border-[#B7A57A]/20">
+        <!-- Student Header -->
+        <div class="flex items-center gap-3 mb-4">
+          <img *ngIf="entry.studentPhotoURL" 
+               [src]="entry.studentPhotoURL" 
+               [alt]="entry.studentName"
+               class="w-12 h-12 rounded-full object-cover border-2 border-[#B7A57A]"
+          />
+          <div *ngIf="!entry.studentPhotoURL" 
+               class="w-12 h-12 rounded-full bg-gradient-to-br from-[#B7A57A] to-[#8B7355] flex items-center justify-center text-white font-bold text-xl">
+            {{ entry.studentName.charAt(0).toUpperCase() }}
+          </div>
+          <div class="flex-1">
+            <button 
+              (click)="viewStudentPerformance(entry.studentId)"
+              class="font-bold text-lg text-gray-900 dark:text-white hover:text-[#B7A57A] transition-colors text-left">
+              {{ entry.studentName }}
+            </button>
+            <p class="text-sm text-gray-500 dark:text-gray-400">{{ entry.studentEmail }}</p>
+          </div>
+          <span class="text-4xl font-bold" [class]="getTrendColor(entry.trend)">
+            {{ getTrendIcon(entry.trend) }}
+          </span>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-4 mb-4">
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Average</p>
+            <p class="text-2xl font-bold" [class]="getScoreColor(entry.average) + ' rounded-full w-12 h-12 mx-auto flex items-center justify-center'">
+              {{ entry.average.toFixed(0) }}
+            </p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Completed</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+              {{ entry.completedAssignments }}/{{ entry.totalAssignments }}
+            </p>
+          </div>
+          <div class="text-center">
+            <p class="text-sm text-gray-600 dark:text-gray-400">Rate</p>
+            <p class="text-2xl font-bold text-gray-900 dark:text-white">
+              {{ completionRate(entry) }}%
+            </p>
+          </div>
+        </div>
+
+        <!-- Badges -->
+        <div class="flex flex-wrap gap-2">
+          <span *ngFor="let badge of entry.performanceBadges" 
+                [title]="badge.description"
+                class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold"
+                [style.background-color]="badge.color"
+                [style.color]="'white'">
+            {{ badge.icon }} {{ badge.label }}
+          </span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Grading Panel Modal -->
+<div *ngIf="selectedSubmission" 
+     class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-fadeIn overflow-y-auto"
+     (click)="closeGradePanel()">
+  <div class="bg-white dark:bg-[#1A365D] rounded-2xl shadow-2xl max-w-4xl w-full my-8 border-2 border-[#B7A57A]/30 relative animate-slideInUp"
+       (click)="$event.stopPropagation()">
+    <div class="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-[#B7A57A] via-[#D4C5A0] to-[#B7A57A] rounded-t-2xl"></div>
+    
+    <app-grade-panel
+      [submission]="selectedSubmission"
+      (graded)="onGraded()"
+      (closed)="closeGradePanel()">
+    </app-grade-panel>
+  </div>
+</div>
+
+<!-- Animations -->
+<style>
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+  }
+
+  .animate-slideInUp {
+    animation: slideInUp 0.3s ease-out;
+  }
+</style>
+
+

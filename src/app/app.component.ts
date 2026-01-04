@@ -69,7 +69,8 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.themeService.setThemePreference('system');
+    // Theme preference is automatically loaded from localStorage by ThemeService constructor
+    // No need to set it here - let user's saved preference take effect
     
     this.showHeader$.pipe(
       takeUntil(this.destroy$)
