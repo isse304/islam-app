@@ -1,6 +1,6 @@
 export {};
 
-import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation, Renderer2, ViewContainerRef, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation, Renderer2, ViewContainerRef, inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -127,6 +127,7 @@ interface HomeworkBar {
     // +++ ADD SafeHtmlPipe to imports +++
     SafeHtmlPipe,
   ],
+  schemas: [CUSTOM_ELEMENTS_SCHEMA], // Allow custom HTML elements like <rule>
   templateUrl: './quran-reader.component.html',
   styleUrls: ['./quran-reader.component.scss'],
   animations: [

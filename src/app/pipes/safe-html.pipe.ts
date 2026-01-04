@@ -1,4 +1,4 @@
-import { Pipe, PipeTransform } from '@angular/core';
+import { Pipe, PipeTransform, SecurityContext } from '@angular/core';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Pipe({
@@ -10,7 +10,10 @@ export class SafeHtmlPipe implements PipeTransform {
   constructor(private sanitizer: DomSanitizer) {}
 
   transform(value: string | null | undefined): SafeHtml {
-    // Ensure value is a string before sanitizing
-    return this.sanitizer.bypassSecurityTrustHtml(value || '');
+    if (!value) return '';
+    
+    // Bypass security completely for Tajweed HTML (contains <rule> tags from Quran.com API)
+    // These are safe as they come from a trusted source and only contain styling classes
+    return this.sanitizer.bypassSecurityTrustHtml(value);
   }
 } 
