@@ -19,8 +19,11 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog } from '@angular/material/dialog';
 import { EmotionalDuaResponse } from '../../types/dua.types';
 import { Title, Meta } from '@angular/platform-browser';
+import { PremiumFeaturePreviewComponent, PremiumFeaturePreviewData } from '../premium-feature-preview/premium-feature-preview.component';
+import { PremiumHoverPreviewDirective, HoverPreviewConfig } from '../../directives/premium-hover-preview.directive';
 
 interface Verse {
   reference: string;
@@ -75,6 +78,7 @@ interface SpiritualAdvice {
         MatSelectModule,
         MatTooltipModule,
         DuaInsightsComponent,
+        PremiumHoverPreviewDirective,
         //DuaTafsirComponent
     ],
     changeDetection: ChangeDetectionStrategy.OnPush
@@ -83,12 +87,40 @@ export class DuaComponent implements OnInit, OnDestroy {
   @Input() fontSize: number = 32;
   private subscriptions = new Subscription();
   private isPremiumUser: boolean = false;
+  isAuthenticated: boolean = false;
   showResults: boolean = false;
   emotionSuggestions: string[] = [];
   selectedEmotion: string = '';
   aiInsights: string = '';
   filteredDuas: Dua[] = [];
   selectedCategory: DuaCategory | null = null;
+
+  // Hover preview configurations
+  emotionalSearchPreview: HoverPreviewConfig = {
+    title: 'Emotional Dua Search',
+    description: 'Find perfect duas based on your feelings with AI-powered emotional analysis',
+    benefits: [
+      'AI analyzes your emotions',
+      'Personalized dua recommendations',
+      'Quranic guidance for your situation',
+      'Scholarly wisdom & spiritual remedies'
+    ],
+    icon: 'psychology',
+    ctaText: 'Unlock with Premium'
+  };
+
+  duaInsightsPreview: HoverPreviewConfig = {
+    title: 'AI Dua Insights',
+    description: 'Deep understanding of every dua with meanings, virtues, and best times to recite',
+    benefits: [
+      'Word-by-word meanings explained',
+      'Historical context & background',
+      'Virtues and spiritual benefits',
+      'Best times and conditions to recite'
+    ],
+    icon: 'auto_awesome',
+    ctaText: 'Get Premium Access'
+  };
   categories: DuaCategory[] = [
     'morning',
     'evening',
@@ -118,11 +150,13 @@ export class DuaComponent implements OnInit, OnDestroy {
     public subscriptionService: SubscriptionService,
     private cd: ChangeDetectorRef,
     private titleService: Title,
-    private metaService: Meta
+    private metaService: Meta,
+    private dialog: MatDialog
   ) {
     this.subscriptions.add(
       this.firebaseAuthService.user$.subscribe(
         (user: AppUser | null) => {
+          this.isAuthenticated = !!user;
           this.isPremiumUser = user?.isPremium ?? false;
           this.cd.markForCheck();
         }
@@ -234,7 +268,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     // console.log('User is premium:', this.isPremiumUser);
 
     if (!this.isPremiumUser) {
-      this.subscriptionService.showSubscriptionPage('Emotional Dua Search');
+      this.showEmotionalSearchPreview();
       return;
     }
 
@@ -378,7 +412,7 @@ export class DuaComponent implements OnInit, OnDestroy {
   async showInsights(dua: Dua) {
     const isPremium = await this.firebaseAuthService.isPremiumUser();
     if (!isPremium) {
-      this.subscriptionService.showSubscriptionPage('Dua Insights');
+      this.showDuaInsightsPreview();
       return;
     }
 
@@ -781,5 +815,99 @@ export class DuaComponent implements OnInit, OnDestroy {
     } finally {
       this.cd.markForCheck();
     }
+  }
+
+  // Show preview dialog for Emotional Dua Search
+  showEmotionalSearchPreview(): void {
+    const dialogData: PremiumFeaturePreviewData = {
+      featureName: 'Emotional Dua Search',
+      featureIcon: 'psychology',
+      description: 'Find the perfect duas based on how you\'re feeling. Our AI analyzes your emotions and recommends authentic Islamic supplications with deep spiritual guidance.',
+      benefits: [
+        'AI-powered emotional analysis',
+        'Personalized dua recommendations',
+        'Quranic verses for your situation',
+        'Scholarly guidance and wisdom',
+        'Spiritual remedies and practices',
+        'Dhikr suggestions for peace'
+      ],
+      mockupContent: {
+        type: 'search',
+        items: [
+          {
+            icon: 'favorite',
+            title: 'Dua for Anxiety Relief',
+            subtitle: 'Hasbunallahu wa ni\'mal wakeel...'
+          },
+          {
+            icon: 'spa',
+            title: 'Dua for Inner Peace',
+            subtitle: 'Allahumma inni as\'aluka...'
+          },
+          {
+            icon: 'self_improvement',
+            title: 'Quranic Guidance',
+            subtitle: 'Surah Ash-Sharh: Relief after hardship'
+          }
+        ]
+      },
+      isAuthenticated: this.isAuthenticated,
+      ctaText: 'Start Your Free Trial'
+    };
+
+    this.dialog.open(PremiumFeaturePreviewComponent, {
+      data: dialogData,
+      maxWidth: '600px',
+      width: '90vw',
+      panelClass: 'premium-preview-dialog-container',
+      autoFocus: false
+    });
+  }
+
+  // Show preview dialog for Dua Insights
+  showDuaInsightsPreview(): void {
+    const dialogData: PremiumFeaturePreviewData = {
+      featureName: 'AI Dua Insights',
+      featureIcon: 'auto_awesome',
+      description: 'Unlock deep understanding of every dua with AI-powered analysis. Learn the meanings, virtues, best times to recite, and spiritual benefits of each supplication.',
+      benefits: [
+        'Detailed word-by-word meanings',
+        'Historical context and background',
+        'Virtues and rewards explained',
+        'Best times and conditions to recite',
+        'Related Quranic verses',
+        'Scholarly commentary and wisdom'
+      ],
+      mockupContent: {
+        type: 'analysis',
+        items: [
+          {
+            icon: 'book',
+            title: 'Deep Meaning',
+            content: 'This dua invokes Allah\'s mercy and protection, acknowledging His supreme power...'
+          },
+          {
+            icon: 'schedule',
+            title: 'Best Time to Recite',
+            content: 'Recommended after Fajr prayer and before sleeping for maximum spiritual benefit...'
+          },
+          {
+            icon: 'star',
+            title: 'Spiritual Benefits',
+            content: 'Brings peace of mind, strengthens faith, and protects from evil...'
+          }
+        ]
+      },
+      isAuthenticated: this.isAuthenticated,
+      ctaText: 'Unlock All Insights'
+    };
+
+    this.dialog.open(PremiumFeaturePreviewComponent, {
+      data: dialogData,
+      maxWidth: '600px',
+      width: '90vw',
+      panelClass: 'premium-preview-dialog-container',
+      autoFocus: false
+    });
   }
 }

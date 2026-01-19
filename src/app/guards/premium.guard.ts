@@ -4,29 +4,62 @@ import { FirebaseAuthService, AppUser } from '../services/firebase-auth.service'
 // import { SubscriptionService } from '../services/subscription.service'; // Removed if not used elsewhere in file
 import { Observable, map, take, switchMap, of, from } from 'rxjs';
 
+/**
+ * Premium Guard - Updated for Public Access
+ * 
+ * Protects routes that require both authentication AND premium subscription.
+ * If user is not authenticated, redirects to login with returnUrl.
+ * If user is authenticated but not premium, redirects to subscription page.
+ * 
+ * This guard first checks authentication, then premium status.
+ */
 export const premiumGuard: CanActivateFn =
   (route: ActivatedRouteSnapshot, state: RouterStateSnapshot):
   Observable<boolean | UrlTree> => {
 
     const authService = inject(FirebaseAuthService);
-    const router = inject(Router); // Need router for createUrlTree
-    // const subscriptionService = inject(SubscriptionService); // Removed if not needed
+    const router = inject(Router);
     const featureName = route.data['feature'] || 'Premium Feature';
-
-    // console.log('[PremiumGuard] Running...'); // ADD LOG
+    const showTeaser = route.data['showTeaser'] ?? false; // New option to show teaser instead of subscription
 
     return from(authService.waitForAuthReady()).pipe(
-      switchMap(() => from(authService.isPremiumUser())), // Convert promise to observable
-      map((hasActivePremium: boolean): boolean | UrlTree => {
-        // console.log(`[PremiumGuard] isPremiumUser result: ${hasActivePremium}`); // ADD LOG
-        if (hasActivePremium) {
-          // console.log('[PremiumGuard] Access granted, returning true.'); // ADD LOG
-          return true;
-        } else {
-          // console.log(`[PremiumGuard] Access denied. Creating UrlTree to redirect to /subscription for feature: ${featureName}`); // ADD LOG
-          // Use createUrlTree for redirection
-          return router.createUrlTree(['/subscription'], { queryParams: { feature: featureName } }); // RETURN UrlTree
+      switchMap(() => authService.user$.pipe(take(1))),
+      switchMap((user: AppUser | null) => {
+        // Step 1: Check if user is authenticated
+        if (!user) {
+          // Not authenticated
+          if (showTeaser) {
+            // Show teaser page for anonymous users
+            return of(router.createUrlTree(['/ai-tafsir']));
+          } else {
+            // Redirect to login for other premium features
+            const returnUrl = state.url;
+            return of(router.createUrlTree(['/auth/login'], { 
+              queryParams: { returnUrl, feature: featureName } 
+            }));
+          }
         }
+
+        // Step 2: User is authenticated, check premium status
+        return from(authService.isPremiumUser()).pipe(
+          map((hasActivePremium: boolean): boolean | UrlTree => {
+            if (hasActivePremium) {
+              // User has premium - allow access
+              return true;
+            } else {
+              // User doesn't have premium
+              if (showTeaser) {
+                // Show teaser page for logged-in non-premium users
+                return router.createUrlTree(['/ai-tafsir']);
+              } else {
+                // Redirect to subscription for other premium features
+                return router.createUrlTree(['/subscription'], { 
+                  queryParams: { feature: featureName } 
+                });
+              }
+            }
+          })
+        );
       })
     );
-};
+  };

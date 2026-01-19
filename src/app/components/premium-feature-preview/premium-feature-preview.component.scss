@@ -1,0 +1,271 @@
+// Premium Feature Preview Dialog Styles
+
+.premium-preview-dialog {
+  position: relative;
+  max-width: 600px;
+  width: 100%;
+  background: #FAF3E0;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.2);
+
+  .dark & {
+    background: #1A365D;
+  }
+}
+
+.dialog-header {
+  position: relative;
+  min-height: 200px;
+
+  .close-button {
+    z-index: 20;
+    transition: all 0.3s ease;
+
+    &:hover {
+      transform: rotate(90deg);
+    }
+  }
+}
+
+// Floating animation for background
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+.animate-float {
+  animation: float 15s ease-in-out infinite;
+}
+
+// Dialog content
+.dialog-content {
+  max-height: 70vh;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #B7A57A #FAF3E0;
+
+  .dark & {
+    scrollbar-color: #B7A57A #1A365D;
+  }
+
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(183, 165, 122, 0.1);
+    border-radius: 3px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: #B7A57A;
+    border-radius: 3px;
+
+    &:hover {
+      background: #9b8a65;
+    }
+  }
+}
+
+// Preview mockup styles
+.preview-mockup {
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10px;
+    left: -10px;
+    right: -10px;
+    bottom: -10px;
+    background: linear-gradient(135deg, rgba(183, 165, 122, 0.1), rgba(212, 197, 160, 0.1));
+    border-radius: 1.5rem;
+    z-index: -1;
+    animation: pulse-glow 3s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.02);
+  }
+}
+
+// Search preview
+.search-preview {
+  .search-box {
+    position: relative;
+    animation: gentle-float 4s ease-in-out infinite;
+
+    input {
+      &::placeholder {
+        color: rgba(107, 114, 128, 0.6);
+      }
+    }
+  }
+
+  .result-card {
+    animation: slide-in 0.5s ease-out;
+    animation-fill-mode: both;
+
+    &:nth-child(1) { animation-delay: 0.1s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes gentle-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+// Insights preview
+.insights-preview {
+  .insights-box {
+    animation: gentle-float 4s ease-in-out infinite;
+    animation-delay: 0.5s;
+  }
+
+  .insight-card {
+    animation: fade-in-up 0.6s ease-out;
+    animation-fill-mode: both;
+
+    &:nth-child(1) { animation-delay: 0.1s; }
+    &:nth-child(2) { animation-delay: 0.2s; }
+    &:nth-child(3) { animation-delay: 0.3s; }
+  }
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(15px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Benefits list
+.benefits-list {
+  .benefit-item {
+    animation: scale-in 0.4s ease-out;
+    animation-fill-mode: both;
+
+    @for $i from 1 through 6 {
+      &:nth-child(#{$i}) {
+        animation-delay: #{$i * 0.05}s;
+      }
+    }
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+// CTA Buttons
+.cta-buttons {
+  button {
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.3);
+      transform: translate(-50%, -50%);
+      transition: width 0.6s, height 0.6s;
+    }
+
+    &:hover::before {
+      width: 300px;
+      height: 300px;
+    }
+
+    mat-icon {
+      transition: transform 0.3s ease;
+    }
+
+    &:hover mat-icon {
+      transform: scale(1.1);
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 640px) {
+  .premium-preview-dialog {
+    border-radius: 1rem;
+  }
+
+  .dialog-header {
+    min-height: 160px;
+
+    h2 {
+      font-size: 1.5rem;
+    }
+  }
+
+  .dialog-content {
+    padding: 1rem;
+    max-height: 60vh;
+  }
+
+  .preview-mockup {
+    .search-box,
+    .insights-box {
+      padding: 1rem;
+    }
+  }
+}
+
+// Dark mode specific adjustments
+.dark {
+  .search-preview,
+  .insights-preview {
+    input {
+      &::placeholder {
+        color: rgba(250, 243, 224, 0.4);
+      }
+    }
+  }
+}

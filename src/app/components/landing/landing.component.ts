@@ -79,13 +79,21 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.startAutoRotate();
     this.startSlideShow(); // Start the inspirational showcase slideshow
 
-    // Subscribe to auth changes for subsequent sign-ins (Keep this for reactivity if needed, but guards handle initial redirect)
+    // Check if user is already authenticated on page load
+    const currentUser = await this.authService.getCurrentUser();
+    if (currentUser) {
+      // User is authenticated, redirect to home
+      this.router.navigate(['/home']);
+      return;
+    }
+
+    // Subscribe to auth changes for subsequent sign-ins
     this.authSubscription = this.authService.user$.pipe(
-      filter(user => user !== null)
+      filter(user => user !== null),
+      take(1) // Only take the first emission to avoid multiple redirects
     ).subscribe(() => {
-      // console.log('User became authenticated while on landing page, redirecting to /home');
-      // Optionally redirect if user logs in *while* on the landing page
-      // this.router.navigate(['/home']); 
+      // User became authenticated while on the landing page, redirect to /home
+      this.router.navigate(['/home']);
     });
   }
 

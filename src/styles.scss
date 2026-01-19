@@ -368,6 +368,20 @@ html.dark {
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
 }
+
+/* Premium Preview Dialog Container */
+.premium-preview-dialog-container {
+  .mat-mdc-dialog-container {
+    padding: 0;
+    border-radius: 1.5rem;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+/* Premium Hover Preview */
+@import './app/styles/premium-hover-preview.scss';
 /* Loading Indicator Styles */
 .loading-overlay {
   position: fixed;

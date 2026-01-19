@@ -150,6 +150,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   selectedVerse?: QuranVerse;
   tafsir: string = '';
   bookmarks: string[] = [];
+  
+  // Anonymous user support
+  isAuthenticated: boolean = false;
+  showBookmarkPrompt: boolean = false;
+  
   selectedReciter: Reciter = {
     id: 1,  // Default to Mishari Rashid al-`Afasy
     name: 'Mishari Rashid al-`Afasy',
@@ -448,6 +453,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   );
 
   async ngOnInit() {
+    // Check authentication status for anonymous user support
+    this.authService.isLoggedIn$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(isLoggedIn => {
+      this.isAuthenticated = isLoggedIn;
+      this.cdr.markForCheck();
+    });
+    
     // --- Assignment Mode Check (Highest Priority) ---
     const queryParams = this.route.snapshot.queryParams;
     if (queryParams['mode'] === 'assignment') {
@@ -914,6 +927,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   // *** MODIFY: Make verseNumber optional ***
   public toggleBookmark(verseNumber?: number): void { // Make parameter optional
+    // Check if user is authenticated
+    if (!this.isAuthenticated) {
+      this.showBookmarkPrompt = true;
+      return;
+    }
+    
     let bookmark: string;
 
     // Determine bookmark format based on current view

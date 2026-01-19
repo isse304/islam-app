@@ -1,0 +1,205 @@
+// Premium Hover Preview Styles
+
+.premium-hover-preview {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%) translateY(10px);
+  width: 400px;
+  max-width: 90vw;
+  background: linear-gradient(135deg, #FFFFFF 0%, #FAF3E0 100%);
+  border-radius: 1rem;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(183, 165, 122, 0.2);
+  padding: 1.5rem;
+  z-index: 1000;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.35, 0, 0.25, 1);
+
+  .dark & {
+    background: linear-gradient(135deg, #1A365D 0%, #243F6B 100%);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(183, 165, 122, 0.3);
+  }
+
+  &.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+    pointer-events: all;
+  }
+
+  // Arrow
+  &::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: linear-gradient(135deg, #FFFFFF 0%, #FAF3E0 100%);
+    border-top: 1px solid rgba(183, 165, 122, 0.2);
+    border-left: 1px solid rgba(183, 165, 122, 0.2);
+    transform: translateX(-50%) rotate(45deg);
+
+    .dark & {
+      background: linear-gradient(135deg, #1A365D 0%, #243F6B 100%);
+      border-top: 1px solid rgba(183, 165, 122, 0.3);
+      border-left: 1px solid rgba(183, 165, 122, 0.3);
+    }
+  }
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(183, 165, 122, 0.2);
+
+  .preview-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    i {
+      color: #1A365D;
+      font-size: 24px;
+    }
+  }
+
+  .preview-title {
+    flex: 1;
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #1A365D;
+    margin: 0;
+
+    .dark & {
+      color: #FAF3E0;
+    }
+  }
+
+  .premium-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+    border-radius: 1rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1A365D;
+    animation: pulse-glow 2s ease-in-out infinite;
+
+    i {
+      font-size: 14px;
+    }
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(183, 165, 122, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(183, 165, 122, 0.6);
+  }
+}
+
+.preview-description {
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #4B5563;
+  margin: 0 0 1rem 0;
+
+  .dark & {
+    color: #D1D5DB;
+  }
+}
+
+.preview-benefits {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+
+  .benefit-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.813rem;
+    color: #6B7280;
+
+    .dark & {
+      color: #9CA3AF;
+    }
+
+    i {
+      font-size: 16px;
+      color: #B7A57A;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.preview-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+  color: #1A365D;
+  font-weight: 700;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  i {
+    font-size: 18px;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.4);
+
+    i {
+      transform: translateX(3px);
+    }
+  }
+}
+
+// Mobile adjustments
+@media (max-width: 640px) {
+  .premium-hover-preview {
+    width: 320px;
+    padding: 1rem;
+
+    .preview-header {
+      .preview-icon {
+        width: 32px;
+        height: 32px;
+
+        i {
+          font-size: 20px;
+        }
+      }
+
+      .preview-title {
+        font-size: 1rem;
+      }
+    }
+
+    .preview-description {
+      font-size: 0.813rem;
+    }
+  }
+}

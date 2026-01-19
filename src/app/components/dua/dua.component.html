@@ -36,13 +36,14 @@
             </div>
           </div>
           
-          <!-- Premium overlay -->
+          <!-- Premium overlay with hover preview -->
           <div *ngIf="!(firebaseAuthService.user$ | async)?.isPremium" 
                class="absolute inset-0 bg-black/20 backdrop-blur-sm rounded-lg flex items-center justify-center cursor-pointer"
+               [appPremiumHoverPreview]="emotionalSearchPreview"
                (click)="subscriptionService.showSubscriptionPage('Emotional Dua Search')">
-            <div class="text-white flex items-center gap-2 bg-black/40 px-4 py-2 rounded-lg">
+            <div class="text-white flex items-center gap-2 bg-black/40 px-4 py-2 rounded-lg hover:bg-black/60 transition-all">
               <i class="fas fa-lock"></i>
-              <span>Premium Feature</span>
+              <span>Premium Feature - Hover for Details</span>
             </div>
           </div>
         </div>
@@ -297,21 +298,27 @@
             </div>
 
             <!-- AI Insights Button -->
-            <button 
-              (click)="onDuaSelect(dua)"
-              class="mt-4 w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors relative overflow-hidden"
-              [class.opacity-75]="!(firebaseAuthService.user$ | async)?.isPremium">
-              <i class="fas fa-robot mr-2"></i>
-              View AI-Powered Insights
+            <div class="mt-4 relative">
+              <button 
+                (click)="onDuaSelect(dua)"
+                class="w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors"
+                [class.opacity-75]="!(firebaseAuthService.user$ | async)?.isPremium"
+                [class.pointer-events-none]="!(firebaseAuthService.user$ | async)?.isPremium">
+                <i class="fas fa-robot mr-2"></i>
+                View AI-Powered Insights
+              </button>
+              
+              <!-- Premium Overlay (only for non-premium users) -->
               <div *ngIf="!(firebaseAuthService.user$ | async)?.isPremium" 
-                   class="absolute inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center cursor-pointer"
+                   class="absolute inset-0 bg-black/20 backdrop-blur-[2px] rounded-lg flex items-center justify-center cursor-pointer"
+                   [appPremiumHoverPreview]="duaInsightsPreview"
                    (click)="$event.stopPropagation(); subscriptionService.showSubscriptionPage('AI Insights')">
-                <div class="text-white flex items-center gap-2 bg-black/40 px-4 py-2 rounded-lg">
-                  <i class="fas fa-lock"></i>
-                  <span>Premium Feature</span>
+                <div class="flex items-center gap-2 bg-black/50 px-4 py-2 rounded-lg hover:bg-black/70 transition-all backdrop-blur-sm">
+                  <i class="fas fa-lock text-white"></i>
+                  <span class="text-white text-sm font-semibold">Hover for Preview</span>
                 </div>
               </div>
-            </button>
+            </div>
           </div>
         </div>
       </div>

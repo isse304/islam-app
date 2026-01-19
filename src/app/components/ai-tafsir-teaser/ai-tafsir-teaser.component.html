@@ -1,0 +1,258 @@
+<div class="teaser-container min-h-screen bg-gradient-to-br from-[#FAF3E0] via-[#F5EFE0] to-[#FAF3E0] dark:from-[#1A365D] dark:via-[#243F6B] dark:to-[#1A365D] relative overflow-hidden">
+  
+  <!-- Animated Background Pattern -->
+  <div class="absolute inset-0 opacity-[0.03] dark:opacity-[0.05] pointer-events-none">
+    <div class="absolute inset-0 bg-[url('/assets/islamic-pattern-1.png')] bg-repeat animate-float"></div>
+  </div>
+
+  <!-- Floating Decorative Elements -->
+  <div class="decorative-circles">
+    <div class="circle circle-1"></div>
+    <div class="circle circle-2"></div>
+    <div class="circle circle-3"></div>
+  </div>
+
+  <!-- Content Container -->
+  <div class="relative z-10">
+    
+    <!-- Hero Section -->
+    <div class="hero-section text-center px-4 py-16 md:py-24" [@fadeInUp]>
+      <div class="container mx-auto max-w-5xl">
+        
+        <!-- Premium Badge -->
+        <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] text-[#1A365D] font-semibold mb-6 shadow-lg animate-pulse-subtle">
+          <mat-icon class="text-sm">workspace_premium</mat-icon>
+          <span>Premium Feature</span>
+        </div>
+
+        <!-- Main Heading -->
+        <h1 class="text-5xl md:text-7xl font-bold text-[#1A365D] dark:text-[#FAF3E0] mb-6 leading-tight">
+          AI-Powered
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] animate-gradient">
+            Tafsir Chat
+          </span>
+        </h1>
+
+        <!-- Subheading -->
+        <p class="text-xl md:text-2xl text-gray-700 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+          Unlock deep Quranic understanding with AI-powered explanations, contextual insights, and personalized learning.
+        </p>
+
+        <!-- CTA Buttons -->
+        <!-- For Logged-In Non-Premium Users -->
+        <div *ngIf="isAuthenticated && !isPremium" class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <button 
+            mat-raised-button 
+            (click)="navigateToSubscription()"
+            class="cta-primary w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-xl bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] text-[#1A365D] hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
+            <mat-icon class="mr-2">workspace_premium</mat-icon>
+            Upgrade to Premium
+          </button>
+          <button 
+            mat-stroked-button 
+            routerLink="/home"
+            class="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-xl border-2 border-[#B7A57A] text-[#1A365D] dark:text-[#FAF3E0] hover:bg-[#B7A57A] hover:text-[#1A365D] transition-all duration-300">
+            <mat-icon class="mr-2">home</mat-icon>
+            Back to Home
+          </button>
+        </div>
+
+        <!-- For Anonymous Users -->
+        <div *ngIf="!isAuthenticated" class="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <button 
+            mat-raised-button 
+            (click)="navigateToSignup()"
+            class="cta-primary w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-xl bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] text-[#1A365D] hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
+            <mat-icon class="mr-2">rocket_launch</mat-icon>
+            Start Your Journey
+          </button>
+          <button 
+            mat-stroked-button 
+            (click)="navigateToLogin()"
+            class="w-full sm:w-auto px-8 py-4 text-lg font-semibold rounded-xl border-2 border-[#B7A57A] text-[#1A365D] dark:text-[#FAF3E0] hover:bg-[#B7A57A] hover:text-[#1A365D] transition-all duration-300">
+            Already a Member? Sign In
+          </button>
+        </div>
+
+        <!-- Trust Indicators -->
+        <div class="flex flex-wrap justify-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-[#B7A57A]">check_circle</mat-icon>
+            <span>{{ isAuthenticated ? 'Instant Access' : 'No Credit Card Required' }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-[#B7A57A]">check_circle</mat-icon>
+            <span>Cancel Anytime</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <mat-icon class="text-[#B7A57A]">check_circle</mat-icon>
+            <span>7-Day Free Trial</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Interactive Feature Showcase -->
+    <div class="feature-showcase container mx-auto max-w-6xl px-4 py-16">
+      
+      <!-- Feature Tabs -->
+      <div class="flex flex-wrap justify-center gap-4 mb-12" [@staggerFade]="features.length">
+        <button 
+          *ngFor="let feature of features; let i = index"
+          (click)="selectFeature(i)"
+          class="feature-tab px-6 py-3 rounded-xl font-semibold transition-all duration-300 transform hover:scale-105"
+          [class.active]="currentFeatureIndex === i"
+          [class.inactive]="currentFeatureIndex !== i">
+          <mat-icon class="mr-2">{{ feature.icon }}</mat-icon>
+          <span>{{ feature.title }}</span>
+        </button>
+      </div>
+
+      <!-- Feature Display -->
+      <div class="feature-display bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-xl rounded-3xl shadow-2xl p-8 md:p-12" [@fadeInUp]>
+        <div class="grid md:grid-cols-2 gap-8 items-center">
+          
+          <!-- Feature Content -->
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#B7A57A] to-[#D4C5A0] flex items-center justify-center shadow-lg">
+                <mat-icon class="text-[#1A365D] text-3xl">{{ features[currentFeatureIndex].icon }}</mat-icon>
+              </div>
+              <h3 class="text-3xl font-bold text-[#1A365D] dark:text-[#FAF3E0]">
+                {{ features[currentFeatureIndex].title }}
+              </h3>
+            </div>
+            <p class="text-lg text-gray-700 dark:text-gray-300 mb-6 leading-relaxed">
+              {{ features[currentFeatureIndex].description }}
+            </p>
+            <div class="bg-[#FAF3E0]/50 dark:bg-[#1A365D]/50 rounded-xl p-4 border-l-4 border-[#B7A57A]">
+              <p class="text-sm text-gray-700 dark:text-gray-300 italic">
+                {{ features[currentFeatureIndex].preview }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Feature Visual -->
+          <div class="feature-visual relative">
+            <div class="chat-preview bg-gradient-to-br from-[#FAF3E0] to-white dark:from-[#1A365D] dark:to-[#243F6B] rounded-2xl shadow-2xl p-6 transform hover:scale-105 transition-all duration-300">
+              <!-- Mock Chat Interface -->
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#B7A57A] to-[#D4C5A0] flex items-center justify-center flex-shrink-0">
+                    <mat-icon class="text-[#1A365D]">person</mat-icon>
+                  </div>
+                  <div class="flex-1 bg-white/80 dark:bg-[#2A4365]/80 rounded-2xl rounded-tl-none px-4 py-3 shadow-md">
+                    <p class="text-sm text-gray-800 dark:text-gray-200">What is the main message of Surah Al-Fatihah?</p>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3 flex-row-reverse">
+                  <div class="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4C5A0] to-[#B7A57A] flex items-center justify-center flex-shrink-0">
+                    <mat-icon class="text-[#1A365D]">psychology</mat-icon>
+                  </div>
+                  <div class="flex-1 bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] rounded-2xl rounded-tr-none px-4 py-3 shadow-md">
+                    <p class="text-sm text-[#1A365D] font-medium">Surah Al-Fatihah teaches us the essence of worship and guidance...</p>
+                  </div>
+                </div>
+                <div class="flex items-center gap-2 px-4 py-2 bg-[#FAF3E0]/50 dark:bg-[#1A365D]/50 rounded-full">
+                  <div class="w-2 h-2 rounded-full bg-[#B7A57A] animate-pulse"></div>
+                  <div class="w-2 h-2 rounded-full bg-[#B7A57A] animate-pulse animation-delay-200"></div>
+                  <div class="w-2 h-2 rounded-full bg-[#B7A57A] animate-pulse animation-delay-400"></div>
+                  <span class="text-xs text-gray-600 dark:text-gray-400 ml-2">AI is thinking...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Benefits Grid -->
+    <div class="benefits-section container mx-auto max-w-6xl px-4 py-16">
+      <h2 class="text-4xl md:text-5xl font-bold text-center text-[#1A365D] dark:text-[#FAF3E0] mb-12">
+        What You'll Get with Premium
+      </h2>
+      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6" [@staggerFade]="benefits.length">
+        <div *ngFor="let benefit of benefits" 
+             class="benefit-card bg-white/80 dark:bg-[#2A4365]/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg hover:shadow-2xl transform hover:-translate-y-2 transition-all duration-300">
+          <p class="text-lg text-gray-800 dark:text-gray-200">{{ benefit }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Testimonials -->
+    <div class="testimonials-section container mx-auto max-w-6xl px-4 py-16">
+      <h2 class="text-4xl md:text-5xl font-bold text-center text-[#1A365D] dark:text-[#FAF3E0] mb-12">
+        Loved by Students & Teachers
+      </h2>
+      <div class="grid md:grid-cols-3 gap-6" [@staggerFade]="testimonials.length">
+        <div *ngFor="let testimonial of testimonials" 
+             class="testimonial-card bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-2xl p-8 shadow-lg hover:shadow-2xl transform hover:scale-105 transition-all duration-300">
+          <div class="flex items-center gap-2 mb-4 text-[#B7A57A]">
+            <mat-icon>star</mat-icon>
+            <mat-icon>star</mat-icon>
+            <mat-icon>star</mat-icon>
+            <mat-icon>star</mat-icon>
+            <mat-icon>star</mat-icon>
+          </div>
+          <p class="text-gray-700 dark:text-gray-300 mb-4 italic">"{{ testimonial.quote }}"</p>
+          <div class="border-t border-[#B7A57A]/30 pt-4">
+            <p class="font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{ testimonial.author }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400">{{ testimonial.role }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Final CTA Section -->
+    <div class="final-cta bg-gradient-to-r from-[#B7A57A] via-[#D4C5A0] to-[#B7A57A] py-16 mt-16">
+      <div class="container mx-auto max-w-4xl text-center px-4">
+        <h2 class="text-4xl md:text-5xl font-bold text-[#1A365D] mb-6">
+          Ready to Deepen Your Quranic Understanding?
+        </h2>
+        <p class="text-xl text-[#1A365D]/80 mb-8">
+          {{ isAuthenticated ? 'Upgrade now to unlock AI-powered insights.' : 'Join thousands of students already learning with AI-powered insights.' }}
+        </p>
+        
+        <!-- For Logged-In Non-Premium Users -->
+        <div *ngIf="isAuthenticated && !isPremium" class="flex flex-col sm:flex-row gap-4 justify-center">
+          <button 
+            mat-raised-button 
+            (click)="navigateToSubscription()"
+            class="w-full sm:w-auto px-10 py-4 text-lg font-bold rounded-xl bg-[#1A365D] text-[#FAF3E0] hover:bg-[#243F6B] transform hover:scale-105 transition-all duration-300 shadow-2xl">
+            <mat-icon class="mr-2">workspace_premium</mat-icon>
+            Upgrade to Premium Now
+          </button>
+          <button 
+            mat-stroked-button 
+            routerLink="/home"
+            class="w-full sm:w-auto px-10 py-4 text-lg font-semibold rounded-xl border-2 border-[#1A365D] text-[#1A365D] hover:bg-[#1A365D] hover:text-[#FAF3E0] transition-all duration-300">
+            <mat-icon class="mr-2">home</mat-icon>
+            Back to Home
+          </button>
+        </div>
+
+        <!-- For Anonymous Users -->
+        <div *ngIf="!isAuthenticated" class="flex flex-col sm:flex-row gap-4 justify-center">
+          <button 
+            mat-raised-button 
+            (click)="navigateToSignup()"
+            class="w-full sm:w-auto px-10 py-4 text-lg font-bold rounded-xl bg-[#1A365D] text-[#FAF3E0] hover:bg-[#243F6B] transform hover:scale-105 transition-all duration-300 shadow-2xl">
+            <mat-icon class="mr-2">workspace_premium</mat-icon>
+            Start 7-Day Free Trial
+          </button>
+          <button 
+            mat-stroked-button 
+            (click)="navigateToLogin()"
+            class="w-full sm:w-auto px-10 py-4 text-lg font-semibold rounded-xl border-2 border-[#1A365D] text-[#1A365D] hover:bg-[#1A365D] hover:text-[#FAF3E0] transition-all duration-300">
+            Sign In to Continue
+          </button>
+        </div>
+
+        <p class="text-sm text-[#1A365D]/60 mt-6">
+          {{ isAuthenticated ? 'Instant access • Cancel anytime • Money-back guarantee' : 'No credit card required • Cancel anytime • Money-back guarantee' }}
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>

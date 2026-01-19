@@ -102,9 +102,9 @@ export class HeaderComponent implements OnInit, OnDestroy {
   private updateHeaderVisibility(url: string): void {
     const previousLandingPageState = this.isLandingPage;
     // Hide header on landing page and auth pages *only* when not authenticated
+    // Note: '/' now redirects to '/home', so we only hide on '/landing' and '/auth/' for anonymous users
     this.isLandingPage = !this.isAuthenticated && (
       url === '/landing' ||
-      url === '/' ||
       url.startsWith('/auth/')
     );
     // console.log(`[HeaderComponent] updateHeaderVisibility: URL='${url}', isAuthenticated=${this.isAuthenticated}, Calculated isLandingPage=${this.isLandingPage}`);

@@ -1279,7 +1279,8 @@
                 <mat-button-toggle value="double" matTooltip="Double Page View"><mat-icon>menu_book</mat-icon></mat-button-toggle>
               </mat-button-toggle-group>
               <!-- Bookmark -->
-              <button mat-icon-button (click)="toggleBookmark()" [class.bookmarked]="isCurrentPageBookmarked$ | async" matTooltip="Bookmark Page">
+              <button mat-icon-button (click)="toggleBookmark()" [class.bookmarked]="isCurrentPageBookmarked$ | async" 
+                      [matTooltip]="isAuthenticated ? 'Bookmark Page' : 'Sign in to bookmark'">
                  <mat-icon>{{ (isCurrentPageBookmarked$ | async) ? 'bookmark' : 'bookmark_border' }}</mat-icon>
               </button>
               <!-- Play Surah -->
@@ -1406,6 +1407,45 @@
 
         <div *ngIf="!isLoading && tafsir && tafsir.startsWith('Error')" class="text-center text-red-600 dark:text-red-400 p-4 bg-red-50 dark:bg-red-900/30 rounded-md">
             <p>{{ tafsir }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sign-In Prompt for Bookmarks (Anonymous Users) -->
+    <div *ngIf="showBookmarkPrompt" 
+         class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"
+         (click)="showBookmarkPrompt = false">
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full shadow-2xl"
+           (click)="$event.stopPropagation()">
+        <div class="text-center">
+          <mat-icon class="text-[#B7A57A] text-6xl mb-4">bookmark</mat-icon>
+          <h3 class="text-2xl font-bold text-gray-800 dark:text-white mb-3">
+            Save Your Bookmarks
+          </h3>
+          <p class="text-gray-600 dark:text-gray-300 mb-6">
+            Sign in to save bookmarks and access them across all your devices
+          </p>
+          
+          <div class="space-y-3">
+            <button 
+              [routerLink]="['/auth/login']"
+              [queryParams]="{returnUrl: '/quran'}"
+              class="w-full px-6 py-3 bg-[#B7A57A] text-white font-semibold rounded-lg hover:bg-[#9b8a65] transition-colors">
+              Sign In
+            </button>
+            <button 
+              (click)="showBookmarkPrompt = false"
+              class="w-full px-6 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-semibold rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors">
+              Maybe Later
+            </button>
+          </div>
+          
+          <p class="text-sm text-gray-500 dark:text-gray-400 mt-4">
+            Don't have an account? 
+            <a [routerLink]="['/auth/signup']" [queryParams]="{returnUrl: '/quran'}" class="text-[#B7A57A] hover:underline">
+              Sign up for free
+            </a>
+          </p>
         </div>
       </div>
     </div>
