@@ -19,208 +19,181 @@
   font-display: swap;
 }
 
-/* ===== TAJWEED COLOR CLASSES ===== */
-/* These classes apply Tajweed coloring to Quranic text */
-.tajweed {
-  /* Ghunnah - Nasal sound (Green) */
-  &-ghunnah {
-    color: #4CAF50 !important; /* Green */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #66BB6A !important; /* Lighter, more vibrant green */
-      text-shadow: 0 0 2px rgba(102, 187, 106, 0.3);
-    }
-  }
-  
-  /* Qalqalah - Echo sound (Purple/Magenta) */
-  &-qalqalah {
-    color: #9C27B0 !important; /* Purple */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #BA68C8 !important; /* Lighter purple */
-      text-shadow: 0 0 2px rgba(186, 104, 200, 0.3);
-    }
-  }
-  
-  /* Idghaam - Merging (Gray) */
-  &-idghaam {
-    color: #757575 !important; /* Gray */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #BDBDBD !important; /* Lighter gray for visibility */
-      text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
-    }
-  }
-  
-  /* Ikhfa - Hidden (Yellow/Amber) */
-  &-ikhfa {
-    color: #FFC107 !important; /* Amber */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #FFD54F !important; /* Brighter amber */
-      text-shadow: 0 0 3px rgba(255, 213, 79, 0.4);
-    }
-  }
-  
-  /* Madd - Elongation (Red) */
-  &-madd {
-    color: #F44336 !important; /* Red */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #EF5350 !important; /* Lighter red */
-      text-shadow: 0 0 3px rgba(239, 83, 80, 0.4);
-    }
-  }
-  
-  /* Iqlab - Conversion (Orange) */
-  &-iqlab {
-    color: #FF9800 !important; /* Orange */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #FFB74D !important; /* Lighter orange */
-      text-shadow: 0 0 2px rgba(255, 183, 77, 0.3);
-    }
-  }
-  
-  /* Idghaam with Ghunnah (Blue) */
-  &-idghaam-ghunnah {
-    color: #2196F3 !important; /* Blue */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #42A5F5 !important; /* Lighter blue */
-      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
-    }
-  }
-  
-  /* Izhar - Clear pronunciation (No color change) */
-  &-izhar {
-    /* Keep default color */
-  }
-  
-  /* Hamzat Wasl (Light Blue) */
-  &-hamzat-wasl {
-    color: #00BCD4 !important; /* Cyan */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #26C6DA !important; /* Lighter cyan */
-      text-shadow: 0 0 2px rgba(38, 198, 218, 0.3);
-    }
-  }
-  
-  /* Silent letters (Light Gray) */
-  &-silent {
-    color: #BDBDBD !important; /* Light Gray */
-    
-    /* Enhanced for dark mode */
-    .dark & {
-      color: #9E9E9E !important; /* Medium gray for better visibility */
-      text-shadow: 0 0 1px rgba(158, 158, 158, 0.2);
-    }
-  }
-}
+/* ===== QURAN.COM API TAJWEED COLORS ===== */
+/* 
+ * Tajweed colors are provided by Quran.com API via <rule class="..."> HTML tags
+ * in the text_uthmani_tajweed field. These styles apply colors to those tags.
+ * 
+ * API Source: https://api.quran.com/api/v4/verses/by_chapter/{chapter_id}
+ * Data Field: word.text_uthmani_tajweed
+ * 
+ * Important: All tajweed colors come from the API. No custom detection logic.
+ */
 
-/* ===== QURAN.COM API TAJWEED HTML TAGS ===== */
-/* Styling for <rule> elements from Quran.com API (they use <rule class="...">) */
-
-/* Disable tajweed colors when toggle is off */
+/* Toggle: Disable tajweed colors when user turns off the feature */
 .tajweed-disabled rule {
   color: inherit !important;
   text-shadow: none !important;
 }
 
+/* 
+ * Target <rule> elements from Quran.com API
+ * Format: <rule class="tajweed_class_name">letter</rule>
+ */
 rule {
-  /* Ghunnah and variations */
+  /* 
+   * 1. GHUNNAH (Nasal Sound) - Green #4CAF50
+   * Occurs with: ن م with Shadda or Sukun
+   * Duration: 2 beats
+   * API classes: ghunnah, ghunnah_shown, ghunnah_hidden
+   */
   &[class*="ghunnah"] {
-    color: #4CAF50 !important;
+    color: #4CAF50 !important; /* Material Green 500 */
+    
     .dark & {
-      color: #66BB6A !important;
+      color: #66BB6A !important; /* Material Green 400 - Lighter for dark mode */
       text-shadow: 0 0 2px rgba(102, 187, 106, 0.3);
     }
   }
   
-  /* Qalqalah (with various spellings) */
-  &[class*="qalqalah"], &[class*="qalaqalah"] {
-    color: #9C27B0 !important;
+  /* 
+   * 2. QALQALAH (Echo/Bounce) - Purple #9C27B0
+   * Occurs with: ق ط ب ج د with Sukun (قُطْبُ جَد)
+   * API classes: qalaqah (note: single 'q' in middle)
+   */
+  &[class*="qalaqah"] {
+    color: #9C27B0 !important; /* Material Purple 500 */
+    
     .dark & {
-      color: #BA68C8 !important;
+      color: #BA68C8 !important; /* Material Purple 300 */
       text-shadow: 0 0 2px rgba(186, 104, 200, 0.3);
     }
   }
   
-  /* Madd (elongation) and variations */
+  /* 
+   * 3. MADD (Elongation) - Red #F44336
+   * Prolonged vowel sounds: آ و ي
+   * Types: Natural (2), Connected (4-5), Separated (2-5), Necessary (6 beats)
+   * API classes: madd, madd_2, madd_6, madd_24, madd_muttasil, madd_munfasil, 
+   *              madd_lazim, madda_*, madda_obligatory_mottasel
+   */
   &[class*="madd"] {
-    color: #F44336 !important;
+    color: #F44336 !important; /* Material Red 500 */
+    
     .dark & {
-      color: #EF5350 !important;
+      color: #EF5350 !important; /* Material Red 400 */
       text-shadow: 0 0 3px rgba(239, 83, 80, 0.4);
     }
   }
   
-  /* Idghaam (merging) */
-  &[class*="idgham"]:not([class*="ghunnah"]), &[class*="idghaam"]:not([class*="ghunnah"]) {
-    color: #757575 !important;
+  /* 
+   * 4. IDGHAAM (Merging WITHOUT Ghunnah) - Gray #757575
+   * Merging ن Sakinah/Tanween with: ي ر م ل و ن (يَرْمُلُون)
+   * Specifically: WITHOUT ghunnah (with ل ر)
+   * API classes: idgham, idghaam, idgham_wo_ghunnah
+   */
+  &[class*="idgham"]:not([class*="ghunnah"]), 
+  &[class*="idghaam"]:not([class*="ghunnah"]) {
+    color: #757575 !important; /* Material Gray 600 */
+    
     .dark & {
-      color: #BDBDBD !important;
+      color: #BDBDBD !important; /* Material Gray 400 */
       text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
     }
   }
   
-  /* Idghaam with Ghunnah */
-  &[class*="idgham"][class*="ghunnah"], &[class*="idghaam"][class*="ghunnah"] {
-    color: #2196F3 !important;
+  /* 
+   * 5. IDGHAAM WITH GHUNNAH - Blue #2196F3
+   * Idghaam specifically WITH ghunnah (with ي ن م و)
+   * API classes: idgham_w_ghunnah
+   */
+  &[class*="idgham"][class*="ghunnah"], 
+  &[class*="idghaam"][class*="ghunnah"] {
+    color: #2196F3 !important; /* Material Blue 500 */
+    
     .dark & {
-      color: #42A5F5 !important;
+      color: #42A5F5 !important; /* Material Blue 400 */
       text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
     }
   }
   
-  /* Ikhfa (hiding) */
-  &[class*="ikhfa"], &[class*="ikhfaa"] {
-    color: #FFC107 !important;
+  /* 
+   * 6. IKHFA (Hiding/Concealment) - Amber #FFC107
+   * Partially hiding ن Sakinah/Tanween with 15 letters
+   * API classes: ikhafa (note: 'a' not 'fa'), ikhfa, ikhfaa, ikhfa_shafawi
+   */
+  &[class*="ikhafa"], &[class*="ikhfa"] {
+    color: #FFC107 !important; /* Material Amber 500 */
+    
     .dark & {
-      color: #FFD54F !important;
+      color: #FFD54F !important; /* Material Amber 300 */
       text-shadow: 0 0 3px rgba(255, 213, 79, 0.4);
     }
   }
   
-  /* Iqlab (conversion) */
+  /* 
+   * 7. IQLAB (Conversion) - Orange #FF9800
+   * Converting ن Sakinah/Tanween to م before ب
+   * API classes: iqlab, iqlb
+   */
   &[class*="iqlab"], &[class*="iqlb"] {
-    color: #FF9800 !important;
+    color: #FF9800 !important; /* Material Orange 500 */
+    
     .dark & {
-      color: #FFB74D !important;
+      color: #FFB74D !important; /* Material Orange 300 */
       text-shadow: 0 0 2px rgba(255, 183, 77, 0.3);
     }
   }
   
-  /* Hamzat Wasl */
+  /* 
+   * 8. HAMZAT WASL (Connecting Hamza) - Cyan #00BCD4
+   * Hamza that connects in continuous recitation
+   * API classes: ham_wasl, hamzat_wasl
+   */
   &[class*="ham_wasl"], &[class*="hamzat_wasl"] {
-    color: #00BCD4 !important;
+    color: #00BCD4 !important; /* Material Cyan 500 */
+    
     .dark & {
-      color: #26C6DA !important;
+      color: #26C6DA !important; /* Material Cyan 400 */
       text-shadow: 0 0 2px rgba(38, 198, 218, 0.3);
     }
   }
   
-  /* Silent letters */
+  /* 
+   * 9. SILENT LETTERS - Light Gray #BDBDBD
+   * Letters not pronounced in recitation
+   * API classes: slnt, silent
+   */
   &[class*="slnt"], &[class*="silent"] {
-    color: #BDBDBD !important;
+    color: #BDBDBD !important; /* Material Gray 400 */
+    
     .dark & {
-      color: #9E9E9E !important;
+      color: #9E9E9E !important; /* Material Gray 500 - Dimmed */
       text-shadow: 0 0 1px rgba(158, 158, 158, 0.2);
     }
   }
   
-  /* Izhar (clear pronunciation - no color) */
+  /* 
+   * 10. LAAM SHAMSIYAH (Sun Letter Laam) - Light Gray #BDBDBD
+   * Laam in ال (the) that is assimilated with sun letters (ت ث د ذ ر ز س ش ص ض ط ظ ل ن)
+   * API classes: laam_shamsiyah
+   */
+  &[class*="laam_shamsiyah"] {
+    color: #BDBDBD !important; /* Material Gray 400 - Same as silent */
+    
+    .dark & {
+      color: #9E9E9E !important; /* Material Gray 500 - Dimmed */
+      text-shadow: 0 0 1px rgba(158, 158, 158, 0.2);
+    }
+  }
+  
+  /* 
+   * 11. IZHAR (Clear Pronunciation) - No Color Change
+   * Clear pronunciation with no modification
+   * API classes: izhar, izhar_shafawi
+   */
   &[class*="izhar"] {
-    /* Keep default color */
+    /* Keep default text color - no special styling */
   }
 }
 

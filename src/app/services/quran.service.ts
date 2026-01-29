@@ -96,7 +96,7 @@ export interface WordDetails {
   };
 }
 
-// Add interface for word type
+// Word interface for Quranic text
 export interface Word {
   text: string;
   translation: string;
@@ -104,9 +104,8 @@ export interface Word {
   audioUrl?: string;
   timestamp_from?: number;
   timestamp_to?: number;
-  tajweed?: string; // Tajweed rule for this word (e.g., 'ghunnah', 'qalqalah', 'madd')
   char_type?: string; // Type of character (word, pause, etc.)
-  text_uthmani_tajweed?: string; // Tajweed-annotated text from Quran.com API
+  text_uthmani_tajweed?: string; // Tajweed-annotated HTML from Quran.com API (contains <rule> tags)
 }
 
 interface SurahSuggestion {
@@ -224,7 +223,9 @@ export interface SurahData {
 export class QuranService {
   // Update base URLs to use environment configuration
   private baseUrl = `${environment.apiUrl}/api/alquran`;
-  private quranComUrl = `${environment.apiUrl}/api/quran`;
+  // Switched to Quran Foundation CDN for more accurate tajweed data
+  private quranFoundationUrl = 'https://api.qurancdn.com/api/qdc';
+  private quranComUrl = `${environment.apiUrl}/api/quran`; // Kept for backward compatibility with other methods
   private readonly CACHE_KEY = 'quran_cache';
   private readonly SURAH_CACHE_KEY = 'surah_cache';
   private selectedTafsir: 'ibn-kathir' | 'tabari' = 'ibn-kathir';
@@ -347,19 +348,13 @@ export class QuranService {
     // Ensure the translationId is a string
     const safeTranslationId = String(translationId);
 
+    // Fetch from Quran Foundation CDN with tajweed data
+    // Using QuranCDN for potentially more accurate tajweed annotations
+    const apiUrl = `${this.quranFoundationUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,text_uthmani_tajweed,translation,transliteration&translations=${safeTranslationId}&per_page=300`;
     
-    const quranComUrl = `${this.quranComUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,text_uthmani_tajweed,translation,transliteration,char_type_name&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number&per_page=300`;
+    console.log('🔄 Switched to Quran Foundation API:', apiUrl);
     
-    console.log('🚀 TAJWEED API CALL:', quranComUrl);
-    
-    return this.http.get(quranComUrl).pipe(
-      tap((response: any) => {
-        console.log('📦 API RESPONSE:', {
-          verses_count: response?.verses?.length,
-          first_verse_words: response?.verses?.[0]?.words?.length,
-          sample_word: response?.verses?.[0]?.words?.[0]
-        });
-      }),
+    return this.http.get(apiUrl).pipe(
       map((response: any) => {
         if (!response?.verses) {
           console.error('QuranService: Invalid response format - missing verses property');
@@ -398,26 +393,17 @@ export class QuranService {
             translation: translationText, // Use the determined translation text
             transliteration: verse.words?.map((word: any) => word.transliteration?.text).join(' ') || '',
             audio: this.getVerseAudioUrl(reciterId, verse.verse_key),
-            words: verse.words?.map((word: any, wordIndex: number) => {
-              // DEBUG: Log first word of first verse to verify tajweed data
-              if (verse.verse_number === 1 && wordIndex === 0) {
-                console.log('🔍 DEBUG - First word data:', {
-                  text_uthmani: word.text_uthmani,
-                  text_uthmani_tajweed: word.text_uthmani_tajweed,
-                  tajweed_class: this.extractTajweedClass(word.text_uthmani_tajweed)
-                });
-              }
-              
+            words: verse.words?.map((word: any) => {
               return {
-                text: word.text_uthmani,
+                text: word.text_uthmani || word.text,
                 translation: word.translation?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || '',
-                transliteration: word.transliteration?.text || '',
-                audioUrl: word.audio_url || '',
-                timestamp_from: word.char_type === 'word' ? word.audio?.timestamp_from : undefined,
-                timestamp_to: word.char_type === 'word' ? word.audio?.timestamp_to : undefined,
-                char_type: word.char_type_name || word.char_type,
-                text_uthmani_tajweed: word.text_uthmani_tajweed || word.text_uthmani,
-                tajweed: this.extractTajweedClass(word.text_uthmani_tajweed),
+                transliteration: word.transliteration?.text || word.transliteration || '',
+                audioUrl: word.audio_url || word.audio?.url || '',
+                timestamp_from: word.audio?.timestamp_from,
+                timestamp_to: word.audio?.timestamp_to,
+                char_type: word.char_type_name || word.char_type || 'word',
+                // Quran Foundation CDN provides tajweed data in text_uthmani_tajweed
+                text_uthmani_tajweed: word.text_uthmani_tajweed || word.text_uthmani || word.text,
               };
             }) || [],
             verse_key: verse.verse_key,
@@ -1042,86 +1028,4 @@ export class QuranService {
     // );
   }
 
-  /**
-   * Extracts Tajweed class from Quran.com API's HTML-tagged tajweed text
-   * The API returns text like: <rule class="ham_wasl">ٱ</rule>لْحَمْدُ
-   */
-  private extractTajweedClass(tajweedHtml?: string): string | undefined {
-    if (!tajweedHtml) {
-      return undefined;
-    }
-
-    // Match <rule class="CLASSNAME"> (Quran.com uses <rule> not <tajweed>)
-    const match = tajweedHtml.match(/<rule class=["']?([^"'>]+)["']?>/);
-    if (match && match[1]) {
-      // Map Quran.com's tajweed class names to our CSS class names
-      return this.mapQuranComTajweedClass(match[1]);
-    }
-
-    return undefined;
-  }
-
-  /**
-   * Maps Quran.com tajweed class names to our application's CSS classes
-   * Based on Quran.com's tajweed system (uses <rule class="...">)
-   */
-  private mapQuranComTajweedClass(quranComClass: string): string {
-    const classMap: { [key: string]: string } = {
-      // Ghunnah variations
-      'ghunnah': 'ghunnah',
-      'ghunnah_shown': 'ghunnah',
-      'ghunnah_hidden': 'ghunnah',
-      
-      // Qalqalah
-      'qalaqalah': 'qalqalah',
-      'qalqalah': 'qalqalah',
-      'qalaqalah_shown': 'qalqalah',
-      
-      // Madd (elongation) variations - CRITICAL FIX
-      'madd': 'madd',
-      'madd_2': 'madd',
-      'madd_6': 'madd',
-      'madd_24': 'madd',
-      'madd_muttasil': 'madd',
-      'madd_munfasil': 'madd',
-      'madd_lazim': 'madd',
-      'madda_normal': 'madd',
-      'madda_permissible': 'madd',
-      'madda_necessary': 'madd',
-      'madda_obligatory': 'madd',
-      'madda_obligatory_mottasel': 'madd', // FROM YOUR LOG!
-      
-      // Idghaam variations
-      'idgham': 'idghaam',
-      'idghaam': 'idghaam',
-      'idgham_wo_ghunnah': 'idghaam',
-      'idgham_w_ghunnah': 'idghaam-ghunnah',
-      'idgham_shafawi': 'idghaam',
-      'idgham_mutajanisayn': 'idghaam',
-      'idgham_mutaqaribayn': 'idghaam',
-      
-      // Ikhfa variations
-      'ikhfa': 'ikhfa',
-      'ikhfaa': 'ikhfa',
-      'ikhfa_shafawi': 'ikhfa',
-      
-      // Iqlab
-      'iqlab': 'iqlab',
-      'iqlb': 'iqlab',
-      
-      // Izhar
-      'izhar': 'izhar',
-      'izhar_shafawi': 'izhar',
-      
-      // Hamzat Wasl
-      'ham_wasl': 'hamzat-wasl',
-      'hamzat_wasl': 'hamzat-wasl',
-      
-      // Silent letters
-      'slnt': 'silent',
-      'silent': 'silent',
-    };
-
-    return classMap[quranComClass] || quranComClass;
-  }
 }
