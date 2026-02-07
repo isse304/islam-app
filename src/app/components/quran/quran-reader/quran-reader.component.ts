@@ -585,6 +585,14 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.displayPageNumberSubject.next(initialPage);
         this.pageInput = initialPage;
         this.updateTitleAndMeta(initialSurah);
+        
+        // Ensure controls state is properly initialized
+        // If no saved preference, start with controls expanded (not minimized)
+        if (!prefs?.lastState?.isMainControlsMinimized) {
+          this.isMainControlsMinimized = false;
+          this.isPopupOpen = false;
+        }
+        
         this.changeDetector.markForCheck();
 
         // +++ ADD LOG BEFORE loadInitialContent +++
@@ -2749,24 +2757,39 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // +++ ADD Scroll Listener +++
   @HostListener('window:scroll')
   onWindowScroll(): void {
-    if (!this.isMobile) return; // Only apply on mobile
-
     const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
     const scrollDifference = currentScrollPosition - this.lastScrollPosition;
 
-    // Use the existing scrollThreshold property (assuming it exists)
+    // Use the existing scrollThreshold property
     if (Math.abs(scrollDifference) >= this.scrollThreshold) { 
       if (currentScrollPosition > this.lastScrollPosition && currentScrollPosition > 100) {
         // Scrolling Down & past a certain point
-        if (!this.isMobileHeaderHidden) {
+        
+        // Mobile: Hide header
+        if (this.isMobile && !this.isMobileHeaderHidden) {
           this.isMobileHeaderHidden = true;
           this.cdr.markForCheck(); 
         }
+        
+        // Desktop/All: Minimize main controls when scrolling down
+        if (!this.isMainControlsMinimized && !this.isMushafView) {
+          this.isMainControlsMinimized = true;
+          this.isPopupOpen = false;
+          this.cdr.markForCheck();
+        }
       } else {
         // Scrolling Up or near the top
-        if (this.isMobileHeaderHidden) {
+        
+        // Mobile: Show header
+        if (this.isMobile && this.isMobileHeaderHidden) {
           this.isMobileHeaderHidden = false;
           this.cdr.markForCheck(); 
+        }
+        
+        // Near top: Restore controls (optional - comment out if you want controls to stay minimized)
+        if (currentScrollPosition < 50 && this.isMainControlsMinimized) {
+          this.isMainControlsMinimized = false;
+          this.cdr.markForCheck();
         }
       }
       this.lastScrollPosition = currentScrollPosition <= 0 ? 0 : currentScrollPosition; // For Mobile or negative scrolling
@@ -2937,11 +2960,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // Explicitly default to true for new users or when preference is missing
         this.tajweedEnabled = prefs.tajweedEnabled !== false; // Only false if explicitly set to false
 
-         // Apply isMainControlsMinimized state (regardless of initialLoad? Check logic)
+         // Apply isMainControlsMinimized state (default to false if not set)
          if (prefs.lastState && typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
              this.isMainControlsMinimized = prefs.lastState.isMainControlsMinimized;
-             // ////////console.log.log(`[loadUserPreferences] Applied isMainControlsMinimized pref: ${this.isMainControlsMinimized}`);
+         } else {
+             // When no preferences exist (e.g., after cache clear), default to expanded controls
+             this.isMainControlsMinimized = false;
          }
+         
+         // Force change detection to ensure controls render
+         this.cdr.markForCheck();
 
          // Don't Apply Primary State during initial load, ngOnInit handles it
          if (initialLoad) {
