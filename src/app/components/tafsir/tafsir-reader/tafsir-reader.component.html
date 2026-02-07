@@ -1,0 +1,525 @@
+<div class="tafsir-reader" [class.focus-mode]="focusMode" [class.split-view-active]="splitViewMode">
+  
+  <!-- Top Toolbar -->
+  <header class="reader-toolbar" *ngIf="!focusMode">
+    <div class="toolbar-left">
+      <button mat-icon-button (click)="goToLibrary()" 
+              matTooltip="Back to Library">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <button mat-icon-button routerLink="/home" 
+              matTooltip="Home">
+        <mat-icon>home</mat-icon>
+      </button>
+      
+      <div class="edition-info" *ngIf="edition">
+        <h3>{{ edition.name }}</h3>
+        <div class="surah-selector">
+          <mat-form-field appearance="outline" class="compact-field">
+            <mat-label>Surah</mat-label>
+            <mat-select [(ngModel)]="currentSurah" (selectionChange)="onSurahChange()">
+              <mat-option *ngFor="let surah of (surahs$ | async)" [value]="surah.number">
+                {{ surah.number }}. {{ surah.englishName }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+          
+          <mat-form-field appearance="outline" class="compact-field verse-selector">
+            <mat-label>Verse</mat-label>
+            <mat-select [(ngModel)]="currentVerse" (selectionChange)="onVerseChange()">
+              <mat-option *ngFor="let verseNum of getVerseNumbers()" [value]="verseNum">
+                {{ verseNum }}
+              </mat-option>
+            </mat-select>
+          </mat-form-field>
+        </div>
+      </div>
+    </div>
+
+    <div class="toolbar-right">
+      <!-- Theme Toggle -->
+      <button mat-icon-button [matMenuTriggerFor]="themeMenu" 
+              matTooltip="Theme (D)">
+        <mat-icon>{{
+          preferences.theme === 'light' ? 'light_mode' :
+          preferences.theme === 'dark' ? 'dark_mode' :
+          preferences.theme === 'sepia' ? 'auto_stories' : 'nightlight'
+        }}</mat-icon>
+      </button>
+      <mat-menu #themeMenu="matMenu">
+        <button mat-menu-item *ngFor="let theme of themes" 
+                (click)="changeTheme(theme.value)">
+          <span>{{ theme.icon }} {{ theme.label }}</span>
+        </button>
+      </mat-menu>
+
+      <!-- Typography -->
+      <button mat-icon-button [matMenuTriggerFor]="typographyMenu" 
+              matTooltip="Typography (T)">
+        <mat-icon>text_fields</mat-icon>
+      </button>
+      <mat-menu #typographyMenu="matMenu" class="typography-menu">
+        <div class="typography-controls" (click)="$event.stopPropagation()">
+          <div class="control-group">
+            <label>Font Family</label>
+            <mat-select [(ngModel)]="preferences.fontFamily" 
+                       (ngModelChange)="changeFontFamily($event)">
+              <mat-option *ngFor="let font of fontFamilies" [value]="font.value">
+                {{ font.label }}
+              </mat-option>
+            </mat-select>
+          </div>
+
+          <div class="control-group">
+            <label>Font Size: {{ preferences.fontSize }}px</label>
+            <mat-slider min="14" max="26" step="1" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.fontSize"
+                     (ngModelChange)="changeFontSize($event)">
+            </mat-slider>
+          </div>
+
+          <div class="control-group">
+            <label>Line Height: {{ preferences.lineHeight }}</label>
+            <mat-slider min="1.0" max="2.5" step="0.1" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.lineHeight"
+                     (ngModelChange)="changeLineHeight($event)">
+            </mat-slider>
+          </div>
+
+          <div class="control-group">
+            <label>Page Width: {{ preferences.maxWidth }}px</label>
+            <mat-slider min="600" max="900" step="50" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.maxWidth"
+                     (ngModelChange)="changeMaxWidth($event)">
+            </mat-slider>
+          </div>
+        </div>
+      </mat-menu>
+
+      <!-- Bookmark Button -->
+      <button mat-icon-button 
+              (click)="toggleBookmarkCurrent()" 
+              [color]="isBookmarkedCurrent ? 'accent' : ''"
+              matTooltip="Bookmark this verse (B)">
+        <mat-icon>{{ isBookmarkedCurrent ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+        <span class="badge" *ngIf="getBookmarkCount() > 1">{{ getBookmarkCount() }}</span>
+      </button>
+
+      <!-- Notes Button -->
+      <button mat-icon-button 
+              (click)="toggleNotesPanel()" 
+              [color]="showNotesPanel ? 'accent' : ''"
+              matTooltip="Add Note (N)">
+        <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
+        <span class="badge" *ngIf="getNoteCount() > 0">{{ getNoteCount() }}</span>
+      </button>
+
+      <!-- View All Bookmarks -->
+      <button mat-icon-button 
+              (click)="viewBookmarks()" 
+              matTooltip="View All Bookmarks">
+        <mat-icon>bookmarks</mat-icon>
+      </button>
+
+      <!-- View All Notes -->
+      <button mat-icon-button 
+              (click)="viewNotes()" 
+              matTooltip="View All Notes">
+        <mat-icon>sticky_note_2</mat-icon>
+      </button>
+
+      <!-- View All Highlights -->
+      <button mat-icon-button 
+              (click)="viewHighlights()" 
+              matTooltip="View All Highlights">
+        <mat-icon>format_color_fill</mat-icon>
+      </button>
+
+      <!-- Highlight Color Selector -->
+      <button mat-icon-button 
+              [matMenuTriggerFor]="highlightMenu" 
+              matTooltip="Highlight Color (H)">
+        <mat-icon [style.color]="getHighlightColorHex(selectedHighlightColor)">format_color_fill</mat-icon>
+        <span class="highlight-badge" *ngIf="getHighlightCount() > 0">{{ getHighlightCount() }}</span>
+      </button>
+      <mat-menu #highlightMenu="matMenu" class="highlight-menu-dropdown">
+        <div class="highlight-colors-grid" (click)="$event.stopPropagation()">
+          <button mat-menu-item 
+                  *ngFor="let color of highlightColors"
+                  (click)="selectHighlightColor(color.value)"
+                  [class.selected]="selectedHighlightColor === color.value">
+            <span class="color-preview" [style.background-color]="color.hex"></span>
+            <span>{{ color.icon }} {{ color.label }}</span>
+            <mat-icon *ngIf="selectedHighlightColor === color.value" class="check-icon">check</mat-icon>
+          </button>
+        </div>
+      </mat-menu>
+
+      <!-- Split View Toggle -->
+      <button mat-icon-button (click)="toggleSplitView()" 
+              [class.active]="splitViewMode"
+              matTooltip="Split View (S)">
+        <mat-icon>view_sidebar</mat-icon>
+      </button>
+
+      <!-- Link to Quran Reader -->
+      <button mat-icon-button (click)="openInQuranReader()" 
+              matTooltip="Open in Quran Reader (Q)">
+        <mat-icon>open_in_new</mat-icon>
+      </button>
+
+      <!-- Focus Mode -->
+      <button mat-icon-button (click)="toggleFocusMode()" 
+              matTooltip="Focus Mode (F)">
+        <mat-icon>fullscreen</mat-icon>
+      </button>
+
+      <!-- Settings -->
+      <button mat-icon-button [matMenuTriggerFor]="settingsMenu" 
+              matTooltip="Settings">
+        <mat-icon>settings</mat-icon>
+      </button>
+      <mat-menu #settingsMenu="matMenu">
+        <div class="settings-panel" (click)="$event.stopPropagation()">
+          <mat-slide-toggle [(ngModel)]="preferences.showArabicVerse"
+                           (ngModelChange)="toggleArabicVerse()">
+            Show Arabic Verse
+          </mat-slide-toggle>
+          <mat-slide-toggle [(ngModel)]="preferences.enableKeyboardShortcuts"
+                           (ngModelChange)="savePreferences()">
+            Keyboard Shortcuts
+          </mat-slide-toggle>
+          <mat-slide-toggle [(ngModel)]="preferences.autoBookmarkLastRead"
+                           (ngModelChange)="savePreferences()">
+            Auto-bookmark Last Read
+          </mat-slide-toggle>
+        </div>
+      </mat-menu>
+    </div>
+  </header>
+
+  <!-- Progress Bar -->
+  <div class="progress-bar" *ngIf="!focusMode && tafsirContent">
+    <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
+  </div>
+
+  <!-- Main Content Area -->
+  <main class="reader-content" [class.loading]="isLoadingVerse">
+    
+    <!-- Loading Spinner -->
+    <div class="loading-spinner" *ngIf="isLoadingVerse">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading tafsir...</p>
+    </div>
+
+    <!-- Split View Layout -->
+    <div class="split-container" *ngIf="splitViewMode && !isLoadingVerse">
+      <!-- Left: Verse Panel -->
+      <div class="verse-panel" *ngIf="verseData">
+        <div class="panel-header">
+          <h4>Verse {{ currentSurah }}:{{ currentVerse }}</h4>
+        </div>
+        
+        <div class="verse-content">
+          <!-- Arabic Text -->
+          <div class="arabic-text" dir="rtl">
+            {{ verseData.text }}
+          </div>
+
+          <!-- Translation -->
+          <div class="translation-text">
+            {{ verseData.translation }}
+          </div>
+
+          <!-- Transliteration -->
+          <div class="transliteration-text" *ngIf="verseData.transliteration">
+            {{ verseData.transliteration }}
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: Tafsir Panel -->
+      <div class="tafsir-panel" *ngIf="tafsirContent">
+        <div class="panel-header">
+          <h4>Tafsir</h4>
+          <span class="read-time">
+            <mat-icon>schedule</mat-icon>
+            {{ tafsirContent.estimatedReadTime }} min read
+          </span>
+        </div>
+        
+        <div class="tafsir-text" 
+             (mouseup)="handleTextSelection($event)"
+             (mouseover)="handleHighlightHover($event)"
+             (mouseleave)="handleHighlightLeave($event)"
+             [innerHTML]="getHighlightedText(tafsirContent.text)">
+        </div>
+      </div>
+    </div>
+
+    <!-- Single View Layout -->
+    <div class="single-container" *ngIf="!splitViewMode && !isLoadingVerse">
+      
+      <!-- Verse Reference -->
+      <div class="verse-reference">
+        <h2>{{ getSurahName() }}</h2>
+        <p class="verse-number">Verse {{ currentVerse }}</p>
+      </div>
+
+      <!-- Arabic Verse (Collapsible) -->
+      <div class="arabic-verse-section" *ngIf="showArabicVerse && verseData">
+        <button class="collapse-toggle" (click)="toggleArabicVerse()">
+          <mat-icon>{{ showArabicVerse ? 'expand_less' : 'expand_more' }}</mat-icon>
+          {{ showArabicVerse ? 'Hide' : 'Show' }} Arabic Verse
+        </button>
+        
+        <div class="verse-display" *ngIf="showArabicVerse">
+          <!-- Arabic Text -->
+          <div class="arabic-text" dir="rtl">
+            {{ verseData.text }}
+          </div>
+
+          <!-- Translation -->
+          <div class="translation-text">
+            {{ verseData.translation }}
+          </div>
+        </div>
+      </div>
+
+      <hr class="section-divider" *ngIf="showArabicVerse && verseData">
+
+      <!-- Tafsir Content -->
+      <article class="tafsir-content" *ngIf="tafsirContent">
+        <div class="tafsir-meta">
+          <span class="edition-badge">{{ edition?.name }}</span>
+          <span class="read-time">
+            <mat-icon>schedule</mat-icon>
+            {{ tafsirContent.estimatedReadTime }} min read
+          </span>
+          <span class="word-count">
+            {{ tafsirContent.wordCount }} words
+          </span>
+        </div>
+
+        <div class="tafsir-text" 
+             (mouseup)="handleTextSelection($event)"
+             (mouseover)="handleHighlightHover($event)"
+             (mouseleave)="handleHighlightLeave($event)"
+             [innerHTML]="getHighlightedText(tafsirContent.text)">
+        </div>
+
+        <!-- Footnotes -->
+        <div class="tafsir-footnotes" *ngIf="tafsirContent.footnotes && tafsirContent.footnotes.length > 0">
+          <h4>Footnotes</h4>
+          <ol>
+            <li *ngFor="let footnote of tafsirContent.footnotes">
+              {{ footnote.text }}
+            </li>
+          </ol>
+        </div>
+
+        <!-- References -->
+        <div class="tafsir-references" *ngIf="tafsirContent.references && tafsirContent.references.length > 0">
+          <h4>References</h4>
+          <ul>
+            <li *ngFor="let reference of tafsirContent.references">
+              <span class="reference-type">{{ reference.type }}:</span>
+              <span class="reference-text">{{ reference.reference }}</span>
+            </li>
+          </ul>
+        </div>
+      </article>
+
+      <!-- Empty State -->
+      <div class="empty-state" *ngIf="!tafsirContent && !isLoadingVerse">
+        <mat-icon>auto_stories</mat-icon>
+        <h3>No Tafsir Available</h3>
+        <p>Tafsir for this verse is not available in the selected edition.</p>
+        <button mat-raised-button color="primary" (click)="router.navigate(['/tafsir/browse'])">
+          Browse Other Editions
+        </button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Navigation -->
+  <footer class="reader-navigation" *ngIf="!focusMode">
+    <div class="nav-container">
+      <button mat-raised-button (click)="previousVerse()" 
+              [disabled]="currentSurah === 1 && currentVerse === 1">
+        <mat-icon>arrow_back</mat-icon>
+        Previous
+      </button>
+
+      <div class="verse-selector">
+        <span class="verse-location">
+          {{ currentSurah }}:{{ currentVerse }}
+        </span>
+      </div>
+
+      <button mat-raised-button (click)="nextVerse()" 
+              [disabled]="currentSurah === 114 && currentVerse === 6">
+        Next
+        <mat-icon>arrow_forward</mat-icon>
+      </button>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+      <button mat-icon-button 
+              (click)="toggleBookmarkCurrent()"
+              [color]="isBookmarkedCurrent ? 'accent' : ''"
+              matTooltip="Bookmark (B)">
+        <mat-icon>{{ isBookmarkedCurrent ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+      </button>
+      <button mat-icon-button 
+              (click)="toggleNotesPanel()"
+              [color]="showNotesPanel ? 'accent' : ''"
+              matTooltip="Add Note (N)">
+        <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
+      </button>
+      <button mat-icon-button matTooltip="Share">
+        <mat-icon>share</mat-icon>
+      </button>
+    </div>
+  </footer>
+
+  <!-- Focus Mode Hint -->
+  <div class="focus-mode-hint" *ngIf="focusMode">
+    <p>Press <kbd>F</kbd> to exit focus mode</p>
+  </div>
+
+  <!-- Notes Panel (Sliding from right) -->
+  <aside class="notes-panel" [class.open]="showNotesPanel">
+    <div class="notes-panel-header">
+      <h3>Notes for {{ currentSurah }}:{{ currentVerse }}</h3>
+      <button mat-icon-button (click)="toggleNotesPanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="notes-panel-content">
+      <!-- Existing notes for this verse -->
+      <div class="existing-notes" *ngIf="currentNotes.length > 0">
+        <h4>Your Notes:</h4>
+        <div class="note-card" *ngFor="let note of currentNotes">
+          <div class="note-content" [innerHTML]="note.content"></div>
+          <div class="note-meta">
+            <span class="note-date">{{ note.createdAt | date:'short' }}</span>
+            <div class="note-actions">
+              <button mat-icon-button (click)="editNote(note)" matTooltip="Edit Note">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button (click)="deleteNote(note.id)" matTooltip="Delete Note">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note Editor -->
+      <div class="note-editor">
+        <h4>{{ editingNoteId ? 'Edit Note' : 'Add New Note' }}:</h4>
+        
+        <app-rich-text-editor
+          #richEditor
+          [placeholder]="'Write your thoughts about this verse...'"
+          [minHeight]="'200px'"
+          (contentChange)="onNoteContentChange($event)">
+        </app-rich-text-editor>
+
+        <!-- Note Actions -->
+        <div class="note-editor-actions">
+          <button mat-raised-button color="primary" (click)="saveCurrentNote()">
+            <mat-icon>save</mat-icon>
+            {{ editingNoteId ? 'Update' : 'Save' }} Note
+          </button>
+          <button mat-button (click)="cancelNoteEdit()" *ngIf="editingNoteId">
+            Cancel
+          </button>
+          <button mat-button (click)="clearNoteEditor()">
+            <mat-icon>clear</mat-icon>
+            Clear
+          </button>
+        </div>
+
+        <!-- Tips -->
+        <div class="editor-tips">
+          <p class="note-hint"><mat-icon>info</mat-icon> Use the toolbar to format your note</p>
+          <p class="note-hint"><mat-icon>keyboard</mat-icon> <kbd>N</kbd> to toggle • <kbd>B</kbd> to bookmark</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Highlight Selection Context Menu -->
+  <div class="highlight-context-menu" 
+       *ngIf="showHighlightMenu"
+       [style.left.px]="highlightMenuPosition.x"
+       [style.top.px]="highlightMenuPosition.y">
+    <div class="highlight-menu-header">
+      <span>{{ isRemoveMode() ? 'Manage Highlight' : 'Add Highlight' }}</span>
+      <button mat-icon-button (click)="hideHighlightMenu()" class="close-btn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <!-- Remove Highlight Button (shown when clicking existing highlight) -->
+    <div class="highlight-actions" *ngIf="isRemoveMode()">
+      <button mat-raised-button color="warn" (click)="removeClickedHighlight()" class="remove-highlight-btn">
+        <mat-icon>delete</mat-icon>
+        Remove Highlight
+      </button>
+    </div>
+    
+    <!-- Color Selector (shown when selecting new text) -->
+    <div class="highlight-colors" *ngIf="!isRemoveMode()">
+      <button class="color-button" 
+              *ngFor="let color of highlightColors"
+              [style.background-color]="color.hex"
+              [matTooltip]="color.label"
+              (click)="applyHighlight(color.value)">
+        <span class="color-icon">{{ color.icon }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Highlight Tooltip (Hover Menu) -->
+  <div class="highlight-tooltip" 
+       *ngIf="showHighlightTooltip"
+       [style.left.px]="highlightTooltipPosition.x"
+       [style.top.px]="highlightTooltipPosition.y"
+       (mouseenter)="showHighlightTooltip = true"
+       (mouseleave)="hideHighlightTooltip()">
+    <div class="tooltip-actions">
+      <button mat-button (click)="toggleColorPicker()" class="change-color-btn">
+        <mat-icon>palette</mat-icon>
+        Change Color
+      </button>
+      <button mat-button color="warn" (click)="removeHoveredHighlight()" class="remove-btn">
+        <mat-icon>delete</mat-icon>
+        Remove
+      </button>
+    </div>
+    
+    <!-- Color Picker (shown when "Change Color" is clicked) -->
+    <div class="color-picker" *ngIf="showColorPicker">
+      <div class="color-options">
+        <button class="color-option" 
+                *ngFor="let color of highlightColors"
+                [style.background-color]="color.hex"
+                [matTooltip]="color.label"
+                (click)="changeHighlightColor(color.value)">
+          <span>{{ color.icon }}</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Help (Press ?) -->
+  <div class="keyboard-shortcuts-overlay" *ngIf="false">
+    <!-- TODO: Implement keyboard shortcuts help overlay -->
+  </div>
+
+</div>

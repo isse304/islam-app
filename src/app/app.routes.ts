@@ -58,6 +58,46 @@ export const routes: Routes = [
   },
 
   // ============================================
+  // TAFSIR READER - KINDLE-STYLE (Public Access)
+  // ============================================
+  
+  {
+    path: 'tafsir/browse',
+    loadComponent: () => import('./components/tafsir/tafsir-library/tafsir-library.component').then(m => m.TafsirLibraryComponent),
+    canActivate: [softAuthGuard] // Public browsing
+  },
+  {
+    path: 'tafsir/read/:editionId/:surah/:verse',
+    loadComponent: () => import('./components/tafsir/tafsir-reader/tafsir-reader.component').then(m => m.TafsirReaderComponent),
+    canActivate: [softAuthGuard] // Public reading
+  },
+  {
+    path: 'tafsir/read/:editionId/:surah',
+    redirectTo: 'tafsir/read/:editionId/:surah/1',
+    pathMatch: 'full'
+  },
+  {
+    path: 'tafsir/bookmarks',
+    loadComponent: () => import('./components/tafsir/tafsir-bookmarks/tafsir-bookmarks.component').then(m => m.TafsirBookmarksComponent),
+    canActivate: [softAuthGuard] // Bookmarks work offline too
+  },
+  {
+    path: 'tafsir/notes',
+    loadComponent: () => import('./components/tafsir/tafsir-notes/tafsir-notes.component').then(m => m.TafsirNotesComponent),
+    canActivate: [softAuthGuard] // Notes work offline too
+  },
+  {
+    path: 'tafsir/highlights',
+    loadComponent: () => import('./components/tafsir/tafsir-highlights/tafsir-highlights.component').then(m => m.TafsirHighlightsComponent),
+    canActivate: [softAuthGuard] // Highlights work offline too
+  },
+  {
+    path: 'tafsir',
+    redirectTo: 'tafsir/browse',
+    pathMatch: 'full'
+  },
+
+  // ============================================
   // HOME - BETTER WITH LOGIN (Optional Auth)
   // ============================================
   

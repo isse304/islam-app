@@ -1,0 +1,197 @@
+<div class="highlights-page">
+  <!-- Header -->
+  <header class="page-header">
+    <div class="header-content">
+      <div class="header-left">
+        <button mat-icon-button routerLink="/tafsir/browse" matTooltip="Back to Library">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="header-title">
+          <h1><mat-icon>format_color_fill</mat-icon> My Highlights</h1>
+          <p class="header-subtitle">{{ totalHighlights }} highlights</p>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- View Bookmarks -->
+        <button mat-stroked-button routerLink="/tafsir/bookmarks">
+          <mat-icon>bookmarks</mat-icon>
+          View Bookmarks
+        </button>
+
+        <!-- View Notes -->
+        <button mat-stroked-button routerLink="/tafsir/notes">
+          <mat-icon>note</mat-icon>
+          View Notes
+        </button>
+
+        <!-- View Mode Toggle -->
+        <mat-button-toggle-group [value]="viewMode" (change)="setViewMode($event.value)">
+          <mat-button-toggle value="grid" matTooltip="Grid View">
+            <mat-icon>grid_view</mat-icon>
+          </mat-button-toggle>
+          <mat-button-toggle value="list" matTooltip="List View">
+            <mat-icon>view_list</mat-icon>
+          </mat-button-toggle>
+        </mat-button-toggle-group>
+        
+        <!-- More Actions Menu -->
+        <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More Actions">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #moreMenu="matMenu">
+          <button mat-menu-item (click)="exportHighlights()">
+            <mat-icon>download</mat-icon>
+            <span>Export Highlights</span>
+          </button>
+        </mat-menu>
+      </div>
+    </div>
+  </header>
+
+  <!-- Filters & Search -->
+  <div class="filters-section">
+    <!-- Search Bar -->
+    <mat-form-field appearance="outline" class="search-field">
+      <mat-label>Search highlights...</mat-label>
+      <input matInput 
+             [(ngModel)]="searchQuery" 
+             (ngModelChange)="onSearchChange()"
+             placeholder="Search by text...">
+      <mat-icon matPrefix>search</mat-icon>
+      <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </mat-form-field>
+
+    <!-- Filter Chips -->
+    <div class="filter-chips">
+      <!-- Color Filters -->
+      <div class="filter-group">
+        <label>COLOR:</label>
+        <mat-chip-listbox class="color-chips" [multiple]="false">
+          <mat-chip-option 
+            [selected]="selectedColor === color.value"
+            (click)="filterByColor(selectedColor === color.value ? null : color.value)"
+            *ngFor="let color of highlightColors"
+            [style.--chip-color]="color.hex">
+            {{ color.icon }} {{ color.label }}
+          </mat-chip-option>
+        </mat-chip-listbox>
+      </div>
+
+      <!-- Surah Filter -->
+      <div class="filter-group">
+        <label>SURAH:</label>
+        <mat-form-field appearance="outline" class="surah-filter">
+          <mat-select [(ngModel)]="selectedSurah" (selectionChange)="applyFilters()" placeholder="All Surahs">
+            <mat-option [value]="null">All Surahs</mat-option>
+            <mat-option *ngFor="let surah of surahs" [value]="surah.number">
+              {{ surah.number }}. {{ surah.englishName }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <!-- Clear Filters -->
+      <button mat-stroked-button class="clear-filters-btn" (click)="clearFilters()" 
+              *ngIf="searchQuery || selectedColor || selectedSurah">
+        <mat-icon>clear_all</mat-icon>
+        Clear Filters
+      </button>
+    </div>
+
+    <!-- Color Stats -->
+    <div class="color-stats" *ngIf="colorStats.length > 0">
+      <span class="stat-item" *ngFor="let stat of colorStats">
+        <span class="stat-color" [style.background-color]="stat.hex"></span>
+        <span class="stat-count">{{ stat.count }}</span>
+      </span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading highlights...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && filteredHighlights.length === 0 && !searchQuery && !selectedColor && !selectedSurah">
+    <mat-icon>format_color_reset</mat-icon>
+    <h2>No Highlights Yet</h2>
+    <p>Select text in the Tafsir Reader and choose a color to highlight important passages.</p>
+    <button mat-raised-button color="primary" routerLink="/tafsir/browse">
+      <mat-icon>menu_book</mat-icon>
+      Browse Tafsir
+    </button>
+  </div>
+
+  <!-- No Results -->
+  <div class="empty-state" *ngIf="!isLoading && filteredHighlights.length === 0 && (searchQuery || selectedColor || selectedSurah)">
+    <mat-icon>search_off</mat-icon>
+    <h2>No Highlights Found</h2>
+    <p>Try adjusting your search or filters.</p>
+    <button mat-button (click)="clearFilters()">Clear Filters</button>
+  </div>
+
+  <!-- List View -->
+  <div class="highlights-list" *ngIf="!isLoading && viewMode === 'list' && filteredHighlights.length > 0">
+    <div class="highlight-item" *ngFor="let highlight of filteredHighlights" (click)="goToVerse(highlight)">
+      <div class="highlight-color-bar" [style.background-color]="getColorHex(highlight.color)"></div>
+      
+      <div class="highlight-content">
+        <div class="highlight-header">
+          <h3>{{ getSurahName(highlight.surah) }} - Verse {{ highlight.verse }}</h3>
+          <span class="highlight-date">{{ highlight.createdAt | date:'short' }}</span>
+        </div>
+        
+        <div class="highlight-text" [style.background-color]="getColorHex(highlight.color)">
+          "{{ highlight.text }}"
+        </div>
+        
+        <div class="highlight-meta">
+          <span class="color-badge" [style.background-color]="getColorHex(highlight.color)">
+            {{ getColorLabel(highlight.color) }}
+          </span>
+        </div>
+      </div>
+
+      <div class="highlight-actions">
+        <button mat-icon-button (click)="deleteHighlight(highlight.id); $event.stopPropagation()" matTooltip="Delete">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grid View -->
+  <div class="highlights-grid" *ngIf="!isLoading && viewMode === 'grid' && filteredHighlights.length > 0">
+    <mat-card class="highlight-card" *ngFor="let highlight of filteredHighlights" (click)="goToVerse(highlight)">
+      <div class="color-indicator" [style.background-color]="getColorHex(highlight.color)"></div>
+      
+      <mat-card-header>
+        <div class="highlight-reference">
+          <h3>{{ getSurahName(highlight.surah) }}</h3>
+          <span class="verse-badge">Verse {{ highlight.verse }}</span>
+        </div>
+        
+        <button mat-icon-button class="delete-btn" (click)="deleteHighlight(highlight.id); $event.stopPropagation()" matTooltip="Delete">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </mat-card-header>
+
+      <mat-card-content>
+        <div class="highlight-text" [style.background-color]="getColorHex(highlight.color)">
+          "{{ highlight.text }}"
+        </div>
+        
+        <div class="highlight-footer">
+          <span class="color-label">{{ getColorLabel(highlight.color) }}</span>
+          <span class="date">{{ highlight.createdAt | date:'short' }}</span>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+</div>

@@ -104,8 +104,16 @@ export interface Word {
   audioUrl?: string;
   timestamp_from?: number;
   timestamp_to?: number;
-  char_type?: string; // Type of character (word, pause, etc.)
-  text_uthmani_tajweed?: string; // Tajweed-annotated HTML from Quran.com API (contains <rule> tags)
+  char_type?: string; // Type of character (word, pause, end marker, etc.)
+  
+  // QCF V4 Tajweed Font Fields
+  code_v2?: string; // Glyph code for QCF V4 Tajweed font rendering
+  page_number?: number; // Mushaf page number (1-604) - determines which font file to load
+  line_number?: number; // Line number on the Mushaf page (for layout)
+  text_qpc_hafs?: string; // Unicode fallback text (QPC Hafs)
+  
+  // Legacy field (no longer used with QCF V4)
+  text_uthmani_tajweed?: string; // Old field that doesn't contain HTML tags from API
 }
 
 interface SurahSuggestion {
@@ -223,8 +231,8 @@ export interface SurahData {
 export class QuranService {
   // Update base URLs to use environment configuration
   private baseUrl = `${environment.apiUrl}/api/alquran`;
-  // Switched to Quran Foundation CDN for more accurate tajweed data
-  private quranFoundationUrl = 'https://api.qurancdn.com/api/qdc';
+  // Using Quran.com API (Recommended) - Returns <rule> tags for tajweed
+  private quranComApiUrl = 'https://api.quran.com/api/v4';
   private quranComUrl = `${environment.apiUrl}/api/quran`; // Kept for backward compatibility with other methods
   private readonly CACHE_KEY = 'quran_cache';
   private readonly SURAH_CACHE_KEY = 'surah_cache';
@@ -341,18 +349,16 @@ export class QuranService {
     const cacheKey = `${surahNumber}_${translationId}_${reciterId}`;
     const cachedData = this.cache.surahs[cacheKey];
     if (cachedData) {
-
       return of(cachedData);
     }
 
     // Ensure the translationId is a string
     const safeTranslationId = String(translationId);
 
-    // Fetch from Quran Foundation CDN with tajweed data
-    // Using QuranCDN for potentially more accurate tajweed annotations
-    const apiUrl = `${this.quranFoundationUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=text_uthmani,text_uthmani_tajweed,translation,transliteration&translations=${safeTranslationId}&per_page=300`;
-    
-    console.log('🔄 Switched to Quran Foundation API:', apiUrl);
+    // Fetch from Quran.com API with QCF V4 Tajweed font data
+    // mushaf=19 returns Tajweed-enabled glyph codes
+    // code_v2 contains the special font glyphs with built-in Tajweed colors
+    const apiUrl = `${this.quranComApiUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=code_v2,text_qpc_hafs,page_number,line_number,text_uthmani,translation,transliteration,char_type_name&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number,verse_key&mushaf=19&per_page=300`;
     
     return this.http.get(apiUrl).pipe(
       map((response: any) => {
@@ -393,7 +399,7 @@ export class QuranService {
             translation: translationText, // Use the determined translation text
             transliteration: verse.words?.map((word: any) => word.transliteration?.text).join(' ') || '',
             audio: this.getVerseAudioUrl(reciterId, verse.verse_key),
-            words: verse.words?.map((word: any) => {
+            words: verse.words?.map((word: any, wordIndex: number) => {
               return {
                 text: word.text_uthmani || word.text,
                 translation: word.translation?.text?.replace(/<[^>]*>.*?<\/[^>]*>/g, '') || '',
@@ -402,8 +408,12 @@ export class QuranService {
                 timestamp_from: word.audio?.timestamp_from,
                 timestamp_to: word.audio?.timestamp_to,
                 char_type: word.char_type_name || word.char_type || 'word',
-                // Quran Foundation CDN provides tajweed data in text_uthmani_tajweed
-                text_uthmani_tajweed: word.text_uthmani_tajweed || word.text_uthmani || word.text,
+                
+                // QCF V4 Tajweed Font Fields (mushaf=19)
+                code_v2: word.code_v2, // Glyph code for Tajweed font
+                page_number: word.page_number, // Which Mushaf page (determines font file)
+                line_number: word.line_number, // Line number on the page
+                text_qpc_hafs: word.text_qpc_hafs || word.text_uthmani, // Unicode fallback
               };
             }) || [],
             verse_key: verse.verse_key,
@@ -421,7 +431,7 @@ export class QuranService {
         // Cache the result
         this.cache.surahs[cacheKey] = verses;
         this.saveCache();
-        
+
         return verses;
       }),
       catchError(error => {
@@ -991,9 +1001,17 @@ export class QuranService {
     try {
       localStorage.removeItem(this.CACHE_KEY);
       localStorage.removeItem(this.SURAH_CACHE_KEY); // Also clear surah list cache
-      console.log('Quran cache cleared.');
     } catch (error) {
       console.error('Error clearing Quran cache:', error);
+    }
+  }
+  
+  // Utility method for debugging - clear cache for a specific surah
+  clearSurahCache(surahNumber: number, translationId: string = '20', reciterId: number = 1) {
+    const cacheKey = `${surahNumber}_${translationId}_${reciterId}`;
+    if (this.cache.surahs[cacheKey]) {
+      delete this.cache.surahs[cacheKey];
+      this.saveCache();
     }
   }
 

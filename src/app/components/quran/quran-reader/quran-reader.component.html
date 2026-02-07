@@ -1170,8 +1170,9 @@
                 <span *ngFor="let word of verse.words" 
                       class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
                       (click)="showWordTranslation(word, $event)">
-                  <!-- Render tajweed-annotated text from Quran.com API (if enabled) -->
-                  <span [innerHTML]="(tajweedEnabled ? (word.text_uthmani_tajweed || word.text) : word.text) | safeHtml"></span>
+                  <!-- Render with QCF V4 Tajweed Font (glyph codes with built-in colors) -->
+                  <span [style.fontFamily]="getWordFontFamily(word)"
+                        [innerHTML]="getWordText(word) | safeHtml"></span>
                   <!-- Tooltip -->
                   <div class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-4 py-2 bg-black text-white text-sm rounded whitespace-nowrap z-50 pointer-events-none">
                     {{word.translation}}

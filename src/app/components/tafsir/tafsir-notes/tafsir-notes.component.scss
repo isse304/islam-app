@@ -1,0 +1,793 @@
+// Notes Page Design - Matches App Theme
+.notes-page {
+  min-height: 100vh;
+  background: #FAF3E0; // Light cream background (light mode)
+  padding-bottom: 60px;
+  padding-top: 0;
+}
+
+// Header
+.page-header {
+  background: rgba(183, 165, 122, 0.85); // Gold/tan (light mode)
+  border-bottom: 1px solid rgba(26, 54, 93, 0.1);
+  padding: 16px 32px;
+  position: fixed;
+  top: 80px;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(8px);
+
+  .header-content {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 24px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    
+    button {
+      transition: all 0.2s ease;
+      color: white;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+      }
+      
+      mat-icon {
+        color: white;
+      }
+    }
+  }
+
+  .header-title {
+    h1 {
+      margin: 0;
+      font-size: 28px;
+      font-weight: 700;
+      color: white;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+
+      mat-icon {
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+        color: white;
+      }
+    }
+
+    .header-subtitle {
+      margin: 4px 0 0 0;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.9);
+      font-weight: 400;
+    }
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    
+    button {
+      transition: all 0.2s ease;
+      color: white;
+      border-color: rgba(255, 255, 255, 0.5);
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        border-color: white;
+      }
+      
+      mat-icon {
+        color: white;
+      }
+    }
+    
+    mat-button-toggle-group {
+      background: rgba(26, 54, 93, 0.3);
+      border-radius: 8px;
+      
+      mat-button-toggle {
+        color: white;
+        border-color: rgba(255, 255, 255, 0.2);
+        
+        &.mat-button-toggle-checked {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+        
+        mat-icon {
+          color: white;
+        }
+      }
+    }
+  }
+}
+
+// Filters Section
+.filters-section {
+  max-width: 1400px;
+  margin: 160px auto 24px; // Top margin for fixed headers (80px main nav + 60px page header + 20px spacing)
+  padding: 0 32px;
+
+  .search-field {
+    width: 100%;
+    margin-bottom: 20px;
+    
+    ::ng-deep {
+      .mat-mdc-form-field {
+        background: white;
+        border-radius: 8px;
+      }
+      
+      .mat-mdc-text-field-wrapper {
+        background: transparent;
+      }
+      
+      label, input {
+        color: #1A365D !important; // Dark blue text
+      }
+      
+      .mat-mdc-form-field-focus-overlay {
+        background-color: rgba(183, 165, 122, 0.05);
+      }
+      
+      mat-icon {
+        color: rgba(183, 165, 122, 0.7);
+      }
+      
+      button mat-icon {
+        color: #1A365D;
+      }
+    }
+  }
+
+  .filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    align-items: flex-start;
+    background: transparent; // No background, match page color
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid rgba(183, 165, 122, 0.3);
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      flex: 1;
+      min-width: 250px;
+
+      label {
+        font-size: 12px;
+        font-weight: 600;
+        color: #B7A57A; // Gold
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .tag-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+
+        mat-chip-option {
+          cursor: pointer;
+          transition: all 0.3s ease;
+          background: rgba(183, 165, 122, 0.1);
+          color: #1A365D; // Dark blue text
+          border: 1px solid rgba(183, 165, 122, 0.3);
+          font-weight: 500;
+
+          &:hover {
+            background: rgba(183, 165, 122, 0.2);
+            border-color: rgba(183, 165, 122, 0.6);
+            transform: translateY(-2px);
+          }
+          
+          &[aria-pressed="true"] {
+            background: rgba(183, 165, 122, 0.4) !important;
+            color: white !important;
+            border-color: rgba(183, 165, 122, 0.8) !important;
+            font-weight: 600;
+          }
+        }
+      }
+    }
+
+    .surah-filter {
+      min-width: 200px;
+      
+      ::ng-deep {
+        .mat-mdc-text-field-wrapper {
+          background: rgba(183, 165, 122, 0.05);
+        }
+        
+        label, input, mat-select {
+          color: #1A365D !important; // Dark blue text
+        }
+      }
+    }
+
+    .clear-filters-btn {
+      white-space: nowrap;
+      transition: all 0.3s ease;
+      background: rgba(183, 165, 122, 0.1);
+      color: #1A365D; // Dark blue text
+      border: 1px solid rgba(183, 165, 122, 0.4);
+      
+      &:hover {
+        background: rgba(183, 165, 122, 0.2);
+        border-color: rgba(183, 165, 122, 0.6);
+      }
+      
+      mat-icon {
+        color: #1A365D;
+      }
+    }
+    
+    button[mat-stroked-button] {
+      transition: all 0.3s ease;
+      background: rgba(183, 165, 122, 0.1);
+      color: #1A365D; // Dark blue text
+      border: 1px solid rgba(183, 165, 122, 0.4);
+      
+      &:hover {
+        background: rgba(183, 165, 122, 0.2);
+        border-color: rgba(183, 165, 122, 0.6);
+      }
+      
+      mat-icon {
+        color: #1A365D;
+      }
+    }
+  }
+}
+
+// Loading & Empty States
+.loading-container,
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+  padding: 40px;
+  background: #2A4365; // Match app dark mode content background
+  border-radius: 8px;
+  margin: 0 32px;
+  border: 1px solid rgba(183, 165, 122, 0.2);
+
+  mat-icon {
+    font-size: 80px;
+    width: 80px;
+    height: 80px;
+    color: #64748b;
+    margin-bottom: 24px;
+  }
+
+  h2 {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    color: #f1f5f9;
+  }
+
+  p {
+    font-size: 16px;
+    color: #94a3b8;
+    margin: 0 0 24px 0;
+    max-width: 400px;
+  }
+  
+  button {
+    transition: all 0.2s ease;
+    
+    &:hover {
+      opacity: 0.9;
+    }
+  }
+}
+
+.loading-container {
+  p {
+    margin-top: 20px;
+  }
+}
+
+// Grid View
+.notes-grid {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 32px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.note-card {
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px !important;
+  background: #2A4365; // Match app dark mode content background
+  border: 1px solid rgba(183, 165, 122, 0.2);
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.15) !important;
+    border-color: rgba(183, 165, 122, 0.4);
+  }
+
+  mat-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    padding: 16px 16px 0 16px;
+    margin-bottom: 12px;
+
+    .note-reference {
+      flex: 1;
+
+      h3 {
+        margin: 0 0 8px 0;
+        font-size: 18px;
+        font-weight: 600;
+        color: #FAF3E0; // Match app cream text color
+      }
+
+      .verse-number {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 12px;
+        background: rgba(183, 165, 122, 0.3);
+        color: #FAF3E0;
+        border-radius: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        border: 1px solid rgba(183, 165, 122, 0.4);
+      }
+    }
+
+    .note-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 8px;
+
+      .privacy-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: #64748b;
+
+        &.public {
+          color: #10b981;
+        }
+      }
+      
+      button {
+        transition: all 0.2s ease;
+        
+        &:hover {
+          background: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+  }
+
+  mat-card-content {
+    padding: 0 16px 16px 16px !important;
+
+    .note-content-preview {
+      font-size: 14px;
+      line-height: 1.6;
+      color: rgba(250, 243, 224, 0.9); // Match app cream text with slight transparency
+      margin-bottom: 12px;
+      max-height: 120px;
+      overflow: hidden;
+      display: -webkit-box;
+      -webkit-line-clamp: 5;
+      -webkit-box-orient: vertical;
+
+      // Preserve basic formatting
+      ::ng-deep {
+        h1, h2, h3 {
+          font-size: 16px;
+          font-weight: 600;
+          margin: 8px 0;
+          color: #f1f5f9;
+        }
+
+        p {
+          margin: 4px 0;
+        }
+
+        ul, ol {
+          padding-left: 20px;
+          margin: 8px 0;
+        }
+
+        strong, b {
+          font-weight: 600;
+          color: #f1f5f9;
+        }
+
+        em, i {
+          font-style: italic;
+        }
+      }
+    }
+
+    .note-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 12px;
+
+      .tag-chip {
+        font-size: 11px;
+        padding: 4px 8px;
+        height: auto;
+        min-height: 24px;
+      }
+    }
+
+    .note-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 12px;
+      border-top: 1px solid #475569;
+
+      .meta-date,
+      .meta-words,
+      .meta-sync {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 12px;
+        color: rgba(250, 243, 224, 0.7);
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+        }
+      }
+
+      .meta-sync {
+        color: #10b981;
+
+        &.pending {
+          color: #f59e0b;
+        }
+      }
+    }
+  }
+}
+
+// List View
+.notes-list {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 32px;
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+.note-list-item {
+  display: flex;
+  align-items: stretch;
+  background: #2A4365; // Match app dark mode content background
+  border-radius: 8px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid rgba(183, 165, 122, 0.2);
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.15);
+    transform: translateX(4px);
+    border-color: rgba(183, 165, 122, 0.4);
+  }
+
+  .list-item-privacy {
+    width: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #10b981;
+    color: white;
+    flex-shrink: 0;
+
+    &.private {
+      background: #64748b;
+    }
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+    }
+  }
+
+  .list-item-content {
+    flex: 1;
+    padding: 16px;
+    overflow: hidden;
+
+    .list-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+
+      h4 {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #f1f5f9;
+      }
+
+      .list-item-date {
+        font-size: 12px;
+        color: #94a3b8;
+        white-space: nowrap;
+      }
+    }
+
+    .list-item-text {
+      margin-bottom: 8px;
+
+      .note-preview {
+        font-size: 14px;
+        line-height: 1.5;
+        color: #cbd5e1;
+        max-height: 60px;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+
+        ::ng-deep {
+          h1, h2, h3 {
+            display: inline;
+            font-size: 14px;
+            font-weight: 600;
+          }
+
+          p {
+            display: inline;
+          }
+
+          strong, b {
+            font-weight: 600;
+          }
+        }
+      }
+    }
+
+    .list-item-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+
+      .list-item-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+
+        mat-chip {
+          font-size: 11px;
+          padding: 2px 8px;
+          height: auto;
+          min-height: 20px;
+        }
+      }
+
+      .word-count {
+        font-size: 12px;
+        color: #94a3b8;
+      }
+    }
+  }
+
+  .list-item-actions {
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    
+    button {
+      transition: all 0.2s ease;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+    }
+  }
+}
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+  .page-header {
+    padding: 16px;
+    
+    .header-content {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .header-title h1 {
+      font-size: 22px;
+
+      mat-icon {
+        font-size: 26px;
+        width: 26px;
+        height: 26px;
+      }
+    }
+
+    .header-right {
+      width: 100%;
+      justify-content: space-between;
+      flex-wrap: wrap;
+    }
+  }
+
+  .filters-section {
+    padding: 0 16px;
+    margin-top: 150px; // Adjust for mobile (slightly less than desktop)
+
+    .filter-chips {
+      flex-direction: column;
+
+      .filter-group {
+        width: 100%;
+        min-width: unset;
+      }
+    }
+  }
+
+  .notes-grid {
+    padding: 0 16px;
+    grid-template-columns: 1fr;
+  }
+
+  .notes-list {
+    padding: 0 16px;
+  }
+
+  .note-list-item {
+    flex-direction: column;
+
+    .list-item-privacy {
+      width: 100%;
+      height: 40px;
+    }
+  }
+  
+  .loading-container,
+  .empty-state {
+    margin: 0 16px;
+  }
+}
+
+// Dark Mode Support
+:host-context(.dark) {
+  .notes-page {
+    background: #1A365D !important; // Dark blue background
+  }
+
+  .page-header {
+    background: rgba(26, 54, 93, 0.85) !important; // Dark blue header
+    border-bottom-color: rgba(250, 243, 224, 0.1) !important;
+  }
+
+  .filter-chips {
+    background: rgba(42, 67, 101, 0.3) !important; // Slightly visible dark blue
+    border-color: rgba(183, 165, 122, 0.2) !important;
+
+    .filter-group {
+      label {
+        color: #B7A57A !important; // Gold
+      }
+
+      .tag-chips {
+        mat-chip-option {
+          background: rgba(250, 243, 224, 0.1) !important;
+          color: #FAF3E0 !important; // Cream text
+          border-color: rgba(183, 165, 122, 0.3) !important;
+
+          &:hover {
+            background: rgba(250, 243, 224, 0.15) !important;
+            border-color: rgba(183, 165, 122, 0.5) !important;
+          }
+
+          &[aria-pressed="true"] {
+            background: rgba(183, 165, 122, 0.3) !important;
+            color: white !important;
+            border-color: rgba(183, 165, 122, 0.6) !important;
+          }
+        }
+      }
+    }
+
+    .clear-filters-btn,
+    button[mat-stroked-button] {
+      background: rgba(250, 243, 224, 0.1) !important;
+      color: #FAF3E0 !important;
+      border-color: rgba(183, 165, 122, 0.3) !important;
+
+      &:hover {
+        background: rgba(250, 243, 224, 0.15) !important;
+        border-color: rgba(183, 165, 122, 0.5) !important;
+      }
+
+      mat-icon {
+        color: #FAF3E0 !important;
+      }
+    }
+  }
+
+  .search-field ::ng-deep {
+    .mat-mdc-form-field {
+      background: rgba(250, 243, 224, 0.05) !important;
+    }
+
+    label, input {
+      color: #FAF3E0 !important; // Cream text
+    }
+
+    button mat-icon {
+      color: #FAF3E0 !important;
+    }
+  }
+
+  .filters-section .surah-filter ::ng-deep {
+    label, input, mat-select {
+      color: #FAF3E0 !important;
+    }
+  }
+
+  .note-card {
+    background: #2A4365 !important;
+    border-color: rgba(183, 165, 122, 0.2) !important;
+  }
+
+  .loading-container,
+  .empty-state {
+    background: #2A4365 !important;
+    border-color: rgba(183, 165, 122, 0.2) !important;
+  }
+}

@@ -109,8 +109,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
     );
     // console.log(`[HeaderComponent] updateHeaderVisibility: URL='${url}', isAuthenticated=${this.isAuthenticated}, Calculated isLandingPage=${this.isLandingPage}`);
 
+    // Hide header on tafsir reader routes (full-screen reading mode)
+    const isTafsirReader = url.startsWith('/tafsir/read');
+
     // Logic: Show header if (user is authenticated) OR (user is not authenticated AND not on a landing/auth page)
-    this.showHeader = this.isAuthenticated || (!this.isAuthenticated && !this.isLandingPage);
+    // BUT always hide on tafsir reader routes for distraction-free reading
+    this.showHeader = !isTafsirReader && (this.isAuthenticated || (!this.isAuthenticated && !this.isLandingPage));
   }
 
   toggleMobileMenu(): void {

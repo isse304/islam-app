@@ -1,0 +1,147 @@
+<div class="rich-text-editor">
+  <!-- Toolbar -->
+  <div class="editor-toolbar">
+    <!-- Text Formatting -->
+    <div class="toolbar-group">
+      <button mat-icon-button 
+              (click)="bold()" 
+              [class.active]="isBold"
+              matTooltip="Bold (Ctrl+B)"
+              type="button">
+        <mat-icon>format_bold</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="italic()" 
+              [class.active]="isItalic"
+              matTooltip="Italic (Ctrl+I)"
+              type="button">
+        <mat-icon>format_italic</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="underline()" 
+              [class.active]="isUnderline"
+              matTooltip="Underline (Ctrl+U)"
+              type="button">
+        <mat-icon>format_underlined</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="strikethrough()" 
+              matTooltip="Strikethrough"
+              type="button">
+        <mat-icon>strikethrough_s</mat-icon>
+      </button>
+    </div>
+
+    <mat-divider [vertical]="true"></mat-divider>
+
+    <!-- Heading Styles -->
+    <div class="toolbar-group">
+      <button mat-icon-button 
+              (click)="formatBlock('h1')" 
+              matTooltip="Heading 1"
+              type="button">
+        <mat-icon>title</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="formatBlock('h2')" 
+              matTooltip="Heading 2"
+              type="button">
+        <mat-icon>subject</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="formatBlock('p')" 
+              matTooltip="Paragraph"
+              type="button">
+        <mat-icon>notes</mat-icon>
+      </button>
+    </div>
+
+    <mat-divider [vertical]="true"></mat-divider>
+
+    <!-- Lists -->
+    <div class="toolbar-group">
+      <button mat-icon-button 
+              (click)="insertUnorderedList()" 
+              [class.active]="isUnorderedList"
+              matTooltip="Bullet List"
+              type="button">
+        <mat-icon>format_list_bulleted</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="insertOrderedList()" 
+              [class.active]="isOrderedList"
+              matTooltip="Numbered List"
+              type="button">
+        <mat-icon>format_list_numbered</mat-icon>
+      </button>
+    </div>
+
+    <mat-divider [vertical]="true"></mat-divider>
+
+    <!-- Insert -->
+    <div class="toolbar-group">
+      <button mat-icon-button 
+              (click)="createLink()" 
+              matTooltip="Insert Link"
+              type="button">
+        <mat-icon>link</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="insertHorizontalRule()" 
+              matTooltip="Insert Horizontal Line"
+              type="button">
+        <mat-icon>horizontal_rule</mat-icon>
+      </button>
+    </div>
+
+    <mat-divider [vertical]="true"></mat-divider>
+
+    <!-- Actions -->
+    <div class="toolbar-group">
+      <button mat-icon-button 
+              (click)="undo()" 
+              matTooltip="Undo (Ctrl+Z)"
+              type="button">
+        <mat-icon>undo</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="redo()" 
+              matTooltip="Redo (Ctrl+Y)"
+              type="button">
+        <mat-icon>redo</mat-icon>
+      </button>
+      
+      <button mat-icon-button 
+              (click)="removeFormat()" 
+              matTooltip="Remove Formatting"
+              type="button">
+        <mat-icon>format_clear</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Editor Content -->
+  <div class="editor-content"
+       #editor
+       contenteditable="true"
+       [attr.data-placeholder]="placeholder"
+       [style.min-height]="minHeight"
+       (input)="onInput($event)"
+       (blur)="onBlur()"
+       (focus)="onFocus()">
+  </div>
+
+  <!-- Character/Word Count -->
+  <div class="editor-footer">
+    <span class="word-count">{{ getWordCount() }} words</span>
+    <span class="char-count">{{ getCharCount() }} characters</span>
+  </div>
+</div>

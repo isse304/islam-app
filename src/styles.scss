@@ -37,17 +37,57 @@
 }
 
 /* 
- * Target <rule> elements from Quran.com API
+ * Target <rule> elements from Quran.com API (Recommended)
  * Format: <rule class="tajweed_class_name">letter</rule>
+ * API: https://api.quran.com/api/v4/
  */
 rule {
   /* 
-   * 1. GHUNNAH (Nasal Sound) - Green #4CAF50
+   * IMPORTANT: More specific rules MUST come BEFORE general rules
+   * Otherwise the general [class*="..."] will override specific matches
+   */
+  
+  /* 
+   * 1. IDGHAAM WITH GHUNNAH - Blue #2196F3 (MUST be before plain ghunnah!)
+   * Idghaam specifically WITH ghunnah (with ي ن م و)
+   * API classes: idgham_w_ghunnah, idgham_ghunnah
+   */
+  &[class="idgham_ghunnah"],
+  &[class="idgham_w_ghunnah"] {
+    color: #2196F3 !important; /* Material Blue 500 */
+    
+    .dark & {
+      color: #42A5F5 !important; /* Material Blue 400 */
+      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
+    }
+  }
+  
+  /* 
+   * 2. IDGHAAM WITHOUT GHUNNAH - Gray #757575
+   * Merging ن Sakinah/Tanween with: ي ر م ل و ن (يَرْمُلُون)
+   * Specifically: WITHOUT ghunnah (with ل ر)
+   * API classes: idgham_wo_ghunnah, idghaam_wo_ghunnah
+   */
+  &[class="idgham_wo_ghunnah"],
+  &[class="idghaam_wo_ghunnah"] {
+    color: #757575 !important; /* Material Gray 600 */
+    
+    .dark & {
+      color: #BDBDBD !important; /* Material Gray 400 */
+      text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
+    }
+  }
+  
+  /* 
+   * 3. GHUNNAH (Nasal Sound) - Green #4CAF50
    * Occurs with: ن م with Shadda or Sukun
    * Duration: 2 beats
    * API classes: ghunnah, ghunnah_shown, ghunnah_hidden
+   * NOTE: Plain ghunnah only, not idgham_ghunnah (that's blue above)
    */
-  &[class*="ghunnah"] {
+  &[class="ghunnah"],
+  &[class="ghunnah_shown"],
+  &[class="ghunnah_hidden"] {
     color: #4CAF50 !important; /* Material Green 500 */
     
     .dark & {
@@ -57,7 +97,7 @@ rule {
   }
   
   /* 
-   * 2. QALQALAH (Echo/Bounce) - Purple #9C27B0
+   * 4. QALQALAH (Echo/Bounce) - Purple #9C27B0
    * Occurs with: ق ط ب ج د with Sukun (قُطْبُ جَد)
    * API classes: qalaqah (note: single 'q' in middle)
    */
@@ -71,7 +111,7 @@ rule {
   }
   
   /* 
-   * 3. MADD (Elongation) - Red #F44336
+   * 5. MADD (Elongation) - Red #F44336
    * Prolonged vowel sounds: آ و ي
    * Types: Natural (2), Connected (4-5), Separated (2-5), Necessary (6 beats)
    * API classes: madd, madd_2, madd_6, madd_24, madd_muttasil, madd_munfasil, 
@@ -83,37 +123,6 @@ rule {
     .dark & {
       color: #EF5350 !important; /* Material Red 400 */
       text-shadow: 0 0 3px rgba(239, 83, 80, 0.4);
-    }
-  }
-  
-  /* 
-   * 4. IDGHAAM (Merging WITHOUT Ghunnah) - Gray #757575
-   * Merging ن Sakinah/Tanween with: ي ر م ل و ن (يَرْمُلُون)
-   * Specifically: WITHOUT ghunnah (with ل ر)
-   * API classes: idgham, idghaam, idgham_wo_ghunnah
-   */
-  &[class*="idgham"]:not([class*="ghunnah"]), 
-  &[class*="idghaam"]:not([class*="ghunnah"]) {
-    color: #757575 !important; /* Material Gray 600 */
-    
-    .dark & {
-      color: #BDBDBD !important; /* Material Gray 400 */
-      text-shadow: 0 0 2px rgba(189, 189, 189, 0.2);
-    }
-  }
-  
-  /* 
-   * 5. IDGHAAM WITH GHUNNAH - Blue #2196F3
-   * Idghaam specifically WITH ghunnah (with ي ن م و)
-   * API classes: idgham_w_ghunnah
-   */
-  &[class*="idgham"][class*="ghunnah"], 
-  &[class*="idghaam"][class*="ghunnah"] {
-    color: #2196F3 !important; /* Material Blue 500 */
-    
-    .dark & {
-      color: #42A5F5 !important; /* Material Blue 400 */
-      text-shadow: 0 0 2px rgba(66, 165, 245, 0.3);
     }
   }
   

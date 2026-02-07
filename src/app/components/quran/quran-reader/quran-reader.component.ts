@@ -30,6 +30,7 @@ import { MatButtonToggleModule } from '@angular/material/button-toggle'; // <-- 
 import { MatBottomSheetModule, MatBottomSheet } from '@angular/material/bottom-sheet';
 
 import { QuranService, QuranVerse, Reciter, Surah, Juz, WordDetails } from '../../../services/quran.service';
+import { QuranFontLoaderService } from '../../../services/quran-font-loader.service';
 import { TafsirDatabaseService } from '../../../services/tafsir-database.service';
 import { SttService } from '../../../services/stt.service';
 import { QuranFlashService } from '../../../services/quran-flash.service';
@@ -387,6 +388,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
   constructor(
     public quranService: QuranService,
+    private fontLoader: QuranFontLoaderService,
     private sttService: SttService,
     private quranFlash: QuranFlashService,
     private router: Router,
@@ -654,18 +656,19 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // Return the observable stream
     return this.quranService.getSurah(surahNumber, this.selectedTranslation, this.selectedReciter.id).pipe(
       map(verses => {
-        // ////////console.log.log(`[loadSurah MAP] Received ${verses?.length} verses for Surah ${surahNumber}.`);
         this.verses = verses;
+        
+        // Preload Tajweed fonts for all pages in this surah (if tajweed is enabled)
+        if (verses && verses.length > 0 && this.tajweedEnabled) {
+          const pageNumbers = this.getUniquePageNumbers(verses);
+          this.preloadTajweedFonts(pageNumbers);
+        }
+        
         this.currentSurahDetails = this.surahs.find(s => s.number === surahNumber);
-        // this.currentSurah = surahNumber; // Already set above
-        // ////////console.log.log(`[loadSurah MAP] AFTER assigning verses. Current Surah: ${this.currentSurah}, Selected Surah: ${this.selectedSurah}`);
 
         this.setCachedVerses(surahNumber, this.selectedReciter.id, verses);
         this.isAudioLoading = false;
         this.changeDetector.markForCheck(); // Mark again after verses are loaded
-
-        // REMOVE Update URL params call from here
-        // this.updateUrlParams();
       }),
       catchError(error => {
 
@@ -2407,7 +2410,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.loadSurahSubscription = this.quranService.getSurah(surahNumber, this.selectedTranslation, this.selectedReciter.id).pipe(
       // --- Keep existing pipe operators --- //
       tap(verses => {
-        // ////////console.log.log(`[loadVerses PIPE TAP] Received ${verses?.length} verses for Surah ${surahNumber}.`);
+        console.log('✅ loadVerses TAP - Received verses:', verses?.length);
         this.verses = verses; // Assign fetched verses
         this.currentSurahDetails = this.surahs.find(s => s.number === surahNumber);
         // this.currentSurah is already set in loadSurah
@@ -4339,6 +4342,88 @@ getSurahName(surahNumber: string | number): string {
       this.isPopupOpen = false;
     }
     this.changeDetector.markForCheck();
+  }
+  
+  /**
+   * Extract unique page numbers from loaded verses
+   * Used to determine which Tajweed fonts need to be loaded
+   */
+  private getUniquePageNumbers(verses: QuranVerse[]): number[] {
+    const pageNumbers = new Set<number>();
+    
+    verses.forEach(verse => {
+      verse.words?.forEach(word => {
+        if (word.page_number) {
+          pageNumbers.add(word.page_number);
+        }
+      });
+    });
+    
+    return Array.from(pageNumbers).sort((a, b) => a - b);
+  }
+  
+  /**
+   * Preload Tajweed fonts for multiple pages
+   * Uses the font loader service to load fonts in parallel
+   */
+  private async preloadTajweedFonts(pageNumbers: number[]): Promise<void> {
+    try {
+      // Determine theme based on current app theme
+      const currentTheme = (this.themeService as any).currentAppliedTheme?.value || 'dark';
+      const theme = currentTheme === 'dark' ? 'dark' : 'light';
+      await this.fontLoader.preloadPages(pageNumbers, theme);
+    } catch (error) {
+      // Silent fail - fallback to Unicode font
+    }
+  }
+  
+  /**
+   * Get the appropriate font styling for a word based on its properties
+   * Returns font-family CSS value
+   */
+  getWordFontFamily(word: any): string {
+    if (!this.tajweedEnabled || !word.page_number || !word.code_v2) {
+      // Use fallback Unicode font
+      return this.fontLoader.getFallbackFont();
+    }
+    
+    // For verse end markers, always use Unicode font (renders better)
+    if (word.char_type === 'end') {
+      return this.fontLoader.getFallbackFont();
+    }
+    
+    // Check if Tajweed font for this page is loaded
+    if (this.fontLoader.isFontLoaded(word.page_number)) {
+      return `${this.fontLoader.getFontFamily(word.page_number)}, ${this.fontLoader.getFallbackFont()}`;
+    }
+    
+    // Font not loaded yet, use fallback
+    return this.fontLoader.getFallbackFont();
+  }
+  
+  /**
+   * Get the text content to render for a word
+   * Returns either glyph code (for QCF) or Unicode text (for fallback)
+   */
+  getWordText(word: any): string {
+    if (!this.tajweedEnabled || !word.code_v2 || !word.page_number) {
+      // Return plain text
+      return word.text;
+    }
+    
+    // For verse end markers, use Unicode
+    if (word.char_type === 'end') {
+      return word.text_qpc_hafs || word.text;
+    }
+    
+    // Check if font is loaded
+    if (this.fontLoader.isFontLoaded(word.page_number)) {
+      // Return glyph code for Tajweed font
+      return word.code_v2;
+    }
+    
+    // Font not loaded, return fallback text
+    return word.text_qpc_hafs || word.text;
   }
 }
 
