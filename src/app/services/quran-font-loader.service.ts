@@ -71,22 +71,21 @@ export class QuranFontLoaderService {
   }
 
   /**
-   * Try loading COLRv1 format first (modern browsers), fallback to OT-SVG (Firefox)
+   * Load appropriate font format based on theme
    */
   private async loadFontWithFallback(
     pageNumber: number,
     fontName: string,
     theme: 'light' | 'dark' | 'sepia'
   ): Promise<string> {
-    // Try COLRv1 format first (supports CSS font-palette for theme switching)
+    // For light theme, use COLRv1 (supports Tajweed colors)
     const colrUrl = `${this.CDN_BASE}/v4/colrv1/woff2/p${pageNumber}.woff2`;
     
     try {
       await this.loadSingleFont(fontName, colrUrl, theme);
       return fontName;
     } catch (error) {
-      
-      // Fallback to OT-SVG (Firefox and older browsers)
+      // Fallback to OT-SVG
       const svgUrl = `${this.CDN_BASE}/v4/ot-svg/${theme}/woff2/p${pageNumber}.woff2`;
       await this.loadSingleFont(fontName, svgUrl);
       return fontName;
@@ -102,7 +101,7 @@ export class QuranFontLoaderService {
     palette?: string
   ): Promise<void> {
     const fontFace = new FontFace(fontName, `url('${url}')`);
-    fontFace.display = 'block'; // Block rendering until font loads (better for Quran text)
+    fontFace.display = 'swap'; // Use fallback font then swap when ready (faster initial render)
     
     const loaded = await fontFace.load();
     (document.fonts as any).add(loaded);

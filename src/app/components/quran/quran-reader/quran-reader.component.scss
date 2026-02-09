@@ -12,10 +12,16 @@ $text-medium: #4A5568;
   font-family: $arabic-font-family;
   direction: rtl;
   text-align: justify;
-  color: #000000;
+  color: #1a1a1a; // Light mode color
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  
+  // Dark mode - use :host-context to target when html has .dark class
+  :host-context(html.dark) & {
+    color: #B7A57A !important; // Gold color in dark mode
+    -webkit-text-fill-color: #B7A57A !important;
+  }
 }
 
 // Base styles
@@ -117,12 +123,21 @@ $text-medium: #4A5568;
   padding: 20px 0;
   letter-spacing: 0.02em;
   word-spacing: 0.15em;
-  color: #1a1a1a;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
+  
+  // Dark mode - override font colors with brighter gold
+  :host-context(html.dark) & {
+    color: #D4AF37;
+    -webkit-text-fill-color: #D4AF37;
+  }
+  
+  span {
+    display: inline-block;
+  }
   
   // Enhanced styling for Tajweed colors
   .word-tooltip-trigger {
@@ -140,6 +155,11 @@ $text-medium: #4A5568;
 // Tooltip styles
 .word-tooltip-trigger {
   cursor: pointer;
+  
+  // Dark mode - inherit gold color from parent
+  :host-context(html.dark) & {
+    color: inherit;
+  }
 }
 
 ::ng-deep {
@@ -204,9 +224,14 @@ $text-medium: #4A5568;
   font-family: $arabic-font-family;
   font-size: 36px;
   text-align: center;
-  color: #1a1a1a;
+  color: #1a1a1a; // Light mode color
   margin-bottom: 2rem;
   line-height: 1.5;
+  
+  // Dark mode
+  :host-context(html.dark) & {
+    color: #B7A57A !important; // Gold in dark mode
+  }
 }
 
 // Verse number
@@ -288,7 +313,7 @@ $text-medium: #4A5568;
   line-height: 3.2;
   text-align: justify;
   direction: rtl;
-  color: #000000;
+  color: #1a1a1a; // Light mode color
   padding: 3rem 4rem;
   
   .verse {
@@ -509,9 +534,14 @@ $text-medium: #4A5568;
   line-height: 2.5;
   text-align: justify;
   direction: rtl;
-  color: #1a1a1a;
+  color: #1a1a1a; // Light mode color
   position: relative;
   margin-bottom: 0.5rem;
+  
+  // Dark mode
+  :host-context(html.dark) & {
+    color: #B7A57A !important; // Gold in dark mode
+  }
 }
 
 .verse-marker {
@@ -1341,13 +1371,24 @@ select option {
   background-color: #1A365D !important; // Assuming this should apply to the host or a main container
   display: block !important; // Might need to target :host { display: block; } if host is inline by default
   color: #FAF3E0 !important; // Default Cream text for the component
-
+  
   h1 {
     color: #B7A57A !important;
   }
-
-  // === Default Arabic text color ===
-  .verse-text, .word-tooltip-trigger { color: #B7A57A !important; } // Gold
+  
+  // CRITICAL: Use ::ng-deep to pierce through view encapsulation for Arabic text
+  ::ng-deep .verse-text,
+  ::ng-deep .quran-text-uthmanic,
+  ::ng-deep .arabic-gold-text,
+  ::ng-deep .verse-text span,
+  ::ng-deep .quran-text-uthmanic span,
+  ::ng-deep .word-tooltip-trigger,
+  ::ng-deep .word-tooltip-trigger span,
+  ::ng-deep .force-gold-color,
+  ::ng-deep .force-gold-color span {
+    color: #B7A57A !important; // Gold base color
+    -webkit-text-fill-color: #B7A57A !important; // Override webkit
+  }
 
   // --- Tafsir section dark mode ---
   .bg-gray-50 { // Assuming this targets the tafsir container
@@ -1578,20 +1619,21 @@ select option {
     border-left-color: #B7A57A !important; 
     color: #FAF3E0 !important; 
     
-    .verse-text, .word-tooltip-trigger { 
+    // Don't override colors for Tajweed text - let the font colors show through
+    .verse-text:not(.quran-text-uthmanic) { 
         color: #FAF3E0 !important;
     }
     
     .verse-meaning {
-      background-color: #2A4365 !important;
+      background-color: #374151 !important;
       border-top-color: rgba(183, 165, 122, 0.4) !important;
-      border-left-color: #B7A57A !important;
+      border-left-color: #D4AF37 !important;
       .translation-text,
       .transliteration-text { 
-          color: #B7A57A !important; 
+          color: #E5E7EB !important; 
           p { color: inherit !important; }
       }
-      .verse-details, .verse-source { color: #6b7280 !important; }
+      .verse-details, .verse-source { color: #9CA3AF !important; }
     }
     
     .verse-actions button.mat-icon-button .mat-icon { color: #FAF3E0 !important; }
@@ -1625,18 +1667,18 @@ select option {
       z-index: 1;
     }
     
-    // Keep Arabic text GOLD
-    .verse-text,
-    .word-tooltip-trigger {
-      color: #B7A57A !important; // Gold Arabic text
+    // Don't override Tajweed font colors - they're built into the glyphs
+    // Only style non-Tajweed text
+    .verse-text:not(.quran-text-uthmanic) {
+      color: #FAF3E0 !important;
     }
     
     .verse-meaning {
-      background-color: rgba(42, 67, 101, 0.9) !important; // More opaque for better contrast
-      border-left-color: #B7A57A !important;
+      background-color: rgba(55, 65, 81, 0.9) !important; // Consistent gray
+      border-left-color: #D4AF37 !important;
       .translation-text,
       .transliteration-text { 
-          color: #FAF3E0 !important;
+          color: #E5E7EB !important;
           p { color: inherit !important; }
       }
     }
@@ -1657,22 +1699,22 @@ select option {
   
   // === Verse Card Dark Mode ===
   .verse-card {
-    background-color: #1F3A5F !important;
+    background-color: #2D3748 !important; // Dark slate gray for neutral contrast
     border-color: rgba(183, 165, 122, 0.2) !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
     color: #FAF3E0 !important; 
     
     .verse-meaning {
-        background-color: #2A4365 !important;
+        background-color: #374151 !important; // Complementary gray for translation
         border-top-color: rgba(183, 165, 122, 0.2) !important;
-        border-left-color: #B7A57A !important;
+        border-left-color: #D4AF37 !important;
         background-image: none !important;
         .translation-text,
         .transliteration-text { 
-           color: #B7A57A !important; 
+           color: #E5E7EB !important; // Brighter light gray for better readability
            p { color: inherit !important; } 
         }
-        .verse-details, .verse-source { color: #6b7280 !important; }
+        .verse-details, .verse-source { color: #9CA3AF !important; }
     }
     .verse-number {
        background-color: rgba(183, 165, 122, 0.15) !important;
@@ -1687,7 +1729,10 @@ select option {
        } 
        &.bookmarked .mat-icon { color: #B7A57A !important; }
     }
-    > .p-6 > .verse-text { color: #B7A57A !important; }
+    // Don't apply color to Tajweed elements - let font colors show
+    > .p-6 > .verse-text:not(.quran-text-uthmanic) { 
+      color: #FAF3E0 !important; 
+    }
   } // End .verse-card
 
   // === Audio Player Dark Mode ===
