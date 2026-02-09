@@ -1167,7 +1167,7 @@
               <div class="verse-text mb-4 quran-text-uthmanic" 
                    [class.tajweed-disabled]="!tajweedEnabled"
                    dir="rtl">
-                <span *ngFor="let word of verse.words" 
+                <span *ngFor="let word of verse.words; trackBy: trackByWord" 
                       class="word-tooltip-trigger inline-block mx-1 cursor-pointer relative group"
                       (click)="showWordTranslation(word, $event)">
                   <!-- Render with QCF V4 Tajweed Font (glyph codes with built-in colors) -->

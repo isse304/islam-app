@@ -16,12 +16,6 @@ $text-medium: #4A5568;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  
-  // Dark mode - use :host-context to target when html has .dark class
-  :host-context(html.dark) & {
-    color: #B7A57A !important; // Gold color in dark mode
-    -webkit-text-fill-color: #B7A57A !important;
-  }
 }
 
 // Base styles
@@ -129,12 +123,6 @@ $text-medium: #4A5568;
   text-rendering: optimizeLegibility;
   font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
   
-  // Dark mode - override font colors with brighter gold
-  :host-context(html.dark) & {
-    color: #D4AF37;
-    -webkit-text-fill-color: #D4AF37;
-  }
-  
   span {
     display: inline-block;
   }
@@ -155,11 +143,6 @@ $text-medium: #4A5568;
 // Tooltip styles
 .word-tooltip-trigger {
   cursor: pointer;
-  
-  // Dark mode - inherit gold color from parent
-  :host-context(html.dark) & {
-    color: inherit;
-  }
 }
 
 ::ng-deep {
@@ -227,11 +210,6 @@ $text-medium: #4A5568;
   color: #1a1a1a; // Light mode color
   margin-bottom: 2rem;
   line-height: 1.5;
-  
-  // Dark mode
-  :host-context(html.dark) & {
-    color: #B7A57A !important; // Gold in dark mode
-  }
 }
 
 // Verse number
@@ -537,11 +515,6 @@ $text-medium: #4A5568;
   color: #1a1a1a; // Light mode color
   position: relative;
   margin-bottom: 0.5rem;
-  
-  // Dark mode
-  :host-context(html.dark) & {
-    color: #B7A57A !important; // Gold in dark mode
-  }
 }
 
 .verse-marker {
@@ -1368,26 +1341,20 @@ select option {
   // Or target specific elements within the host
   
   // Styles that were previously under html.dark body.dark app-quran-reader { ... }
-  background-color: #1A365D !important; // Assuming this should apply to the host or a main container
-  display: block !important; // Might need to target :host { display: block; } if host is inline by default
-  color: #FAF3E0 !important; // Default Cream text for the component
+  background-color: #1A365D !important;
+  display: block !important;
+  color: #FAF3E0 !important;
   
   h1 {
     color: #B7A57A !important;
   }
   
-  // CRITICAL: Use ::ng-deep to pierce through view encapsulation for Arabic text
-  ::ng-deep .verse-text,
-  ::ng-deep .quran-text-uthmanic,
-  ::ng-deep .arabic-gold-text,
-  ::ng-deep .verse-text span,
-  ::ng-deep .quran-text-uthmanic span,
-  ::ng-deep .word-tooltip-trigger,
-  ::ng-deep .word-tooltip-trigger span,
-  ::ng-deep .force-gold-color,
-  ::ng-deep .force-gold-color span {
-    color: #B7A57A !important; // Gold base color
-    -webkit-text-fill-color: #B7A57A !important; // Override webkit
+  // Simplified dark mode Arabic text styling
+  .verse-text,
+  .quran-text-uthmanic,
+  .word-tooltip-trigger {
+    color: #D4AF37 !important;
+    -webkit-text-fill-color: #D4AF37 !important;
   }
 
   // --- Tafsir section dark mode ---

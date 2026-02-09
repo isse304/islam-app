@@ -721,60 +721,12 @@ html.dark {
   font-family: 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Arabic Typesetting', serif !important;
 }
 
-/* Dark mode Arabic text color - HIGHEST SPECIFICITY */
-html.dark .quran-text-uthmanic,
-html.dark .quran-text-uthmanic span,
+/* Optimized dark mode Arabic text - simplified selectors for performance */
 html.dark .verse-text,
-html.dark .verse-text span {
-  color: #B7A57A !important;
-  -webkit-text-fill-color: #B7A57A !important;
-}
-
-html.dark .force-gold-color,
-html.dark .force-gold-color *,
-html.dark .verse-text *,
-html.dark .quran-text-uthmanic *,
-html.dark .word-tooltip-trigger,
-html.dark .word-tooltip-trigger *,
-html.dark app-quran-reader .verse-text,
-html.dark app-quran-reader .verse-text span,
-html.dark app-quran-reader .word-tooltip-trigger span,
-html.dark [class*="verse"] span[style],
-html.dark [class*="word-tooltip"] span[style] {
-  color: #B7A57A !important;
-  -webkit-text-fill-color: #B7A57A !important;
-  fill: #B7A57A !important;
-  filter: none !important;
-  
-  /* Force color fonts to respect CSS color */
-  font-palette: --custom-gold !important;
-  -webkit-font-feature-settings: normal !important;
-  font-feature-settings: normal !important;
-}
-
-/* Override any component-scoped styles */
-body.dark .force-gold-color,
-body.dark .force-gold-color *,
-body.dark .verse-text *,
-body.dark .quran-text-uthmanic *,
-body.dark .word-tooltip-trigger * {
-  color: #B7A57A !important;
-  -webkit-text-fill-color: #B7A57A !important;
-}
-
-/* Catch-all for any deeply nested spans */
-html.dark [class*="verse"] span,
-html.dark [class*="quran"] span,
-html.dark [class*="word-tooltip"] span {
-  color: #B7A57A !important;
-  -webkit-text-fill-color: #B7A57A !important;
-}
-
-/* Define custom font palette for color fonts */
-@font-palette-values --custom-gold {
-  font-family: p233-v4;
-  base-palette: 0;
-  override-colors: 0 #B7A57A, 1 #B7A57A, 2 #B7A57A, 3 #B7A57A;
+html.dark .quran-text-uthmanic,
+html.dark .word-tooltip-trigger {
+  color: #D4AF37 !important;
+  -webkit-text-fill-color: #D4AF37 !important;
 }
 
 /* Tooltip styling */

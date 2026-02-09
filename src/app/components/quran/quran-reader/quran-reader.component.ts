@@ -592,8 +592,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           this.isMainControlsMinimized = false;
           this.isPopupOpen = false;
         }
-        
-        this.changeDetector.markForCheck();
 
         // --- Load Initial Content IMMEDIATELY---
         this.loadInitialContent(this.currentSurah, this.currentVerse, this.isMushafView, initialPage);
@@ -655,8 +653,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.selectedSurah = surahNumber; // Also sync dropdown immediately
     // REMOVE this line: this.currentVerse = 1; // Reset verse
 
-    this.changeDetector.markForCheck(); // Mark for check after immediate state update
-
     // Return the observable stream
     return this.quranService.getSurah(surahNumber, this.selectedTranslation, this.selectedReciter.id).pipe(
       map(verses => {
@@ -667,23 +663,19 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           const pageNumbers = this.getUniquePageNumbers(verses);
           // Delay font loading to allow initial render to complete first
           setTimeout(() => {
-            this.preloadTajweedFonts(pageNumbers).catch(() => {
-              // Silent fail - will use fallback font
-            });
-          }, 200);
+            this.preloadTajweedFonts(pageNumbers).catch(() => {});
+          }, 300); // Shorter delay for better UX
         }
         
         this.currentSurahDetails = this.surahs.find(s => s.number === surahNumber);
 
         this.setCachedVerses(surahNumber, this.selectedReciter.id, verses);
         this.isAudioLoading = false;
-        this.changeDetector.markForCheck(); // Mark again after verses are loaded
       }),
       catchError(error => {
 
         this.isAudioLoading = false;
         this.toastService.showError('Failed to load surah data.');
-        this.changeDetector.markForCheck();
         return of(null);
       })
     );
@@ -712,7 +704,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
               // *** Set the target verse *after* surah load completes ***
               this.currentVerse = verse;
 
-              this.changeDetector.markForCheck(); // Ensure verse update is checked
               // Scroll to verse AFTER loading finishes and verse is set
               setTimeout(() => {
                   this.scrollToVerse(verse); // Now scroll to the correct verse
@@ -722,7 +713,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
        ).subscribe({
             error: (err) => {
               this.isLoading = false; // Ensure loading is stopped on error
-              this.changeDetector.markForCheck();
             }
        });
     }
@@ -751,7 +741,6 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.setupViewMode();
 
     //this.hideLoadingUI(); // <-- Remove argument
-    this.changeDetector.markForCheck(); // Ensure UI reflects loaded data (final check)
   }
 
   private scrollToVerse(verseNumber: number, maxAttempts: number = 5): boolean {
@@ -2809,13 +2798,11 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // ++ NEW Method for Audio Player Toggle ++
   public toggleAudioPlayerView(): void {
     this.isAudioPlayerMinimized = !this.isAudioPlayerMinimized;
-    this.changeDetector.markForCheck();
   }
 
   // ++ NEW Method to handle tapping on the Mushaf view (show controls) ++
   public toggleMushafControls(): void {
     this.isControlsMinimized = !this.isControlsMinimized;
-    this.changeDetector.markForCheck();
   }
 
   // Need to add this helper function if it doesn't exist
@@ -3695,7 +3682,6 @@ getSurahName(surahNumber: string | number): string {
    */
   public closeJumpToVerseDialog(): void {
     this.showJumpToVerseDialog = false;
-    this.changeDetector.markForCheck();
   }
 
   /**
@@ -3716,7 +3702,6 @@ getSurahName(surahNumber: string | number): string {
    */
   public closeTajweedLegend(): void {
     this.showTajweedLegendDialog = false;
-    this.changeDetector.markForCheck();
   }
 
   /**
@@ -3782,7 +3767,6 @@ getSurahName(surahNumber: string | number): string {
    */
   public toggleHomeworkBar(): void {
     this.homeworkBar.minimized = !this.homeworkBar.minimized;
-    this.changeDetector.markForCheck();
   }
 
   /**
@@ -4356,26 +4340,28 @@ getSurahName(surahNumber: string | number): string {
    * Uses the font loader service to load fonts in parallel
    */
   private async preloadTajweedFonts(pageNumbers: number[]): Promise<void> {
+    if (!this.tajweedEnabled || pageNumbers.length === 0) {
+      return;
+    }
+    
     try {
       const theme = 'light';
       
-      // Load only first 2 pages immediately
-      const priorityPages = pageNumbers.slice(0, 2);
-      const remainingPages = pageNumbers.slice(2);
+      // Load only first page immediately for visible content
+      const firstPage = pageNumbers.slice(0, 1);
+      const remainingPages = pageNumbers.slice(1);
       
-      // Load priority pages
-      await this.fontLoader.preloadPages(priorityPages, theme);
-      this.changeDetector.markForCheck();
+      // Load first page
+      await this.fontLoader.preloadPages(firstPage, theme);
       
-      // Load remaining pages gradually in background
+      // Load remaining pages in very small batches with longer delays
       if (remainingPages.length > 0) {
-        // Load in smaller batches to avoid blocking
-        const batchSize = 3;
+        const batchSize = 2;
         for (let i = 0; i < remainingPages.length; i += batchSize) {
           const batch = remainingPages.slice(i, i + batchSize);
           setTimeout(() => {
             this.fontLoader.preloadPages(batch, theme).catch(() => {});
-          }, 500 + (i * 200)); // Stagger the loading
+          }, 1000 + (i * 500)); // Much longer delays to not block UI
         }
       }
     } catch (error) {
@@ -4384,16 +4370,17 @@ getSurahName(surahNumber: string | number): string {
   }
   
   /**
-   * Get the appropriate font styling for a word based on its properties
-   * Returns font-family CSS value
+   * TrackBy function for word ngFor to improve performance
+   */
+  trackByWord(index: number, word: any): any {
+    return `${word.page_number}_${word.position}_${index}`;
+  }
+  
+  /**
+   * Get the appropriate font family for a word - memoized for performance
    */
   getWordFontFamily(word: any): string {
-    // Use Tajweed fonts in both light and dark mode
-    if (!this.tajweedEnabled || !word.page_number || !word.code_v2) {
-      return this.fontLoader.getFallbackFont();
-    }
-    
-    if (word.char_type === 'end') {
+    if (!this.tajweedEnabled || !word.page_number || !word.code_v2 || word.char_type === 'end') {
       return this.fontLoader.getFallbackFont();
     }
     
@@ -4405,16 +4392,10 @@ getSurahName(surahNumber: string | number): string {
   }
   
   /**
-   * Get the text content to render for a word
-   * Returns either glyph code (for QCF) or Unicode text (for fallback)
+   * Get the text content for a word - memoized for performance
    */
   getWordText(word: any): string {
-    // Use Tajweed glyphs in both light and dark mode
-    if (!this.tajweedEnabled || !word.code_v2 || !word.page_number) {
-      return word.text;
-    }
-    
-    if (word.char_type === 'end') {
+    if (!this.tajweedEnabled || !word.code_v2 || !word.page_number || word.char_type === 'end') {
       return word.text_qpc_hafs || word.text;
     }
     
