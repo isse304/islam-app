@@ -250,8 +250,6 @@
         
         <div class="tafsir-text" 
              (mouseup)="handleTextSelection($event)"
-             (mouseover)="handleHighlightHover($event)"
-             (mouseleave)="handleHighlightLeave($event)"
              [innerHTML]="renderHighlights(tafsirContent.text)">
         </div>
       </div>
@@ -303,8 +301,7 @@
 
         <div class="tafsir-text" 
              (mouseup)="handleTextSelection($event)"
-             (mouseover)="handleHighlightHover($event)"
-             (mouseleave)="handleHighlightLeave($event)"
+             (mousedown)="onMouseDown($event)"
              [innerHTML]="renderHighlights(tafsirContent.text)">
         </div>
 
@@ -453,24 +450,39 @@
     </div>
   </aside>
 
-  <!-- Highlight Selection Context Menu -->
+  <!-- Highlight Selection/Edit Menu -->
   <div class="highlight-context-menu" 
-       *ngIf="showHighlightMenu"
-       [style.left.px]="highlightMenuPosition.x"
-       [style.top.px]="highlightMenuPosition.y">
+       *ngIf="showHighlightMenu || showHighlightTooltip"
+       [style.left.px]="showHighlightMenu ? highlightMenuPosition.x : highlightTooltipPosition.x"
+       [style.top.px]="showHighlightMenu ? highlightMenuPosition.y : highlightTooltipPosition.y">
     <div class="highlight-menu-header">
-      <span>{{ isRemoveMode() ? 'Manage Highlight' : 'Add Highlight' }}</span>
+      <span>{{ isRemoveMode() ? 'Edit Highlight' : 'Add Highlight' }}</span>
       <button mat-icon-button (click)="hideHighlightMenu()" class="close-btn">
         <mat-icon>close</mat-icon>
       </button>
     </div>
     
-    <!-- Remove Highlight Button (shown when clicking existing highlight) -->
-    <div class="highlight-actions" *ngIf="isRemoveMode()">
-      <button mat-raised-button color="warn" (click)="removeClickedHighlight()" class="remove-highlight-btn">
-        <mat-icon>delete</mat-icon>
-        Remove Highlight
-      </button>
+    <!-- Edit Highlight Actions (shown when clicking existing highlight) -->
+    <div class="highlight-edit-mode" *ngIf="isRemoveMode()">
+      <!-- Color Selector -->
+      <p class="color-label">Change Color:</p>
+      <div class="highlight-colors">
+        <button class="color-button" 
+                *ngFor="let color of highlightColors"
+                [style.background-color]="color.hex"
+                [matTooltip]="color.label"
+                (click)="changeHighlightColor(color.value)">
+          <span class="color-icon">{{ color.icon }}</span>
+        </button>
+      </div>
+      
+      <!-- Remove Button -->
+      <div class="highlight-actions">
+        <button mat-raised-button color="warn" (click)="removeClickedHighlight()" class="remove-highlight-btn">
+          <mat-icon>delete</mat-icon>
+          Remove Highlight
+        </button>
+      </div>
     </div>
     
     <!-- Color Selector (shown when selecting new text) -->
@@ -482,38 +494,6 @@
               (click)="applyHighlight(color.value)">
         <span class="color-icon">{{ color.icon }}</span>
       </button>
-    </div>
-  </div>
-
-  <!-- Highlight Tooltip (Hover Menu) -->
-  <div class="highlight-tooltip" 
-       *ngIf="showHighlightTooltip"
-       [style.left.px]="highlightTooltipPosition.x"
-       [style.top.px]="highlightTooltipPosition.y"
-       (mouseenter)="showHighlightTooltip = true"
-       (mouseleave)="hideHighlightTooltip()">
-    <div class="tooltip-actions">
-      <button mat-button (click)="toggleColorPicker()" class="change-color-btn">
-        <mat-icon>palette</mat-icon>
-        Change Color
-      </button>
-      <button mat-button color="warn" (click)="removeHoveredHighlight()" class="remove-btn">
-        <mat-icon>delete</mat-icon>
-        Remove
-      </button>
-    </div>
-    
-    <!-- Color Picker (shown when "Change Color" is clicked) -->
-    <div class="color-picker" *ngIf="showColorPicker">
-      <div class="color-options">
-        <button class="color-option" 
-                *ngFor="let color of highlightColors"
-                [style.background-color]="color.hex"
-                [matTooltip]="color.label"
-                (click)="changeHighlightColor(color.value)">
-          <span>{{ color.icon }}</span>
-        </button>
-      </div>
     </div>
   </div>
 

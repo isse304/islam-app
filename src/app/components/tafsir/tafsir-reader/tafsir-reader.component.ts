@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, ViewChil
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Observable, Subject, takeUntil, forkJoin } from 'rxjs';
 
 // Material imports
@@ -122,6 +123,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   showHighlightTooltip = false;
   highlightTooltipPosition = { x: 0, y: 0 };
   showColorPicker = false;
+  private savedSelection: Range | null = null; // Preserve browser selection
+  private isSelecting = false; // Track if user is actively selecting
   
   highlightColors: Array<{ value: Highlight['color']; label: string; hex: string; icon: string }> = [
     { value: 'yellow', label: 'Yellow', hex: '#fef3c7', icon: '🟡' },
@@ -158,6 +161,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     private quranService: QuranService,
     private themeService: ThemeService,
     private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer,
     public bookmarkService: BookmarkService, // Public for template access
     public noteService: NoteService, // Public for template access
     public highlightService: HighlightService // Public for template access
@@ -970,34 +974,85 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Handle mousedown to track selection start
+   */
+  onMouseDown(event: MouseEvent): void {
+    this.isSelecting = true;
+    this.hideHighlightMenu();
+  }
+  
+  /**
    * Handle text selection in the tafsir content
    */
   handleTextSelection(event: MouseEvent): void {
-    // Don't show highlight menu if clicking on an existing highlight
+    this.isSelecting = false;
+    
+    // Don't process if clicking on menu buttons
+    if ((event.target as HTMLElement).closest('.highlight-context-menu')) {
+      return;
+    }
+    
+    // Check if clicking on an existing highlight - show edit menu
     const target = event.target as HTMLElement;
+    
     if (target.classList.contains('highlight') || target.closest('.highlight')) {
-      this.hideHighlightMenu();
+      const highlightElement = target.classList.contains('highlight') ? target : target.closest('.highlight') as HTMLElement;
+      const highlightId = highlightElement?.getAttribute('data-highlight-id');
+      
+      if (highlightId) {
+        // Show menu in "remove/edit mode"
+        this.clickedHighlightId = highlightId;
+        this.hoveredHighlightId = highlightId;
+        this.selectedText = '';
+        this.selectedRange = null;
+        this.showHighlightMenuAt(event.clientX, event.clientY);
+        
+        // Also show the color picker menu
+        this.showHighlightTooltip = true;
+        this.highlightTooltipPosition = { x: event.clientX, y: event.clientY };
+        this.cdr.detectChanges();
+      }
       return;
     }
 
+    // IMMEDIATELY save selection synchronously (no delay)
     const selection = window.getSelection();
+    
     if (!selection || selection.isCollapsed || !selection.rangeCount) {
-      this.hideHighlightMenu();
       return;
     }
 
     const selectedText = selection.toString().trim();
+    
     if (!selectedText || selectedText.length < 3) {
+      return;
+    }
+    
+    // Save the range immediately - this must happen synchronously
+    const range = selection.getRangeAt(0);
+    this.savedSelection = range.cloneRange();
+    
+    // Process selection immediately (no delay)
+    this.processTextSelection(event);
+  }
+  
+  /**
+   * Process text selection after delay
+   */
+  private processTextSelection(event: MouseEvent): void {
+    // Use saved selection
+    if (!this.savedSelection) {
+      return;
+    }
+    
+    const container = (event.target as HTMLElement).closest('.tafsir-text');
+    if (!container) {
       this.hideHighlightMenu();
       return;
     }
 
-    // Get the range and calculate offsets
-    const range = selection.getRangeAt(0);
-    const container = (event.target as HTMLElement).closest('.tafsir-text');
-    
-    if (!container) {
-      this.hideHighlightMenu();
+    const selectedText = this.savedSelection.toString().trim();
+    if (!selectedText || selectedText.length < 3) {
       return;
     }
 
@@ -1005,9 +1060,9 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     const plainText = container.textContent || '';
     
     // Calculate offsets in the plain text
-    const preRange = range.cloneRange();
+    const preRange = this.savedSelection.cloneRange();
     preRange.selectNodeContents(container);
-    preRange.setEnd(range.startContainer, range.startOffset);
+    preRange.setEnd(this.savedSelection.startContainer, this.savedSelection.startOffset);
     const preText = preRange.toString();
     
     // Find the position of selected text in plain text
@@ -1029,9 +1084,90 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     this.selectedText = selectedText;
     this.selectedRange = { startOffset, endOffset };
     this.clickedHighlightId = null; // Clear clicked highlight when selecting new text
-
-    // Show highlight menu at cursor position
-    this.showHighlightMenuAt(event.clientX, event.clientY);
+    
+    // DON'T call showHighlightMenuAt yet - it will trigger change detection
+    // Instead, set the values directly without triggering CD
+    this.highlightMenuPosition = { x: event.clientX, y: event.clientY };
+    this.showHighlightMenu = true;
+    
+    // Let Angular naturally detect the change on next cycle
+    // Meanwhile, keep re-applying the selection
+    this.keepSelectionAlive();
+  }
+  
+  /**
+   * Recreate selection from text offsets (works even after DOM changes)
+   */
+  private keepSelectionAlive(): void {
+    if (!this.selectedText || !this.selectedRange) {
+      return;
+    }
+    
+    const recreateSelection = () => {
+      try {
+        // Find the tafsir-text container
+        const container = document.querySelector('.tafsir-text');
+        if (!container) {
+          return;
+        }
+        
+        // Create a new range using a tree walker to find text nodes
+        const range = document.createRange();
+        const walker = document.createTreeWalker(
+          container,
+          NodeFilter.SHOW_TEXT,
+          null
+        );
+        
+        let currentOffset = 0;
+        let startNode: Node | null = null;
+        let startNodeOffset = 0;
+        let endNode: Node | null = null;
+        let endNodeOffset = 0;
+        
+        let node: Node | null;
+        while ((node = walker.nextNode())) {
+          const textNode = node as Text;
+          const nodeLength = textNode.length;
+          
+          // Find start node
+          if (!startNode && currentOffset + nodeLength >= this.selectedRange!.startOffset) {
+            startNode = textNode;
+            startNodeOffset = this.selectedRange!.startOffset - currentOffset;
+          }
+          
+          // Find end node
+          if (!endNode && currentOffset + nodeLength >= this.selectedRange!.endOffset) {
+            endNode = textNode;
+            endNodeOffset = this.selectedRange!.endOffset - currentOffset;
+            break;
+          }
+          
+          currentOffset += nodeLength;
+        }
+        
+        if (startNode && endNode) {
+          range.setStart(startNode, startNodeOffset);
+          range.setEnd(endNode, endNodeOffset);
+          
+          const sel = window.getSelection();
+          if (sel) {
+            sel.removeAllRanges();
+            sel.addRange(range);
+          }
+        }
+      } catch (e) {
+        // Silently fail - selection restoration is best-effort
+      }
+    };
+    
+    // Multiple attempts to recreate selection
+    requestAnimationFrame(() => {
+      recreateSelection();
+      setTimeout(recreateSelection, 10);
+      setTimeout(recreateSelection, 50);
+      setTimeout(recreateSelection, 100);
+    });
   }
 
   /**
@@ -1040,7 +1176,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   showHighlightMenuAt(x: number, y: number): void {
     this.highlightMenuPosition = { x, y };
     this.showHighlightMenu = true;
-    this.cdr.detectChanges();
+    // DON'T call detectChanges here - it invalidates the saved selection
+    // Angular will detect the change automatically
   }
 
   /**
@@ -1051,6 +1188,13 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     this.selectedText = '';
     this.selectedRange = null;
     this.clickedHighlightId = null;
+    this.showHighlightTooltip = false;
+    this.hoveredHighlightId = null;
+    this.showColorPicker = false;
+    this.savedSelection = null;
+    
+    // Clear browser selection
+    window.getSelection()?.removeAllRanges();
   }
   
   /**
@@ -1265,8 +1409,10 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   /**
    * Render highlights in text content
    */
-  renderHighlights(text: string): string {
-    if (!this.currentHighlights.length || !text) return text;
+  renderHighlights(text: string): SafeHtml {
+    if (!this.currentHighlights.length || !text) {
+      return this.sanitizer.bypassSecurityTrustHtml(text);
+    }
 
     // Sort highlights by start offset (descending) to apply from end to start
     const sortedHighlights = [...this.currentHighlights].sort((a, b) => b.startOffset - a.startOffset);
@@ -1285,7 +1431,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
         after;
     }
     
-    return highlightedText;
+    // Bypass sanitization to preserve data-highlight-id attribute
+    return this.sanitizer.bypassSecurityTrustHtml(highlightedText);
   }
 
   /**
