@@ -252,7 +252,7 @@
              (mouseup)="handleTextSelection($event)"
              (mouseover)="handleHighlightHover($event)"
              (mouseleave)="handleHighlightLeave($event)"
-             [innerHTML]="getHighlightedText(tafsirContent.text)">
+             [innerHTML]="renderHighlights(tafsirContent.text)">
         </div>
       </div>
     </div>
@@ -305,7 +305,7 @@
              (mouseup)="handleTextSelection($event)"
              (mouseover)="handleHighlightHover($event)"
              (mouseleave)="handleHighlightLeave($event)"
-             [innerHTML]="getHighlightedText(tafsirContent.text)">
+             [innerHTML]="renderHighlights(tafsirContent.text)">
         </div>
 
         <!-- Footnotes -->
