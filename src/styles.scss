@@ -384,7 +384,6 @@ html.dark .quran-text-uthmanic * {
   color: #B7A57A !important;
   -webkit-text-fill-color: #B7A57A !important;
   text-shadow: none !important;
-  filter: none !important; /* Remove any font-level filters that might preserve colors */
 }
 
 /* Apply grayscale to QCF font glyphs in dark mode */

@@ -1,6 +1,6 @@
 export {};
 
-import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, ViewEncapsulation, Renderer2, ViewContainerRef, inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
+import { Component, OnInit, OnDestroy, Input, Output, EventEmitter, ViewChild, ElementRef, ChangeDetectorRef, Injector, NgZone, HostListener, HostBinding, ViewEncapsulation, Renderer2, ViewContainerRef, inject, CUSTOM_ELEMENTS_SCHEMA } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
@@ -1486,6 +1486,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     return this.reciters;
   }
 
+  private themeInitialized = false;
+  
   private checkDarkMode() {
     // Subscribe to theme changes from ThemeService
     this.themeService.currentTheme$.pipe(
@@ -1494,12 +1496,25 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       const wasDarkMode = this.isDarkMode;
       this.isDarkMode = theme === 'dark';
       
-      // If switching from dark to light mode, preload fonts for tajweed
-      if (wasDarkMode && !this.isDarkMode && this.tajweedEnabled && this.verses.length > 0) {
-        setTimeout(() => this.preloadTajweedFonts(), 100);
+      // Only reload if theme changed AND this is not the initial load
+      if (this.themeInitialized && wasDarkMode !== this.isDarkMode) {
+        // Set a flag in sessionStorage to prevent infinite reload loop
+        const reloadFlag = sessionStorage.getItem('theme-reload-flag');
+        if (!reloadFlag) {
+          sessionStorage.setItem('theme-reload-flag', 'true');
+          // Small delay to ensure theme is saved before reload
+          setTimeout(() => {
+            window.location.reload();
+          }, 100);
+        }
+      } else {
+        // Mark as initialized after first check
+        this.themeInitialized = true;
+        // Clear the reload flag on successful load
+        sessionStorage.removeItem('theme-reload-flag');
       }
       
-      // Trigger change detection to update tajweed colors/styles
+      // Trigger change detection
       this.changeDetector.detectChanges();
     });
   }

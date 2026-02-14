@@ -1436,8 +1436,8 @@ select option {
   ::ng-deep .tajweed-enabled .quran-word,
   ::ng-deep .verse-text span {
     filter: grayscale(100%) brightness(1.1) !important;
-    cursor: pointer !important; // Ensure pointer cursor for tooltips
-    pointer-events: auto !important; // Enable pointer events for tooltips
+    cursor: pointer !important;
+    pointer-events: auto !important;
   }
   
   // Force all tajweed-related elements to be gold
@@ -1445,7 +1445,7 @@ select option {
   ::ng-deep .quran-word * {
     color: #B7A57A !important;
     -webkit-text-fill-color: #B7A57A !important;
-    pointer-events: none !important; // Prevent rule elements from blocking tooltip
+    pointer-events: none !important;
   }
 
   // --- Tafsir section dark mode ---
