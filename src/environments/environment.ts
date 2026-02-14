@@ -6,6 +6,8 @@ export const environment: Environment = {
   openaiApiKey: undefined,
   elevenLabsApiKey: undefined,
   sttApiKey: undefined,
+  quranFoundationClientId: '093c7428-3167-4b5d-9409-5d3ebb713487', // Production key
+  quranFoundationApiKey: '0GU4xDZeCiMYMrd_6uh_1jy9Rm', // Production secret
   firebase: {
     apiKey: "AIzaSyDhBAdoRQx-vc6lz_5lrZgXVPWXEtam-PQ",
     authDomain: "nuraai.firebaseapp.com",

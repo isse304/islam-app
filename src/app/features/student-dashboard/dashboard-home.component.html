@@ -1,0 +1,117 @@
+<div class="dashboard-home">
+  <!-- Hero Header -->
+  <div class="hero-header">
+    <div class="welcome-section">
+      <h1>As-salamu alaykum, {{ studentName }}! 🌙</h1>
+      <p>May your studies be blessed • بِسْمِ اللهِ</p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading your dashboard...</p>
+  </div>
+
+  <!-- Dashboard Content -->
+  <div *ngIf="!loading" class="dashboard-content">
+    <!-- Quick Stats Widgets -->
+    <div class="widgets-grid">
+      <app-progress-summary-widget
+        [overallGrade]="overallGrade"
+        [letterGrade]="letterGrade"
+        [gradeChange]="gradeChange">
+      </app-progress-summary-widget>
+
+      <app-today-focus-widget
+        [completedToday]="completedToday"
+        [totalToday]="totalToday">
+      </app-today-focus-widget>
+
+      <app-week-overview-widget
+        [dueThisWeek]="dueThisWeek"
+        [completedThisWeek]="completedThisWeek"
+        [overdueThisWeek]="overdueThisWeek">
+      </app-week-overview-widget>
+    </div>
+
+    <!-- Upcoming Deadlines -->
+    <div class="section-card" *ngIf="upcomingDeadlines.length > 0">
+      <div class="section-header">
+        <h2>📅 Upcoming Deadlines</h2>
+      </div>
+      <div class="deadlines-grid">
+        <div class="deadline-item" 
+             *ngFor="let deadline of upcomingDeadlines"
+             [class.urgent]="deadline.urgency === 'urgent'"
+             [class.warning]="deadline.urgency === 'warning'">
+          <span class="deadline-day">{{ deadline.day }}</span>
+          <span class="deadline-count">
+            <span class="count-badge">{{ deadline.count }}</span>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent Assignments -->
+    <div class="section-card">
+      <div class="section-header">
+        <h2>📚 Recent Assignments</h2>
+        <a routerLink="/s/assignments" class="view-all-link">View All →</a>
+      </div>
+      
+      <div *ngIf="recentAssignments.length === 0" class="empty-state">
+        <p>No assignments yet. Check back soon!</p>
+      </div>
+
+      <div class="assignments-list" *ngIf="recentAssignments.length > 0">
+        <div class="assignment-card" *ngFor="let assignment of recentAssignments">
+          <div class="assignment-header">
+            <h3 class="assignment-title">{{ assignment.title }}</h3>
+            <span class="status-badge" [ngClass]="getStatusBadgeClass(assignment)">
+              {{ getStatusText(assignment) }}
+            </span>
+          </div>
+          <div class="assignment-details">
+            <div class="detail-item" *ngIf="assignment.surah">
+              <span class="detail-icon">📖</span>
+              <span>Surah {{ assignment.surah }}, Ayah {{ assignment.startAyah }}-{{ assignment.endAyah }}</span>
+            </div>
+            <div class="detail-item" *ngIf="assignment.dueAt">
+              <span class="detail-icon">📅</span>
+              <span>Due: {{ getDueDate(assignment) | date:'short' }}</span>
+            </div>
+            <div class="detail-item" *ngIf="assignment.submission?.score != null">
+              <span class="detail-icon">⭐</span>
+              <span>Score: {{ assignment.submission?.score }}%</span>
+            </div>
+          </div>
+          <div class="assignment-actions">
+            <a routerLink="/s/assignments" class="action-link">View Details</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Links -->
+    <div class="quick-links-grid">
+      <a routerLink="/s/progress" class="quick-link-card">
+        <div class="link-icon">📊</div>
+        <div class="link-title">Progress & Analytics</div>
+        <div class="link-description">Track your performance</div>
+      </a>
+
+      <a routerLink="/s/calendar" class="quick-link-card">
+        <div class="link-icon">📅</div>
+        <div class="link-title">Calendar</div>
+        <div class="link-description">View upcoming deadlines</div>
+      </a>
+
+      <a routerLink="/s/archive" class="quick-link-card">
+        <div class="link-icon">🗄️</div>
+        <div class="link-title">Archive</div>
+        <div class="link-description">Browse completed work</div>
+      </a>
+    </div>
+  </div>
+</div>

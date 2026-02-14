@@ -47,6 +47,7 @@ export class QuranFontLoaderService {
     
     // Return if already loaded
     if (this.loadedFonts.has(fontName)) {
+      console.log(`Font ${fontName} already loaded`);
       return fontName;
     }
 
@@ -54,7 +55,7 @@ export class QuranFontLoaderService {
     if (this.loadingPromises.has(fontName)) {
       return this.loadingPromises.get(fontName)!;
     }
-
+    
     // Create new loading promise
     const loadingPromise = this.loadFontWithFallback(pageNumber, fontName, theme);
     this.loadingPromises.set(fontName, loadingPromise);
@@ -65,6 +66,7 @@ export class QuranFontLoaderService {
       this.loadingPromises.delete(fontName);
       return fontName;
     } catch (error) {
+      console.error(`✗ Failed to load font ${fontName}:`, error);
       this.loadingPromises.delete(fontName);
       throw error;
     }
@@ -108,17 +110,54 @@ export class QuranFontLoaderService {
   }
 
   /**
-   * Preload fonts for multiple pages in parallel
-   * Useful for preloading fonts for a complete surah
+   * Preload fonts for multiple pages - LAZY loading to prevent blocking
+   * Only loads first page immediately, rest in background
    * 
    * @param pageNumbers - Array of page numbers to preload
    * @param theme - Theme for OT-SVG fonts
    */
   async preloadPages(pageNumbers: number[], theme: 'light' | 'dark' | 'sepia' = 'dark'): Promise<void> {
     const uniquePages = [...new Set(pageNumbers)];
-    await Promise.all(
-      uniquePages.map(page => this.loadTajweedFont(page, theme))
-    );
+    
+    if (uniquePages.length === 0) return;
+    
+    // Load ONLY the first page immediately (visible content)
+    if (uniquePages.length > 0) {
+      await this.loadTajweedFont(uniquePages[0], theme).catch(() => {});
+    }
+    
+    // Load remaining pages in background WITHOUT blocking UI
+    if (uniquePages.length > 1) {
+      this.loadRemainingPagesInBackground(uniquePages.slice(1), theme);
+    }
+  }
+  
+  /**
+   * Load remaining pages in background using requestIdleCallback or setTimeout fallback
+   */
+  private loadRemainingPagesInBackground(pageNumbers: number[], theme: 'light' | 'dark' | 'sepia'): void {
+    const loadNextBatch = (index: number) => {
+      if (index >= pageNumbers.length) return;
+      
+      // Load one font at a time in idle time
+      if ((window as any).requestIdleCallback) {
+        // Use requestIdleCallback if available (modern browsers)
+        (window as any).requestIdleCallback(() => {
+          this.loadTajweedFont(pageNumbers[index], theme)
+            .catch(() => {})
+            .finally(() => loadNextBatch(index + 1));
+        });
+      } else {
+        // Fallback to setTimeout
+        setTimeout(() => {
+          this.loadTajweedFont(pageNumbers[index], theme)
+            .catch(() => {})
+            .finally(() => loadNextBatch(index + 1));
+        }, 100);
+      }
+    };
+    
+    loadNextBatch(0);
   }
 
   /**

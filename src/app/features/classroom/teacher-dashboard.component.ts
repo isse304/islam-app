@@ -7,7 +7,7 @@ import {
   ReactiveFormsModule,
   Validators,
 } from '@angular/forms';
-import { Observable } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { Class, IndividualStudent } from '../../models/classroom.models';
 import { ClassService } from '../../services/class.service';
 import { AssignmentService } from '../../services/assignment.service';
@@ -67,6 +67,13 @@ export class TeacherDashboardComponent implements OnInit {
   
   // Student names cache
   studentNames: { [studentId: string]: string } = {};
+  
+  // Stats dashboard
+  totalClasses = 0;
+  totalStudents = 0;
+  activeAssignments = 0;
+  ungradedCount = 0;
+  averageScore = 0;
 
   constructor() {
     this.createClassForm = this.fb.group({
@@ -108,8 +115,10 @@ export class TeacherDashboardComponent implements OnInit {
   loadData() {
     if (this.mode === 'classroom') {
       this.myClasses$ = this.classService.listMyClasses();
+      this.calculateStats();
     } else {
       this.myStudents$ = this.individualStudentService.listMyStudents();
+      this.calculateStats();
       
       // Load ungraded counts for each student
       this.myStudents$.subscribe({
@@ -119,6 +128,98 @@ export class TeacherDashboardComponent implements OnInit {
         error: (error) => {
           console.error('Error loading students:', error);
         }
+      });
+    }
+  }
+  
+  private calculateStats(): void {
+    if (this.mode === 'classroom') {
+      this.myClasses$.subscribe(async (classes) => {
+        this.totalClasses = classes.length;
+        this.totalStudents = classes.reduce((sum, c) => sum + (c.memberIds?.length || 0), 0);
+        
+        // Calculate active assignments and ungraded count
+        let activeCount = 0;
+        let ungradedTotal = 0;
+        let totalScores: number[] = [];
+        
+        for (const classItem of classes) {
+          try {
+            // Get assignments for this class
+            const assignments = await firstValueFrom(this.assignmentService.listAssignmentsForClass(classItem.id));
+            activeCount += assignments.length;
+            
+            // Count ungraded submissions
+            for (const assignment of assignments) {
+              try {
+                const submissions = await firstValueFrom(this.submissionService.listSubmissionsForAssignment(assignment.id));
+                const ungraded = submissions.filter((s: Submission) => s.status === 'submitted').length;
+                ungradedTotal += ungraded;
+                
+                // Collect scores for average
+                submissions.filter((s: Submission) => s.score != null).forEach((s: Submission) => {
+                  totalScores.push(s.score!);
+                });
+              } catch (error) {
+                console.error('[TeacherDashboard] Error loading submissions for assignment:', assignment.id, error);
+              }
+            }
+          } catch (error) {
+            // Silently handle assignment loading errors
+          }
+        }
+        
+        this.activeAssignments = activeCount;
+        this.ungradedCount = ungradedTotal;
+        this.averageScore = totalScores.length > 0 
+          ? Math.round(totalScores.reduce((sum, s) => sum + s, 0) / totalScores.length)
+          : 0;
+        
+        this.cdr.detectChanges();
+      });
+    } else {
+      this.myStudents$.subscribe(async (students) => {
+        this.totalStudents = students.length;
+        this.totalClasses = 0; // Not applicable in individual mode
+        
+        // Calculate active assignments and ungraded count
+        let activeCount = 0;
+        let ungradedTotal = 0;
+        let totalScores: number[] = [];
+        
+        for (const student of students) {
+          try {
+            // Get assignments for this individual student (teacher is accessing student's assignments)
+            const assignments = await firstValueFrom(this.assignmentService.listAssignmentsForIndividualStudent(student.studentId));
+            activeCount += assignments.length;
+            
+            // Count ungraded submissions
+            for (const assignment of assignments) {
+              try {
+                const submissions = await firstValueFrom(this.submissionService.listSubmissionsForAssignment(assignment.id));
+                const ungraded = submissions.filter((s: Submission) => s.status === 'submitted').length;
+                ungradedTotal += ungraded;
+                
+                // Collect scores for average
+                submissions.filter((s: Submission) => s.score != null).forEach((s: Submission) => {
+                  totalScores.push(s.score!);
+                });
+              } catch (error) {
+                // Silently handle submission loading errors
+              }
+            }
+          } catch (error) {
+            // Silently handle assignment loading errors
+          }
+        }
+        
+        this.activeAssignments = activeCount;
+        this.ungradedCount = ungradedTotal;
+        this.averageScore = totalScores.length > 0 
+          ? Math.round(totalScores.reduce((sum, s) => sum + s, 0) / totalScores.length)
+          : 0;
+        
+        this.cdr.detectChanges();
       });
     }
   }

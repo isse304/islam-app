@@ -1,0 +1,158 @@
+<div class="archive-page">
+  <!-- Hero Header -->
+  <div class="hero-header">
+    <div class="header-content">
+      <h1>🗄️ Assignment Archive</h1>
+      <p>Browse and export your completed assignments</p>
+    </div>
+  </div>
+
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="filters-group">
+      <div class="filter-item">
+        <label>Time Period:</label>
+        <select [(ngModel)]="selectedPreset" (change)="onPresetChange()" class="filter-select">
+          <option value="week">Last Week</option>
+          <option value="month">Last Month</option>
+          <option value="semester">Last Semester</option>
+          <option value="all">All Time</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Class:</label>
+        <select [(ngModel)]="selectedClassIds" (change)="onClassFilterChange()" class="filter-select" multiple>
+          <option value="">All Classes</option>
+          <option *ngFor="let class of allClasses" [value]="class.id">{{ class.name }}</option>
+        </select>
+      </div>
+
+      <div class="filter-item search-item">
+        <label>Search:</label>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm" 
+          (ngModelChange)="onSearchChange()" 
+          placeholder="Search assignments..."
+          class="filter-input">
+      </div>
+
+      <button class="btn-clear" (click)="clearFilters()">Clear Filters</button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading archive...</p>
+  </div>
+
+  <!-- Archive Content -->
+  <div *ngIf="!loading" class="archive-content">
+    <!-- Stats Summary -->
+    <div class="stats-grid" *ngIf="stats">
+      <div class="stat-card">
+        <div class="stat-icon">📚</div>
+        <div class="stat-value">{{ stats.totalCompleted }}</div>
+        <div class="stat-label">Total Completed</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-value">{{ stats.averageGrade }}%</div>
+        <div class="stat-label">Average Grade</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⏰</div>
+        <div class="stat-value">{{ stats.onTimeRate }}%</div>
+        <div class="stat-label">On-Time Rate</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">🏆</div>
+        <div class="stat-value">{{ stats.topPerformingClass }}</div>
+        <div class="stat-label">Top Class</div>
+      </div>
+    </div>
+
+    <!-- Export Buttons -->
+    <div class="export-actions">
+      <button class="btn-export" (click)="exportCSV()">
+        <span class="btn-icon">📄</span>
+        Export CSV
+      </button>
+      <button class="btn-export" (click)="exportPDF()">
+        <span class="btn-icon">📑</span>
+        Export PDF
+      </button>
+    </div>
+
+    <!-- Assignments Table -->
+    <div class="assignments-table-container">
+      <div *ngIf="assignments.length === 0" class="empty-state">
+        <p>No assignments found matching your filters.</p>
+      </div>
+
+      <table class="assignments-table" *ngIf="assignments.length > 0">
+        <thead>
+          <tr>
+            <th (click)="toggleSort('title')" class="sortable">
+              Title
+              <span class="sort-icon" *ngIf="sortBy === 'title'">
+                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th>Class</th>
+            <th (click)="toggleSort('date')" class="sortable">
+              Due Date
+              <span class="sort-icon" *ngIf="sortBy === 'date'">
+                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th>Submitted</th>
+            <th (click)="toggleSort('grade')" class="sortable">
+              Grade
+              <span class="sort-icon" *ngIf="sortBy === 'grade'">
+                {{ sortDirection === 'asc' ? '↑' : '↓' }}
+              </span>
+            </th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let assignment of assignments" class="assignment-row">
+            <td class="title-cell">
+              <div class="assignment-title">{{ assignment.title }}</div>
+              <div class="assignment-details" *ngIf="assignment.surah">
+                📖 Surah {{ assignment.surah }}:{{ assignment.startAyah }}-{{ assignment.endAyah }}
+              </div>
+            </td>
+            <td>
+              <span class="class-badge">{{ assignment.className }}</span>
+            </td>
+            <td>{{ getDueDate(assignment) | date:'short' }}</td>
+            <td>{{ getSubmittedDate(assignment) | date:'short' }}</td>
+            <td>
+              <span 
+                class="grade-badge" 
+                [ngClass]="getGradeClass(assignment.submission?.score || 0)"
+                *ngIf="assignment.submission?.score != null">
+                {{ assignment.submission?.score }}%
+              </span>
+              <span class="grade-badge grade-pending" *ngIf="assignment.submission?.score == null">
+                Pending
+              </span>
+            </td>
+            <td>
+              <span class="status-badge" [class.late]="assignment.isLate" [class.on-time]="!assignment.isLate">
+                {{ assignment.isLate ? 'Late' : 'On Time' }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

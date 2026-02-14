@@ -69,8 +69,6 @@ export class StudentAssignmentsComponent implements OnInit {
   private loadAssignmentsWithSubmissions(): void {
     this.myAssignments$ = this.assignmentService.listAssignmentsForStudent().pipe(
       switchMap(async (assignments) => {
-        console.log('[StudentAssignments] Loaded assignments:', assignments.length);
-        
         // Fetch submission status for each assignment
         const assignmentsWithSubmissions = await Promise.all(
           assignments.map(async (assignment) => {
@@ -81,8 +79,6 @@ export class StudentAssignmentsComponent implements OnInit {
             } as AssignmentWithSubmission;
           })
         );
-        
-        console.log('[StudentAssignments] Assignments with submissions:', assignmentsWithSubmissions.length);
         
         // Categorize assignments
         this.categorizeAssignments(assignmentsWithSubmissions);
@@ -97,10 +93,9 @@ export class StudentAssignmentsComponent implements OnInit {
     // Subscribe to trigger the observable
     this.myAssignments$.subscribe({
       next: (assignments) => {
-        console.log('[StudentAssignments] Subscription received:', assignments.length);
+        // Assignments loaded successfully
       },
       error: (error) => {
-        console.error('[StudentAssignments] Error loading assignments:', error);
         this.toastService.error('Failed to load assignments. Please refresh the page.');
       }
     });

@@ -1,0 +1,314 @@
+.calendar-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #FAF3E0 0%, #F5EFE0 100%);
+  position: relative;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.05;
+    pointer-events: none;
+  }
+}
+
+.hero-header {
+  background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+  padding: 2.5rem 2rem;
+  position: relative;
+  overflow: hidden;
+  border-bottom: 3px solid #8B7355;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  
+  .header-content {
+    position: relative;
+    z-index: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 0 0.5rem 0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    p {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+  }
+}
+
+.calendar-controls {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  position: relative;
+  z-index: 1;
+  
+  .controls-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    
+    .current-period {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #8B7355;
+      margin: 0 0 0 1rem;
+    }
+  }
+  
+  .btn-control {
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 2px solid #B7A57A;
+    border-radius: 8px;
+    color: #8B7355;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    
+    &:hover {
+      background: #B7A57A;
+      color: white;
+      transform: translateY(-1px);
+    }
+  }
+  
+  .view-toggle {
+    display: flex;
+    background: white;
+    border: 2px solid #B7A57A;
+    border-radius: 8px;
+    overflow: hidden;
+    
+    .btn-view {
+      padding: 0.5rem 1rem;
+      border: none;
+      background: transparent;
+      color: #8B7355;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      
+      &:not(:last-child) {
+        border-right: 1px solid #E5E7EB;
+      }
+      
+      &.active {
+        background: #B7A57A;
+        color: white;
+      }
+      
+      &:not(.active):hover {
+        background: #FAF3E0;
+      }
+    }
+  }
+}
+
+.loading-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid #E5E7EB;
+    border-top-color: #B7A57A;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1rem;
+  }
+  
+  p {
+    color: #6B7280;
+    font-size: 1rem;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.calendar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 2rem 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.calendar-legend {
+  background: white;
+  border: 2px solid #B7A57A;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-top: 2rem;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.02;
+    pointer-events: none;
+  }
+  
+  .legend-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #8B7355;
+    margin-bottom: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  
+  .legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      .legend-icon {
+        font-size: 1.25rem;
+      }
+      
+      .legend-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+      }
+    }
+  }
+}
+
+// Dark Mode
+:host-context(.dark) {
+  .calendar-page {
+    background: linear-gradient(135deg, #0F1F3D 0%, #1A365D 100%);
+  }
+  
+  .hero-header {
+    background: linear-gradient(135deg, #1A365D 0%, #243F6B 100%);
+    border-bottom-color: #0F2847;
+  }
+  
+  .calendar-controls {
+    .current-period {
+      color: #D4C5A0;
+    }
+    
+    .btn-control {
+      background: #1A365D;
+      border-color: #D4C5A0;
+      color: #D4C5A0;
+      
+      &:hover {
+        background: #D4C5A0;
+        color: #0F1F3D;
+      }
+    }
+    
+    .view-toggle {
+      background: #1A365D;
+      border-color: #D4C5A0;
+      
+      .btn-view {
+        color: #D4C5A0;
+        
+        &:not(:last-child) {
+          border-right-color: #243F6B;
+        }
+        
+        &.active {
+          background: #D4C5A0;
+          color: #0F1F3D;
+        }
+        
+        &:not(.active):hover {
+          background: #243F6B;
+        }
+      }
+    }
+  }
+  
+  .calendar-legend {
+    background: #1A365D;
+    border-color: #D4C5A0;
+    
+    .legend-title {
+      color: #D4C5A0;
+    }
+    
+    .legend-label {
+      color: #9CA3AF;
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .hero-header {
+    padding: 1.5rem 1rem;
+    
+    .header-content h1 {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .calendar-controls {
+    padding: 1rem;
+    
+    .controls-left {
+      width: 100%;
+      justify-content: space-between;
+      
+      .current-period {
+        margin: 0;
+        font-size: 1.125rem;
+      }
+    }
+    
+    .controls-right {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+  
+  .calendar-content {
+    padding: 0 1rem 1rem;
+  }
+}

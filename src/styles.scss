@@ -36,6 +36,15 @@
   text-shadow: none !important;
 }
 
+/* QCF V4 Font Tajweed Control - Grayscale filter to remove colors in dark mode */
+.tajweed-disabled .quran-word {
+  filter: grayscale(100%);
+}
+
+.tajweed-enabled .quran-word {
+  filter: none;
+}
+
 /* 
  * Target <rule> elements from Quran.com API (Recommended)
  * Format: <rule class="tajweed_class_name">letter</rule>
@@ -348,6 +357,32 @@ html.dark {
   direction: ltr;
   -webkit-font-feature-settings: 'liga';
   -webkit-font-smoothing: antialiased;
+}
+
+/* ===== CRITICAL: Override ALL tajweed colors in dark mode with gold ===== */
+/* This must come AFTER all the rule definitions above to have proper specificity */
+html.dark rule,
+html.dark rule[class],
+html.dark rule[class*="idgham"],
+html.dark rule[class*="ghunnah"],
+html.dark rule[class*="qalaqah"],
+html.dark rule[class*="madd"],
+html.dark rule[class*="ikhafa"],
+html.dark rule[class*="ikhfa"],
+html.dark rule[class*="iqlab"],
+html.dark rule[class*="ham_wasl"],
+html.dark rule[class*="hamzat_wasl"],
+html.dark rule[class*="slnt"],
+html.dark rule[class*="silent"],
+html.dark .verse-text,
+html.dark .verse-text *,
+html.dark .verse-text span,
+html.dark .quran-word,
+html.dark .quran-text-uthmanic,
+html.dark .quran-text-uthmanic * {
+  color: #B7A57A !important;
+  -webkit-text-fill-color: #B7A57A !important;
+  text-shadow: none !important;
 }
 
 /* Premium Preview Dialog Container */

@@ -658,13 +658,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       map(verses => {
         this.verses = verses;
         
-        // Delay font loading until after initial render completes
-        if (verses && verses.length > 0 && this.tajweedEnabled) {
-          const pageNumbers = this.getUniquePageNumbers(verses);
-          // Delay font loading to allow initial render to complete first
-          setTimeout(() => {
-            this.preloadTajweedFonts(pageNumbers).catch(() => {});
-          }, 300); // Shorter delay for better UX
+        // Preload QCF V4 fonts after verses are loaded (light mode only)
+        if (!this.isDarkMode && this.tajweedEnabled) {
+          setTimeout(() => this.preloadTajweedFonts(), 100);
         }
         
         this.currentSurahDetails = this.surahs.find(s => s.number === surahNumber);
@@ -1495,8 +1491,16 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     this.themeService.currentTheme$.pipe(
       takeUntil(this.destroy$)
     ).subscribe(theme => {
+      const wasDarkMode = this.isDarkMode;
       this.isDarkMode = theme === 'dark';
-      // The ThemeService already handles adding/removing the 'dark' class on document.documentElement
+      
+      // If switching from dark to light mode, preload fonts for tajweed
+      if (wasDarkMode && !this.isDarkMode && this.tajweedEnabled && this.verses.length > 0) {
+        setTimeout(() => this.preloadTajweedFonts(), 100);
+      }
+      
+      // Trigger change detection to update tajweed colors/styles
+      this.changeDetector.detectChanges();
     });
   }
 
@@ -4317,14 +4321,50 @@ getSurahName(surahNumber: string | number): string {
     this.changeDetector.markForCheck();
   }
   
+  
   /**
-   * Extract unique page numbers from loaded verses
-   * Used to determine which Tajweed fonts need to be loaded
+   * TrackBy function for word ngFor to improve performance
    */
-  private getUniquePageNumbers(verses: QuranVerse[]): number[] {
-    const pageNumbers = new Set<number>();
+  trackByWord(index: number, word: any): any {
+    return `${word.page_number}_${word.position}_${index}`;
+  }
+  
+  /**
+   * Get the font family for a word using QCF V4 page-based fonts
+   * Returns the loaded font or fallback font
+   */
+  getWordFontFamily(word: any): string {
+    // If we have a page number and the font is loaded, use QCF V4
+    if (word.page_number && this.fontLoader.isFontLoaded(word.page_number)) {
+      return this.fontLoader.getFontFamily(word.page_number);
+    }
     
-    verses.forEach(verse => {
+    // Fallback to standard Arabic fonts
+    return this.fontLoader.getFallbackFont();
+  }
+  
+  /**
+   * Get the text to display for a word
+   * Uses QCF V4 glyph codes when font is loaded, otherwise uses fallback text
+   */
+  getWordText(word: any): string {
+    // If we have the font loaded and code_v2, use the glyph code (has built-in tajweed colors)
+    if (word.page_number && this.fontLoader.isFontLoaded(word.page_number) && word.code_v2) {
+      return word.code_v2; // Special glyph code for QCF V4 font
+    }
+    
+    // Fallback to text_qpc_hafs or text_uthmani
+    return word.text_qpc_hafs || word.text_uthmani || word.text;
+  }
+  
+  /**
+   * Get unique page numbers from current verses for font preloading
+   */
+  private getUniquePageNumbers(): number[] {
+    if (!this.verses || this.verses.length === 0) return [];
+    
+    const pageNumbers = new Set<number>();
+    this.verses.forEach(verse => {
       verse.words?.forEach(word => {
         if (word.page_number) {
           pageNumbers.add(word.page_number);
@@ -4336,74 +4376,23 @@ getSurahName(surahNumber: string | number): string {
   }
   
   /**
-   * Preload Tajweed fonts for multiple pages
-   * Uses the font loader service to load fonts in parallel
+   * Preload QCF V4 fonts for the current surah pages
+   * Loads first page immediately, rest in background
    */
-  private async preloadTajweedFonts(pageNumbers: number[]): Promise<void> {
-    if (!this.tajweedEnabled || pageNumbers.length === 0) {
+  private async preloadTajweedFonts(): Promise<void> {
+    const pageNumbers = this.getUniquePageNumbers();
+    
+    if (pageNumbers.length === 0) {
+      console.warn('⚠ No page numbers found for font loading');
       return;
     }
     
     try {
-      const theme = 'light';
-      
-      // Load only first page immediately for visible content
-      const firstPage = pageNumbers.slice(0, 1);
-      const remainingPages = pageNumbers.slice(1);
-      
-      // Load first page
-      await this.fontLoader.preloadPages(firstPage, theme);
-      
-      // Load remaining pages in very small batches with longer delays
-      if (remainingPages.length > 0) {
-        const batchSize = 2;
-        for (let i = 0; i < remainingPages.length; i += batchSize) {
-          const batch = remainingPages.slice(i, i + batchSize);
-          setTimeout(() => {
-            this.fontLoader.preloadPages(batch, theme).catch(() => {});
-          }, 1000 + (i * 500)); // Much longer delays to not block UI
-        }
-      }
+      await this.fontLoader.preloadPages(pageNumbers);
+      this.changeDetector.detectChanges(); // Trigger re-render with fonts
     } catch (error) {
-      // Silent fail - fallback to Unicode font
+      console.error('✗ Error loading QCF V4 fonts:', error);
     }
-  }
-  
-  /**
-   * TrackBy function for word ngFor to improve performance
-   */
-  trackByWord(index: number, word: any): any {
-    return `${word.page_number}_${word.position}_${index}`;
-  }
-  
-  /**
-   * Get the appropriate font family for a word - memoized for performance
-   */
-  getWordFontFamily(word: any): string {
-    if (!this.tajweedEnabled || !word.page_number || !word.code_v2 || word.char_type === 'end') {
-      return this.fontLoader.getFallbackFont();
-    }
-    
-    if (this.fontLoader.isFontLoaded(word.page_number)) {
-      return `${this.fontLoader.getFontFamily(word.page_number)}, ${this.fontLoader.getFallbackFont()}`;
-    }
-    
-    return this.fontLoader.getFallbackFont();
-  }
-  
-  /**
-   * Get the text content for a word - memoized for performance
-   */
-  getWordText(word: any): string {
-    if (!this.tajweedEnabled || !word.code_v2 || !word.page_number || word.char_type === 'end') {
-      return word.text_qpc_hafs || word.text;
-    }
-    
-    if (this.fontLoader.isFontLoaded(word.page_number)) {
-      return word.code_v2;
-    }
-    
-    return word.text_qpc_hafs || word.text;
   }
 }
 

@@ -90,6 +90,41 @@
       </div>
     </div>
 
+    <!-- Stats Dashboard -->
+    <div class="stats-dashboard relative z-10 mb-8">
+      <div class="stats-grid">
+        <div class="stat-card" *ngIf="mode === 'classroom'">
+          <div class="stat-icon">📚</div>
+          <div class="stat-value">{{ totalClasses }}</div>
+          <div class="stat-label">Classes</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">👥</div>
+          <div class="stat-value">{{ totalStudents }}</div>
+          <div class="stat-label">{{ mode === 'classroom' ? 'Students' : 'Individual Students' }}</div>
+        </div>
+        
+        <div class="stat-card">
+          <div class="stat-icon">📝</div>
+          <div class="stat-value">{{ activeAssignments }}</div>
+          <div class="stat-label">Active Assignments</div>
+        </div>
+        
+        <div class="stat-card warning" *ngIf="ungradedCount > 0">
+          <div class="stat-icon">⚠️</div>
+          <div class="stat-value">{{ ungradedCount }}</div>
+          <div class="stat-label">Needs Grading</div>
+        </div>
+        
+        <div class="stat-card" *ngIf="averageScore > 0">
+          <div class="stat-icon">⭐</div>
+          <div class="stat-value">{{ averageScore }}%</div>
+          <div class="stat-label">Avg Score</div>
+        </div>
+      </div>
+    </div>
+
     <!-- CLASSROOM MODE -->
     <div *ngIf="mode === 'classroom'" class="relative z-10">
       <!-- Create Class Section -->

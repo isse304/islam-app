@@ -21,7 +21,7 @@ $text-medium: #4A5568;
 // Base styles
 .arabic-text {
   @include arabic-text-base;
-  font-size: 42px;
+  font-size: 52px; // Increased from 42px
   line-height: 2.8; // Reduced from 3.2
   letter-spacing: 0.02em; // Slightly increased for Uthmanic script
   word-spacing: 0.15em;
@@ -57,7 +57,7 @@ $text-medium: #4A5568;
 // Responsive styles
 @media (max-width: 640px) {
   .arabic-text {
-    font-size: 32px;
+    font-size: 40px; // Increased from 32px
     line-height: 3;
     padding: 2rem 2.5rem;
   }
@@ -65,7 +65,7 @@ $text-medium: #4A5568;
 
 @media (min-width: 1024px) {
   .arabic-text {
-    font-size: 48px;
+    font-size: 58px; // Increased from 48px
     line-height: 3.5;
     padding: 4rem 5rem;
   }
@@ -110,7 +110,7 @@ $text-medium: #4A5568;
 
 .verse-text {
   font-family: $arabic-font-family-uthmanic;
-  font-size: 2.8rem; // Larger for better readability with Uthmanic script
+  font-size: 3.5rem; // Increased from 2.8rem for better readability
   line-height: 2.5; // More spacing for diacritical marks
   text-align: justify; // Better for Uthmanic script
   direction: rtl;
@@ -541,13 +541,22 @@ $text-medium: #4A5568;
   flex-direction: column;
 }
 
+// Tablet and below
+@media (max-width: 1023px) {
+  .verse-text {
+    font-size: 3rem; // Medium size for tablets
+    line-height: 2.4;
+  }
+}
+
+// Mobile only
 @media (max-width: 768px) {
   .verse-container {
     padding: 1rem;
   }
 
   .verse-text {
-    font-size: 2rem; // Responsive size for mobile
+    font-size: 2.5rem; // Smaller for mobile screens
     line-height: 2.3;
     padding: 15px 0;
   }
@@ -901,7 +910,7 @@ select option {
   }
 
   .arabic-text {
-    font-size: 24px; // Slightly smaller default Arabic font on mobile
+    font-size: 30px; // Increased from 24px for mobile
     line-height: 1.8; // Adjust line height for readability
   }
 
@@ -1349,12 +1358,45 @@ select option {
     color: #B7A57A !important;
   }
   
-  // Simplified dark mode Arabic text styling
-  .verse-text,
-  .quran-text-uthmanic,
-  .word-tooltip-trigger {
-    color: #D4AF37 !important;
-    -webkit-text-fill-color: #D4AF37 !important;
+  // Simplified dark mode Arabic text styling - darker gold
+  ::ng-deep .verse-text,
+  ::ng-deep .quran-text-uthmanic,
+  ::ng-deep .word-tooltip-trigger {
+    color: #B7A57A !important;
+    -webkit-text-fill-color: #B7A57A !important;
+    text-shadow: none !important;
+  }
+  
+  // Target individual words and spans within verse text
+  ::ng-deep .verse-text *,
+  ::ng-deep .quran-text-uthmanic *,
+  ::ng-deep .verse-text .quran-word,
+  ::ng-deep .verse-text span {
+    color: #B7A57A !important;
+    -webkit-text-fill-color: #B7A57A !important;
+    text-shadow: none !important;
+  }
+  
+  // Override ALL rule elements (tajweed markers) in dark mode with MAXIMUM specificity
+  ::ng-deep .verse-text rule,
+  ::ng-deep .verse-text rule[class],
+  ::ng-deep .verse-text rule[class*="ghunnah"],
+  ::ng-deep .verse-text rule[class*="madd"],
+  ::ng-deep .verse-text rule[class*="qalaqah"],
+  ::ng-deep .verse-text rule[class*="idgham"],
+  ::ng-deep .verse-text rule[class*="ikhfa"],
+  ::ng-deep .verse-text rule[class*="iqlab"],
+  ::ng-deep .quran-text-uthmanic rule,
+  ::ng-deep .quran-text-uthmanic rule[class] {
+    color: #B7A57A !important;
+    -webkit-text-fill-color: #B7A57A !important;
+    text-shadow: none !important;
+  }
+  
+  // Remove any QCF font built-in colors in dark mode - convert to grayscale then apply gold
+  ::ng-deep .quran-word,
+  ::ng-deep .tajweed-enabled .quran-word {
+    filter: grayscale(100%) !important;
   }
 
   // --- Tafsir section dark mode ---
@@ -1597,7 +1639,7 @@ select option {
       border-left-color: #D4AF37 !important;
       .translation-text,
       .transliteration-text { 
-          color: #E5E7EB !important; 
+          color: #B7A57A !important; 
           p { color: inherit !important; }
       }
       .verse-details, .verse-source { color: #9CA3AF !important; }
@@ -1645,7 +1687,7 @@ select option {
       border-left-color: #D4AF37 !important;
       .translation-text,
       .transliteration-text { 
-          color: #E5E7EB !important;
+          color: #B7A57A !important;
           p { color: inherit !important; }
       }
     }
@@ -1678,7 +1720,7 @@ select option {
         background-image: none !important;
         .translation-text,
         .transliteration-text { 
-           color: #E5E7EB !important; // Brighter light gray for better readability
+           color: #B7A57A !important; // Gold color for dark mode
            p { color: inherit !important; } 
         }
         .verse-details, .verse-source { color: #9CA3AF !important; }

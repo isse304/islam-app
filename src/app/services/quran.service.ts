@@ -106,14 +106,14 @@ export interface Word {
   timestamp_to?: number;
   char_type?: string; // Type of character (word, pause, end marker, etc.)
   
-  // QCF V4 Tajweed Font Fields
-  code_v2?: string; // Glyph code for QCF V4 Tajweed font rendering
-  page_number?: number; // Mushaf page number (1-604) - determines which font file to load
-  line_number?: number; // Line number on the Mushaf page (for layout)
-  text_qpc_hafs?: string; // Unicode fallback text (QPC Hafs)
+  // QCF V4 Font Fields (mushaf=19)
+  code_v2?: string; // Glyph code for QCF V4 fonts with built-in tajweed colors
+  page_number?: number; // Page number for loading the correct font file
+  line_number?: number; // Line number for proper positioning
+  text_qpc_hafs?: string; // Fallback text if font not loaded
   
-  // Legacy field (no longer used with QCF V4)
-  text_uthmani_tajweed?: string; // Old field that doesn't contain HTML tags from API
+  // Uthmani text fields
+  text_uthmani?: string; // Plain Uthmani text
 }
 
 interface SurahSuggestion {
@@ -355,9 +355,7 @@ export class QuranService {
     // Ensure the translationId is a string
     const safeTranslationId = String(translationId);
 
-    // Fetch from Quran.com API with QCF V4 Tajweed font data
-    // mushaf=19 returns Tajweed-enabled glyph codes
-    // code_v2 contains the special font glyphs with built-in Tajweed colors
+    // Fetch from Quran.com with mushaf=19 for QCF V4 font data (code_v2, page_number, etc.)
     const apiUrl = `${this.quranComApiUrl}/verses/by_chapter/${surahNumber}?language=en&words=true&word_fields=code_v2,text_qpc_hafs,page_number,line_number,text_uthmani,translation,transliteration,char_type_name&translation_fields=text&translations=${safeTranslationId}&fields=text_uthmani,chapter_id,verse_number,verse_key&mushaf=19&per_page=300`;
     
     return this.http.get(apiUrl).pipe(
@@ -409,11 +407,13 @@ export class QuranService {
                 timestamp_to: word.audio?.timestamp_to,
                 char_type: word.char_type_name || word.char_type || 'word',
                 
-                // QCF V4 Tajweed Font Fields (mushaf=19)
-                code_v2: word.code_v2, // Glyph code for Tajweed font
-                page_number: word.page_number, // Which Mushaf page (determines font file)
-                line_number: word.line_number, // Line number on the page
-                text_qpc_hafs: word.text_qpc_hafs || word.text_uthmani, // Unicode fallback
+                // QCF V4 Font Fields - glyph codes with built-in tajweed colors
+                code_v2: word.code_v2, // Special glyph code for QCF V4 fonts
+                page_number: word.page_number, // For loading the correct font file
+                line_number: word.line_number, // For proper positioning
+                text_qpc_hafs: word.text_qpc_hafs, // Fallback text
+                
+                text_uthmani: word.text_uthmani || word.text,
               };
             }) || [],
             verse_key: verse.verse_key,

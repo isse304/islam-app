@@ -1,0 +1,82 @@
+<div class="calendar-page">
+  <!-- Hero Header -->
+  <div class="hero-header">
+    <div class="header-content">
+      <h1>📅 Assignment Calendar</h1>
+      <p>View your schedule and upcoming deadlines</p>
+    </div>
+  </div>
+
+  <!-- Calendar Controls -->
+  <div class="calendar-controls">
+    <div class="controls-left">
+      <button class="btn-control" (click)="today()">Today</button>
+      <button class="btn-control" (click)="previousPeriod()">←</button>
+      <button class="btn-control" (click)="nextPeriod()">→</button>
+      <h2 class="current-period">{{ currentMonthYear }}</h2>
+    </div>
+    
+    <div class="controls-right">
+      <div class="view-toggle">
+        <button 
+          class="btn-view" 
+          [class.active]="currentView === 'month'"
+          (click)="setView('month')">
+          Month
+        </button>
+        <button 
+          class="btn-view" 
+          [class.active]="currentView === 'week'"
+          (click)="setView('week')">
+          Week
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-state">
+    <div class="loading-spinner"></div>
+    <p>Loading calendar...</p>
+  </div>
+
+  <!-- Calendar Content -->
+  <div *ngIf="!loading" class="calendar-content">
+    <!-- Month View -->
+    <app-month-view 
+      *ngIf="currentView === 'month'"
+      [currentDate]="currentDate"
+      [events]="events">
+    </app-month-view>
+
+    <!-- Week View -->
+    <app-week-view 
+      *ngIf="currentView === 'week'"
+      [currentDate]="currentDate"
+      [events]="events">
+    </app-week-view>
+
+    <!-- Legend -->
+    <div class="calendar-legend">
+      <div class="legend-title">Legend:</div>
+      <div class="legend-items">
+        <div class="legend-item">
+          <span class="legend-icon overdue">🔴</span>
+          <span class="legend-label">Due today/overdue</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon warning">⚠️</span>
+          <span class="legend-label">Due this week</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon normal">📅</span>
+          <span class="legend-label">Due later</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-icon completed">✅</span>
+          <span class="legend-label">Completed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

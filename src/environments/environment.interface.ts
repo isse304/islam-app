@@ -4,6 +4,8 @@ export interface Environment {
   openaiApiKey?: string;
   elevenLabsApiKey?: string;
   sttApiKey?: string;
+  quranFoundationApiKey?: string;
+  quranFoundationClientId?: string;
   firebase: {
     apiKey: string;
     authDomain: string;

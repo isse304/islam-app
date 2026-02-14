@@ -1,0 +1,539 @@
+.teacher-reports-home {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #FAF3E0 0%, #F5EFE0 100%);
+  padding: 2rem;
+  position: relative;
+  
+  .islamic-pattern-overlay {
+    position: fixed;
+    inset: 0;
+    background-image: url('/assets/islamic-pattern-2.png');
+    background-size: 400px;
+    background-repeat: repeat;
+    opacity: 0.05;
+    pointer-events: none;
+    z-index: 0;
+  }
+}
+
+.hero-header {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+  padding: 2.5rem 2rem;
+  border-radius: 12px;
+  border: 3px solid #8B7355;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.1;
+    pointer-events: none;
+  }
+  
+  .header-content {
+    position: relative;
+    z-index: 1;
+    
+    h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: white;
+      margin: 0 0 0.5rem 0;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    p {
+      font-size: 1rem;
+      color: rgba(255, 255, 255, 0.9);
+      margin: 0;
+    }
+  }
+}
+
+.filters-container {
+  max-width: 1200px;
+  margin: 0 auto 2rem;
+  position: relative;
+  z-index: 1;
+  
+  .filter-form {
+    background: white;
+    border: 2px solid #B7A57A;
+    border-radius: 12px;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    position: relative;
+    overflow: hidden;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('/assets/islamic-pattern-2.png');
+      opacity: 0.02;
+      pointer-events: none;
+    }
+    
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      position: relative;
+      z-index: 1;
+      
+      .filter-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #8B7355;
+      }
+      
+      .filter-select,
+      .filter-input {
+        padding: 0.5rem;
+        border: 2px solid #B7A57A;
+        border-radius: 8px;
+        font-size: 0.875rem;
+        
+        &:focus {
+          outline: none;
+          border-color: #8B7355;
+          box-shadow: 0 0 0 3px rgba(183, 165, 122, 0.1);
+        }
+      }
+      
+      .date-inputs {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        
+        .date-separator {
+          color: #6B7280;
+          font-size: 0.875rem;
+        }
+      }
+    }
+    
+    .btn-generate {
+      padding: 0.75rem 2rem;
+      background: linear-gradient(135deg, #B7A57A 0%, #8B7355 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      z-index: 1;
+      
+      &:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(183, 165, 122, 0.3);
+      }
+    }
+  }
+}
+
+.reports-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+  
+  .stat-card {
+    background: white;
+    border: 2px solid #B7A57A;
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: url('/assets/islamic-pattern-2.png');
+      opacity: 0.03;
+      pointer-events: none;
+    }
+    
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 16px rgba(183, 165, 122, 0.2);
+    }
+    
+    .stat-icon {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .stat-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #B7A57A;
+      line-height: 1;
+    }
+    
+    .stat-label {
+      font-size: 0.875rem;
+      color: #6B7280;
+      margin-top: 0.5rem;
+      font-weight: 500;
+    }
+  }
+}
+
+.chart-card,
+.table-card {
+  background: white;
+  border: 2px solid #B7A57A;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.02;
+    pointer-events: none;
+  }
+  
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    position: relative;
+    z-index: 1;
+    
+    h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #8B7355;
+      margin: 0;
+    }
+    
+    .export-buttons {
+      display: flex;
+      gap: 0.75rem;
+      
+      .btn-export {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        background: white;
+        border: 2px solid #B7A57A;
+        border-radius: 8px;
+        color: #8B7355;
+        font-weight: 500;
+        cursor: pointer;
+        transition: all 0.2s;
+        
+        .btn-icon {
+          font-size: 1.125rem;
+        }
+        
+        &:hover {
+          background: #B7A57A;
+          color: white;
+          transform: translateY(-2px);
+        }
+      }
+    }
+  }
+  
+  .chart-container {
+    position: relative;
+    height: 300px;
+    z-index: 1;
+  }
+}
+
+.table-container {
+  position: relative;
+  z-index: 1;
+  overflow-x: auto;
+}
+
+.reports-table {
+  width: 100%;
+  border-collapse: collapse;
+  
+  thead {
+    background: linear-gradient(135deg, #B7A57A 0%, #D4C5A0 100%);
+    
+    th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: white;
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+  }
+  
+  tbody {
+    tr {
+      border-bottom: 1px solid #E5E7EB;
+      transition: background 0.2s;
+      
+      &:hover {
+        background: #FAF3E0;
+      }
+      
+      td {
+        padding: 1rem;
+        font-size: 0.875rem;
+        
+        &.student-cell {
+          font-weight: 500;
+          color: #111827;
+        }
+        
+        .completion-badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          background: #E5E7EB;
+          border-radius: 12px;
+          font-size: 0.8125rem;
+          font-weight: 500;
+          color: #6B7280;
+        }
+        
+        .score-badge {
+          display: inline-block;
+          padding: 0.25rem 0.75rem;
+          border-radius: 12px;
+          font-weight: 600;
+          font-size: 0.875rem;
+          
+          &.score-a {
+            background: #D1FAE5;
+            color: #065F46;
+          }
+          
+          &.score-b {
+            background: #DBEAFE;
+            color: #1E40AF;
+          }
+          
+          &.score-c {
+            background: #FEF3C7;
+            color: #92400E;
+          }
+          
+          &.score-d {
+            background: #FEE2E2;
+            color: #991B1B;
+          }
+        }
+      }
+    }
+  }
+}
+
+.empty-state {
+  max-width: 1200px;
+  margin: 4rem auto;
+  text-align: center;
+  padding: 4rem 2rem;
+  background: white;
+  border: 2px solid #B7A57A;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('/assets/islamic-pattern-2.png');
+    opacity: 0.02;
+    pointer-events: none;
+  }
+  
+  .empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+  
+  h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #8B7355;
+    margin: 0 0 0.5rem 0;
+  }
+  
+  p {
+    font-size: 1rem;
+    color: #6B7280;
+    margin: 0;
+  }
+}
+
+// Dark Mode
+:host-context(.dark) {
+  .teacher-reports-home {
+    background: linear-gradient(135deg, #0F1F3D 0%, #1A365D 100%);
+  }
+  
+  .hero-header {
+    background: linear-gradient(135deg, #1A365D 0%, #243F6B 100%);
+    border-color: #0F2847;
+  }
+  
+  .filters-container .filter-form,
+  .stats-grid .stat-card,
+  .chart-card,
+  .table-card,
+  .empty-state {
+    background: #1A365D;
+    border-color: #D4C5A0;
+    
+    .filter-label,
+    .card-header h2,
+    .empty-state h3 {
+      color: #D4C5A0;
+    }
+    
+    .filter-select,
+    .filter-input {
+      background: #0F2847;
+      border-color: #D4C5A0;
+      color: #E5E7EB;
+    }
+    
+    .stat-value {
+      color: #D4C5A0;
+    }
+    
+    .stat-label {
+      color: #9CA3AF;
+    }
+  }
+  
+  .reports-table {
+    thead {
+      background: linear-gradient(135deg, #1A365D 0%, #243F6B 100%);
+    }
+    
+    tbody tr {
+      border-bottom-color: #243F6B;
+      
+      &:hover {
+        background: #243F6B;
+      }
+      
+      td.student-cell {
+        color: #E5E7EB;
+      }
+      
+      .completion-badge {
+        background: #243F6B;
+        color: #9CA3AF;
+      }
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 768px) {
+  .teacher-reports-home {
+    padding: 1rem;
+  }
+  
+  .hero-header {
+    padding: 1.5rem 1rem;
+    
+    .header-content h1 {
+      font-size: 1.5rem;
+    }
+  }
+  
+  .filters-container .filter-form {
+    flex-direction: column;
+    
+    .filter-group {
+      width: 100%;
+    }
+    
+    .btn-generate {
+      width: 100%;
+    }
+  }
+  
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    
+    .export-buttons {
+      width: 100%;
+      flex-direction: column;
+      
+      .btn-export {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+  
+  .table-container {
+    overflow-x: auto;
+  }
+  
+  .reports-table {
+    min-width: 600px;
+    font-size: 0.75rem;
+    
+    thead th,
+    tbody td {
+      padding: 0.5rem;
+    }
+  }
+}

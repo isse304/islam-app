@@ -10,23 +10,37 @@
   &:hover {
     transform: scale(1.1);
   }
+  
+  mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
 }
 
-/* Light mode styling */
+/* Light mode styling - High contrast for visibility */
 :host:not(.dark) .theme-toggle-btn {
-  color: white;
+  color: #1A365D !important; /* Dark blue for visibility on light background */
   
   &:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: rgba(183, 165, 122, 0.15);
+  }
+  
+  &:active {
+    background-color: rgba(183, 165, 122, 0.25);
   }
 }
 
 /* Dark mode styling */
 :host(.dark) .theme-toggle-btn,
 .dark :host .theme-toggle-btn {
-  color: #FAF3E0; /* Cream */
+  color: #FAF3E0 !important; /* Cream */
   
   &:hover {
-    background-color: rgba(250, 243, 224, 0.1);
+    background-color: rgba(250, 243, 224, 0.15);
+  }
+  
+  &:active {
+    background-color: rgba(250, 243, 224, 0.25);
   }
 }

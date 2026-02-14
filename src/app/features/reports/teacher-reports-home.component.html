@@ -1,33 +1,80 @@
-<div class="p-8">
-  <h1 class="text-3xl font-bold mb-6">Reports</h1>
+<div class="teacher-reports-home">
+  <!-- Islamic Pattern Overlay -->
+  <div class="islamic-pattern-overlay"></div>
 
-  <form [formGroup]="filterForm" (ngSubmit)="generateReport()" class="bg-white p-4 rounded-lg shadow-md mb-8 flex gap-4 items-end">
-    <div>
-      <label class="label">Class</label>
-      <select formControlName="classId" class="select select-bordered">
-        <option *ngFor="let class of classes$ | async" [value]="class.id">{{ class.name }}</option>
-      </select>
+  <!-- Hero Header -->
+  <div class="hero-header">
+    <div class="header-content">
+      <h1>📊 Class Reports & Analytics</h1>
+      <p>Track student progress and performance insights</p>
     </div>
-    <div formGroupName="dateRange">
-      <label class="label">Date Range</label>
-      <div class="flex gap-2">
-        <input type="date" formControlName="from" class="input input-bordered" />
-        <input type="date" formControlName="to" class="input input-bordered" />
+  </div>
+
+  <!-- Filter Form -->
+  <div class="filters-container">
+    <form [formGroup]="filterForm" (ngSubmit)="generateReport()" class="filter-form">
+      <div class="filter-group">
+        <label class="filter-label">Class</label>
+        <select formControlName="classId" class="filter-select">
+          <option value="">Select a class</option>
+          <option *ngFor="let class of classes$ | async" [value]="class.id">{{ class.name }}</option>
+        </select>
+      </div>
+
+      <div formGroupName="dateRange" class="filter-group">
+        <label class="filter-label">Date Range</label>
+        <div class="date-inputs">
+          <input type="date" formControlName="from" class="filter-input" />
+          <span class="date-separator">to</span>
+          <input type="date" formControlName="to" class="filter-input" />
+        </div>
+      </div>
+
+      <button type="submit" class="btn-generate">Generate Report</button>
+    </form>
+  </div>
+
+  <!-- Reports Content -->
+  <div *ngIf="reports$ | async as reports" class="reports-content">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-value">{{ reports.length }}</div>
+        <div class="stat-label">Total Students</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">📝</div>
+        <div class="stat-value">
+          {{ getTotalAssignments(reports) }}
+        </div>
+        <div class="stat-label">Assignments Given</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-value">
+          {{ getAvgCompletion(reports) }}%
+        </div>
+        <div class="stat-label">Avg Completion</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="stat-icon">⭐</div>
+        <div class="stat-value">
+          {{ getAvgScore(reports) }}%
+        </div>
+        <div class="stat-label">Avg Score</div>
       </div>
     </div>
-    <button type="submit" class="btn btn-primary">Generate Report</button>
-  </form>
 
-  <div *ngIf="reports$ | async as reports">
-    <!-- Basic stats cards -->
-    <div class="grid grid-cols-4 gap-4 mb-8">
-      <!-- Add aggregation logic here -->
-    </div>
-
-    <!-- Chart -->
-    <div class="bg-white p-4 rounded-lg shadow-md mb-8">
-      <h2 class="text-xl font-semibold mb-4">Completion Over Time</h2>
-      <div style="display: block;">
+    <!-- Chart Card -->
+    <div class="chart-card">
+      <div class="card-header">
+        <h2>📈 Completion Over Time</h2>
+      </div>
+      <div class="chart-container">
         <canvas baseChart 
           [data]="lineChartData"
           [options]="lineChartOptions"
@@ -36,29 +83,55 @@
       </div>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white p-4 rounded-lg shadow-md">
-      <h2 class="text-xl font-semibold mb-4">Detailed Report</h2>
-      <div class="flex justify-end mb-4 gap-2">
-        <button (click)="exportAsCsv(reports)" class="btn btn-sm">Export CSV</button>
-        <button (click)="exportAsPdf(reports)" class="btn btn-sm">Export PDF</button>
+    <!-- Table Card -->
+    <div class="table-card">
+      <div class="card-header">
+        <h2>📋 Detailed Report</h2>
+        <div class="export-buttons">
+          <button (click)="exportAsCsv(reports)" class="btn-export">
+            <span class="btn-icon">📄</span>
+            Export CSV
+          </button>
+          <button (click)="exportAsPdf(reports)" class="btn-export">
+            <span class="btn-icon">📑</span>
+            Export PDF
+          </button>
+        </div>
       </div>
-      <table class="table w-full">
-        <thead>
-          <tr>
-            <th>Student</th>
-            <th>Assignments Completed</th>
-            <th>Avg. Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let report of reports">
-            <td>{{ report.studentId }}</td>
-            <td>{{ report.metrics.assignmentsCompleted }} / {{ report.metrics.assignmentsAssigned }}</td>
-            <td>{{ report.metrics.avgScore | number:'1.1-2' }}%</td>
-          </tr>
-        </tbody>
-      </table>
+
+      <div class="table-container">
+        <table class="reports-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Assignments Completed</th>
+              <th>Avg. Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let report of reports">
+              <td class="student-cell">{{ report.studentId }}</td>
+              <td class="completion-cell">
+                <span class="completion-badge">
+                  {{ report.metrics.assignmentsCompleted }} / {{ report.metrics.assignmentsAssigned }}
+                </span>
+              </td>
+              <td class="score-cell">
+                <span class="score-badge" [ngClass]="getScoreClass(report.metrics.avgScore || 0)">
+                  {{ report.metrics.avgScore | number:'1.1-2' }}%
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!(reports$ | async)" class="empty-state">
+    <div class="empty-icon">📊</div>
+    <h3>No Reports Yet</h3>
+    <p>Select a class and date range above to generate a report</p>
   </div>
 </div>

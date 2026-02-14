@@ -24,13 +24,39 @@ export class TeacherReportsHomeComponent implements OnInit {
   reports$!: Observable<Report[]>;
   filterForm: FormGroup;
 
-  // Chart properties
+  // Chart properties with Islamic theme
   public lineChartData: ChartConfiguration['data'] = {
     datasets: [],
     labels: [],
   };
   public lineChartOptions: ChartConfiguration['options'] = {
     responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        labels: {
+          color: '#8B7355',
+          font: { family: 'Inter, sans-serif', size: 13 }
+        }
+      },
+      tooltip: {
+        backgroundColor: 'rgba(183, 165, 122, 0.9)',
+        titleColor: '#ffffff',
+        bodyColor: '#ffffff',
+        borderColor: '#B7A57A',
+        borderWidth: 1
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color: '#8B7355' },
+        grid: { color: 'rgba(183, 165, 122, 0.1)' }
+      },
+      y: {
+        ticks: { color: '#8B7355' },
+        grid: { color: 'rgba(183, 165, 122, 0.1)' }
+      }
+    }
   };
   public lineChartType: ChartType = 'line';
 
@@ -70,7 +96,7 @@ export class TeacherReportsHomeComponent implements OnInit {
   }
 
   updateChart(reports: Report[]) {
-    // Basic aggregation for the chart
+    // Basic aggregation for the chart with Islamic theme colors
     const labels = reports.map(r => new Date(r.generatedAt.toDate()).toLocaleDateString());
     const data = reports.map(r => r.metrics.assignmentsCompleted);
 
@@ -81,6 +107,13 @@ export class TeacherReportsHomeComponent implements OnInit {
           data: data,
           label: 'Assignments Completed',
           fill: 'origin',
+          borderColor: '#B7A57A',
+          backgroundColor: 'rgba(183, 165, 122, 0.1)',
+          pointBackgroundColor: '#B7A57A',
+          pointBorderColor: '#fff',
+          pointHoverBackgroundColor: '#fff',
+          pointHoverBorderColor: '#B7A57A',
+          tension: 0.4,
         },
       ],
     };
@@ -104,5 +137,29 @@ export class TeacherReportsHomeComponent implements OnInit {
       `${r.metrics.avgScore?.toFixed(2)}%`
     ]);
     this.reportService.exportPdf('Class Report', head, body);
+  }
+
+  getScoreClass(score: number): string {
+    if (score >= 90) return 'score-a';
+    if (score >= 80) return 'score-b';
+    if (score >= 70) return 'score-c';
+    return 'score-d';
+  }
+
+  getAvgCompletion(reports: Report[]): number {
+    if (reports.length === 0) return 0;
+    const completed = reports.reduce((sum, r) => sum + r.metrics.assignmentsCompleted, 0);
+    const assigned = reports.reduce((sum, r) => sum + r.metrics.assignmentsAssigned, 0);
+    return assigned > 0 ? Math.round((completed / assigned) * 100) : 0;
+  }
+
+  getAvgScore(reports: Report[]): string {
+    if (reports.length === 0) return '0.0';
+    const total = reports.reduce((sum, r) => sum + (r.metrics.avgScore || 0), 0);
+    return (total / reports.length).toFixed(1);
+  }
+
+  getTotalAssignments(reports: Report[]): number {
+    return reports.reduce((sum, r) => sum + r.metrics.assignmentsAssigned, 0);
   }
 }

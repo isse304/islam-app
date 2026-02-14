@@ -1,232 +1,316 @@
-<nav class="header-nav" *ngIf="!isLandingPage && showHeader">
-  <div class="nav-container">
-    <!-- Logo Section -->
-    <div class="logo-container">
+<nav class="modern-header" *ngIf="!isLandingPage && showHeader">
+  <!-- Islamic Pattern Overlay -->
+  <div class="header-pattern"></div>
+  
+  <div class="header-container">
+    <!-- Logo Section with Animation -->
+    <div class="logo-section">
       <a routerLink="/" class="logo-link">
-        <img src="nura-logo.png" alt="Nura" class="nura-logo">
+        <div class="logo-wrapper">
+          <img src="nura-logo.png" alt="Nura" class="logo-image">
+          <div class="logo-shine"></div>
+        </div>
       </a>
     </div>
 
-    <!-- Navigation Links -->
-    <div class="nav-links">
+    <!-- Desktop Navigation -->
+    <nav class="desktop-nav">
       <a routerLink="/home"
-         routerLinkActive="nav-link-active"
+         routerLinkActive="active"
          [routerLinkActiveOptions]="{exact: true}"
-         class="nav-link">
-        Home
+         class="nav-item">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-text">Home</span>
       </a>
+      
       <a routerLink="/quran"
-         routerLinkActive="nav-link-active"
-         class="nav-link">
-        Quran Reader
+         routerLinkActive="active"
+         class="nav-item">
+        <span class="nav-icon">📖</span>
+        <span class="nav-text">Quran</span>
       </a>
+      
       <a routerLink="/learn"
-         routerLinkActive="nav-link-active"
-         class="nav-link">
-         AI Tafsir Chat
+         routerLinkActive="active"
+         class="nav-item">
+        <span class="nav-icon">🤖</span>
+        <span class="nav-text">AI Tafsir</span>
       </a>
+      
       <a routerLink="/dua"
-         routerLinkActive="nav-link-active"
-         class="nav-link">
-        Dua
+         routerLinkActive="active"
+         class="nav-item">
+        <span class="nav-icon">🤲</span>
+        <span class="nav-text">Dua</span>
       </a>
-      <a routerLink="/t/classes"
-         routerLinkActive="nav-link-active"
-         class="nav-link"
-         *ngIf="isAuthenticated && userRole === 'teacher'">
-        👥 Classes
-      </a>
-      <a routerLink="/s/assignments"
-         routerLinkActive="nav-link-active"
-         class="nav-link"
-         *ngIf="isAuthenticated && userRole === 'student'">
-        📚 Assignments
-      </a>
-      <a routerLink="/about" 
-         routerLinkActive="nav-link-active"
-         class="nav-link">
-        About
-       </a>
-      <!-- Hide Profile link on mobile -->
-      <a routerLink="/profile"
-         routerLinkActive="nav-link-active"
-         class="nav-link hide-on-mobile">
-        Profile
-      </a>
-    </div>
-
-    <!-- Upgrade Button (Desktop) - Show if authenticated & NOT premium -->
-    <div class="upgrade-container hide-on-mobile" *ngIf="isAuthenticated && !isPremiumUser">
-       <a routerLink="/subscription" class="upgrade-button px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150"
-          [ngClass]="(themeService.currentTheme$ | async) === 'dark' ? 
-                     'bg-[#B7A57A] text-[#1A365D] hover:bg-yellow-300' : 
-                     'bg-[#1A365D] text-[#B7A57A] hover:bg-[#0D2C4F]'">
-         ☪️ Try Premium for 7 Days
-       </a>
-    </div>
-
-    <!-- Right side navigation items -->
-    <div class="hidden md:flex items-center space-x-4">
-      <!-- Notification Bell -->
-      <button mat-icon-button [matMenuTriggerFor]="notificationsMenu" [attr.aria-label]="'Notifications. ' + ((unreadCount$ | async) || 0) + ' unread'">
-        <mat-icon [matBadge]="unreadCount$ | async" matBadgeColor="warn" aria-hidden="false">notifications</mat-icon>
+      
+      <!-- Nura Academy Dropdown (Students & Teachers Only) -->
+      <button type="button" 
+              class="nav-item academy-trigger" 
+              *ngIf="isAuthenticated && (userRole === 'teacher' || userRole === 'student')"
+              [matMenuTriggerFor]="academyMenu">
+        <span class="nav-icon kaaba">🕋</span>
+        <span class="nav-text">Academy</span>
+        <svg class="dropdown-icon" viewBox="0 0 20 20">
+          <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/>
+        </svg>
       </button>
-      <mat-menu #notificationsMenu="matMenu" class="notification-menu">
-        <div class="p-4 w-full max-w-md bg-white dark:bg-[#1A365D]" (click)="$event.stopPropagation()">
-          <!-- Header -->
-          <div class="flex justify-between items-center mb-3 pb-2 border-b border-gray-200 dark:border-slate-600">
-            <h3 class="font-bold text-lg dark:text-[#B7A57A]">Notifications</h3>
-            <button 
-              *ngIf="(notifications$ | async)?.length ?? 0 > 0"
-              (click)="clearAllNotifications()" 
-              class="text-xs text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium px-2 py-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-              title="Clear all notifications">
-              🗑️ Clear All
-            </button>
+      
+      <mat-menu #academyMenu="matMenu" class="modern-dropdown">
+        <div class="dropdown-content">
+          <!-- Teacher Section -->
+          <div *ngIf="userRole === 'teacher'" class="dropdown-section">
+            <div class="section-label">👨‍🏫 Teacher Portal</div>
+            <a mat-menu-item routerLink="/t/classes" class="dropdown-item">
+              <mat-icon class="item-icon">groups</mat-icon>
+              <span>My Classes</span>
+            </a>
           </div>
           
-          <!-- Notifications List -->
-          <div *ngIf="(notifications$ | async) as notifications">
-            <div *ngFor="let notification of notifications" 
-                 class="relative p-3 mb-2 rounded-lg border transition-all cursor-pointer group"
-                 [ngClass]="{
-                   'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-700 hover:bg-blue-100 dark:hover:bg-blue-900/30': !notification.read,
-                   'bg-gray-50 dark:bg-slate-800 border-gray-200 dark:border-slate-600 hover:bg-gray-100 dark:hover:bg-slate-700': notification.read
-                 }"
-                 (click)="markAsRead(notification)">
-              
-              <!-- Delete Button -->
-              <button 
-                (click)="deleteNotification($event, notification.id)"
-                class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30"
-                title="Delete notification">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              
-              <!-- Notification Content -->
-              <div class="pr-6">
-                <p class="font-semibold text-sm dark:text-gray-100" 
-                   [ngClass]="{
-                     'font-bold text-gray-900': !notification.read,
-                     'text-gray-600 dark:text-gray-300': notification.read
-                   }">
-                  {{ notification.title }}
-                </p>
-                <p class="text-xs mt-1 dark:text-gray-300"
-                   [ngClass]="{
-                     'text-gray-700': !notification.read,
-                     'text-gray-500 dark:text-gray-400': notification.read
-                   }">
-                  {{ notification.body }}
-                </p>
-                <p class="text-xs mt-2 flex items-center gap-1"
-                   [ngClass]="{
-                     'text-blue-600 dark:text-blue-400': !notification.read,
-                     'text-gray-400 dark:text-gray-500': notification.read
-                   }">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  {{ getNotificationTime(notification) }}
-                </p>
-              </div>
-              
-              <!-- Unread Indicator -->
-              <div *ngIf="!notification.read" class="absolute top-3 left-2 w-2 h-2 bg-blue-600 dark:bg-blue-400 rounded-full"></div>
-            </div>
-            
-            <!-- Empty State -->
-            <div *ngIf="notifications.length === 0" class="text-center py-8">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-300 dark:text-gray-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <p class="text-gray-500 dark:text-gray-400">No notifications yet</p>
-            </div>
+          <!-- Student Section -->
+          <div *ngIf="userRole === 'student'" class="dropdown-section">
+            <div class="section-label">📚 Student Portal</div>
+            <a mat-menu-item routerLink="/s/dashboard" class="dropdown-item">
+              <mat-icon class="item-icon">dashboard</mat-icon>
+              <span>Dashboard</span>
+            </a>
+            <a mat-menu-item routerLink="/s/assignments" class="dropdown-item">
+              <mat-icon class="item-icon">assignment</mat-icon>
+              <span>Assignments</span>
+            </a>
+            <a mat-menu-item routerLink="/s/progress" class="dropdown-item">
+              <mat-icon class="item-icon">trending_up</mat-icon>
+              <span>Progress</span>
+            </a>
+            <a mat-menu-item routerLink="/s/calendar" class="dropdown-item">
+              <mat-icon class="item-icon">event</mat-icon>
+              <span>Calendar</span>
+            </a>
+            <a mat-menu-item routerLink="/s/archive" class="dropdown-item">
+              <mat-icon class="item-icon">archive</mat-icon>
+              <span>Archive</span>
+            </a>
           </div>
         </div>
       </mat-menu>
       
-      <app-theme-toggle></app-theme-toggle>
-      <app-auth-buttons></app-auth-buttons>
-    </div>
+      <a routerLink="/about"
+         routerLinkActive="active"
+         class="nav-item">
+        <span class="nav-icon">ℹ️</span>
+        <span class="nav-text">About</span>
+      </a>
+    </nav>
 
-    <!-- Mobile Menu Button -->
-    <button class="mobile-menu-btn md:hidden ml-auto" (click)="toggleMobileMenu()">
-      <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
+    <!-- Action Buttons -->
+    <div class="header-actions">
+      <!-- Premium Button -->
+      <a *ngIf="isAuthenticated && !isPremiumUser"
+         routerLink="/subscription"
+         class="premium-btn">
+        <span class="btn-icon">✨</span>
+        <span class="btn-text">Premium</span>
+      </a>
+      
+      <!-- Notifications -->
+      <button class="action-btn notification-btn" 
+              [matMenuTriggerFor]="notificationsMenu"
+              [class.has-badge]="((unreadCount$ | async) || 0) > 0">
+        <mat-icon>notifications</mat-icon>
+        <span class="notification-badge" *ngIf="((unreadCount$ | async) || 0) > 0">
+          {{ (unreadCount$ | async) }}
+        </span>
+      </button>
+      
+      <!-- Theme Toggle -->
+      <button class="action-btn theme-btn">
+        <app-theme-toggle></app-theme-toggle>
+      </button>
+      
+      <!-- Profile Menu -->
+      <button class="action-btn profile-btn" 
+              *ngIf="isAuthenticated"
+              [matMenuTriggerFor]="profileMenu">
+        <mat-icon>account_circle</mat-icon>
+      </button>
+      
+      <mat-menu #profileMenu="matMenu" class="modern-dropdown profile-dropdown">
+        <div class="dropdown-content">
+          <a mat-menu-item routerLink="/profile" class="dropdown-item">
+            <mat-icon class="item-icon">person</mat-icon>
+            <span>Profile</span>
+          </a>
+          <div class="dropdown-divider"></div>
+          <app-auth-buttons></app-auth-buttons>
+        </div>
+      </mat-menu>
+      
+      <!-- Sign In Button (if not authenticated) -->
+      <div *ngIf="!isAuthenticated" class="auth-actions">
+        <app-auth-buttons></app-auth-buttons>
+      </div>
+      
+      <!-- Mobile Menu Button -->
+      <button class="mobile-toggle" (click)="toggleMobileMenu()">
+        <span class="toggle-line" [class.open]="isMobileMenuOpen"></span>
+        <span class="toggle-line" [class.open]="isMobileMenuOpen"></span>
+        <span class="toggle-line" [class.open]="isMobileMenuOpen"></span>
+      </button>
+    </div>
   </div>
-
-  <!-- Mobile Menu -->
-  <div class="mobile-menu dark:bg-[#1A365D]" [class.mobile-menu-active]="isMobileMenuOpen">
-    <a routerLink="/home" class="mobile-link" (click)="closeMobileMenu()">Home</a>
-    <a routerLink="/quran" class="mobile-link" (click)="closeMobileMenu()">Quran Reader</a>
-    <a routerLink="/learn" class="mobile-link" (click)="closeMobileMenu()">AI Tafsir Chat</a>
-    <a routerLink="/dua" class="mobile-link" (click)="closeMobileMenu()">Dua</a>
-    <a *ngIf="isAuthenticated && userRole === 'teacher'" routerLink="/t/classes" class="mobile-link" (click)="closeMobileMenu()">👥 Classes</a>
-    <a *ngIf="isAuthenticated && userRole === 'student'" routerLink="/s/assignments" class="mobile-link" (click)="closeMobileMenu()">📚 Assignments</a>
-    <a routerLink="/about" class="mobile-link" (click)="closeMobileMenu()">About</a>
-    <a routerLink="/profile" class="mobile-link" (click)="closeMobileMenu()">Profile</a>
-    <a routerLink="/contact" class="mobile-link" (click)="closeMobileMenu()">Contact Us</a>
-
-    <!-- Upgrade Button (Mobile) - Show if authenticated & NOT premium -->
-    <a *ngIf="isAuthenticated && !isPremiumUser" routerLink="/subscription" class="mobile-upgrade-link" (click)="closeMobileMenu()">
-      ✨ Upgrade to Premium
-    </a>
-
-    <!-- Theme Toggle (Mobile) -->
-    <div class="mobile-theme-toggle-container">
-      <app-theme-toggle></app-theme-toggle>
+  
+  <!-- Notification Menu -->
+  <mat-menu #notificationsMenu="matMenu" class="modern-dropdown notifications-dropdown">
+    <div class="dropdown-content notifications-content" (click)="$event.stopPropagation()">
+      <div class="notifications-header">
+        <h3>Notifications</h3>
+        <button *ngIf="(notifications$ | async)?.length ?? 0 > 0"
+                (click)="clearAllNotifications()"
+                class="clear-all-btn">
+          Clear All
+        </button>
+      </div>
+      
+      <div class="notifications-list" *ngIf="(notifications$ | async) as notifications">
+        <div *ngFor="let notification of notifications"
+             class="notification-item"
+             [class.unread]="!notification.read"
+             (click)="markAsRead(notification)">
+          <button class="delete-btn" 
+                  (click)="deleteNotification($event, notification.id)">
+            <mat-icon>close</mat-icon>
+          </button>
+          
+          <div class="notification-content">
+            <p class="notification-title">{{ notification.title }}</p>
+            <p class="notification-body">{{ notification.body }}</p>
+            <p class="notification-time">
+              <mat-icon class="time-icon">schedule</mat-icon>
+              {{ getNotificationTime(notification) }}
+            </p>
+          </div>
+          
+          <div class="unread-dot" *ngIf="!notification.read"></div>
+        </div>
+        
+        <div *ngIf="notifications.length === 0" class="empty-notifications">
+          <mat-icon class="empty-icon">notifications_none</mat-icon>
+          <p>No notifications yet</p>
+        </div>
+      </div>
     </div>
+  </mat-menu>
+  
+  <!-- Mobile Menu Overlay -->
+  <div class="mobile-overlay" 
+       [class.active]="isMobileMenuOpen"
+       (click)="closeMobileMenu()"></div>
 
-    <!-- Auth Buttons in Mobile Menu (Profile is already here, Sign Out is part of app-auth-buttons) -->
-    <div class="mobile-auth-container">
-      <app-auth-buttons></app-auth-buttons>
+  <!-- Mobile Menu Drawer -->
+  <div class="mobile-menu" [class.active]="isMobileMenuOpen">
+    <div class="mobile-menu-header">
+      <div class="mobile-logo">
+        <img src="nura-logo.png" alt="Nura">
+      </div>
+      <button class="mobile-close" (click)="closeMobileMenu()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+    
+    <div class="mobile-menu-content">
+      <!-- Main Navigation -->
+      <div class="mobile-nav-section">
+        <a routerLink="/home" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">🏠</span>
+          <span>Home</span>
+        </a>
+        <a routerLink="/quran" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">📖</span>
+          <span>Quran Reader</span>
+        </a>
+        <a routerLink="/learn" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">🤖</span>
+          <span>AI Tafsir</span>
+        </a>
+        <a routerLink="/dua" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">🤲</span>
+          <span>Dua</span>
+        </a>
+      </div>
+      
+      <!-- Academy Section (Students & Teachers Only) -->
+      <div class="mobile-nav-section academy" *ngIf="isAuthenticated && (userRole === 'teacher' || userRole === 'student')">
+        <div class="section-title">
+          <span class="title-icon">🕋</span>
+          <span>Nura Academy</span>
+        </div>
+        
+        <!-- Teacher Links -->
+        <div *ngIf="userRole === 'teacher'" class="subsection">
+          <div class="subsection-label">Teacher Portal</div>
+          <a routerLink="/t/classes" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>groups</mat-icon>
+            <span>My Classes</span>
+          </a>
+        </div>
+        
+        <!-- Student Links -->
+        <div *ngIf="userRole === 'student'" class="subsection">
+          <div class="subsection-label">Student Portal</div>
+          <a routerLink="/s/dashboard" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>dashboard</mat-icon>
+            <span>Dashboard</span>
+          </a>
+          <a routerLink="/s/assignments" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>assignment</mat-icon>
+            <span>Assignments</span>
+          </a>
+          <a routerLink="/s/progress" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>trending_up</mat-icon>
+            <span>Progress</span>
+          </a>
+          <a routerLink="/s/calendar" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>event</mat-icon>
+            <span>Calendar</span>
+          </a>
+          <a routerLink="/s/archive" class="mobile-nav-subitem" (click)="closeMobileMenu()">
+            <mat-icon>archive</mat-icon>
+            <span>Archive</span>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Secondary Navigation -->
+      <div class="mobile-nav-section">
+        <a routerLink="/about" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">ℹ️</span>
+          <span>About</span>
+        </a>
+        <a routerLink="/profile" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">👤</span>
+          <span>Profile</span>
+        </a>
+      </div>
+      
+      <!-- Theme Toggle & Auth -->
+      <div class="mobile-footer">
+        <div class="mobile-theme-section">
+          <span class="theme-label">Theme</span>
+          <app-theme-toggle></app-theme-toggle>
+        </div>
+        
+        <div class="mobile-auth-section">
+          <app-auth-buttons></app-auth-buttons>
+        </div>
+      </div>
+      
+      <!-- Premium Button -->
+      <div class="mobile-premium" *ngIf="isAuthenticated && !isPremiumUser">
+        <a routerLink="/subscription" class="mobile-premium-btn" (click)="closeMobileMenu()">
+          <span class="premium-icon">✨</span>
+          <span>Upgrade to Premium</span>
+        </a>
+      </div>
     </div>
   </div>
 </nav>
-
-<!-- Spacer to prevent content from hiding under fixed navbar -->
-
-<!-- <header> -->
-  <!-- Navbar -->
-  <!-- <nav class="navbar navbar-expand-lg navbar-light bg-white">
-    <div class="container-fluid">
-      <button
-        class="navbar-toggler"
-        type="button"
-        (click)="backgroundImageExample.toggle()"
-        aria-controls="backgroundImageExample"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <i class="fas fa-bars"></i>
-      </button>
-      <div
-        mdbCollapse
-        #backgroundImageExample="mdbCollapse"
-        class="collapse navbar-collapse"
-        id="backgroundImageExample"
-      >
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item active">
-            <a class="nav-link" aria-current="page" routerLink="/home">Home</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/quran">Quran</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/prayer-times">Prayer </a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" routerLink="/about">About</a>
-          </li>
-        </ul>
-      </div>
-    </div>
-  </nav> -->
-  <!-- Navbar -->
-<!-- </header> -->

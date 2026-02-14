@@ -603,3 +603,130 @@ app-grade-panel {
 .error-animation {
   animation: errorShake 0.5s ease-out;
 }
+
+// Stats Dashboard
+.stats-dashboard {
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1.5rem;
+    
+    .stat-card {
+      background: white;
+      border: 2px solid $gold;
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('/assets/islamic-pattern-2.png');
+        opacity: 0.03;
+        pointer-events: none;
+      }
+      
+      &:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(183, 165, 122, 0.2);
+      }
+      
+      &.warning {
+        border-color: #F59E0B;
+        
+        .stat-value {
+          color: #F59E0B;
+        }
+        
+        &::before {
+          opacity: 0.05;
+        }
+        
+        animation: pulse 2s infinite;
+      }
+      
+      .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+      }
+      
+      .stat-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: $gold;
+        line-height: 1;
+      }
+      
+      .stat-label {
+        font-size: 0.875rem;
+        color: #6B7280;
+        margin-top: 0.5rem;
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+// Dark Mode Stats
+.dark {
+  .stats-dashboard .stats-grid .stat-card {
+    background: #1A365D;
+    border-color: $gold-light;
+    
+    .stat-value {
+      color: $gold-light;
+    }
+    
+    .stat-label {
+      color: #9CA3AF;
+    }
+    
+    &.warning {
+      border-color: #FBBF24;
+      
+      .stat-value {
+        color: #FBBF24;
+      }
+    }
+  }
+}
+
+// Responsive Stats
+@media (max-width: 768px) {
+  .stats-dashboard .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1rem;
+    
+    .stat-card {
+      padding: 1rem;
+      
+      .stat-icon {
+        font-size: 1.5rem;
+      }
+      
+      .stat-value {
+        font-size: 1.75rem;
+      }
+      
+      .stat-label {
+        font-size: 0.75rem;
+      }
+    }
+  }
+}

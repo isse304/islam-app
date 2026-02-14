@@ -204,8 +204,6 @@ export class AssignmentService {
    * Fetch assignments from Firestore
    */
   private fetchAssignmentsForStudent(studentId: string): Observable<Assignment[]> {
-    console.log('[AssignmentService] Fetching assignments for student:', studentId);
-    
     return new Observable<Assignment[]>(observer => {
       // First, get the user document to find enrolled classes
       const userDoc = doc(this.firestore, 'users', studentId);
@@ -213,7 +211,6 @@ export class AssignmentService {
       getDoc(userDoc)
         .then(async userSnapshot => {
           if (!userSnapshot.exists()) {
-            console.log('[AssignmentService] User document not found');
             observer.next([]);
             observer.complete();
             return;
@@ -221,11 +218,8 @@ export class AssignmentService {
 
           const userData = userSnapshot.data();
           const enrolledClasses = userData['enrolledClasses'] || userData['classes'] || [];
-          
-          console.log('[AssignmentService] Student enrolled in classes:', enrolledClasses);
 
           if (enrolledClasses.length === 0) {
-            console.log('[AssignmentService] Student not enrolled in any classes');
             observer.next([]);
             observer.complete();
             return;
@@ -240,7 +234,6 @@ export class AssignmentService {
           );
 
           const snapshot = await getDocs(q);
-          console.log('[AssignmentService] Found', snapshot.size, 'assignments');
 
           const assignments: Assignment[] = [];
           
@@ -281,12 +274,10 @@ export class AssignmentService {
             });
           }
           
-          console.log('[AssignmentService] Processed', assignments.length, 'assignments');
           observer.next(assignments);
           observer.complete();
         })
         .catch(error => {
-          console.error('[AssignmentService] Error fetching assignments:', error);
           observer.error(error);
         });
     });
@@ -517,8 +508,6 @@ export class AssignmentService {
    * List assignments for a class (for teacher dashboard)
    */
   listAssignmentsForClass(classId: string): Observable<ClassroomAssignment[]> {
-    console.log('[AssignmentService] listAssignmentsForClass called for classId:', classId);
-    
     const assignmentsRef = collection(this.firestore, 'assignments');
     // Query with mode filter to match how student dashboard queries
     const q = query(
@@ -529,19 +518,14 @@ export class AssignmentService {
     
     return new Observable(observer => {
       getDocs(q).then(snapshot => {
-        console.log(`[AssignmentService] Found ${snapshot.size} assignments for class ${classId}`);
-        console.log('[AssignmentService] Assignment docs:', snapshot.docs.map(d => ({ id: d.id, data: d.data() })));
-        
         const assignments = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         } as ClassroomAssignment));
         
-        console.log('[AssignmentService] Mapped assignments:', assignments);
         observer.next(assignments);
         observer.complete();
       }).catch(error => {
-        console.error('[AssignmentService] Error fetching assignments for class:', error);
         // Return empty array on error instead of erroring out
         observer.next([]);
         observer.complete();
@@ -555,8 +539,6 @@ export class AssignmentService {
    * and individual (1-on-1) assignments assigned directly to them
    */
   listAssignmentsForIndividualStudent(studentId: string): Observable<ClassroomAssignment[]> {
-    console.log('[AssignmentService] listAssignmentsForIndividualStudent called for studentId:', studentId);
-    
     return new Observable(observer => {
       (async () => {
         try {
@@ -615,14 +597,10 @@ export class AssignmentService {
             if (!aDate || !bDate) return 0;
             return aDate.seconds - bDate.seconds;
           });
-
-          console.log(`[AssignmentService] Total found ${allAssignments.length} assignments for student ${studentId}`);
-          console.log('[AssignmentService] Assignment details:', allAssignments.map(a => ({ id: a.id, title: a.title, mode: a.mode })));
           
           observer.next(allAssignments);
           observer.complete();
         } catch (error) {
-          console.error('[AssignmentService] Error fetching assignments for student:', error);
           // Return empty array on error instead of erroring out
           observer.next([]);
           observer.complete();
@@ -681,8 +659,6 @@ export class AssignmentService {
           
           const classSnapshot = await getDocs(classQuery);
           const enrolledClassIds = classSnapshot.docs.map(doc => doc.id);
-          
-          console.log('[AssignmentService] Student enrolled in classes:', enrolledClassIds);
 
           // Step 2: Query assignments
           const assignmentsRef = collection(this.firestore, 'assignments');
@@ -726,7 +702,6 @@ export class AssignmentService {
             return aDate.seconds - bDate.seconds;
           });
 
-          console.log('[AssignmentService] Found', allAssignments.length, 'assignments for student');
           observer.next(allAssignments);
           observer.complete();
         } catch (error) {
@@ -752,8 +727,6 @@ export class AssignmentService {
     
     return new Observable(observer => {
       getDocs(q).then(snapshot => {
-        console.log(`[AssignmentService] Found ${snapshot.size} assignments for teacher ${teacherId}`);
-        
         const assignments = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
@@ -762,7 +735,6 @@ export class AssignmentService {
         observer.next(assignments);
         observer.complete();
       }).catch(error => {
-        console.error('[AssignmentService] Error fetching assignments for teacher:', error);
         observer.next([]);
         observer.complete();
       });

@@ -206,7 +206,6 @@ export class GradeBookService {
         };
       } else {
         // Firestore document doesn't exist - create placeholder entry
-        console.warn('[GradeBookService] User document missing for:', userId.substring(0, 12) + '...');
         return {
           studentId: userId,
           studentName: `Student (ID: ${userId.substring(0, 8)}...)`,
