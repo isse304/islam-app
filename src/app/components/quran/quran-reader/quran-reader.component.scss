@@ -123,6 +123,12 @@ $text-medium: #4A5568;
   text-rendering: optimizeLegibility;
   font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
   
+  // Hover effect for words in light mode
+  .quran-word:hover {
+    opacity: 0.7;
+    transition: opacity 0.2s ease;
+  }
+  
   span {
     display: inline-block;
   }
@@ -155,6 +161,30 @@ $text-medium: #4A5568;
     border-radius: 8px !important;
     line-height: 1.5 !important;
     margin: 8px !important;
+    z-index: 2000 !important;
+  }
+  
+  // Word translation tooltips - works in both light and dark mode
+  .word-tooltip {
+    font-size: 14px !important;
+    background: rgba(0, 0, 0, 0.95) !important;
+    color: #FAF3E0 !important;
+    padding: 10px 16px !important;
+    max-width: 300px !important;
+    border-radius: 6px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+    z-index: 2000 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+  }
+  
+  // Ensure tooltips are visible in dark mode
+  html.dark .mat-mdc-tooltip,
+  html.dark .word-tooltip {
+    background: rgba(26, 54, 93, 0.98) !important;
+    color: #FAF3E0 !important;
+    border: 1px solid rgba(183, 165, 122, 0.3) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6) !important;
     white-space: nowrap !important;
     z-index: 9999 !important;
   }
@@ -1377,6 +1407,13 @@ select option {
     text-shadow: none !important;
   }
   
+  // Hover effect for words with tooltips
+  ::ng-deep .verse-text .quran-word:hover,
+  ::ng-deep .quran-text-uthmanic .quran-word:hover {
+    opacity: 0.8;
+    transition: opacity 0.2s ease;
+  }
+  
   // Override ALL rule elements (tajweed markers) in dark mode with MAXIMUM specificity
   ::ng-deep .verse-text rule,
   ::ng-deep .verse-text rule[class],
@@ -1394,9 +1431,21 @@ select option {
   }
   
   // Remove any QCF font built-in colors in dark mode - convert to grayscale then apply gold
-  ::ng-deep .quran-word,
-  ::ng-deep .tajweed-enabled .quran-word {
-    filter: grayscale(100%) !important;
+  ::ng-deep .verse-text .quran-word,
+  ::ng-deep .quran-text-uthmanic .quran-word,
+  ::ng-deep .tajweed-enabled .quran-word,
+  ::ng-deep .verse-text span {
+    filter: grayscale(100%) brightness(1.1) !important;
+    cursor: pointer !important; // Ensure pointer cursor for tooltips
+    pointer-events: auto !important; // Enable pointer events for tooltips
+  }
+  
+  // Force all tajweed-related elements to be gold
+  ::ng-deep .verse-text rule *,
+  ::ng-deep .quran-word * {
+    color: #B7A57A !important;
+    -webkit-text-fill-color: #B7A57A !important;
+    pointer-events: none !important; // Prevent rule elements from blocking tooltip
   }
 
   // --- Tafsir section dark mode ---

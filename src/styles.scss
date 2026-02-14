@@ -378,11 +378,21 @@ html.dark .verse-text,
 html.dark .verse-text *,
 html.dark .verse-text span,
 html.dark .quran-word,
+html.dark .quran-word *,
 html.dark .quran-text-uthmanic,
 html.dark .quran-text-uthmanic * {
   color: #B7A57A !important;
   -webkit-text-fill-color: #B7A57A !important;
   text-shadow: none !important;
+  filter: none !important; /* Remove any font-level filters that might preserve colors */
+}
+
+/* Apply grayscale to QCF font glyphs in dark mode */
+html.dark .quran-word,
+html.dark .verse-text .quran-word,
+html.dark .tajweed-enabled .quran-word {
+  filter: grayscale(100%) brightness(1.1) contrast(0.9) !important;
+  -webkit-filter: grayscale(100%) brightness(1.1) contrast(0.9) !important;
 }
 
 /* Premium Preview Dialog Container */
