@@ -19,13 +19,14 @@ import { GradePanelComponent } from 'src/app/features/submissions/grade-panel.co
 import { AssignmentFormComponent } from './assignment-form.component';
 import { ToastService } from 'src/app/services/toast.service';
 import { FirebaseAuthService } from 'src/app/services/firebase-auth.service';
+import { StartCallButtonComponent } from 'src/app/components/start-call-button/start-call-button.component';
 
 @Component({
   selector: 'app-teacher-dashboard',
   templateUrl: './teacher-dashboard.component.html',
   styleUrls: ['./teacher-dashboard.component.scss'],
   standalone: true,
-  imports: [CommonModule, RouterModule, ReactiveFormsModule, GradePanelComponent, AssignmentFormComponent],
+  imports: [CommonModule, RouterModule, ReactiveFormsModule, GradePanelComponent, AssignmentFormComponent, StartCallButtonComponent],
 })
 export class TeacherDashboardComponent implements OnInit {
   private fb = inject(FormBuilder);

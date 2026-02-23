@@ -9,6 +9,7 @@ import { initializeApp, provideFirebaseApp } from '@angular/fire/app';
 import { getAuth, provideAuth } from '@angular/fire/auth';
 import { getFirestore, provideFirestore } from '@angular/fire/firestore';
 import { getStorage, provideStorage } from '@angular/fire/storage';
+import { getFunctions, provideFunctions } from '@angular/fire/functions';
 import { environment } from './environments/environment';
 import { importProvidersFrom, isDevMode, APP_INITIALIZER } from '@angular/core';
 import { DatePipe } from '@angular/common';
@@ -91,7 +92,8 @@ bootstrapApplication(AppComponent, {
         const app = initializeApp(environment.firebase);
         return getFirestore(app, 'nura');
       }),
-      provideStorage(() => getStorage())
+      provideStorage(() => getStorage()),
+      provideFunctions(() => getFunctions())
     ),
     provideCharts(withDefaultRegisterables()),
     // Provide your services

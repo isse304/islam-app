@@ -37,6 +37,7 @@
     "@mailchimp/mailchimp_marketing": "3.0.80",
     "@stripe/stripe-js": "^3.0.0",
     "@types/fuse": "2.6.2",
+    "agora-rtc-sdk-ng": "4.24.2",
     "autoprefixer": "^10.4.16",
     "axios": "1.8.4",
     "chart.js": "4.5.1",

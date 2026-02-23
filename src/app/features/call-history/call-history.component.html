@@ -1,0 +1,106 @@
+<div class="call-history-container">
+  <div class="history-header">
+    <h2>
+      <mat-icon>history</mat-icon>
+      Call History
+    </h2>
+    
+    <div class="filter-chips">
+      <mat-chip-set>
+        <mat-chip 
+          [class.active]="filterType === 'all'"
+          (click)="setFilter('all')">
+          All Calls
+        </mat-chip>
+        <mat-chip 
+          [class.active]="filterType === 'outgoing'"
+          (click)="setFilter('outgoing')">
+          Outgoing
+        </mat-chip>
+        <mat-chip 
+          [class.active]="filterType === 'incoming'"
+          (click)="setFilter('incoming')">
+          Incoming
+        </mat-chip>
+      </mat-chip-set>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Loading call history...</p>
+  </div>
+
+  <!-- Empty State -->
+  <div class="empty-state" *ngIf="!isLoading && filteredHistory.length === 0">
+    <mat-icon>phone_disabled</mat-icon>
+    <h3>No Calls Yet</h3>
+    <p>Your call history will appear here</p>
+  </div>
+
+  <!-- Call History List -->
+  <div class="history-list" *ngIf="!isLoading && filteredHistory.length > 0">
+    <mat-card class="history-card" *ngFor="let entry of filteredHistory">
+      <div class="card-content">
+        <!-- Left: Call Type Icon -->
+        <div class="call-icon" [class.outgoing]="getCallTypeLabel(entry) === 'Outgoing'">
+          <mat-icon>{{ getCallTypeIcon(entry) }}</mat-icon>
+        </div>
+
+        <!-- Middle: Call Details -->
+        <div class="call-details">
+          <h3 class="call-subject">
+            {{ entry.subject || 'Tutoring Session' }}
+          </h3>
+          <p class="call-participants">
+            {{ getParticipantsDisplay(entry) }}
+          </p>
+          <div class="call-meta">
+            <span class="call-date">
+              <mat-icon>schedule</mat-icon>
+              {{ formatDate(entry.endedAt) }}
+            </span>
+            <span class="call-duration">
+              <mat-icon>timer</mat-icon>
+              {{ formatDuration(entry.duration) }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Right: Call Features & Actions -->
+        <div class="call-features">
+          <div class="feature-badges">
+            <mat-icon 
+              *ngIf="entry.wasVideoEnabled" 
+              matTooltip="Video call"
+              class="feature-icon video">
+              videocam
+            </mat-icon>
+            <mat-icon 
+              *ngIf="entry.wasRecorded" 
+              matTooltip="Recorded"
+              class="feature-icon recorded">
+              fiber_manual_record
+            </mat-icon>
+            <mat-icon 
+              *ngIf="entry.wasScreenShared" 
+              matTooltip="Screen shared"
+              class="feature-icon screen-share">
+              screen_share
+            </mat-icon>
+          </div>
+
+          <button 
+            mat-icon-button 
+            *ngIf="entry.recordingUrl"
+            (click)="downloadRecording(entry.recordingUrl)"
+            matTooltip="Download recording"
+            class="download-btn">
+            <mat-icon>download</mat-icon>
+          </button>
+        </div>
+      </div>
+    </mat-card>
+  </div>
+</div>

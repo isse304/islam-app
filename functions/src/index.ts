@@ -75,3 +75,6 @@ export const onUserCreate = functionsV1.auth
 // export * from "./auth/setRoleClaimDirect";
 export * from "./notifications";
 // export * from "./parent"; // Temporarily disabled
+
+// Video Call Functions
+export * from "./generate-agora-token";

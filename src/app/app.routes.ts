@@ -153,6 +153,21 @@ export const routes: Routes = [
   },
 
   // ============================================
+  // VIDEO CALL ROUTES
+  // ============================================
+  
+  {
+    path: 'call/:id',
+    loadComponent: () => import('./features/video-call/video-call.component').then(m => m.VideoCallComponent),
+    canActivate: [authGuardFn] // Requires login
+  },
+  {
+    path: 'call-history',
+    loadComponent: () => import('./features/call-history/call-history.component').then(m => m.CallHistoryComponent),
+    canActivate: [authGuardFn] // Requires login
+  },
+
+  // ============================================
   // ASSIGNMENT READER (Protected)
   // ============================================
   

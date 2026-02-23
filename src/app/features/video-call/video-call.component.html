@@ -1,0 +1,115 @@
+<div class="video-call-container">
+  <!-- Loading State -->
+  <div class="connecting-overlay" *ngIf="isConnecting">
+    <div class="connecting-content">
+      <mat-spinner diameter="60"></mat-spinner>
+      <h2>Connecting to call...</h2>
+      <p>Please wait while we connect you</p>
+    </div>
+  </div>
+
+  <!-- Main Video Area -->
+  <div class="video-area" *ngIf="!isConnecting">
+    <!-- Remote Video Container -->
+    <div class="remote-video-wrapper">
+      <div #remoteVideoContainer class="remote-video-container">
+        <!-- Remote videos will be injected here -->
+        <div class="no-remote-user" *ngIf="remoteUserCount === 0">
+          <mat-icon>person_off</mat-icon>
+          <p>Waiting for others to join...</p>
+        </div>
+      </div>
+
+      <!-- Top Bar -->
+      <div class="top-bar">
+        <div class="call-info">
+          <span class="call-subject" *ngIf="callSession?.subject">
+            {{ callSession?.subject }}
+          </span>
+          <span class="call-duration">{{ formattedDuration }}</span>
+        </div>
+
+        <div class="network-indicator" [class.poor]="networkQuality === 'Poor' || networkQuality === 'Very Poor'">
+          <mat-icon>{{ networkQualityIcon }}</mat-icon>
+          <span>{{ networkQuality }}</span>
+        </div>
+      </div>
+
+      <!-- Recording Indicator -->
+      <div class="recording-indicator" *ngIf="isRecording">
+        <div class="recording-dot"></div>
+        <span>Recording</span>
+      </div>
+    </div>
+
+    <!-- Local Video (Picture-in-Picture) -->
+    <div class="local-video-wrapper" *ngIf="isVideoEnabled">
+      <div #localVideoContainer class="local-video-container"></div>
+      <div class="local-video-label">You</div>
+    </div>
+
+    <!-- Video Disabled Placeholder -->
+    <div class="local-video-wrapper camera-off" *ngIf="!isVideoEnabled">
+      <div class="camera-off-icon">
+        <mat-icon>videocam_off</mat-icon>
+        <p>Camera Off</p>
+      </div>
+    </div>
+
+    <!-- Control Bar -->
+    <div class="control-bar">
+      <div class="controls-wrapper">
+        <!-- Microphone Toggle -->
+        <button mat-fab
+                [class.active]="isAudioEnabled"
+                [class.inactive]="!isAudioEnabled"
+                (click)="toggleMicrophone()"
+                [matTooltip]="isAudioEnabled ? 'Mute' : 'Unmute'"
+                class="control-btn">
+          <mat-icon>{{ isAudioEnabled ? 'mic' : 'mic_off' }}</mat-icon>
+        </button>
+
+        <!-- Camera Toggle -->
+        <button mat-fab
+                [class.active]="isVideoEnabled"
+                [class.inactive]="!isVideoEnabled"
+                (click)="toggleCamera()"
+                [matTooltip]="isVideoEnabled ? 'Turn off camera' : 'Turn on camera'"
+                class="control-btn">
+          <mat-icon>{{ isVideoEnabled ? 'videocam' : 'videocam_off' }}</mat-icon>
+        </button>
+
+        <!-- Screen Share Toggle -->
+        <button mat-fab
+                [class.active]="isScreenSharing"
+                (click)="toggleScreenShare()"
+                matTooltip="Share screen"
+                class="control-btn">
+          <mat-icon>{{ isScreenSharing ? 'stop_screen_share' : 'screen_share' }}</mat-icon>
+        </button>
+
+        <!-- Recording Toggle -->
+        <button mat-fab
+                [class.active]="isRecording"
+                [class.recording]="isRecording"
+                (click)="toggleRecording()"
+                [matTooltip]="isRecording ? 'Stop recording' : 'Start recording'"
+                class="control-btn">
+          <mat-icon>{{ isRecording ? 'stop_circle' : 'fiber_manual_record' }}</mat-icon>
+        </button>
+
+        <!-- End Call -->
+        <button mat-fab
+                color="warn"
+                (click)="endCall()"
+                matTooltip="End call"
+                class="control-btn end-call-btn">
+          <mat-icon>call_end</mat-icon>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Islamic Pattern Overlay -->
+  <div class="islamic-pattern-overlay"></div>
+</div>
