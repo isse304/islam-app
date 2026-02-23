@@ -53,7 +53,9 @@
               "node_modules/mdb-ui-kit/js/mdb.umd.min.js"
             ],
             "allowedCommonJsDependencies": [
-              "localforage"
+              "localforage",
+              "agora-rtc-sdk-ng",
+              "agora-token"
             ],
             "stylePreprocessorOptions": {
               "includePaths": [
@@ -68,8 +70,8 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "2mb",
-                  "maximumError": "3mb"
+                  "maximumWarning": "4mb",
+                  "maximumError": "5mb"
                 },
                 {
                   "type": "anyComponentStyle",
@@ -88,10 +90,15 @@
               "namedChunks": false,
               "aot": true,
               "extractLicenses": true,
-              "vendorChunk": false,
+              "vendorChunk": true,
               "buildOptimizer": true,
-              "optimization": true,
-              "progress": false
+              "optimization": {
+                "scripts": true,
+                "styles": true,
+                "fonts": true
+              },
+              "progress": false,
+              "commonChunk": true
             },
             "development": {
               "buildOptimizer": false,
