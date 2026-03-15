@@ -203,8 +203,10 @@
     <div class="progress-fill" [style.width.%]="getProgressPercentage()"></div>
   </div>
 
-  <!-- Main Content Area -->
-  <main class="reader-content" [class.loading]="isLoadingVerse">
+  <!-- Main content + Notes side-by-side (notes do not overlay tafsir) -->
+  <div class="reader-main-wrapper" [class.notes-open]="showNotesPanel">
+    <!-- Main Content Area -->
+    <main class="reader-content" [class.loading]="isLoadingVerse">
     
     <!-- Loading Spinner -->
     <div class="loading-spinner" *ngIf="isLoadingVerse">
@@ -339,6 +341,101 @@
     </div>
   </main>
 
+  <!-- Notes Panel (side-by-side with content, does not overlay) -->
+  <aside class="notes-panel" [class.open]="showNotesPanel">
+    <div class="notes-panel-header">
+      <h3>Notes for {{ currentSurah }}:{{ currentVerse }}</h3>
+      <button mat-icon-button (click)="toggleNotesPanel()">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+
+    <div class="notes-panel-content">
+      <!-- Notes for previous verse -->
+      <div class="existing-notes adjacent-verse-notes" *ngIf="getPreviousVerseRef() as prevRef">
+        <h4>Notes for {{ prevRef.surah }}:{{ prevRef.verse }} (previous)</h4>
+        <div class="note-card" *ngFor="let note of previousVerseNotes">
+          <div class="note-content" [innerHTML]="note.content"></div>
+          <div class="note-meta">
+            <span class="note-date">{{ note.createdAt | date:'short' }}</span>
+            <button mat-button (click)="goToVerse(prevRef.surah, prevRef.verse)" class="go-verse-btn">
+              Go to verse
+            </button>
+          </div>
+        </div>
+        <p class="no-notes" *ngIf="previousVerseNotes.length === 0">No notes yet.</p>
+      </div>
+
+      <!-- Notes for current verse -->
+      <div class="existing-notes" *ngIf="currentNotes.length > 0">
+        <h4>Your notes ({{ currentSurah }}:{{ currentVerse }}):</h4>
+        <div class="note-card" *ngFor="let note of currentNotes">
+          <div class="note-content" [innerHTML]="note.content"></div>
+          <div class="note-meta">
+            <span class="note-date">{{ note.createdAt | date:'short' }}</span>
+            <div class="note-actions">
+              <button mat-icon-button (click)="editNote(note)" matTooltip="Edit Note">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button (click)="deleteNote(note.id)" matTooltip="Delete Note">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Note Editor -->
+      <div class="note-editor">
+        <h4>{{ editingNoteId ? 'Edit Note' : 'Add New Note' }} ({{ currentSurah }}:{{ currentVerse }}):</h4>
+        
+        <app-rich-text-editor
+          #richEditor
+          [placeholder]="'Write your thoughts about this verse...'"
+          [minHeight]="'200px'"
+          (contentChange)="onNoteContentChange($event)">
+        </app-rich-text-editor>
+
+        <!-- Note Actions -->
+        <div class="note-editor-actions">
+          <button mat-raised-button color="primary" (click)="saveCurrentNote()">
+            <mat-icon>save</mat-icon>
+            {{ editingNoteId ? 'Update' : 'Save' }} Note
+          </button>
+          <button mat-button (click)="cancelNoteEdit()" *ngIf="editingNoteId">
+            Cancel
+          </button>
+          <button mat-button (click)="clearNoteEditor()">
+            <mat-icon>clear</mat-icon>
+            Clear
+          </button>
+        </div>
+
+        <!-- Tips -->
+        <div class="editor-tips">
+          <p class="note-hint"><mat-icon>info</mat-icon> Use the toolbar to format your note</p>
+          <p class="note-hint"><mat-icon>keyboard</mat-icon> <kbd>N</kbd> to toggle • <kbd>B</kbd> to bookmark</p>
+        </div>
+      </div>
+
+      <!-- Notes for next verse -->
+      <div class="existing-notes adjacent-verse-notes" *ngIf="getNextVerseRef() as nextRef">
+        <h4>Notes for {{ nextRef.surah }}:{{ nextRef.verse }} (next)</h4>
+        <div class="note-card" *ngFor="let note of nextVerseNotes">
+          <div class="note-content" [innerHTML]="note.content"></div>
+          <div class="note-meta">
+            <span class="note-date">{{ note.createdAt | date:'short' }}</span>
+            <button mat-button (click)="goToVerse(nextRef.surah, nextRef.verse)" class="go-verse-btn">
+              Go to verse
+            </button>
+          </div>
+        </div>
+        <p class="no-notes" *ngIf="nextVerseNotes.length === 0">No notes yet.</p>
+      </div>
+    </div>
+  </aside>
+  </div>
+
   <!-- Bottom Navigation -->
   <footer class="reader-navigation" *ngIf="!focusMode">
     <div class="nav-container">
@@ -385,70 +482,6 @@
   <div class="focus-mode-hint" *ngIf="focusMode">
     <p>Press <kbd>F</kbd> to exit focus mode</p>
   </div>
-
-  <!-- Notes Panel (Sliding from right) -->
-  <aside class="notes-panel" [class.open]="showNotesPanel">
-    <div class="notes-panel-header">
-      <h3>Notes for {{ currentSurah }}:{{ currentVerse }}</h3>
-      <button mat-icon-button (click)="toggleNotesPanel()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </div>
-
-    <div class="notes-panel-content">
-      <!-- Existing notes for this verse -->
-      <div class="existing-notes" *ngIf="currentNotes.length > 0">
-        <h4>Your Notes:</h4>
-        <div class="note-card" *ngFor="let note of currentNotes">
-          <div class="note-content" [innerHTML]="note.content"></div>
-          <div class="note-meta">
-            <span class="note-date">{{ note.createdAt | date:'short' }}</span>
-            <div class="note-actions">
-              <button mat-icon-button (click)="editNote(note)" matTooltip="Edit Note">
-                <mat-icon>edit</mat-icon>
-              </button>
-              <button mat-icon-button (click)="deleteNote(note.id)" matTooltip="Delete Note">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Note Editor -->
-      <div class="note-editor">
-        <h4>{{ editingNoteId ? 'Edit Note' : 'Add New Note' }}:</h4>
-        
-        <app-rich-text-editor
-          #richEditor
-          [placeholder]="'Write your thoughts about this verse...'"
-          [minHeight]="'200px'"
-          (contentChange)="onNoteContentChange($event)">
-        </app-rich-text-editor>
-
-        <!-- Note Actions -->
-        <div class="note-editor-actions">
-          <button mat-raised-button color="primary" (click)="saveCurrentNote()">
-            <mat-icon>save</mat-icon>
-            {{ editingNoteId ? 'Update' : 'Save' }} Note
-          </button>
-          <button mat-button (click)="cancelNoteEdit()" *ngIf="editingNoteId">
-            Cancel
-          </button>
-          <button mat-button (click)="clearNoteEditor()">
-            <mat-icon>clear</mat-icon>
-            Clear
-          </button>
-        </div>
-
-        <!-- Tips -->
-        <div class="editor-tips">
-          <p class="note-hint"><mat-icon>info</mat-icon> Use the toolbar to format your note</p>
-          <p class="note-hint"><mat-icon>keyboard</mat-icon> <kbd>N</kbd> to toggle • <kbd>B</kbd> to bookmark</p>
-        </div>
-      </div>
-    </div>
-  </aside>
 
   <!-- Highlight Selection/Edit Menu -->
   <div class="highlight-context-menu" 

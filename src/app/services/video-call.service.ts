@@ -16,7 +16,7 @@ import {
 } from '@angular/fire/firestore';
 import { Functions, httpsCallable } from '@angular/fire/functions';
 import { Storage, ref, uploadBytes, getDownloadURL } from '@angular/fire/storage';
-import { Observable, BehaviorSubject, Subject, from, of } from 'rxjs';
+import { Observable, BehaviorSubject, Subject, Subscription, from, of } from 'rxjs';
 import { map, switchMap, take, catchError } from 'rxjs/operators';
 import AgoraRTC, {
   IAgoraRTCClient,
@@ -76,6 +76,9 @@ export class VideoCallService {
   private remoteUsers$ = new BehaviorSubject<Map<UID, IAgoraRTCRemoteUser>>(new Map());
   private networkQuality$ = new BehaviorSubject<AgoraNetworkQuality | null>(null);
   private callEvents$ = new Subject<CallEvent>();
+  private callEndedByRemote$ = new Subject<string>(); // Emits reason when the OTHER side ends the call
+  private callSessionFirestoreSub: Subscription | null = null;
+  private isLeavingCall = false; // Prevent double-leave
 
   // Collections
   private callSessionsCollection = collection(this.firestore, 'callSessions');
@@ -119,9 +122,17 @@ export class VideoCallService {
 
     // User published (remote user started sending media)
     this.client.on('user-published', async (user, mediaType) => {
+      console.log(`[VideoCallService] 📡 Remote user ${user.uid} published ${mediaType}`);
       await this.client!.subscribe(user, mediaType);
-      
-      const remoteUsers = this.remoteUsers$.value;
+
+      // Auto-play remote audio immediately
+      if (mediaType === 'audio' && user.audioTrack) {
+        user.audioTrack.play();
+        console.log(`[VideoCallService] 🔊 Playing remote audio for user ${user.uid}`);
+      }
+
+      // Update remote users map (triggers re-render in component)
+      const remoteUsers = new Map(this.remoteUsers$.value);
       remoteUsers.set(user.uid, user);
       this.remoteUsers$.next(remoteUsers);
 
@@ -130,12 +141,17 @@ export class VideoCallService {
 
     // User unpublished (remote user stopped sending media)
     this.client.on('user-unpublished', (user, mediaType) => {
+      console.log(`[VideoCallService] 📡 Remote user ${user.uid} unpublished ${mediaType}`);
+      // Emit updated map so component re-renders
+      const remoteUsers = new Map(this.remoteUsers$.value);
+      remoteUsers.set(user.uid, user);
+      this.remoteUsers$.next(remoteUsers);
       this.logCallEvent('leave', { userId: user.uid, mediaType });
     });
 
     // User left
     this.client.on('user-left', (user) => {
-      const remoteUsers = this.remoteUsers$.value;
+      const remoteUsers = new Map(this.remoteUsers$.value);
       remoteUsers.delete(user.uid);
       this.remoteUsers$.next(remoteUsers);
 
@@ -316,38 +332,7 @@ export class VideoCallService {
       // Try to create local tracks with timeout (don't hang forever)
       console.log('[VideoCallService] 🎥 Creating local media tracks...');
       
-      try {
-        // Create with 5-second timeout
-        const tracksPromise = AgoraRTC.createMicrophoneAndCameraTracks();
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Track creation timeout')), 5000)
-        );
-        
-        [this.localAudioTrack, this.localVideoTrack] = 
-          await Promise.race([tracksPromise, timeoutPromise]) as any;
-        console.log('[VideoCallService] ✅ Created audio and video tracks');
-        
-      } catch (error: any) {
-        console.warn('[VideoCallService] ⚠️ Failed to create video/audio tracks:', error.message);
-        
-        // Try audio only with timeout
-        try {
-          const audioPromise = AgoraRTC.createMicrophoneAudioTrack();
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Audio track timeout')), 3000)
-          );
-          
-          this.localAudioTrack = await Promise.race([audioPromise, timeoutPromise]) as any;
-          console.log('[VideoCallService] ✅ Created audio track only (no camera)');
-          this.localVideoEnabled$.next(false);
-          
-        } catch (audioError: any) {
-          console.warn('[VideoCallService] ⚠️ Failed to create audio track:', audioError.message);
-          console.log('[VideoCallService] 👁️ Joining in view-only mode');
-          this.localAudioEnabled$.next(false);
-          this.localVideoEnabled$.next(false);
-        }
-      }
+      await this.createLocalTracks();
 
       // Join channel
       await this.client!.join(
@@ -383,8 +368,9 @@ export class VideoCallService {
         await this.addParticipant(callSessionId, currentUser.uid);
       }
 
-      // Set current call
+      // Set current call and start real-time Firestore listener
       this.currentCallSession$.next(callSessionDoc);
+      this.startCallSessionListener(callSessionId);
 
       this.logCallEvent('join', { callSessionId, userId: currentUser?.uid });
     } catch (error: any) {
@@ -409,9 +395,248 @@ export class VideoCallService {
       this.toastService.error(errorMessage);
       
       // Navigate away from call page
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/home']);
       
       throw error;
+    }
+  }
+
+  /**
+   * Start real-time listener on the call session document.
+   * When the other party ends the call, we detect it and auto-leave.
+   */
+  private startCallSessionListener(callSessionId: string): void {
+    // Clean up any existing listener
+    this.stopCallSessionListener();
+
+    console.log('[VideoCallService] 👂 Starting real-time call session listener:', callSessionId);
+
+    this.callSessionFirestoreSub = (docData(doc(this.callSessionsCollection, callSessionId)) as Observable<CallSession>)
+      .subscribe(session => {
+        if (!session) return;
+
+        // Update the local BehaviorSubject so the component always has fresh data
+        this.currentCallSession$.next(session);
+
+        // If the call was ended remotely, auto-leave
+        if (session.status === 'ended' || session.status === 'cancelled') {
+          if (!this.isLeavingCall) {
+            console.log('[VideoCallService] 📞 Call ended by the other party');
+            this.callEndedByRemote$.next(
+              session.status === 'cancelled' ? 'Call was cancelled' : 'The other person ended the call'
+            );
+            this.forceLeaveCall();
+          }
+        }
+      });
+  }
+
+  /**
+   * Stop the Firestore listener on the call session
+   */
+  private stopCallSessionListener(): void {
+    if (this.callSessionFirestoreSub) {
+      this.callSessionFirestoreSub.unsubscribe();
+      this.callSessionFirestoreSub = null;
+    }
+  }
+
+  /**
+   * Force-leave when the OTHER side ends the call.
+   * Cleans up local resources without writing to Firestore again.
+   */
+  private async forceLeaveCall(): Promise<void> {
+    if (this.isLeavingCall) return;
+    this.isLeavingCall = true;
+
+    console.log('[VideoCallService] 🧹 Force-leaving call (ended remotely)...');
+
+    try {
+      // Stop recording first (needs currentCallSession$ which is still set)
+      if (this.isRecording$.value) {
+        await this.stopRecording();
+      }
+
+      // Stop call session listener
+      this.stopCallSessionListener();
+
+      // Close all local tracks
+      this.closeAllLocalTracks();
+
+      // Leave Agora channel
+      if (this.client) {
+        try { await this.client.leave(); } catch (_) {}
+      }
+
+      // Clear state
+      this.currentCallSession$.next(null);
+      this.remoteUsers$.next(new Map());
+      this.localVideoEnabled$.next(true);
+      this.localAudioEnabled$.next(true);
+      this.isScreenSharing$.next(false);
+
+    } catch (error) {
+      console.error('[VideoCallService] Error in forceLeaveCall:', error);
+    } finally {
+      this.isLeavingCall = false;
+    }
+  }
+
+  /**
+   * Close all local tracks (video, audio, screen share)
+   */
+  private closeAllLocalTracks(): void {
+    if (this.localVideoTrack) {
+      try { this.localVideoTrack.stop(); this.localVideoTrack.close(); } catch (_) {}
+      this.localVideoTrack = null;
+    }
+    if (this.localAudioTrack) {
+      try { this.localAudioTrack.stop(); this.localAudioTrack.close(); } catch (_) {}
+      this.localAudioTrack = null;
+    }
+    if (this.screenShareTrack) {
+      const tracks = Array.isArray(this.screenShareTrack) ? this.screenShareTrack : [this.screenShareTrack];
+      tracks.forEach(t => { try { t.close(); } catch (_) {} });
+      this.screenShareTrack = null;
+    }
+  }
+
+  /**
+   * Create local audio and video tracks with fallback
+   */
+  private async createLocalTracks(): Promise<void> {
+    // Close any existing tracks first
+    if (this.localVideoTrack) {
+      try { this.localVideoTrack.close(); } catch (_) {}
+      this.localVideoTrack = null;
+    }
+    if (this.localAudioTrack) {
+      try { this.localAudioTrack.close(); } catch (_) {}
+      this.localAudioTrack = null;
+    }
+
+    try {
+      const tracksPromise = AgoraRTC.createMicrophoneAndCameraTracks();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Track creation timeout')), 5000)
+      );
+
+      [this.localAudioTrack, this.localVideoTrack] =
+        await Promise.race([tracksPromise, timeoutPromise]) as any;
+      console.log('[VideoCallService] ✅ Created audio and video tracks');
+
+      this.localVideoEnabled$.next(true);
+      this.localAudioEnabled$.next(true);
+
+      // Attach track-ended handlers for recovery
+      this.attachTrackEndedHandlers();
+
+    } catch (error: any) {
+      console.warn('[VideoCallService] ⚠️ Failed to create video+audio tracks:', error.message);
+
+      // Fallback: audio only
+      try {
+        const audioPromise = AgoraRTC.createMicrophoneAudioTrack();
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Audio track timeout')), 3000)
+        );
+
+        this.localAudioTrack = await Promise.race([audioPromise, timeoutPromise]) as any;
+        console.log('[VideoCallService] ✅ Created audio track only (no camera)');
+        this.localVideoEnabled$.next(false);
+        this.localAudioEnabled$.next(true);
+
+        if (this.localAudioTrack) {
+          this.localAudioTrack.on('track-ended', () => {
+            console.warn('[VideoCallService] ⚠️ Local audio track ended unexpectedly');
+            this.localAudioEnabled$.next(false);
+          });
+        }
+
+      } catch (audioError: any) {
+        console.warn('[VideoCallService] ⚠️ Failed to create audio track:', audioError.message);
+        console.log('[VideoCallService] 👁️ Joining in view-only mode');
+        this.localAudioEnabled$.next(false);
+        this.localVideoEnabled$.next(false);
+      }
+    }
+  }
+
+  /**
+   * Attach track-ended handlers to detect when tracks die (e.g. PC lock)
+   */
+  private attachTrackEndedHandlers(): void {
+    if (this.localVideoTrack) {
+      this.localVideoTrack.on('track-ended', () => {
+        console.warn('[VideoCallService] ⚠️ Local video track ended (PC locked or device lost)');
+        this.localVideoEnabled$.next(false);
+      });
+    }
+    if (this.localAudioTrack) {
+      this.localAudioTrack.on('track-ended', () => {
+        console.warn('[VideoCallService] ⚠️ Local audio track ended (PC locked or device lost)');
+        this.localAudioEnabled$.next(false);
+      });
+    }
+  }
+
+  /**
+   * Recover tracks after PC lock/unlock or tab switch.
+   * Re-creates dead tracks and re-publishes them.
+   */
+  async recoverTracks(): Promise<void> {
+    if (!this.client || !this.currentCallSession$.value) {
+      return;
+    }
+
+    console.log('[VideoCallService] 🔄 Attempting track recovery...');
+
+    const videoTrackDead = !this.localVideoTrack || this.localVideoTrack.getMediaStreamTrack()?.readyState === 'ended';
+    const audioTrackDead = !this.localAudioTrack || this.localAudioTrack.getMediaStreamTrack()?.readyState === 'ended';
+
+    if (!videoTrackDead && !audioTrackDead) {
+      console.log('[VideoCallService] ✅ All tracks still alive, no recovery needed');
+      return;
+    }
+
+    console.log('[VideoCallService] 🔄 Dead tracks detected:', {
+      videoDead: videoTrackDead,
+      audioDead: audioTrackDead
+    });
+
+    try {
+      // Unpublish old dead tracks
+      const tracksToUnpublish = [];
+      if (this.localVideoTrack && videoTrackDead) {
+        tracksToUnpublish.push(this.localVideoTrack);
+      }
+      if (this.localAudioTrack && audioTrackDead) {
+        tracksToUnpublish.push(this.localAudioTrack);
+      }
+
+      if (tracksToUnpublish.length > 0) {
+        try {
+          await this.client.unpublish(tracksToUnpublish);
+        } catch (_) {}
+        tracksToUnpublish.forEach(t => { try { t.close(); } catch (_) {} });
+      }
+
+      // Recreate tracks
+      await this.createLocalTracks();
+
+      // Re-publish new tracks
+      const tracksToPublish = [];
+      if (this.localAudioTrack) tracksToPublish.push(this.localAudioTrack);
+      if (this.localVideoTrack) tracksToPublish.push(this.localVideoTrack);
+
+      if (tracksToPublish.length > 0) {
+        await this.client.publish(tracksToPublish);
+        console.log('[VideoCallService] ✅ Recovered and re-published', tracksToPublish.length, 'track(s)');
+        this.toastService.success('Camera and microphone recovered');
+      }
+    } catch (error: any) {
+      console.error('[VideoCallService] ❌ Track recovery failed:', error);
+      this.toastService.error('Could not recover camera/microphone. Try toggling them manually.');
     }
   }
 
@@ -420,26 +645,13 @@ export class VideoCallService {
    */
   private async cleanupFailedCall(): Promise<void> {
     try {
-      // Close local tracks
-      if (this.localVideoTrack) {
-        this.localVideoTrack.close();
-        this.localVideoTrack = null;
-      }
-      if (this.localAudioTrack) {
-        this.localAudioTrack.close();
-        this.localAudioTrack = null;
-      }
+      this.stopCallSessionListener();
+      this.closeAllLocalTracks();
       
-      // Leave Agora channel if connected
       if (this.client) {
-        try {
-          await this.client.leave();
-        } catch (e) {
-          // Ignore leave errors during cleanup
-        }
+        try { await this.client.leave(); } catch (_) {}
       }
       
-      // Reset state
       this.currentCallSession$.next(null);
       this.localVideoEnabled$.next(true);
       this.localAudioEnabled$.next(true);
@@ -453,64 +665,70 @@ export class VideoCallService {
   }
 
   /**
-   * Leave current call
+   * Leave current call (user-initiated)
    */
   async leaveCall(): Promise<void> {
+    if (this.isLeavingCall) return;
+    this.isLeavingCall = true;
+
     const currentCall = this.currentCallSession$.value;
     const currentUser = await this.authService.user$.pipe(take(1)).toPromise();
 
-    if (!currentCall || !currentUser) return;
+    if (!currentCall || !currentUser) {
+      this.isLeavingCall = false;
+      return;
+    }
 
     try {
-      // Unpublish and close local tracks
-      if (this.localVideoTrack) {
-        this.localVideoTrack.stop();
-        this.localVideoTrack.close();
-        this.localVideoTrack = null;
+      console.log('[VideoCallService] 📞 Leaving call:', currentCall.id);
+
+      // 1. Stop recording FIRST (needs currentCallSession$ to still be set)
+      if (this.isRecording$.value) {
+        await this.stopRecording();
       }
 
-      if (this.localAudioTrack) {
-        this.localAudioTrack.stop();
-        this.localAudioTrack.close();
-        this.localAudioTrack = null;
+      // 2. Stop Firestore listener (so we don't react to our own status update)
+      this.stopCallSessionListener();
+
+      // 3. Close all local tracks (video, audio, screen share)
+      this.closeAllLocalTracks();
+
+      // 4. Leave Agora channel
+      if (this.client) {
+        try { await this.client.leave(); } catch (_) {}
       }
 
-      // Leave channel
-      await this.client!.leave();
-
-      // Update participant record
-      if (currentUser?.uid) {
-        await this.updateParticipantLeftTime(currentCall.id, currentUser.uid);
+      // 5. Update participant record
+      if (currentUser.uid) {
+        try { await this.updateParticipantLeftTime(currentCall.id, currentUser.uid); } catch (_) {}
       }
 
-      // Update call session if host is leaving
-      if (currentUser?.uid && currentCall.hostId === currentUser.uid) {
-        const duration = this.calculateDuration(currentCall.startedAt);
+      // 6. Update call session in Firestore - ALWAYS mark as ended for 1-on-1 calls
+      const duration = this.calculateDuration(currentCall.startedAt);
+      try {
         await updateDoc(doc(this.callSessionsCollection, currentCall.id), {
           status: 'ended' as CallStatus,
           endedAt: Timestamp.now(),
           duration,
           updatedAt: Timestamp.now()
         });
-        
-        // Save to call history
-        await this.saveCallHistory(currentCall, duration);
-      }
+      } catch (_) {}
 
-      // Stop recording if active
-      if (this.isRecording$.value) {
-        await this.stopRecording();
-      }
+      // 7. Save to call history (host or initiator)
+      try { await this.saveCallHistory(currentCall, duration); } catch (_) {}
 
-      // Clear state
+      // 8. Clear state
       this.currentCallSession$.next(null);
       this.remoteUsers$.next(new Map());
+      this.localVideoEnabled$.next(true);
+      this.localAudioEnabled$.next(true);
+      this.isScreenSharing$.next(false);
 
-      this.logCallEvent('leave', { callSessionId: currentCall.id, userId: currentUser?.uid });
+      console.log('[VideoCallService] ✅ Left call successfully');
     } catch (error) {
       console.error('[VideoCallService] Failed to leave call:', error);
-      this.logCallEvent('error', { error, stage: 'leave_call' });
-      throw error;
+    } finally {
+      this.isLeavingCall = false;
     }
   }
 
@@ -601,8 +819,63 @@ export class VideoCallService {
    * Toggle local microphone
    */
   async toggleMicrophone(): Promise<boolean> {
-    if (!this.localAudioTrack) return false;
+    // If no track exists, try to create one
+    if (!this.localAudioTrack) {
+      try {
+        console.log('[VideoCallService] 🎤 Creating new microphone track...');
+        this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        if (this.localAudioTrack) {
+          this.localAudioTrack.on('track-ended', () => {
+            console.warn('[VideoCallService] ⚠️ Local audio track ended unexpectedly');
+            this.localAudioEnabled$.next(false);
+          });
+        }
+        if (this.client) {
+          await this.client.publish([this.localAudioTrack]);
+        }
+        this.localAudioEnabled$.next(true);
+        this.toastService.success('Microphone enabled');
+        this.logCallEvent('unmute', {});
+        return true;
+      } catch (error: any) {
+        console.error('[VideoCallService] ❌ Failed to create audio track:', error);
+        this.toastService.error('Could not enable microphone');
+        return false;
+      }
+    }
 
+    // If track exists but is dead, recreate it
+    if (this.localAudioTrack.getMediaStreamTrack()?.readyState === 'ended') {
+      try {
+        console.log('[VideoCallService] 🎤 Audio track dead, recreating...');
+        if (this.client) {
+          try { await this.client.unpublish([this.localAudioTrack]); } catch (_) {}
+        }
+        this.localAudioTrack.close();
+        this.localAudioTrack = await AgoraRTC.createMicrophoneAudioTrack();
+        if (this.localAudioTrack) {
+          this.localAudioTrack.on('track-ended', () => {
+            console.warn('[VideoCallService] ⚠️ Local audio track ended unexpectedly');
+            this.localAudioEnabled$.next(false);
+          });
+        }
+        if (this.client) {
+          await this.client.publish([this.localAudioTrack]);
+        }
+        this.localAudioEnabled$.next(true);
+        this.toastService.success('Microphone recovered');
+        this.logCallEvent('unmute', {});
+        return true;
+      } catch (error: any) {
+        console.error('[VideoCallService] ❌ Failed to recreate audio track:', error);
+        this.localAudioTrack = null;
+        this.localAudioEnabled$.next(false);
+        this.toastService.error('Could not recover microphone');
+        return false;
+      }
+    }
+
+    // Normal toggle
     const newState = !this.localAudioTrack.enabled;
     await this.localAudioTrack.setEnabled(newState);
     this.localAudioEnabled$.next(newState);
@@ -615,8 +888,53 @@ export class VideoCallService {
    * Toggle local camera
    */
   async toggleCamera(): Promise<boolean> {
-    if (!this.localVideoTrack) return false;
+    // If no track exists, try to create one
+    if (!this.localVideoTrack) {
+      try {
+        console.log('[VideoCallService] 📹 Creating new camera track...');
+        this.localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+        this.attachTrackEndedHandlers();
+        if (this.client) {
+          await this.client.publish([this.localVideoTrack]);
+        }
+        this.localVideoEnabled$.next(true);
+        this.toastService.success('Camera enabled');
+        this.logCallEvent('camera-on', {});
+        return true;
+      } catch (error: any) {
+        console.error('[VideoCallService] ❌ Failed to create camera track:', error);
+        this.toastService.error('Could not enable camera');
+        return false;
+      }
+    }
 
+    // If track exists but is dead, recreate it
+    if (this.localVideoTrack.getMediaStreamTrack()?.readyState === 'ended') {
+      try {
+        console.log('[VideoCallService] 📹 Camera track dead, recreating...');
+        if (this.client) {
+          try { await this.client.unpublish([this.localVideoTrack]); } catch (_) {}
+        }
+        this.localVideoTrack.close();
+        this.localVideoTrack = await AgoraRTC.createCameraVideoTrack();
+        this.attachTrackEndedHandlers();
+        if (this.client) {
+          await this.client.publish([this.localVideoTrack]);
+        }
+        this.localVideoEnabled$.next(true);
+        this.toastService.success('Camera recovered');
+        this.logCallEvent('camera-on', {});
+        return true;
+      } catch (error: any) {
+        console.error('[VideoCallService] ❌ Failed to recreate camera track:', error);
+        this.localVideoTrack = null;
+        this.localVideoEnabled$.next(false);
+        this.toastService.error('Could not recover camera');
+        return false;
+      }
+    }
+
+    // Normal toggle
     const newState = !this.localVideoTrack.enabled;
     await this.localVideoTrack.setEnabled(newState);
     this.localVideoEnabled$.next(newState);
@@ -1064,6 +1382,10 @@ export class VideoCallService {
 
   get callEvents$Observable(): Observable<CallEvent> {
     return this.callEvents$.asObservable();
+  }
+
+  get callEndedByRemote$Observable(): Observable<string> {
+    return this.callEndedByRemote$.asObservable();
   }
 
   /**

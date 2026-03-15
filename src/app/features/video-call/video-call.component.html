@@ -42,18 +42,15 @@
       </div>
     </div>
 
-    <!-- Local Video (Picture-in-Picture) -->
-    <div class="local-video-wrapper" *ngIf="isVideoEnabled">
-      <div #localVideoContainer class="local-video-container"></div>
-      <div class="local-video-label">You</div>
-    </div>
-
-    <!-- Video Disabled Placeholder -->
-    <div class="local-video-wrapper camera-off" *ngIf="!isVideoEnabled">
-      <div class="camera-off-icon">
+    <!-- Local Video (always in DOM, hidden via CSS when camera off) -->
+    <div class="local-video-wrapper" [class.camera-off]="!isVideoEnabled">
+      <div #localVideoContainer class="local-video-container"
+           [style.display]="isVideoEnabled ? 'block' : 'none'"></div>
+      <div class="camera-off-icon" *ngIf="!isVideoEnabled">
         <mat-icon>videocam_off</mat-icon>
         <p>Camera Off</p>
       </div>
+      <div class="local-video-label">You</div>
     </div>
 
     <!-- Control Bar -->

@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, inject, ChangeDetectorRef, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, ActivatedRoute } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { Subscription } from 'rxjs';
 import { VideoCallService } from '../../services/video-call.service';
+import { ToastService } from '../../services/toast.service';
 import { CallSession } from '../../models/video-call.models';
 import { UID, IAgoraRTCRemoteUser } from 'agora-rtc-sdk-ng';
 
@@ -25,9 +26,11 @@ import { UID, IAgoraRTCRemoteUser } from 'agora-rtc-sdk-ng';
 })
 export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
   private videoCallService = inject(VideoCallService);
+  private toastService = inject(ToastService);
   private router = inject(Router);
   private route = inject(ActivatedRoute);
   private cdr = inject(ChangeDetectorRef);
+  private ngZone = inject(NgZone);
 
   @ViewChild('localVideoContainer') localVideoContainer!: ElementRef<HTMLDivElement>;
   @ViewChild('remoteVideoContainer') remoteVideoContainer!: ElementRef<HTMLDivElement>;
@@ -46,9 +49,11 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
   // Subscriptions
   private subscriptions: Subscription[] = [];
   private durationInterval: any;
+  private viewReady = false;
+  private callJoined = false;
+  private visibilityHandler: (() => void) | null = null;
 
   ngOnInit(): void {
-    // Get call session ID from route
     const callSessionId = this.route.snapshot.paramMap.get('id');
     if (!callSessionId) {
       console.error('[VideoCallComponent] No call session ID provided');
@@ -56,29 +61,50 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Join the call
     this.joinCall(callSessionId);
-
-    // Subscribe to call state
     this.setupSubscriptions();
+    this.setupVisibilityHandler();
   }
 
   ngAfterViewInit(): void {
-    // Play local video track
-    setTimeout(() => {
-      this.playLocalVideo();
-    }, 1000);
+    this.viewReady = true;
+    // If call already joined before view was ready, play now
+    if (this.callJoined) {
+      this.safePlayLocalVideo();
+    }
   }
 
   ngOnDestroy(): void {
-    // Clean up
     this.subscriptions.forEach(sub => sub.unsubscribe());
     if (this.durationInterval) {
       clearInterval(this.durationInterval);
     }
-    
-    // Leave call
+    if (this.visibilityHandler) {
+      document.removeEventListener('visibilitychange', this.visibilityHandler);
+    }
+    // leaveCall() is idempotent and guards against double-leave
     this.videoCallService.leaveCall();
+  }
+
+  /**
+   * Handle PC lock/unlock and tab switching via visibilitychange
+   */
+  private setupVisibilityHandler(): void {
+    this.visibilityHandler = () => {
+      if (document.visibilityState === 'visible' && this.callJoined) {
+        console.log('[VideoCallComponent] 👁️ Page became visible, recovering tracks...');
+        this.ngZone.run(async () => {
+          await this.videoCallService.recoverTracks();
+          // Re-play local video after recovery
+          setTimeout(() => {
+            this.safePlayLocalVideo();
+            this.playRemoteVideos();
+            this.cdr.detectChanges();
+          }, 500);
+        });
+      }
+    };
+    document.addEventListener('visibilitychange', this.visibilityHandler);
   }
 
   /**
@@ -88,21 +114,23 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     try {
       this.isConnecting = true;
       this.cdr.detectChanges();
-      
+
       await this.videoCallService.joinCall(callSessionId);
-      
+
+      this.callJoined = true;
       this.isConnecting = false;
       this.cdr.detectChanges();
-      console.log('[VideoCallComponent] 🎥 Call joined, UI should now be visible');
-      
-      // Start duration counter
+      console.log('[VideoCallComponent] 🎥 Call joined successfully');
+
+      // Play local video after a frame so the container is rendered
+      setTimeout(() => this.safePlayLocalVideo(), 100);
+
       this.startDurationCounter();
     } catch (error) {
       console.error('[VideoCallComponent] Failed to join call:', error);
       this.isConnecting = false;
       this.cdr.detectChanges();
-      // Error is already handled in VideoCallService with toast
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/home']);
     }
   }
 
@@ -110,41 +138,42 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
    * Set up subscriptions to service observables
    */
   private setupSubscriptions(): void {
-    // Current call session
     this.subscriptions.push(
       this.videoCallService.currentCall$.subscribe(session => {
         this.callSession = session;
-        // Hide connecting overlay when call session is established
         if (session) {
           this.isConnecting = false;
-          console.log('[VideoCallComponent] ✅ Call session established, hiding connecting overlay');
           this.cdr.detectChanges();
         }
       })
     );
 
-    // Video enabled state
     this.subscriptions.push(
       this.videoCallService.isVideoEnabled$.subscribe((enabled: boolean) => {
+        const changed = this.isVideoEnabled !== enabled;
         this.isVideoEnabled = enabled;
+        this.cdr.detectChanges();
+        // When camera turns back on, re-play into the container
+        if (changed && enabled) {
+          setTimeout(() => this.safePlayLocalVideo(), 100);
+        }
       })
     );
 
-    // Audio enabled state
     this.subscriptions.push(
       this.videoCallService.isAudioEnabled$.subscribe((enabled: boolean) => {
         this.isAudioEnabled = enabled;
+        this.cdr.detectChanges();
       })
     );
 
-    // Screen sharing state
     this.subscriptions.push(
       this.videoCallService.isScreenSharing$Observable.subscribe((sharing: boolean) => {
         this.isScreenSharing = sharing;
+        this.cdr.detectChanges();
       })
     );
 
-    // Recording state
     this.subscriptions.push(
       this.videoCallService.isRecordingObservable.subscribe((recording: boolean) => {
         this.isRecording = recording;
@@ -152,7 +181,6 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
       })
     );
 
-    // Remote users
     this.subscriptions.push(
       this.videoCallService.remoteUsers$Observable.subscribe((users: Map<UID, IAgoraRTCRemoteUser>) => {
         this.remoteUsers = users;
@@ -161,23 +189,51 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
       })
     );
 
-    // Network quality
     this.subscriptions.push(
       this.videoCallService.networkQuality$Observable.subscribe((quality: any) => {
         if (quality) {
           this.networkQuality = this.getNetworkQualityText(quality.uplinkNetworkQuality);
+          this.cdr.detectChanges();
         }
+      })
+    );
+
+    // Listen for call ended by the other party
+    this.subscriptions.push(
+      this.videoCallService.callEndedByRemote$Observable.subscribe((reason: string) => {
+        console.log('[VideoCallComponent] 📞 Call ended remotely:', reason);
+        this.toastService.info(reason);
+        if (this.durationInterval) {
+          clearInterval(this.durationInterval);
+        }
+        this.router.navigate(['/home']);
       })
     );
   }
 
   /**
-   * Play local video in container
+   * Safely play local video - checks that both the view and track are ready
    */
-  private playLocalVideo(): void {
+  private safePlayLocalVideo(): void {
+    if (!this.viewReady || !this.localVideoContainer) {
+      console.log('[VideoCallComponent] ⏳ View not ready for local video');
+      return;
+    }
+
     const localTrack = this.videoCallService.getLocalVideoTrack();
-    if (localTrack && this.localVideoContainer) {
+    if (!localTrack) {
+      console.log('[VideoCallComponent] ⏳ No local video track available');
+      return;
+    }
+
+    try {
+      // Stop any existing playback first
+      try { localTrack.stop(); } catch (_) {}
+
       localTrack.play(this.localVideoContainer.nativeElement);
+      console.log('[VideoCallComponent] ✅ Local video playing');
+    } catch (error) {
+      console.error('[VideoCallComponent] ❌ Failed to play local video:', error);
     }
   }
 
@@ -187,41 +243,41 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
   private playRemoteVideos(): void {
     if (!this.remoteVideoContainer) return;
 
-    // Clear existing remote videos
     this.remoteVideoContainer.nativeElement.innerHTML = '';
 
-    // Play each remote user's video
     this.remoteUsers.forEach((user, uid) => {
+      // Play video
       if (user.videoTrack) {
         const playerDiv = document.createElement('div');
         playerDiv.id = `remote-${uid}`;
         playerDiv.className = 'remote-player';
         this.remoteVideoContainer.nativeElement.appendChild(playerDiv);
-        
         user.videoTrack.play(playerDiv);
+      }
+
+      // Play audio (critical - was missing!)
+      if (user.audioTrack) {
+        user.audioTrack.play();
       }
     });
   }
 
-  /**
-   * Toggle microphone
-   */
   async toggleMicrophone(): Promise<void> {
     const newState = await this.videoCallService.toggleMicrophone();
     this.isAudioEnabled = newState;
+    this.cdr.detectChanges();
   }
 
-  /**
-   * Toggle camera
-   */
   async toggleCamera(): Promise<void> {
     const newState = await this.videoCallService.toggleCamera();
     this.isVideoEnabled = newState;
+    this.cdr.detectChanges();
+    // Re-play into container when turning camera back on
+    if (newState) {
+      setTimeout(() => this.safePlayLocalVideo(), 100);
+    }
   }
 
-  /**
-   * Toggle screen share
-   */
   async toggleScreenShare(): Promise<void> {
     if (this.isScreenSharing) {
       await this.videoCallService.stopScreenShare();
@@ -230,9 +286,6 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /**
-   * Toggle recording
-   */
   async toggleRecording(): Promise<void> {
     if (this.isRecording) {
       await this.videoCallService.stopRecording();
@@ -241,28 +294,22 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /**
-   * End the call
-   */
   async endCall(): Promise<void> {
-    if (confirm('Are you sure you want to end the call?')) {
-      await this.videoCallService.leaveCall();
-      this.router.navigate(['/']);
+    if (this.durationInterval) {
+      clearInterval(this.durationInterval);
     }
+    await this.videoCallService.leaveCall();
+    this.toastService.info('Call ended');
+    this.router.navigate(['/home']);
   }
 
-  /**
-   * Start call duration counter
-   */
   private startDurationCounter(): void {
     this.durationInterval = setInterval(() => {
       this.callDuration++;
+      this.cdr.detectChanges();
     }, 1000);
   }
 
-  /**
-   * Get formatted call duration
-   */
   get formattedDuration(): string {
     const hours = Math.floor(this.callDuration / 3600);
     const minutes = Math.floor((this.callDuration % 3600) / 60);
@@ -274,9 +321,6 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }
 
-  /**
-   * Get network quality text
-   */
   private getNetworkQualityText(quality: number): string {
     switch (quality) {
       case 0: return 'Unknown';
@@ -290,9 +334,6 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /**
-   * Get network quality icon
-   */
   get networkQualityIcon(): string {
     switch (this.networkQuality) {
       case 'Excellent':
@@ -309,9 +350,6 @@ export class VideoCallComponent implements OnInit, OnDestroy, AfterViewInit {
     }
   }
 
-  /**
-   * Get remote user count
-   */
   get remoteUserCount(): number {
     return this.remoteUsers.size;
   }

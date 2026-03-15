@@ -101,6 +101,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   isBookmarkedCurrent = false;
   currentBookmarks: Bookmark[] = [];
   currentNotes: Note[] = [];
+  previousVerseNotes: Note[] = [];
+  nextVerseNotes: Note[] = [];
   showNotesPanel = false;
   editingNoteId: string | null = null;
   currentNoteContent = '';
@@ -109,6 +111,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
 
   // Verse selection
   totalVersesInCurrentSurah = 0;
+  previousSurahVerseCount = 0; // last verse number of previous surah (when at verse 1)
   verseNumbers: number[] = [];
 
   // Text Highlighting
@@ -355,7 +358,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load total verse count for current surah
+   * Load total verse count for current surah (and previous surah when at verse 1, for notes panel)
    */
   loadVerseCount(): void {
     this.quranService.getVerseCount(this.currentSurah).subscribe(data => {
@@ -363,6 +366,14 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
       this.verseNumbers = Array.from({ length: this.totalVersesInCurrentSurah }, (_, i) => i + 1);
       this.cdr.detectChanges();
     });
+    if (this.currentVerse === 1 && this.currentSurah > 1) {
+      this.quranService.getVerseCount(this.currentSurah - 1).subscribe(data => {
+        this.previousSurahVerseCount = data.numberOfAyahs;
+        this.cdr.detectChanges();
+      });
+    } else {
+      this.previousSurahVerseCount = 0;
+    }
   }
 
   /**
@@ -730,7 +741,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   // ==================== BOOKMARKS & NOTES ====================
 
   /**
-   * Load bookmarks, notes, and highlights for current verse
+   * Load bookmarks, notes, and highlights for current verse (and adjacent verses for notes panel)
    */
   loadBookmarksAndNotes(): void {
     // Load bookmarks for current verse
@@ -753,13 +764,98 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (notes) => {
           this.currentNotes = notes;
+          // When notes panel is open and we navigated, ensure draft is for current verse
+          if (this.showNotesPanel) {
+            this.noteService.createDraft(this.editionId, this.currentSurah, this.currentVerse);
+          }
           this.cdr.detectChanges();
         },
         error: (error) => console.error('Error loading notes:', error)
       });
 
+    // Load notes for previous verse (for list in notes panel)
+    if (this.currentSurah === 1 && this.currentVerse === 1) {
+      this.previousVerseNotes = [];
+    } else if (this.currentVerse > 1) {
+      this.noteService
+        .getNotesForVerse(this.editionId, this.currentSurah, this.currentVerse - 1)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (notes) => {
+            this.previousVerseNotes = notes;
+            this.cdr.detectChanges();
+          },
+          error: () => { this.previousVerseNotes = []; }
+        });
+    } else {
+      // At verse 1 of surah > 1: previous verse is last verse of previous surah
+      this.quranService.getVerseCount(this.currentSurah - 1).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (data) => {
+          this.noteService
+            .getNotesForVerse(this.editionId, this.currentSurah - 1, data.numberOfAyahs)
+            .pipe(takeUntil(this.destroy$))
+            .subscribe({
+              next: (notes) => {
+                this.previousVerseNotes = notes;
+                this.cdr.detectChanges();
+              },
+              error: () => { this.previousVerseNotes = []; }
+            });
+        },
+        error: () => { this.previousVerseNotes = []; }
+      });
+    }
+
+    // Load notes for next verse (for list in notes panel)
+    const nextRef = this.getNextVerseRef();
+    if (nextRef) {
+      this.noteService
+        .getNotesForVerse(this.editionId, nextRef.surah, nextRef.verse)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (notes) => {
+            this.nextVerseNotes = notes;
+            this.cdr.detectChanges();
+          },
+          error: () => { this.nextVerseNotes = []; }
+        });
+    } else {
+      this.nextVerseNotes = [];
+    }
+
     // Load highlights for current verse
     this.loadHighlights();
+  }
+
+  /** Reference to previous verse (surah, verse) or null if at 1:1 or ref not yet known */
+  getPreviousVerseRef(): { surah: number; verse: number } | null {
+    if (this.currentSurah === 1 && this.currentVerse === 1) return null;
+    if (this.currentVerse > 1) {
+      return { surah: this.currentSurah, verse: this.currentVerse - 1 };
+    }
+    if (this.currentSurah > 1 && this.previousSurahVerseCount > 0) {
+      return { surah: this.currentSurah - 1, verse: this.previousSurahVerseCount };
+    }
+    return null;
+  }
+
+  /** Reference to next verse (surah, verse) or null if at 114:6 */
+  getNextVerseRef(): { surah: number; verse: number } | null {
+    if (this.currentSurah === 114 && this.currentVerse === 6) return null;
+    if (this.currentVerse < this.totalVersesInCurrentSurah) {
+      return { surah: this.currentSurah, verse: this.currentVerse + 1 };
+    }
+    return { surah: this.currentSurah + 1, verse: 1 };
+  }
+
+  /** Navigate to a specific verse (e.g. from notes panel); keeps notes panel open */
+  goToVerse(surah: number, verse: number): void {
+    this.currentSurah = surah;
+    this.currentVerse = verse;
+    this.updateRoute();
+    // Route params subscription will call loadTafsir() and loadBookmarksAndNotes()
+    this.loadVerseCount();
+    this.loadTafsir();
   }
 
   /**
