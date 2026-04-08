@@ -1,12 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import axios from 'axios';
-import { OpenAIService } from '../services/openai.service';
+import { OpenAI } from 'openai';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 
 const router = express.Router();
-const openAIService = new OpenAIService();
+const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] });
 
 const DUA_INSIGHTS_PATH = join(__dirname, '../data/dua-insights.json');
 const EMOTIONAL_DUAS_PATH = join(__dirname, '../data/emotional-duas.json');
@@ -83,6 +83,50 @@ function processTafsirContent(content: string, maxTokens: number = 6000): string
 }
 
 /**
+ * Fetch the actual verse text (Arabic + English translation) from the Quran API.
+ * This ensures the AI never guesses or misattributes a verse translation.
+ */
+async function fetchVerseText(surah: number, verse: number): Promise<{ arabic: string; translation: string } | null> {
+  try {
+    const url = `https://api.quran.com/api/v4/verses/by_key/${surah}:${verse}?language=en&words=false&translations=131&fields=text_uthmani`;
+    const response = await axios.get(url, {
+      timeout: 10000,
+      headers: { 'Accept': 'application/json' }
+    });
+
+    const verseData = response.data?.verse;
+    const arabic = verseData?.text_uthmani || '';
+    const translation = response.data?.verse?.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || '';
+
+    if (!arabic && !translation) return null;
+    return { arabic, translation };
+  } catch (error) {
+    console.error(`[Newsletter] Failed to fetch verse text for ${surah}:${verse}:`, error);
+    return null;
+  }
+}
+
+/**
+ * Generate a reflection using GPT-4o-mini for higher accuracy.
+ * Separate from the shared OpenAIService to avoid affecting other features.
+ */
+async function generateReflection(prompt: string): Promise<string> {
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      {
+        role: 'system',
+        content: 'You are NuraAI, a knowledgeable Islamic scholar who provides accurate, respectful information about Islam. You always cite sources directly and never fabricate scholarly attributions. When provided with tafsir text, you base your response SOLELY on that text.'
+      },
+      { role: 'user', content: prompt }
+    ],
+    temperature: 0.3,
+    max_tokens: 1000
+  });
+  return completion.choices[0]?.message?.content || 'No response generated';
+}
+
+/**
  * Fetch real tafsir text from QuranCDN with priority-based content selection.
  * Same RAG approach and content processing as the tafsir chat pipeline.
  */
@@ -115,13 +159,24 @@ async function fetchTafsirFromCDN(surah: number, verse: number): Promise<string>
 }
 
 /**
- * Build the reflection prompt with the same strict sourcing rules as the tafsir chat.
+ * Build the reflection prompt with the actual verse text and strict sourcing rules.
  */
 function buildReflectionPrompt(
-  surah: number, verse: number, surahName: string, surahTheme: string, tafsirText: string
+  surah: number, verse: number, surahName: string, surahTheme: string,
+  tafsirText: string, verseText: { arabic: string; translation: string } | null
 ): string {
+  const verseBlock = verseText
+    ? `EXACT VERSE TEXT (${surah}:${verse}):
+Arabic: ${verseText.arabic}
+English: "${verseText.translation}"
+
+You MUST use this exact English translation when quoting the verse. Do NOT paraphrase or use a different translation.`
+    : '';
+
   if (surah === 1 && verse === 1) {
     return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah Al-Fatiha, Verse 1: "Bismillah al-Rahman al-Rahim".
+
+${verseBlock}
 
 Focus on:
 - The meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers)
@@ -135,12 +190,15 @@ Keep the tone warm, reflective, and accessible. This is for a weekly email newsl
   if (tafsirText) {
     return `You have access to Ibn Kathir's tafsir for Surah ${surah} (${surahName}), Verse ${verse}.
 
+${verseBlock}
+
 IMPORTANT — STRICT SOURCING RULES (follow these ABSOLUTELY):
 1. The tafsir text below may cover multiple verses at once. You MUST focus ONLY on what is relevant to Verse ${verse} (${surah}:${verse}).
 2. Your reflection MUST be based SOLELY on the provided tafsir text. DO NOT introduce external information, interpretations, or context that is not explicitly present in the text below.
 3. When conveying Ibn Kathir's points, attribute clearly: "Ibn Kathir explains..." or "According to Ibn Kathir..."
 4. If the provided text does not contain specific commentary for Verse ${verse}, state what is available and do not fabricate details.
 5. Do NOT reference or discuss other verse numbers.
+6. Use the EXACT English translation provided above when quoting the verse — do not substitute your own.
 
 Here is Ibn Kathir's tafsir text:
 ---
@@ -151,7 +209,7 @@ Using the above tafsir as your SOLE source, write a heartfelt, concise weekly re
 
 The reflection should:
 - Begin with "Surah ${surahName}, Verse ${verse}" as the header
-- Include the verse text in English translation (for verse ${verse} specifically)
+- Quote the verse using the exact English translation provided above
 - Present Ibn Kathir's specific scholarly points — avoid summarizing broadly, extract the key arguments and evidence
 - Connect it to a practical lesson for modern daily life
 - End with a brief contemplation or question for the reader to ponder
@@ -163,11 +221,13 @@ Keep the tone warm, reflective, and accessible. This is for a weekly email newsl
 
   return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah ${surah} (${surahName}), Verse ${verse}.
 
+${verseBlock}
+
 NOTE: Ibn Kathir's detailed tafsir text is not available for this specific verse. Base your reflection on well-known, authentic Islamic scholarship about this verse. Do NOT fabricate scholarly attributions — if you are unsure of a specific scholarly opinion, present the point as general Islamic understanding rather than attributing it to a specific scholar.
 
 The reflection should:
 - Begin with "Surah ${surahName}, Verse ${verse}" as the header
-- Include the verse text in English translation
+- Quote the verse using the exact English translation provided above
 - Explain its meaning grounded in authentic Islamic understanding
 - Connect it to a practical lesson for modern daily life
 - End with a brief contemplation or question for the reader to ponder
@@ -248,15 +308,20 @@ router.post('/tafsir-reflection', async (req: Request, res: Response) => {
     const surahInfo = surahThemes[String(surah)];
     const surahName = surahInfo?.name || `Surah ${surah}`;
 
-    const tafsirText = await fetchTafsirFromCDN(surah, verse);
-    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText);
-    const reflection = await openAIService.generateResponse(prompt);
+    const [tafsirText, verseText] = await Promise.all([
+      fetchTafsirFromCDN(surah, verse),
+      fetchVerseText(surah, verse)
+    ]);
+
+    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText, verseText);
+    const reflection = await generateReflection(prompt);
 
     res.json({
       success: true,
       surah,
       verse,
       surahName,
+      verseText: verseText || undefined,
       usedScholarlySources: !!tafsirText,
       reflection
     });
@@ -338,9 +403,13 @@ router.post('/generate', async (req: Request, res: Response) => {
     const surahInfo = surahThemes[String(surah)];
     const surahName = surahInfo?.name || `Surah ${surah}`;
 
-    const tafsirText = await fetchTafsirFromCDN(surah, verse);
-    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText);
-    const reflection = await openAIService.generateResponse(prompt);
+    const [tafsirText, verseText] = await Promise.all([
+      fetchTafsirFromCDN(surah, verse),
+      fetchVerseText(surah, verse)
+    ]);
+
+    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText, verseText);
+    const reflection = await generateReflection(prompt);
 
     res.json({
       success: true,
@@ -348,6 +417,7 @@ router.post('/generate', async (req: Request, res: Response) => {
         surah,
         verse,
         surahName,
+        verseText: verseText || undefined,
         usedScholarlySources: !!tafsirText,
         reflection
       }
