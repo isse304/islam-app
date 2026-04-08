@@ -12,11 +12,83 @@ const DUA_INSIGHTS_PATH = join(__dirname, '../data/dua-insights.json');
 const EMOTIONAL_DUAS_PATH = join(__dirname, '../data/emotional-duas.json');
 const SURAH_THEMES_PATH = join(__dirname, '../data/surah-themes.json');
 
+const SURAH_VERSE_COUNTS: Record<number, number> = {
+  1:7,2:286,3:200,4:176,5:120,6:165,7:206,8:75,9:129,10:109,
+  11:123,12:111,13:43,14:52,15:99,16:128,17:111,18:110,19:98,20:135,
+  21:112,22:78,23:118,24:64,25:77,26:227,27:93,28:88,29:69,30:60,
+  31:34,32:30,33:73,34:54,35:45,36:83,37:182,38:88,39:75,40:85,
+  41:54,42:53,43:89,44:59,45:37,46:35,47:38,48:29,49:18,50:45,
+  51:60,52:49,53:62,54:55,55:78,56:96,57:29,58:22,59:24,60:13,
+  61:14,62:11,63:11,64:18,65:12,66:12,67:30,68:52,69:52,70:44,
+  71:28,72:28,73:20,74:56,75:40,76:31,77:50,78:40,79:46,80:42,
+  81:29,82:19,83:36,84:25,85:22,86:17,87:19,88:26,89:30,90:20,
+  91:15,92:21,93:11,94:8,95:8,96:19,97:5,98:8,99:8,100:11,
+  101:11,102:8,103:3,104:9,105:5,106:4,107:7,108:3,109:6,110:3,
+  111:5,112:4,113:5,114:6
+};
+
+function getRandomVerse(surah: number): number {
+  const maxVerse = SURAH_VERSE_COUNTS[surah] || 5;
+  return Math.floor(Math.random() * maxVerse) + 1;
+}
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 4);
+}
+
 /**
- * Fetch real tafsir text from QuranCDN (same RAG approach as the tafsir chat).
- * Returns cleaned text from Ibn Kathir's tafsir for the given surah:verse.
+ * Priority-based content selection — identical to the tafsir chat pipeline.
+ * Scores sections by scholarly importance and assembles the best ones within a token budget.
+ */
+function processTafsirContent(content: string, maxTokens: number = 6000): string {
+  if (!content) return '';
+  if (estimateTokens(content) <= maxTokens) return content;
+
+  const sections = content.split(/\n\n+/);
+
+  const priorityPatterns = [
+    /سبب.*نزول|context.*revelation|occasion.*revelation/i,
+    /تفسير|معنى|شرح|interpretation|meaning|explanation/i,
+    /حكم|ruling|فقه|fiqh/i,
+    /فائدة|حكمة|benefit|wisdom/i,
+    /حديث|أثر|hadith|narration|reported/i
+  ];
+
+  const scoredSections = sections.map(section => {
+    let score = 0;
+    priorityPatterns.forEach((pattern, index) => {
+      if (pattern.test(section)) {
+        score += (priorityPatterns.length - index);
+      }
+    });
+    return { section, score };
+  }).sort((a, b) => b.score - a.score);
+
+  let processedContent = sections[0] + '\n\n';
+  let currentTokens = estimateTokens(processedContent);
+
+  for (const { section } of scoredSections) {
+    const sectionTokens = estimateTokens(section);
+    if (currentTokens + sectionTokens <= maxTokens * 0.95) {
+      processedContent += section + '\n\n';
+      currentTokens += sectionTokens;
+    }
+  }
+
+  if (estimateTokens(content) > maxTokens) {
+    processedContent += '\n[Note: Some content has been optimized for length while preserving key interpretations and context.]';
+  }
+
+  return processedContent.trim();
+}
+
+/**
+ * Fetch real tafsir text from QuranCDN with priority-based content selection.
+ * Same RAG approach and content processing as the tafsir chat pipeline.
  */
 async function fetchTafsirFromCDN(surah: number, verse: number): Promise<string> {
+  if (surah === 1 && verse === 1) return '';
+
   try {
     const url = `https://api.qurancdn.com/api/qdc/tafsirs/en-tafisr-ibn-kathir/by_ayah/${surah}:${verse}`;
     const response = await axios.get(url, {
@@ -26,19 +98,83 @@ async function fetchTafsirFromCDN(surah: number, verse: number): Promise<string>
 
     if (!response.data?.tafsir?.text) return '';
 
-    return response.data.tafsir.text
+    const cleanText = response.data.tafsir.text
       .replace(/<h2>/g, '\n\n')
       .replace(/<\/h2>/g, '\n')
       .replace(/<p>/g, '\n')
       .replace(/<\/p>/g, '')
       .replace(/<[^>]+>/g, '')
       .replace(/\n\s*\n/g, '\n\n')
-      .trim()
-      .substring(0, 3000);
+      .trim();
+
+    return processTafsirContent(cleanText, 6000);
   } catch (error) {
     console.error(`[Newsletter] Failed to fetch tafsir for ${surah}:${verse}:`, error);
     return '';
   }
+}
+
+/**
+ * Build the reflection prompt with the same strict sourcing rules as the tafsir chat.
+ */
+function buildReflectionPrompt(
+  surah: number, verse: number, surahName: string, surahTheme: string, tafsirText: string
+): string {
+  if (surah === 1 && verse === 1) {
+    return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah Al-Fatiha, Verse 1: "Bismillah al-Rahman al-Rahim".
+
+Focus on:
+- The meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers)
+- How beginning all actions with Allah's name transforms our daily life
+- End with a contemplation or question
+
+Do NOT discuss Isti'adhah (seeking refuge) unless directly relevant.
+Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
+  }
+
+  if (tafsirText) {
+    return `You have access to Ibn Kathir's tafsir for Surah ${surah} (${surahName}), Verse ${verse}.
+
+IMPORTANT — STRICT SOURCING RULES (follow these ABSOLUTELY):
+1. The tafsir text below may cover multiple verses at once. You MUST focus ONLY on what is relevant to Verse ${verse} (${surah}:${verse}).
+2. Your reflection MUST be based SOLELY on the provided tafsir text. DO NOT introduce external information, interpretations, or context that is not explicitly present in the text below.
+3. When conveying Ibn Kathir's points, attribute clearly: "Ibn Kathir explains..." or "According to Ibn Kathir..."
+4. If the provided text does not contain specific commentary for Verse ${verse}, state what is available and do not fabricate details.
+5. Do NOT reference or discuss other verse numbers.
+
+Here is Ibn Kathir's tafsir text:
+---
+${tafsirText}
+---
+
+Using the above tafsir as your SOLE source, write a heartfelt, concise weekly reflection (150-200 words).
+
+The reflection should:
+- Begin with "Surah ${surahName}, Verse ${verse}" as the header
+- Include the verse text in English translation (for verse ${verse} specifically)
+- Present Ibn Kathir's specific scholarly points — avoid summarizing broadly, extract the key arguments and evidence
+- Connect it to a practical lesson for modern daily life
+- End with a brief contemplation or question for the reader to ponder
+
+Theme of this Surah: ${surahTheme}
+
+Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections". Ground every claim in the scholarly source provided.`;
+  }
+
+  return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah ${surah} (${surahName}), Verse ${verse}.
+
+NOTE: Ibn Kathir's detailed tafsir text is not available for this specific verse. Base your reflection on well-known, authentic Islamic scholarship about this verse. Do NOT fabricate scholarly attributions — if you are unsure of a specific scholarly opinion, present the point as general Islamic understanding rather than attributing it to a specific scholar.
+
+The reflection should:
+- Begin with "Surah ${surahName}, Verse ${verse}" as the header
+- Include the verse text in English translation
+- Explain its meaning grounded in authentic Islamic understanding
+- Connect it to a practical lesson for modern daily life
+- End with a brief contemplation or question for the reader to ponder
+
+Theme of this Surah: ${surahTheme}
+
+Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
 }
 
 /**
@@ -107,52 +243,13 @@ router.post('/tafsir-reflection', async (req: Request, res: Response) => {
     const surahThemes = JSON.parse(await fs.readFile(SURAH_THEMES_PATH, 'utf8'));
     const totalSurahs = Object.keys(surahThemes).length;
 
-    let surah = req.body?.surah;
-    let verse = req.body?.verse;
-
-    if (!surah) {
-      surah = Math.floor(Math.random() * totalSurahs) + 1;
-    }
-    if (!verse) {
-      verse = Math.floor(Math.random() * 5) + 1;
-    }
-
+    const surah = req.body?.surah || (Math.floor(Math.random() * totalSurahs) + 1);
+    const verse = req.body?.verse || getRandomVerse(surah);
     const surahInfo = surahThemes[String(surah)];
     const surahName = surahInfo?.name || `Surah ${surah}`;
 
     const tafsirText = await fetchTafsirFromCDN(surah, verse);
-
-    const prompt = tafsirText
-      ? `You have access to Ibn Kathir's tafsir for Surah ${surah} (${surahName}), Verse ${verse}. 
-      
-Here is the scholarly tafsir text:
----
-${tafsirText}
----
-
-Using the above tafsir as your PRIMARY source, write a heartfelt, concise weekly reflection (150-200 words).
-
-The reflection should:
-- Start with the verse text in English translation
-- Draw directly from Ibn Kathir's explanation above to convey the meaning
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
-
-Theme of this Surah: ${surahInfo?.theme || 'General guidance'}
-
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections". Ground your reflection in the scholarly source provided — do not invent interpretations.`
-      : `Write a heartfelt, concise weekly reflection (150-200 words) on Surah ${surah} (${surahName}), Verse ${verse}. 
-    
-The reflection should:
-- Start with the verse text in English translation
-- Explain its meaning in a way anyone can understand
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
-
-Theme of this Surah: ${surahInfo?.theme || 'General guidance'}
-
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
-
+    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText);
     const reflection = await openAIService.generateResponse(prompt);
 
     res.json({
@@ -236,45 +333,14 @@ router.post('/generate', async (req: Request, res: Response) => {
     const surahThemes = JSON.parse(await fs.readFile(SURAH_THEMES_PATH, 'utf8'));
 
     const totalSurahs = Object.keys(surahThemes).length;
-    const surah = req.body?.surah || Math.floor(Math.random() * totalSurahs) + 1;
-    const verse = req.body?.verse || Math.floor(Math.random() * 5) + 1;
+    const surah = req.body?.surah || (Math.floor(Math.random() * totalSurahs) + 1);
+    const verse = req.body?.verse || getRandomVerse(surah);
     const surahInfo = surahThemes[String(surah)];
     const surahName = surahInfo?.name || `Surah ${surah}`;
 
     const tafsirText = await fetchTafsirFromCDN(surah, verse);
-
-    const reflectionPrompt = tafsirText
-      ? `You have access to Ibn Kathir's tafsir for Surah ${surah} (${surahName}), Verse ${verse}. 
-      
-Here is the scholarly tafsir text:
----
-${tafsirText}
----
-
-Using the above tafsir as your PRIMARY source, write a heartfelt, concise weekly reflection (150-200 words).
-
-The reflection should:
-- Start with the verse text in English translation
-- Draw directly from Ibn Kathir's explanation above to convey the meaning
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
-
-Theme of this Surah: ${surahInfo?.theme || 'General guidance'}
-
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections". Ground your reflection in the scholarly source provided — do not invent interpretations.`
-      : `Write a heartfelt, concise weekly reflection (150-200 words) on Surah ${surah} (${surahName}), Verse ${verse}. 
-
-The reflection should:
-- Start with the verse text in English translation
-- Explain its meaning in a way anyone can understand
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
-
-Theme of this Surah: ${surahInfo?.theme || 'General guidance'}
-
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
-
-    const reflection = await openAIService.generateResponse(reflectionPrompt);
+    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText);
+    const reflection = await openAIService.generateResponse(prompt);
 
     res.json({
       success: true,
