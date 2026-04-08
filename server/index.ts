@@ -14,6 +14,7 @@ import tafsirRoutes from './routes/tafsir';
 import contactRouter from './routes/contact';
 import healthRouter from './routes/health';
 import lookupRouter from './routes/lookup';
+import newsletterRouter from './routes/newsletter';
 import { EmailService } from './services/email.service';
 import { StripeService } from './services/stripe.service';
 import helmet from 'helmet';
@@ -266,6 +267,7 @@ if (process.env.NODE_ENV === 'development') {
 
 app.use('/api/tafsir', tafsirRoutes);
 app.use('/api/contact', contactRouter);
+app.use('/api/newsletter', newsletterRouter);
 app.use('/api/health', healthRouter);
 
 // Basic session check endpoint
