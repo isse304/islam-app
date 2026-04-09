@@ -116,12 +116,20 @@ async function generateReflection(prompt: string): Promise<string> {
     messages: [
       {
         role: 'system',
-        content: 'You are NuraAI, a knowledgeable Islamic scholar who provides accurate, respectful information about Islam. You always cite sources directly and never fabricate scholarly attributions. When provided with tafsir text, you base your response SOLELY on that text.'
+        content: `You are NuraAI, a knowledgeable Islamic scholar writing for a weekly email newsletter.
+
+WRITING RULES:
+- Write in PLAIN TEXT only. Do NOT use markdown (no #, ##, ###, **, *, --, etc.).
+- Do NOT invent metaphors or poetic concepts not found in the source material. If Ibn Kathir says Salsabeel is a spring in Paradise, say exactly that — do not call it "the spirit of Salsabeel" or similar.
+- Stay precise and scholarly. Every claim must come from the provided tafsir text.
+- Be warm and accessible, but never sacrifice accuracy for poetic language.
+- Do NOT start with a header line — the email template already has one.
+- Start directly with the verse quote, then the reflection.`
       },
       { role: 'user', content: prompt }
     ],
-    temperature: 0.3,
-    max_tokens: 1000
+    temperature: 0.2,
+    max_tokens: 800
   });
   return completion.choices[0]?.message?.content || 'No response generated';
 }
@@ -174,17 +182,21 @@ You MUST use this exact English translation when quoting the verse. Do NOT parap
     : '';
 
   if (surah === 1 && verse === 1) {
-    return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah Al-Fatiha, Verse 1: "Bismillah al-Rahman al-Rahim".
+    return `Write a concise weekly reflection (150-200 words) on Surah Al-Fatiha, Verse 1: "Bismillah al-Rahman al-Rahim".
 
 ${verseBlock}
 
-Focus on:
-- The meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers)
-- How beginning all actions with Allah's name transforms our daily life
-- End with a contemplation or question
+STRUCTURE (follow exactly):
+1. Start by quoting the verse.
+2. Explain the meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers).
+3. One practical takeaway about how beginning actions with Allah's name affects our daily life.
+4. End with one short question for the reader to reflect on.
 
-Do NOT discuss Isti'adhah (seeking refuge) unless directly relevant.
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
+RULES:
+- Do NOT add a title or header.
+- Do NOT use markdown formatting (no #, *, **, etc.).
+- Do NOT discuss Isti'adhah (seeking refuge) unless directly relevant.
+- Use simple, direct language. Be warm but precise.`;
   }
 
   if (tafsirText) {
@@ -205,36 +217,42 @@ Here is Ibn Kathir's tafsir text:
 ${tafsirText}
 ---
 
-Using the above tafsir as your SOLE source, write a heartfelt, concise weekly reflection (150-200 words).
+Using the above tafsir as your SOLE source, write a concise weekly reflection (150-200 words).
 
-The reflection should:
-- Begin with "Surah ${surahName}, Verse ${verse}" as the header
-- Quote the verse using the exact English translation provided above
-- Present Ibn Kathir's specific scholarly points — avoid summarizing broadly, extract the key arguments and evidence
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
+STRUCTURE (follow exactly):
+1. Start by quoting the verse using the EXACT English translation provided above, in quotation marks.
+2. Explain what Ibn Kathir says about this verse — use his actual points, not your own interpretation. Attribute clearly.
+3. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
+4. End with one short question for the reader to reflect on.
 
-Theme of this Surah: ${surahTheme}
+RULES:
+- Do NOT add a title or header — the email template already has one.
+- Do NOT use markdown formatting (no #, *, **, --, etc.).
+- Do NOT invent metaphors or concepts not in the tafsir (e.g. do not say "the spirit of X" unless Ibn Kathir uses that phrase).
+- Use simple, direct language. Be warm but precise.
 
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections". Ground every claim in the scholarly source provided.`;
+Theme of this Surah: ${surahTheme}`;
   }
 
   return `Write a heartfelt, concise weekly reflection (150-200 words) on Surah ${surah} (${surahName}), Verse ${verse}.
 
 ${verseBlock}
 
-NOTE: Ibn Kathir's detailed tafsir text is not available for this specific verse. Base your reflection on well-known, authentic Islamic scholarship about this verse. Do NOT fabricate scholarly attributions — if you are unsure of a specific scholarly opinion, present the point as general Islamic understanding rather than attributing it to a specific scholar.
+NOTE: Ibn Kathir's detailed tafsir text is not available for this specific verse. Base your reflection on well-known, authentic Islamic scholarship. Do NOT fabricate scholarly attributions — if unsure, present the point as general Islamic understanding.
 
-The reflection should:
-- Begin with "Surah ${surahName}, Verse ${verse}" as the header
-- Quote the verse using the exact English translation provided above
-- Explain its meaning grounded in authentic Islamic understanding
-- Connect it to a practical lesson for modern daily life
-- End with a brief contemplation or question for the reader to ponder
+STRUCTURE (follow exactly):
+1. Start by quoting the verse using the EXACT English translation provided above, in quotation marks.
+2. Explain the verse's meaning based on authentic Islamic scholarship. If referencing a scholar, only name them if you are certain of the attribution.
+3. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
+4. End with one short question for the reader to reflect on.
 
-Theme of this Surah: ${surahTheme}
+RULES:
+- Do NOT add a title or header — the email template already has one.
+- Do NOT use markdown formatting (no #, *, **, --, etc.).
+- Do NOT invent metaphors or concepts not grounded in scholarship.
+- Use simple, direct language. Be warm but precise.
 
-Keep the tone warm, reflective, and accessible. This is for a weekly email newsletter called "Nura Reflections".`;
+Theme of this Surah: ${surahTheme}`;
 }
 
 /**
