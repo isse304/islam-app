@@ -1,9 +1,11 @@
 import express, { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import axios from 'axios';
+import crypto from 'crypto';
 import { OpenAI } from 'openai';
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { NewsletterUnsubscribe } from '../models/NewsletterUnsubscribe';
 
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] });
@@ -278,31 +280,119 @@ function withNewsletterKey(req: Request, res: Response, next: NextFunction): voi
   next();
 }
 
+// ──────────────────────────────────────────────
+// Unsubscribe token helpers (HMAC-based, no login required)
+// ──────────────────────────────────────────────
+function generateUnsubscribeToken(email: string): string {
+  const secret = process.env['NEWSLETTER_API_KEY'] || 'fallback-secret';
+  return crypto.createHmac('sha256', secret).update(email.toLowerCase()).digest('hex').slice(0, 32);
+}
+
+function verifyUnsubscribeToken(email: string, token: string): boolean {
+  return generateUnsubscribeToken(email) === token;
+}
+
+// ──────────────────────────────────────────────
+// PUBLIC routes (no API key required — user-facing)
+// ──────────────────────────────────────────────
+
+// GET /api/newsletter/unsubscribe?email=...&token=...
+router.get('/unsubscribe', async (req: Request, res: Response) => {
+  try {
+    const email = (req.query.email as string || '').toLowerCase().trim();
+    const token = req.query.token as string || '';
+
+    if (!email || !token || !verifyUnsubscribeToken(email, token)) {
+      res.status(400).send(unsubscribePage('Invalid unsubscribe link.', false));
+      return;
+    }
+
+    await NewsletterUnsubscribe.findOneAndUpdate(
+      { email },
+      { email, unsubscribedAt: new Date() },
+      { upsert: true }
+    );
+
+    res.send(unsubscribePage(`You've been unsubscribed from Nura Reflections. You will no longer receive weekly emails.`, true));
+  } catch (error) {
+    console.error('[Newsletter] Unsubscribe error:', error);
+    res.status(500).send(unsubscribePage('Something went wrong. Please try again later.', false));
+  }
+});
+
+// GET /api/newsletter/resubscribe?email=...&token=...
+router.get('/resubscribe', async (req: Request, res: Response) => {
+  try {
+    const email = (req.query.email as string || '').toLowerCase().trim();
+    const token = req.query.token as string || '';
+
+    if (!email || !token || !verifyUnsubscribeToken(email, token)) {
+      res.status(400).send(unsubscribePage('Invalid link.', false));
+      return;
+    }
+
+    await NewsletterUnsubscribe.deleteOne({ email });
+    res.send(unsubscribePage(`Welcome back! You've been resubscribed to Nura Reflections.`, true));
+  } catch (error) {
+    console.error('[Newsletter] Resubscribe error:', error);
+    res.status(500).send(unsubscribePage('Something went wrong. Please try again later.', false));
+  }
+});
+
+function unsubscribePage(message: string, success: boolean): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nura Reflections</title></head>
+<body style="margin:0;padding:40px 20px;font-family:Georgia,serif;background:#f5f5f0;text-align:center;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <h1 style="color:#1b5e20;font-size:24px;margin:0 0 8px 0;">Nura Reflections</h1>
+    <div style="font-size:32px;margin:16px 0;">${success ? '✅' : '⚠️'}</div>
+    <p style="color:#333;font-size:16px;line-height:1.6;">${message}</p>
+    <a href="https://nura-ai.app" style="display:inline-block;margin-top:20px;background:#1b5e20;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;">Open Nura AI</a>
+  </div>
+</body></html>`;
+}
+
+// ──────────────────────────────────────────────
+// PROTECTED routes (API key required — n8n calls these)
+// ──────────────────────────────────────────────
 router.use(withNewsletterKey);
 
 // ──────────────────────────────────────────────
 // GET /api/newsletter/users
-// Returns all user emails from Firebase Auth
+// Returns all user emails from Firebase Auth, excluding unsubscribed
 // ──────────────────────────────────────────────
 router.get('/users', async (_req: Request, res: Response) => {
   try {
-    const emails: string[] = [];
+    const allEmails: string[] = [];
     let nextPageToken: string | undefined;
 
     do {
       const listResult = await admin.auth().listUsers(1000, nextPageToken);
       for (const user of listResult.users) {
         if (user.email) {
-          emails.push(user.email);
+          allEmails.push(user.email);
         }
       }
       nextPageToken = listResult.pageToken;
     } while (nextPageToken);
 
+    const unsubscribed = await NewsletterUnsubscribe.find({}).select('email').lean();
+    const unsubscribedSet = new Set(unsubscribed.map(u => u.email.toLowerCase()));
+    const activeEmails = allEmails.filter(e => !unsubscribedSet.has(e.toLowerCase()));
+
+    const baseUrl = process.env['APP_URL'] || 'https://nura-ai.app';
+    const users = activeEmails.map(email => ({
+      email,
+      unsubscribeUrl: `${baseUrl}/api/newsletter/unsubscribe?email=${encodeURIComponent(email)}&token=${generateUnsubscribeToken(email)}`
+    }));
+
     res.json({
       success: true,
-      count: emails.length,
-      emails
+      count: users.length,
+      totalUsers: allEmails.length,
+      unsubscribedCount: unsubscribedSet.size,
+      users
     });
   } catch (error) {
     console.error('[Newsletter] Error listing users:', error);
