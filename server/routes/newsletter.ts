@@ -189,14 +189,13 @@ You MUST use this exact English translation when quoting the verse. Do NOT parap
 ${verseBlock}
 
 STRUCTURE (follow exactly):
-1. Start by quoting the verse.
-2. Explain the meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers).
-3. One practical takeaway about how beginning actions with Allah's name affects our daily life.
-4. End with one short question for the reader to reflect on.
+1. Explain the meaning of each component: 'Bismillah' (In the Name of Allah), 'Ar-Rahman' (The Most Gracious — mercy for all creation), 'Ar-Rahim' (The Most Merciful — special mercy for the believers).
+2. One practical takeaway about how beginning actions with Allah's name affects our daily life.
+3. End with one short question for the reader to reflect on.
 
 RULES:
-- Do NOT add a title or header.
-- Do NOT use markdown formatting (no #, *, **, etc.).
+- Do NOT add a title, header, or verse quote — the email template already displays the verse above your text.
+- Do NOT use markdown formatting (no #, ##, *, **, --, etc.).
 - Do NOT discuss Isti'adhah (seeking refuge) unless directly relevant.
 - Use simple, direct language. Be warm but precise.`;
   }
@@ -222,16 +221,16 @@ ${tafsirText}
 Using the above tafsir as your SOLE source, write a concise weekly reflection (150-200 words).
 
 STRUCTURE (follow exactly):
-1. Start by quoting the verse using the EXACT English translation provided above, in quotation marks.
-2. Explain what Ibn Kathir says about this verse — use his actual points, not your own interpretation. Attribute clearly.
-3. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
-4. End with one short question for the reader to reflect on.
+1. Explain what Ibn Kathir says about this verse — use his actual points, not your own interpretation. Attribute clearly with "Ibn Kathir explains..." or "According to Ibn Kathir...".
+2. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
+3. End with one short question for the reader to reflect on.
 
 RULES:
-- Do NOT add a title or header — the email template already has one.
-- Do NOT use markdown formatting (no #, *, **, --, etc.).
-- Do NOT invent metaphors or concepts not in the tafsir (e.g. do not say "the spirit of X" unless Ibn Kathir uses that phrase).
-- Use simple, direct language. Be warm but precise.
+- Do NOT add a title, header, or verse quote — the email template already displays the verse above your text. Jump straight into the explanation.
+- Do NOT use markdown formatting (no #, ##, *, **, --, ---, etc.). Write plain text only.
+- Do NOT invent metaphors or concepts not in the tafsir (e.g. do not say "the spirit of X" or "symbolizes Y" unless Ibn Kathir explicitly uses that language).
+- Do NOT use flowery or poetic language. Be direct and scholarly.
+- Use simple, clear language. Be warm but precise.
 
 Theme of this Surah: ${surahTheme}`;
   }
@@ -243,16 +242,16 @@ ${verseBlock}
 NOTE: Ibn Kathir's detailed tafsir text is not available for this specific verse. Base your reflection on well-known, authentic Islamic scholarship. Do NOT fabricate scholarly attributions — if unsure, present the point as general Islamic understanding.
 
 STRUCTURE (follow exactly):
-1. Start by quoting the verse using the EXACT English translation provided above, in quotation marks.
-2. Explain the verse's meaning based on authentic Islamic scholarship. If referencing a scholar, only name them if you are certain of the attribution.
-3. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
-4. End with one short question for the reader to reflect on.
+1. Explain the verse's meaning based on authentic Islamic scholarship. If referencing a scholar, only name them if you are certain of the attribution.
+2. One practical takeaway for daily life — keep it grounded and specific, not vague or poetic.
+3. End with one short question for the reader to reflect on.
 
 RULES:
-- Do NOT add a title or header — the email template already has one.
-- Do NOT use markdown formatting (no #, *, **, --, etc.).
+- Do NOT add a title, header, or verse quote — the email template already displays the verse above your text. Jump straight into the explanation.
+- Do NOT use markdown formatting (no #, ##, *, **, --, ---, etc.). Write plain text only.
 - Do NOT invent metaphors or concepts not grounded in scholarship.
-- Use simple, direct language. Be warm but precise.
+- Do NOT use flowery or poetic language. Be direct and scholarly.
+- Use simple, clear language. Be warm but precise.
 
 Theme of this Surah: ${surahTheme}`;
 }
