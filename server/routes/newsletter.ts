@@ -88,7 +88,7 @@ function processTafsirContent(content: string, maxTokens: number = 6000): string
  */
 async function fetchVerseText(surah: number, verse: number): Promise<{ arabic: string; translation: string } | null> {
   try {
-    const url = `https://api.quran.com/api/v4/verses/by_key/${surah}:${verse}?language=en&words=false&translations=131&fields=text_uthmani`;
+    const url = `https://api.quran.com/api/v4/verses/by_key/${surah}:${verse}?language=en&words=false&translations=20&fields=text_uthmani`;
     const response = await axios.get(url, {
       timeout: 10000,
       headers: { 'Accept': 'application/json' }
@@ -96,7 +96,7 @@ async function fetchVerseText(surah: number, verse: number): Promise<{ arabic: s
 
     const verseData = response.data?.verse;
     const arabic = verseData?.text_uthmani || '';
-    const translation = response.data?.verse?.translations?.[0]?.text?.replace(/<[^>]+>/g, '') || '';
+    const translation = verseData?.translations?.[0]?.text?.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() || '';
 
     if (!arabic && !translation) return null;
     return { arabic, translation };
