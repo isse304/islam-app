@@ -73,9 +73,8 @@ const routes: Routes = [
       },
       {
         path: 'learn',
-        loadComponent: () => import('./components/learn/learn.component').then(m => m.LearnComponent),
-        canActivate: [premiumGuard],
-        data: { feature: 'Learn Quran' }
+        redirectTo: '/tafsir/browse',
+        pathMatch: 'full'
       },
       {
         path: 'quran',
@@ -129,7 +128,7 @@ const routes: Routes = [
     ]
   },
   { path: 'premium', redirectTo: '/subscription', pathMatch: 'full' },
-  { path: 'learn-quran', redirectTo: '/learn', pathMatch: 'full' },
+  { path: 'learn-quran', redirectTo: '/tafsir/browse', pathMatch: 'full' },
   { path: '**', redirectTo: 'home' }
 ];
 

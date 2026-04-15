@@ -1,541 +1,271 @@
-<div class="min-h-screen bg-[#FAF3E0] dark:bg-[#1A365D]">
+<div class="profile-page">
+
   <!-- Hero Header -->
-  <div class="bg-[#B7A57A] dark:bg-[#1A365D] relative overflow-hidden">
-    <!-- Islamic Pattern Background -->
-    <div class="absolute inset-0 bg-[url('/islamic-pattern-1.png')] opacity-10 dark:opacity-5 bg-repeat"></div>
-    
-    <div class="container mx-auto px-4 py-12 relative z-10">
-      <div class="flex flex-col md:flex-row items-center justify-between gap-8">
-        <div class="text-center md:text-left">
-          <h1 class="text-4xl font-bold text-[#1A365D] dark:text-[#FAF3E0] mb-2">Your Profile</h1>
+  <section class="prof-hero">
+    <div class="prof-hero__bg"></div>
+    <div class="prof-hero__content">
+      <div class="prof-hero__left">
+        <h1>Your Profile</h1>
+      </div>
+      <div class="prof-hero__user" *ngIf="user">
+        <div class="prof-avatar">
+          {{ (user!.email || '?').charAt(0).toUpperCase() }}
         </div>
-        <div class="flex items-center gap-4 bg-[#1A365D]/20 dark:bg-[#FAF3E0]/10 backdrop-blur-sm px-6 py-3 rounded-lg">
-          <div class="w-10 h-10 rounded-full bg-[#1A365D] dark:bg-[#FAF3E0] flex items-center justify-center">
-            <span class="text-xl font-semibold text-[#FAF3E0] dark:text-[#1A365D]">{{ (user?.email || '?').charAt(0).toUpperCase() }}</span>
-          </div>
-          <div class="text-[#1A365D] dark:text-[#FAF3E0]">
-            <p class="font-medium">{{ user?.email }}</p>
-            <p class="text-sm opacity-80 dark:opacity-70">Member since {{ user?.createdAt | date:'MMM y' }}</p>
-          </div>
+        <div class="prof-info">
+          <span class="prof-info__email">{{ user!.email }}</span>
+          <span class="prof-info__since">Member since {{ user!.createdAt | date:'MMMM y' }}</span>
         </div>
       </div>
     </div>
+  </section>
+
+  <!-- Loading -->
+  <div class="prof-loading" *ngIf="isLoading">
+    <mat-spinner diameter="40" [strokeWidth]="3"></mat-spinner>
+    <p>Loading your profile...</p>
   </div>
 
-  <!-- Loading State -->
-  <div *ngIf="isLoading" class="flex items-center justify-center min-h-[60vh]">
-    <div class="text-center">
-      <mat-spinner diameter="40" class="mx-auto mb-4" [strokeWidth]="3" color="accent"></mat-spinner>
-      <p class="text-gray-600 dark:text-gray-300">Loading your profile...</p>
-    </div>
-  </div>
-
-  <!-- Main Content -->
-  <div class="container mx-auto px-4 -mt-8 relative z-20" *ngIf="!isLoading">
-    <mat-tab-group animationDuration="200" class="profile-tabs" 
+  <!-- Tabs -->
+  <div class="prof-body" *ngIf="!isLoading">
+    <mat-tab-group animationDuration="200"
+                   class="prof-tabs"
                    (selectedTabChange)="onTabChanged($event)">
-      <!-- Reading Preferences - COMMENTED OUT -->
-      <!-- 
+
+      <!-- ── Advanced ── -->
       <mat-tab>
         <ng-template mat-tab-label>
-          <div class="tab-label">
-            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">menu_book</mat-icon>
-            <span>Reading</span>
-          </div>
+          <div class="tab-lbl"><mat-icon>settings</mat-icon><span>Settings</span></div>
         </ng-template>
-        
-        <div class="p-6">
-          <mat-card class="profile-card">
-            <mat-card-content>
-              <form [formGroup]="preferencesForm" (ngSubmit)="savePreferences()" class="space-y-8">
-                <div class="grid md:grid-cols-2 gap-8">
-                  <div class="form-group">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Reciter</label>
-                    <mat-form-field appearance="outline" class="w-full custom-form-field">
-                      <mat-select formControlName="selectedReciter" [compareWith]="compareById" 
-                                class="text-lg">
-                        <mat-option *ngFor="let reciter of reciters" [value]="reciter.id">
-                          {{reciter.name}}
-                        </mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
-
-                  <div class="form-group">
-                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Translation</label>
-                    <mat-form-field appearance="outline" class="w-full custom-form-field">
-                      <mat-select formControlName="selectedTranslation" class="text-lg">
-                        <mat-option *ngFor="let translation of translations" [value]="translation.id">
-                          {{translation.name}}
-                        </mat-option>
-                      </mat-select>
-                    </mat-form-field>
-                  </div>
-                </div>
-
-                <div class="flex justify-end">
-                  <button mat-flat-button type="submit" 
-                          [disabled]="preferencesForm.invalid || isSavingPrefs"
-                          class="btn-primary">
-                    <mat-spinner diameter="20" *ngIf="isSavingPrefs" class="inline-block mr-2"></mat-spinner>
-                    {{ isSavingPrefs ? 'Saving...' : 'Save Preferences' }}
-                  </button>
-                </div>
-              </form>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </mat-tab>
-      -->
-
-      <!-- Advanced Settings -->
-      <mat-tab label="Advanced">
-        <div class="profile-advanced-settings">
-          <mat-card>
-            <mat-card-header>
-              <mat-card-title>Advanced Settings</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-              <div class="setting-row">
+        <div class="tab-pad">
+          <div class="prof-card">
+            <div class="prof-card__row">
+              <div>
+                <h3>Clear Cache</h3>
                 <p>Clear local cache to free up space and resolve potential data issues.</p>
-                <button mat-stroked-button color="warn" (click)="clearCache()">
-                  <mat-icon>delete_sweep</mat-icon>
-                  Clear Cache
-                </button>
               </div>
-            </mat-card-content>
-          </mat-card>
+              <button mat-stroked-button color="warn" (click)="clearCache()">
+                <mat-icon>delete_sweep</mat-icon>
+                Clear Cache
+              </button>
+            </div>
+          </div>
         </div>
       </mat-tab>
 
-      <!-- Bookmarks -->
+      <!-- ── Bookmarks ── -->
       <mat-tab>
         <ng-template mat-tab-label>
-          <div class="tab-label">
-            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">bookmarks</mat-icon>
-            <span>Bookmarks</span>
-          </div>
+          <div class="tab-lbl"><mat-icon>bookmarks</mat-icon><span>Bookmarks</span></div>
         </ng-template>
-        
-        <div class="p-6">
-          <mat-card class="profile-card"
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
-            <mat-card-content>
-              <!-- Empty State: Check both bookmark arrays -->
-              <div *ngIf="translationBookmarks.length === 0 && mushafBookmarks.length === 0" class="text-center py-12">
-                <div class="w-16 h-16 bg-[#FAF3E0] dark:bg-[#1A365D] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0] text-3xl">bookmark_border</mat-icon>
+        <div class="tab-pad">
+          <div class="prof-card">
+
+            <!-- Empty -->
+            <div *ngIf="translationBookmarks.length === 0 && mushafBookmarks.length === 0" class="prof-empty">
+              <mat-icon>bookmark_border</mat-icon>
+              <h3>No Bookmarks Yet</h3>
+              <p>Add bookmarks while reading to save your favorite verses or pages</p>
+            </div>
+
+            <!-- Verse bookmarks -->
+            <div *ngIf="translationBookmarks.length > 0" class="prof-list-section">
+              <h4>Verse Bookmarks</h4>
+              <div *ngFor="let bookmark of translationBookmarks" class="prof-list-item"
+                   (click)="goToVerse(bookmark)">
+                <div class="prof-list-item__body">
+                  <span class="prof-list-item__title">{{ getFullSurahName(bookmark.split(':')[1]) }}</span>
+                  <span class="prof-list-item__sub">Verse {{ bookmark.split(':')[2] }}</span>
                 </div>
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Bookmarks Yet</h3>
-                <p class="text-gray-600 dark:text-gray-400">Add bookmarks while reading to save your favorite verses or pages</p>
+                <div class="prof-list-item__actions">
+                  <button mat-icon-button matTooltip="Go to verse" (click)="goToVerse(bookmark); $event.stopPropagation()">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Remove" (click)="removeBookmark(bookmark); $event.stopPropagation()">
+                    <mat-icon class="delete-icon">delete</mat-icon>
+                  </button>
+                </div>
               </div>
+            </div>
 
-              <!-- Bookmarks List: Separate Translation and Mushaf -->
-              <div *ngIf="translationBookmarks.length > 0 || mushafBookmarks.length > 0" class="space-y-6">
+            <!-- Mushaf bookmarks -->
+            <div *ngIf="mushafBookmarks.length > 0" class="prof-list-section">
+              <h4>Page Bookmarks</h4>
+              <div *ngFor="let bookmark of mushafBookmarks" class="prof-list-item"
+                   (click)="goToVerse(bookmark)">
+                <div class="prof-list-item__body">
+                  <span class="prof-list-item__title">Mushaf Page {{ bookmark.split(':')[1] }}</span>
+                </div>
+                <div class="prof-list-item__actions">
+                  <button mat-icon-button matTooltip="Go to page" (click)="goToVerse(bookmark); $event.stopPropagation()">
+                    <mat-icon>visibility</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Remove" (click)="removeBookmark(bookmark); $event.stopPropagation()">
+                    <mat-icon class="delete-icon">delete</mat-icon>
+                  </button>
+                </div>
+              </div>
+            </div>
 
-                <!-- Translation Bookmarks -->
-                <div *ngIf="translationBookmarks.length > 0">
-                  <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Verse Bookmarks</h4>
-                  <div class="space-y-4">
-                    <div *ngFor="let bookmark of translationBookmarks"
-                         class="bookmark-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                      <div>
-                        <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(bookmark.split(':')[1])}}</h3>
-                        <p class="text-gray-600 dark:text-gray-400">Verse {{bookmark.split(':')[2]}}</p>
-                      </div>
-                      <div class="flex gap-2">
-                        <button mat-icon-button (click)="goToVerse(bookmark)"
-                                class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                                matTooltip="Go to verse">
-                          <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">visibility</mat-icon>
-                        </button>
-                        <button mat-icon-button (click)="removeBookmark(bookmark)"
-                                class="hover:bg-red-100/50 dark:hover:bg-red-900/30"
-                                matTooltip="Remove bookmark">
-                          <mat-icon class="text-red-500 dark:text-red-400">delete</mat-icon>
-                        </button>
-                      </div>
-                    </div>
+          </div>
+        </div>
+      </mat-tab>
+
+      <!-- ── History ── -->
+      <mat-tab>
+        <ng-template mat-tab-label>
+          <div class="tab-lbl"><mat-icon>history</mat-icon><span>History</span></div>
+        </ng-template>
+        <div class="tab-pad">
+          <div class="prof-card">
+
+            <!-- Loading -->
+            <div *ngIf="historyLoading" class="prof-loading--inline">
+              <mat-spinner diameter="30"></mat-spinner>
+            </div>
+
+            <!-- Error -->
+            <div *ngIf="historyLoadingError && !historyLoading" class="prof-error">
+              <mat-icon>error_outline</mat-icon>
+              <p>{{ historyLoadingError }}</p>
+              <button mat-stroked-button color="warn" (click)="loadHistorySeparately()">
+                <mat-icon>refresh</mat-icon> Try Again
+              </button>
+            </div>
+
+            <!-- Empty -->
+            <div *ngIf="!historyLoading && !historyLoadingError && translationHistory.length === 0 && mushafHistory.length === 0"
+                 class="prof-empty">
+              <mat-icon>history</mat-icon>
+              <h3>No Reading History</h3>
+              <p>Your reading progress will appear here</p>
+            </div>
+
+            <!-- Verse History -->
+            <div *ngIf="!historyLoading && !historyLoadingError && (translationHistory.length > 0 || mushafHistory.length > 0)">
+
+              <div *ngIf="translationHistory.length > 0" class="prof-list-section">
+                <h4>Verse History</h4>
+                <div *ngFor="let entry of translationHistory" class="prof-list-item"
+                     (click)="goToHistoryEntry(entry)">
+                  <div class="prof-list-item__body">
+                    <span class="prof-list-item__title">{{ getFullSurahName(entry.surah!) }}</span>
+                    <span class="prof-list-item__sub">Verse {{ entry.verse }}</span>
+                    <span class="prof-list-item__time">{{ entry.timestamp | date:'MMM d, y, h:mm a' }}</span>
                   </div>
-                </div>
-
-                <!-- Mushaf Bookmarks -->
-                <div *ngIf="mushafBookmarks.length > 0">
-                   <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Page Bookmarks</h4>
-                   <div class="space-y-4">
-                      <div *ngFor="let bookmark of mushafBookmarks"
-                           class="bookmark-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                        <div>
-                          <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">Mushaf Page {{bookmark.split(':')[1]}}</h3>
-                        </div>
-                        <div class="flex gap-2">
-                          <button mat-icon-button (click)="goToVerse(bookmark)"
-                                  class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                                  matTooltip="Go to page">
-                            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">visibility</mat-icon>
-                          </button>
-                          <button mat-icon-button (click)="removeBookmark(bookmark)"
-                                  class="hover:bg-red-100/50 dark:hover:bg-red-900/30"
-                                  matTooltip="Remove bookmark">
-                            <mat-icon class="text-red-500 dark:text-red-400">delete</mat-icon>
-                          </button>
-                        </div>
-                      </div>
-                   </div>
-                </div>
-
-              </div>
-            </mat-card-content>
-          </mat-card>
-        </div>
-      </mat-tab>
-
-      <!-- Reading History -->
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <div class="tab-label">
-            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">history</mat-icon>
-            <span>History</span>
-          </div>
-        </ng-template>
-        
-        <div class="p-6">
-          <mat-card class="profile-card"
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
-            <mat-card-content class="min-h-[200px] flex flex-col justify-center">
-
-              <!-- History Loading State -->
-              <div *ngIf="historyLoading" class="flex items-center justify-center py-12">
-                <mat-spinner diameter="30" color="accent"></mat-spinner>
-              </div>
-
-              <!-- History Error State -->
-              <div *ngIf="historyLoadingError && !historyLoading" class="text-center py-12 px-6 bg-red-50 dark:bg-red-900/30 rounded-lg border border-red-200 dark:border-red-700/50">
-                <mat-icon class="text-red-500 dark:text-red-400 text-3xl mb-3">error_outline</mat-icon>
-                <p class="text-red-700 dark:text-red-300 font-medium">Error Loading History</p>
-                <p class="text-red-600 dark:text-red-400 text-sm mt-1">{{ historyLoadingError }}</p>
-                <!-- Optional: Add a retry button -->
-                <button mat-stroked-button color="warn" (click)="loadHistorySeparately()" class="mt-4 btn-warn-outline">
-                  <mat-icon>refresh</mat-icon> Try Again
-                </button>
-              </div>
-
-              <!-- Empty State (Show only if not loading, no error, and history is empty) -->
-              <div *ngIf="!historyLoading && !historyLoadingError && (!translationHistory || translationHistory.length === 0) && (!mushafHistory || mushafHistory.length === 0)" class="text-center py-12">
-                <!-- Icon container: Cream light -> Dark Blue dark -->
-                <div class="w-16 h-16 bg-[#FAF3E0] dark:bg-[#1A365D] rounded-full flex items-center justify-center mx-auto mb-4">
-                  <!-- Icon: Gold light -> Cream dark -->
-                  <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0] text-3xl">history</mat-icon>
-                </div>
-                <h3 class="text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">No Reading History</h3>
-                <p class="text-gray-600 dark:text-gray-400">Your reading progress will appear here</p>
-              </div>
-
-              <!-- History List (Show only if not loading, no error, and history has items) -->
-              <div *ngIf="!historyLoading && !historyLoadingError && (translationHistory.length > 0 || mushafHistory.length > 0)" class="space-y-6">
-                <!-- Verse History -->
-                <div *ngIf="translationHistory.length > 0">
-                    <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Verse History</h4>
-                    <div class="space-y-4">
-                        <div *ngFor="let entry of translationHistory"
-                             class="history-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">{{getFullSurahName(entry.surah!)}}</h3>
-                                <div class="flex items-center gap-4">
-                                    <p class="text-gray-600 dark:text-gray-400">Verse {{entry.verse}}</p>
-                                    <span class="text-sm text-gray-400 dark:text-gray-500">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
-                                </div>
-                            </div>
-                            <button mat-icon-button (click)="goToHistoryEntry(entry)"
-                                    class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                                    matTooltip="Continue reading verse">
-                                <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">play_arrow</mat-icon>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <!-- Page History -->
-                <div *ngIf="mushafHistory.length > 0">
-                    <h4 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0] mb-3">Page History</h4>
-                    <div class="space-y-4">
-                        <div *ngFor="let entry of mushafHistory"
-                             class="history-card flex items-center justify-between p-4 rounded-lg bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
-                            <div class="flex-1">
-                                <h3 class="text-lg font-semibold text-[#1A365D] dark:text-[#FAF3E0]">Mushaf Page {{entry.displayPage}}</h3>
-                                <div class="flex items-center gap-4">
-                                    <span class="text-sm text-gray-400 dark:text-gray-500">{{entry.timestamp | date:'MMM d, y, h:mm a'}}</span>
-                                </div>
-                            </div>
-                            <button mat-icon-button (click)="goToHistoryEntry(entry)"
-                                    class="hover:bg-[#B7A57A]/10 dark:hover:bg-[#FAF3E0]/20"
-                                    matTooltip="Continue reading page">
-                                <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">play_arrow</mat-icon>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Clear History Button -->
-                <div class="flex justify-end mt-6">
-                  <button mat-stroked-button color="warn" (click)="clearHistory()"
-                          class="btn-warn-outline">
-                    <mat-icon class="mr-2">delete_sweep</mat-icon>
-                    Clear History
+                  <button mat-icon-button matTooltip="Continue reading" (click)="goToHistoryEntry(entry); $event.stopPropagation()">
+                    <mat-icon>play_arrow</mat-icon>
                   </button>
                 </div>
               </div>
 
-            </mat-card-content>
-          </mat-card>
+              <div *ngIf="mushafHistory.length > 0" class="prof-list-section">
+                <h4>Page History</h4>
+                <div *ngFor="let entry of mushafHistory" class="prof-list-item"
+                     (click)="goToHistoryEntry(entry)">
+                  <div class="prof-list-item__body">
+                    <span class="prof-list-item__title">Mushaf Page {{ entry.displayPage }}</span>
+                    <span class="prof-list-item__time">{{ entry.timestamp | date:'MMM d, y, h:mm a' }}</span>
+                  </div>
+                  <button mat-icon-button matTooltip="Continue reading" (click)="goToHistoryEntry(entry); $event.stopPropagation()">
+                    <mat-icon>play_arrow</mat-icon>
+                  </button>
+                </div>
+              </div>
+
+              <div class="prof-list-footer">
+                <button mat-stroked-button color="warn" (click)="clearHistory()">
+                  <mat-icon>delete_sweep</mat-icon>
+                  Clear History
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
       </mat-tab>
 
-      <!-- Account Settings -->
-      <mat-tab aria-label="Account">
+      <!-- ── Account ── -->
+      <mat-tab>
         <ng-template mat-tab-label>
-          <div class="tab-label">
-            <mat-icon class="text-[#B7A57A] dark:text-[#FAF3E0]">manage_accounts</mat-icon>
-            <span>Account</span>
-          </div>
+          <div class="tab-lbl"><mat-icon>manage_accounts</mat-icon><span>Account</span></div>
         </ng-template>
-        
-        <div class="p-6 space-y-6">
-          <!-- Account Info -->
-          <mat-card class="profile-card" 
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
-            <mat-card-content>
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div>
-                  <h3 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0]">Account Security</h3>
-                  <p class="text-gray-500 dark:text-gray-400 mt-1">Manage your account security settings</p>
-                </div>
-                <button mat-flat-button (click)="resetPassword()" class="btn-secondary mt-4 md:mt-0">
-                  <mat-icon class="mr-2">lock_reset</mat-icon>
-                  Reset Password
-                </button>
+        <div class="tab-pad prof-stack">
+
+          <!-- Security -->
+          <div class="prof-card">
+            <div class="prof-card__row">
+              <div>
+                <h3>Account Security</h3>
+                <p>Manage your account security settings</p>
               </div>
-            </mat-card-content>
-          </mat-card>
+              <button mat-flat-button class="btn-secondary" (click)="resetPassword()">
+                <mat-icon>lock_reset</mat-icon>
+                Reset Password
+              </button>
+            </div>
+          </div>
 
           <!-- Subscription -->
-          <mat-card class="profile-card"
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
-            <mat-card-content>
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div>
-                  <h3 class="text-lg font-medium text-[#1A365D] dark:text-[#FAF3E0]">Current Plan</h3>
-                  <p class="text-gray-500 dark:text-gray-400 mt-1">{{ (subscriptionStatus?.plan | titlecase) ?? 'Free' }} Plan</p>
-                  <p *ngIf="subscriptionStatus?.status === 'canceled' && subscriptionStatus?.currentPeriodEnd"
-                     class="text-sm text-orange-600 dark:text-orange-400 mt-2">
-                    Access ends: {{ subscriptionStatus!.currentPeriodEnd | date: 'mediumDate' }}
-                  </p>
-                </div>
-                
-                <div class="mt-4 md:mt-0">
-                  <!-- Premium User -->
-                  <button mat-flat-button *ngIf="subscriptionStatus?.plan === 'premium'" 
-                          (click)="manageSubscription()"
-                          [disabled]="isCancellingSubscription" 
-                          class="btn-secondary">
-                    <mat-spinner diameter="20" *ngIf="isCancellingSubscription" class="inline-block mr-2"></mat-spinner>
-                    {{ isCancellingSubscription ? 'Loading...' : 'Manage Subscription' }}
-                  </button>
-                  <!-- Free User -->
-                  <button mat-flat-button *ngIf="subscriptionStatus?.plan !== 'premium'" 
-                          routerLink="/subscription" 
-                          class="btn-primary">
-                    <mat-icon class="mr-2">stars</mat-icon>
-                    Upgrade to Premium
-                  </button>
-                </div>
+          <div class="prof-card">
+            <div class="prof-card__row">
+              <div>
+                <h3>Current Plan</h3>
+                <p class="plan-name">{{ (subscriptionStatus?.plan | titlecase) ?? 'Free' }} Plan</p>
+                <p *ngIf="subscriptionStatus?.status === 'canceled' && subscriptionStatus?.currentPeriodEnd"
+                   class="plan-expiry">
+                  Access ends: {{ subscriptionStatus!.currentPeriodEnd | date: 'mediumDate' }}
+                </p>
               </div>
-            </mat-card-content>
-          </mat-card>
-
-          <!-- Usage Statistics -->
-          <mat-card class="profile-card"
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null">
-             <mat-card-header>
-                 <mat-card-title class="text-[#1A365D] dark:text-[#FAF3E0]">Usage Statistics</mat-card-title>
-             </mat-card-header>
-            <mat-card-content>
-               <app-usage></app-usage>
-            </mat-card-content>
-          </mat-card>
-
-          <!-- Danger Zone -->
-          <mat-card class="profile-card border-2 border-red-200 dark:border-red-700/50"
-                    [style.background-color]="(themeService.currentTheme$ | async) === 'dark' ? '#2A4365' : null"
-                    [style.border-color]="(themeService.currentTheme$ | async) === 'dark' ? '#ef4444' : null">
-            <mat-card-content>
-              <div class="flex flex-col md:flex-row md:items-center justify-between">
-                <div>
-                  <h3 class="text-lg font-medium text-red-600 dark:text-red-400">Danger Zone</h3>
-                  <p class="text-gray-600 dark:text-gray-400 mt-1">Permanently delete your account and all data</p>
-                </div>
-                <div class="flex gap-4 mt-4 md:mt-0">
-                  <button mat-stroked-button (click)="signOut()" class="btn-secondary-outline">
-                    <mat-icon class="mr-2">logout</mat-icon>
-                    Sign Out
-                  </button>
-                  <button mat-flat-button color="warn" (click)="openDeleteConfirmationDialog()" 
-                          [disabled]="isDeletingAccount" 
-                          class="btn-warn">
-                    <mat-spinner diameter="20" *ngIf="isDeletingAccount" class="inline-block mr-2"></mat-spinner>
-                    {{ isDeletingAccount ? 'Deleting...' : 'Delete Account' }}
-                  </button>
-                </div>
+              <div>
+                <button mat-flat-button *ngIf="subscriptionStatus?.plan === 'premium'"
+                        class="btn-secondary"
+                        (click)="manageSubscription()"
+                        [disabled]="isCancellingSubscription">
+                  <mat-spinner diameter="20" *ngIf="isCancellingSubscription"></mat-spinner>
+                  {{ isCancellingSubscription ? 'Loading...' : 'Manage Subscription' }}
+                </button>
+                <button mat-flat-button *ngIf="subscriptionStatus?.plan !== 'premium'"
+                        class="btn-primary"
+                        routerLink="/subscription">
+                  <mat-icon>stars</mat-icon>
+                  Upgrade to Premium
+                </button>
               </div>
-            </mat-card-content>
-          </mat-card>
+            </div>
+          </div>
+
+          <!-- Usage -->
+          <div class="prof-card">
+            <h3>Usage Statistics</h3>
+            <app-usage></app-usage>
+          </div>
+
+          <!-- Danger -->
+          <div class="prof-card prof-card--danger">
+            <div class="prof-card__row">
+              <div>
+                <h3>Danger Zone</h3>
+                <p>Permanently delete your account and all data</p>
+              </div>
+              <div class="prof-card__btns">
+                <button mat-stroked-button class="btn-secondary-outline" (click)="signOut()">
+                  <mat-icon>logout</mat-icon>
+                  Sign Out
+                </button>
+                <button mat-flat-button color="warn" class="btn-danger"
+                        (click)="openDeleteConfirmationDialog()"
+                        [disabled]="isDeletingAccount">
+                  <mat-spinner diameter="20" *ngIf="isDeletingAccount"></mat-spinner>
+                  {{ isDeletingAccount ? 'Deleting...' : 'Delete Account' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
         </div>
       </mat-tab>
 
     </mat-tab-group>
   </div>
+
 </div>
-
-<style>
-  /* Shared Form Field Styles (Apply to Profile) */
-  ::ng-deep .mat-mdc-form-field-appearance-outline {
-    .mdc-notched-outline > * {
-        border-color: rgba(100, 116, 139, 0.4) !important; /* Lighter gray border */
-    }
-    .mdc-text-field {
-      border-radius: 8px !important; /* Rounded corners */
-      background-color: rgba(248, 250, 252, 0.7) !important; /* Subtle light background */
-    }
-    .mat-mdc-form-field-infix {
-       padding-top: 12px !important; /* Adjust padding */
-       padding-bottom: 12px !important;
-    }
-  }
-  /* Dark Mode Form Field Background */
-  ::ng-deep .dark .mat-mdc-form-field-appearance-outline .mdc-text-field {
-    background-color: rgba(55, 65, 81, 0.5) !important; /* Subtle dark background (gray-700/50) */
-  }
-
-  /* Profile Specific Focus Styles (Gold Accent Light, Cream Dark) */
-  ::ng-deep .mat-mdc-form-field-appearance-outline.mat-focused {
-     .mdc-notched-outline > * {
-        border-color: #B7A57A !important; /* Gold border on focus */
-        border-width: 2px !important;
-     }
-     .mat-mdc-floating-label {
-         color: #B7A57A !important; /* Gold label on focus */
-     }
-     .mdc-text-field {
-        background-color: white !important; /* White background on focus */
-     }
-  }
-  ::ng-deep .dark .mat-mdc-form-field-appearance-outline.mat-focused {
-     .mdc-notched-outline > * {
-        border-color: #FAF3E0 !important; /* Cream border on focus in dark mode */
-     }
-     .mat-mdc-floating-label {
-         color: #FAF3E0 !important; /* Cream label on focus in dark mode */
-     }
-     .mdc-text-field {
-        background-color: #1A365D !important; /* Dark blue background on focus in dark mode */
-     }
-  }
-
-  /* Tab Styles */
-  .tab-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem; /* Tailwind gap-2 */
-    padding: 0.75rem 1rem; /* Tailwind py-3 px-4 */
-    color: #4a5568; /* Tailwind text-gray-700 approx */
-    transition: color 0.2s ease-in-out;
-  }
-  .dark .tab-label {
-     color: #e2e8f0; /* Tailwind text-gray-300 approx */
-  }
-
-  ::ng-deep .mat-mdc-tab {
-    height: auto !important; /* Override Material default height */
-  }
-
-  ::ng-deep .mat-mdc-tab-header {
-    background-color: white;
-    border-radius: 0.5rem 0.5rem 0 0; /* Tailwind rounded-t-lg */
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); /* Tailwind shadow-sm */
-    border-bottom: 1px solid #e5e7eb; /* Tailwind border-gray-200 */
-  }
-   ::ng-deep .dark .mat-mdc-tab-header {
-      background-color: #2A4365; /* Dark Blue */
-      border-bottom-color: #4a5568; /* Tailwind gray-700 approx */
-   }
-
-  ::ng-deep .mat-mdc-tab-label-active .tab-label { /* Target the inner label div for active color */
-    color: #1A365D !important; /* Dark Blue */
-  }
-   ::ng-deep .dark .mat-mdc-tab-label-active .tab-label {
-      color: #FAF3E0 !important; /* Cream */
-   }
-
-   /* Ensure icon color follows text color */
-   ::ng-deep .mat-mdc-tab-label-active .tab-label mat-icon {
-      color: inherit !important;
-   }
-   ::ng-deep .tab-label mat-icon {
-       color: #B7A57A; /* Default gold icon color */
-       transition: color 0.2s ease-in-out;
-   }
-   ::ng-deep .dark .tab-label mat-icon {
-       color: #FAF3E0; /* Default cream icon color dark */
-   }
-   /* Keep active icon color matching text */
-   ::ng-deep .mat-mdc-tab-label-active .tab-label mat-icon {
-      color: inherit !important; 
-   }
-
-
-  ::ng-deep .mat-mdc-tab-body-content {
-    background-color: transparent !important; /* Ensure tab content area doesn't interfere */
-  }
-
-  /* Card Styles - REMOVING THESE RULES */
-  
-  /* Button Styles - Keep Tailwind classes on buttons in HTML */
-
-  /* Card Hover Effects */
-  .bookmark-card, .history-card {
-    transform: translateY(0);
-    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
-  }
-
-  .bookmark-card:hover, .history-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Tailwind shadow-md */
-  }
-  .dark .bookmark-card:hover, .dark .history-card:hover {
-    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.1); /* Darker/larger shadow */
-  }
-
-
-  /* Loading Spinner */
-  ::ng-deep .mat-mdc-progress-spinner circle {
-    stroke: #B7A57A !important; /* Gold */
-  }
-  ::ng-deep .dark .mat-mdc-progress-spinner circle {
-     stroke: #FAF3E0 !important; /* Cream spinner in dark mode */
-   }
-
-  /* Dark mode slide toggle */
-   ::ng-deep .dark mat-slide-toggle .mdc-switch__track::after {
-       background: #FAF3E0 !important; /* Cream track */
-   }
-   ::ng-deep .dark mat-slide-toggle .mdc-switch__handle {
-       background: #B7A57A !important; /* Gold handle */
-   }
-   ::ng-deep .dark mat-slide-toggle.mat-checked .mdc-switch__track {
-       background: #B7A57A !important; /* Gold track when checked */
-       border-color: #B7A57A !important;
-   }
-    ::ng-deep .dark mat-slide-toggle.mat-checked .mdc-switch__handle {
-       background: #FAF3E0 !important; /* Cream handle when checked */
-   }
-
-</style> 

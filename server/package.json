@@ -8,7 +8,8 @@
         "build": "tsc && copyfiles -u 1 \"data/**/*.json\" dist/data",
         "dev": "nodemon index.ts",
         "watch": "tsc -w",
-        "db:migrate": "ts-node -r dotenv/config scripts/migrate.ts"
+        "db:migrate": "ts-node -r dotenv/config scripts/migrate.ts",
+        "preprocess-tafsir": "ts-node scripts/preprocess-tafsir.ts"
     },
     "dependencies": {
         "@angular/service-worker": "^19.2.5",
@@ -58,7 +59,8 @@
         "@swc/core": "^1.11.12",
         "nodemon": "^3.0.2",
         "ts-node": "^10.9.2",
-        "tsconfig-paths": "^4.2.0"
+        "tsconfig-paths": "^4.2.0",
+        "tsx": "^4.21.0"
     },
     "engines": {
         "node": "20.x"

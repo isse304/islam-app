@@ -11,12 +11,19 @@ interface IUserUsageBase {
         lastRequest: Date;
     };
     aiRequestLimit: number;
+    freeTierQuestions: {
+        count: number;
+        limit: number;
+        lastRequest: Date;
+    };
 }
 
 export interface IUserUsage extends IUserUsageBase, Document {
     incrementAIRequestCount(): Promise<void>;
     canMakeAIRequest(): Promise<boolean>;
     validateTokenCount(tokenCount: number): boolean;
+    canMakeFreeTierRequest(): Promise<boolean>;
+    incrementFreeTierCount(): Promise<void>;
 }
 
 const userUsageSchema = new Schema<IUserUsage>({
@@ -34,7 +41,12 @@ const userUsageSchema = new Schema<IUserUsage>({
         count: { type: Number, default: 0 },
         lastRequest: { type: Date }
     },
-    aiRequestLimit: { type: Number, default: 0 }
+    aiRequestLimit: { type: Number, default: 0 },
+    freeTierQuestions: {
+        count: { type: Number, default: 0 },
+        limit: { type: Number, default: 5 },
+        lastRequest: { type: Date }
+    }
 });
 
 userUsageSchema.methods['incrementAIRequestCount'] = async function(): Promise<void> {
@@ -63,9 +75,31 @@ userUsageSchema.methods['canMakeAIRequest'] = async function(): Promise<boolean>
     return this['aiRequests'].count < this['aiRequestLimit'];
 };
 
-// Add method to check token count
+userUsageSchema.methods['canMakeFreeTierRequest'] = async function(): Promise<boolean> {
+    const now = new Date();
+    const lastRequest = this['freeTierQuestions'].lastRequest;
+
+    if (lastRequest) {
+        const lastDate = new Date(lastRequest);
+        if (lastDate.getDate() !== now.getDate() ||
+            lastDate.getMonth() !== now.getMonth() ||
+            lastDate.getFullYear() !== now.getFullYear()) {
+            this['freeTierQuestions'].count = 0;
+            await this['save']();
+        }
+    }
+
+    return this['freeTierQuestions'].count < this['freeTierQuestions'].limit;
+};
+
+userUsageSchema.methods['incrementFreeTierCount'] = async function(): Promise<void> {
+    this['freeTierQuestions'].count += 1;
+    this['freeTierQuestions'].lastRequest = new Date();
+    await this['save']();
+};
+
 userUsageSchema.methods['validateTokenCount'] = function(tokenCount: number): boolean {
-    const MAX_TOKENS = 15000; // Set maximum tokens per request
+    const MAX_TOKENS = 15000;
     return tokenCount <= MAX_TOKENS;
 };
 

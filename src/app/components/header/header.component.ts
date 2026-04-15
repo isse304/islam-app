@@ -194,6 +194,16 @@ export class HeaderComponent implements OnInit, OnDestroy {
     }
   }
 
+  async signOut(): Promise<void> {
+    try {
+      await this.authService.signOut();
+      localStorage.removeItem('isAuthenticated');
+      this.router.navigate(['/']);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  }
+
   getNotificationTime(notification: Notification): string {
     if (!notification.createdAt) return '';
     

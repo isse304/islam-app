@@ -1,793 +1,502 @@
-// Notes Page Design - Matches App Theme
+// =============================================
+// NOTES PAGE - Premium Design
+// =============================================
+
+$gold: #B7A57A;
+$gold-light: #D4C5A0;
+$gold-dark: #8C7A53;
+$navy: #1A2332;
+$navy-light: #2A3A52;
+$cream: #FBF7F0;
+$text-primary: #1A2332;
+$text-secondary: #5F6B7A;
+$text-muted: #8A94A2;
+$emerald: #10B981;
+
 .notes-page {
   min-height: 100vh;
-  background: #FAF3E0; // Light cream background (light mode)
-  padding-bottom: 60px;
-  padding-top: 0;
+  background: $cream;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
 }
 
-// Header
-.page-header {
-  background: rgba(183, 165, 122, 0.85); // Gold/tan (light mode)
-  border-bottom: 1px solid rgba(26, 54, 93, 0.1);
-  padding: 16px 32px;
-  position: fixed;
-  top: 80px;
-  left: 0;
-  right: 0;
-  z-index: 50;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(8px);
-
-  .header-content {
-    max-width: 1400px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 24px;
-  }
-
-  .header-left {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    
-    button {
-      transition: all 0.2s ease;
-      color: white;
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.15);
-      }
-      
-      mat-icon {
-        color: white;
-      }
-    }
-  }
-
-  .header-title {
-    h1 {
-      margin: 0;
-      font-size: 28px;
-      font-weight: 700;
-      color: white;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-
-      mat-icon {
-        font-size: 32px;
-        width: 32px;
-        height: 32px;
-        color: white;
-      }
-    }
-
-    .header-subtitle {
-      margin: 4px 0 0 0;
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.9);
-      font-weight: 400;
-    }
-  }
-
-  .header-right {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    
-    button {
-      transition: all 0.2s ease;
-      color: white;
-      border-color: rgba(255, 255, 255, 0.5);
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.15);
-        border-color: white;
-      }
-      
-      mat-icon {
-        color: white;
-      }
-    }
-    
-    mat-button-toggle-group {
-      background: rgba(26, 54, 93, 0.3);
-      border-radius: 8px;
-      
-      mat-button-toggle {
-        color: white;
-        border-color: rgba(255, 255, 255, 0.2);
-        
-        &.mat-button-toggle-checked {
-          background: rgba(255, 255, 255, 0.2);
-          color: white;
-        }
-        
-        mat-icon {
-          color: white;
-        }
-      }
-    }
-  }
+// ---- Hero ----
+.page-hero {
+  position: relative;
+  padding: 40px 24px 44px;
+  background: linear-gradient(160deg, $navy 0%, $navy-light 50%, darken($gold-dark, 10%) 100%);
+  color: white;
+  overflow: hidden;
 }
 
-// Filters Section
-.filters-section {
-  max-width: 1400px;
-  margin: 160px auto 24px; // Top margin for fixed headers (80px main nav + 60px page header + 20px spacing)
-  padding: 0 32px;
+.hero-bg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 30% 40%, rgba($gold, .1) 0%, transparent 60%);
+  pointer-events: none;
+}
 
-  .search-field {
-    width: 100%;
-    margin-bottom: 20px;
-    
-    ::ng-deep {
-      .mat-mdc-form-field {
-        background: white;
-        border-radius: 8px;
-      }
-      
-      .mat-mdc-text-field-wrapper {
-        background: transparent;
-      }
-      
-      label, input {
-        color: #1A365D !important; // Dark blue text
-      }
-      
-      .mat-mdc-form-field-focus-overlay {
-        background-color: rgba(183, 165, 122, 0.05);
-      }
-      
-      mat-icon {
-        color: rgba(183, 165, 122, 0.7);
-      }
-      
-      button mat-icon {
-        color: #1A365D;
-      }
-    }
+.hero-inner {
+  position: relative;
+  max-width: 820px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+.hero-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.back-btn {
+  color: rgba(white, .7) !important;
+  &:hover { color: white !important; background: rgba(white, .1) !important; }
+}
+
+.hero-inner h1 {
+  margin: 0 0 6px;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -.3px;
+}
+
+.hero-subtitle {
+  margin: 0;
+  font-size: 15px;
+  color: rgba(white, .6);
+}
+
+.hero-nav {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.nav-pill {
+  border-color: rgba(white, .2) !important;
+  color: rgba(white, .75) !important;
+  font-size: 13px !important;
+  border-radius: 8px !important;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; margin-right: 4px; color: $gold-light; }
+  &:hover { background: rgba(white, .08) !important; border-color: rgba(white, .35) !important; color: white !important; }
+}
+
+.hero-actions {
+  button { color: rgba(white, .7) !important; &:hover { color: white !important; } }
+}
+
+// ---- Toolbar ----
+.toolbar-section {
+  background: white;
+  border-bottom: 1px solid rgba($gold, .1);
+  box-shadow: 0 2px 8px rgba(0,0,0,.03);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.toolbar-inner {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 14px 24px;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #F3F0EA;
+  border: 1px solid rgba($gold, .15);
+  border-radius: 10px;
+  padding: 0 14px;
+  height: 42px;
+  transition: border-color .2s;
+
+  &:focus-within { border-color: $gold; }
+
+  .search-icon { color: $text-muted; font-size: 20px; width: 20px; height: 20px; }
+
+  input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    color: $text-primary;
+    outline: none;
+    &::placeholder { color: $text-muted; }
   }
 
-  .filter-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 20px;
-    align-items: flex-start;
-    background: transparent; // No background, match page color
-    padding: 20px;
-    border-radius: 8px;
-    border: 1px solid rgba(183, 165, 122, 0.3);
+  .clear-search { color: $text-muted !important; }
+}
 
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      flex: 1;
-      min-width: 250px;
+.filters-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
 
-      label {
-        font-size: 12px;
-        font-weight: 600;
-        color: #B7A57A; // Gold
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
+.compact-filter {
+  width: 170px;
 
-      .tag-chips {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-
-        mat-chip-option {
-          cursor: pointer;
-          transition: all 0.3s ease;
-          background: rgba(183, 165, 122, 0.1);
-          color: #1A365D; // Dark blue text
-          border: 1px solid rgba(183, 165, 122, 0.3);
-          font-weight: 500;
-
-          &:hover {
-            background: rgba(183, 165, 122, 0.2);
-            border-color: rgba(183, 165, 122, 0.6);
-            transform: translateY(-2px);
-          }
-          
-          &[aria-pressed="true"] {
-            background: rgba(183, 165, 122, 0.4) !important;
-            color: white !important;
-            border-color: rgba(183, 165, 122, 0.8) !important;
-            font-weight: 600;
-          }
-        }
-      }
+  ::ng-deep {
+    .mat-mdc-form-field-subscript-wrapper { display: none; }
+    .mat-mdc-text-field-wrapper { padding: 0 10px; }
+    .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__leading,
+    .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__notch,
+    .mdc-text-field--outlined .mdc-notched-outline .mdc-notched-outline__trailing {
+      border-color: rgba($gold, .2);
     }
-
-    .surah-filter {
-      min-width: 200px;
-      
-      ::ng-deep {
-        .mat-mdc-text-field-wrapper {
-          background: rgba(183, 165, 122, 0.05);
-        }
-        
-        label, input, mat-select {
-          color: #1A365D !important; // Dark blue text
-        }
-      }
-    }
-
-    .clear-filters-btn {
-      white-space: nowrap;
-      transition: all 0.3s ease;
-      background: rgba(183, 165, 122, 0.1);
-      color: #1A365D; // Dark blue text
-      border: 1px solid rgba(183, 165, 122, 0.4);
-      
-      &:hover {
-        background: rgba(183, 165, 122, 0.2);
-        border-color: rgba(183, 165, 122, 0.6);
-      }
-      
-      mat-icon {
-        color: #1A365D;
-      }
-    }
-    
-    button[mat-stroked-button] {
-      transition: all 0.3s ease;
-      background: rgba(183, 165, 122, 0.1);
-      color: #1A365D; // Dark blue text
-      border: 1px solid rgba(183, 165, 122, 0.4);
-      
-      &:hover {
-        background: rgba(183, 165, 122, 0.2);
-        border-color: rgba(183, 165, 122, 0.6);
-      }
-      
-      mat-icon {
-        color: #1A365D;
-      }
-    }
+    label { font-size: 13px; }
   }
 }
 
-// Loading & Empty States
-.loading-container,
-.empty-state {
+.filter-btn, .clear-btn {
+  border-radius: 8px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  border-color: rgba($gold, .2) !important;
+  color: $text-secondary !important;
+  padding: 0 14px !important;
+  height: 36px;
+  mat-icon { font-size: 16px; width: 16px; height: 16px; margin-right: 4px; }
+  &:hover { background: rgba($gold, .06) !important; }
+  &.active { background: rgba($gold, .12) !important; border-color: $gold !important; color: $gold-dark !important; }
+}
+
+.view-toggle {
+  display: flex;
+  background: #F3F0EA;
+  border-radius: 8px;
+  padding: 2px;
+  margin-left: auto;
+
+  button {
+    color: $text-muted !important;
+    width: 32px; height: 32px;
+    mat-icon { font-size: 18px; width: 18px; height: 18px; }
+    &.active { background: white; color: $gold-dark !important; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  }
+}
+
+.tags-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.tags-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: $text-muted;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba($gold, .08);
+  color: $text-secondary;
+  border: 1px solid rgba($gold, .15);
+  cursor: pointer;
+  transition: all .2s;
+
+  .tag-count { font-size: 10px; color: $text-muted; }
+
+  &:hover { background: rgba($gold, .14); border-color: rgba($gold, .3); }
+
+  &.selected {
+    background: $gold;
+    color: white;
+    border-color: $gold;
+    .tag-count { color: rgba(white, .8); }
+  }
+}
+
+// ---- States ----
+.state-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 400px;
+  padding: 80px 24px;
   text-align: center;
-  padding: 40px;
-  background: #2A4365; // Match app dark mode content background
-  border-radius: 8px;
-  margin: 0 32px;
-  border: 1px solid rgba(183, 165, 122, 0.2);
 
-  mat-icon {
-    font-size: 80px;
-    width: 80px;
-    height: 80px;
-    color: #64748b;
-    margin-bottom: 24px;
+  .empty-icon {
+    width: 72px; height: 72px; border-radius: 50%;
+    background: rgba($gold, .1);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+    mat-icon { font-size: 32px; width: 32px; height: 32px; color: $gold; }
   }
 
-  h2 {
-    font-size: 28px;
-    font-weight: 700;
-    margin: 0 0 12px 0;
-    color: #f1f5f9;
-  }
+  h3 { font-size: 20px; font-weight: 700; color: $text-primary; margin: 0 0 6px; }
+  p { font-size: 14px; color: $text-muted; margin: 0 0 20px; max-width: 360px; }
 
-  p {
-    font-size: 16px;
-    color: #94a3b8;
-    margin: 0 0 24px 0;
-    max-width: 400px;
-  }
-  
-  button {
-    transition: all 0.2s ease;
-    
-    &:hover {
-      opacity: 0.9;
+  ::ng-deep .mat-mdc-progress-spinner circle { stroke: $gold !important; }
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, $gold, $gold-dark) !important;
+  color: white !important;
+  font-weight: 600 !important;
+  border-radius: 10px !important;
+  mat-icon { margin-right: 6px; }
+}
+
+.outline-btn {
+  border-color: rgba($gold, .3) !important;
+  color: $text-secondary !important;
+  border-radius: 10px !important;
+}
+
+// ---- Notes Grid ----
+.notes-container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 18px;
+
+  &.list-mode {
+    grid-template-columns: 1fr;
+
+    .note-card {
+      flex-direction: row;
+
+      .card-accent { width: 4px; height: auto; border-radius: 4px 0 0 4px; }
+      .card-body { padding: 16px 20px; }
+      .card-content { -webkit-line-clamp: 2; max-height: 52px; }
     }
   }
-}
-
-.loading-container {
-  p {
-    margin-top: 20px;
-  }
-}
-
-// Grid View
-.notes-grid {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 32px;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: 20px;
-  animation: fadeIn 0.3s ease-in-out;
 }
 
 .note-card {
-  cursor: pointer;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px !important;
-  background: #2A4365; // Match app dark mode content background
-  border: 1px solid rgba(183, 165, 122, 0.2);
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.15) !important;
-    border-color: rgba(183, 165, 122, 0.4);
-  }
-
-  mat-card-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    padding: 16px 16px 0 16px;
-    margin-bottom: 12px;
-
-    .note-reference {
-      flex: 1;
-
-      h3 {
-        margin: 0 0 8px 0;
-        font-size: 18px;
-        font-weight: 600;
-        color: #FAF3E0; // Match app cream text color
-      }
-
-      .verse-number {
-        display: inline-flex;
-        align-items: center;
-        padding: 4px 12px;
-        background: rgba(183, 165, 122, 0.3);
-        color: #FAF3E0;
-        border-radius: 12px;
-        font-size: 13px;
-        font-weight: 600;
-        border: 1px solid rgba(183, 165, 122, 0.4);
-      }
-    }
-
-    .note-actions {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-left: 8px;
-
-      .privacy-icon {
-        font-size: 18px;
-        width: 18px;
-        height: 18px;
-        color: #64748b;
-
-        &.public {
-          color: #10b981;
-        }
-      }
-      
-      button {
-        transition: all 0.2s ease;
-        
-        &:hover {
-          background: rgba(255, 255, 255, 0.1);
-        }
-      }
-    }
-  }
-
-  mat-card-content {
-    padding: 0 16px 16px 16px !important;
-
-    .note-content-preview {
-      font-size: 14px;
-      line-height: 1.6;
-      color: rgba(250, 243, 224, 0.9); // Match app cream text with slight transparency
-      margin-bottom: 12px;
-      max-height: 120px;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 5;
-      -webkit-box-orient: vertical;
-
-      // Preserve basic formatting
-      ::ng-deep {
-        h1, h2, h3 {
-          font-size: 16px;
-          font-weight: 600;
-          margin: 8px 0;
-          color: #f1f5f9;
-        }
-
-        p {
-          margin: 4px 0;
-        }
-
-        ul, ol {
-          padding-left: 20px;
-          margin: 8px 0;
-        }
-
-        strong, b {
-          font-weight: 600;
-          color: #f1f5f9;
-        }
-
-        em, i {
-          font-style: italic;
-        }
-      }
-    }
-
-    .note-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-bottom: 12px;
-
-      .tag-chip {
-        font-size: 11px;
-        padding: 4px 8px;
-        height: auto;
-        min-height: 24px;
-      }
-    }
-
-    .note-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-      padding-top: 12px;
-      border-top: 1px solid #475569;
-
-      .meta-date,
-      .meta-words,
-      .meta-sync {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 12px;
-        color: rgba(250, 243, 224, 0.7);
-
-        mat-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
-        }
-      }
-
-      .meta-sync {
-        color: #10b981;
-
-        &.pending {
-          color: #f59e0b;
-        }
-      }
-    }
-  }
-}
-
-// List View
-.notes-list {
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0 32px;
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.note-list-item {
   display: flex;
-  align-items: stretch;
-  background: #2A4365; // Match app dark mode content background
-  border-radius: 8px;
-  margin-bottom: 12px;
+  flex-direction: column;
+  background: white;
+  border-radius: 14px;
   overflow: hidden;
+  border: 1px solid rgba($gold, .1);
+  box-shadow: 0 1px 3px rgba(0,0,0,.03);
   cursor: pointer;
-  transition: all 0.2s ease;
-  border: 1px solid rgba(183, 165, 122, 0.2);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 
   &:hover {
-    box-shadow: 0 4px 12px rgba(183, 165, 122, 0.15);
-    transform: translateX(4px);
-    border-color: rgba(183, 165, 122, 0.4);
-  }
-
-  .list-item-privacy {
-    width: 50px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #10b981;
-    color: white;
-    flex-shrink: 0;
-
-    &.private {
-      background: #64748b;
-    }
-
-    mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-    }
-  }
-
-  .list-item-content {
-    flex: 1;
-    padding: 16px;
-    overflow: hidden;
-
-    .list-item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-
-      h4 {
-        margin: 0;
-        font-size: 16px;
-        font-weight: 600;
-        color: #f1f5f9;
-      }
-
-      .list-item-date {
-        font-size: 12px;
-        color: #94a3b8;
-        white-space: nowrap;
-      }
-    }
-
-    .list-item-text {
-      margin-bottom: 8px;
-
-      .note-preview {
-        font-size: 14px;
-        line-height: 1.5;
-        color: #cbd5e1;
-        max-height: 60px;
-        overflow: hidden;
-        display: -webkit-box;
-        -webkit-line-clamp: 3;
-        -webkit-box-orient: vertical;
-
-        ::ng-deep {
-          h1, h2, h3 {
-            display: inline;
-            font-size: 14px;
-            font-weight: 600;
-          }
-
-          p {
-            display: inline;
-          }
-
-          strong, b {
-            font-weight: 600;
-          }
-        }
-      }
-    }
-
-    .list-item-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .list-item-tags {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-
-        mat-chip {
-          font-size: 11px;
-          padding: 2px 8px;
-          height: auto;
-          min-height: 20px;
-        }
-      }
-
-      .word-count {
-        font-size: 12px;
-        color: #94a3b8;
-      }
-    }
-  }
-
-  .list-item-actions {
-    display: flex;
-    align-items: center;
-    padding: 0 8px;
-    
-    button {
-      transition: all 0.2s ease;
-      
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    }
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba($gold-dark, .1);
+    border-color: rgba($gold, .25);
   }
 }
 
-// Animations
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+.card-accent {
+  height: 4px;
+  background: linear-gradient(90deg, $gold, $gold-light);
+  flex-shrink: 0;
+  &.public { background: linear-gradient(90deg, $emerald, #34D399); }
+}
+
+.card-body {
+  padding: 18px 20px 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.verse-ref {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.surah-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: $text-primary;
+}
+
+.verse-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 10px;
+  border-radius: 12px;
+  background: rgba($gold, .12);
+  color: $gold-dark;
+  letter-spacing: .3px;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.privacy-indicator {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: $text-muted;
+  &.public { color: $emerald; }
+}
+
+.card-content {
+  font-size: 13px;
+  line-height: 1.65;
+  color: $text-secondary;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  max-height: 88px;
+
+  ::ng-deep {
+    h1, h2, h3 { font-size: 14px; font-weight: 600; margin: 4px 0; color: $text-primary; }
+    p { margin: 2px 0; }
+    strong, b { font-weight: 600; color: $text-primary; }
   }
 }
 
-// Responsive Design
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.mini-tag {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba($gold, .08);
+  color: $gold-dark;
+  text-transform: uppercase;
+  letter-spacing: .3px;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba($gold, .08);
+  font-size: 11px;
+  color: $text-muted;
+}
+
+.footer-date {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  mat-icon { font-size: 14px; width: 14px; height: 14px; }
+}
+
+.footer-words {
+  margin-left: auto;
+}
+
+.sync-icon {
+  font-size: 14px !important;
+  width: 14px !important;
+  height: 14px !important;
+  &.synced { color: $emerald; }
+  &.pending { color: #F59E0B; }
+}
+
+// ---- Responsive ----
 @media (max-width: 768px) {
-  .page-header {
-    padding: 16px;
-    
-    .header-content {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-
-    .header-title h1 {
-      font-size: 22px;
-
-      mat-icon {
-        font-size: 26px;
-        width: 26px;
-        height: 26px;
-      }
-    }
-
-    .header-right {
-      width: 100%;
-      justify-content: space-between;
-      flex-wrap: wrap;
-    }
-  }
-
-  .filters-section {
-    padding: 0 16px;
-    margin-top: 150px; // Adjust for mobile (slightly less than desktop)
-
-    .filter-chips {
-      flex-direction: column;
-
-      .filter-group {
-        width: 100%;
-        min-width: unset;
-      }
-    }
-  }
-
-  .notes-grid {
-    padding: 0 16px;
-    grid-template-columns: 1fr;
-  }
-
-  .notes-list {
-    padding: 0 16px;
-  }
-
-  .note-list-item {
-    flex-direction: column;
-
-    .list-item-privacy {
-      width: 100%;
-      height: 40px;
-    }
-  }
-  
-  .loading-container,
-  .empty-state {
-    margin: 0 16px;
-  }
+  .page-hero { padding: 28px 20px 32px; }
+  .hero-inner h1 { font-size: 26px; }
+  .toolbar-inner { padding: 12px 16px; }
+  .notes-container { padding: 16px; }
+  .notes-grid { grid-template-columns: 1fr; }
+  .filters-row { gap: 8px; }
+  .compact-filter { width: 140px; }
 }
 
-// Dark Mode Support
-:host-context(.dark) {
-  .notes-page {
-    background: #1A365D !important; // Dark blue background
+// ---- Dark Mode ----
+:host-context(.dark),
+:host-context(.theme-dark),
+:host-context(.theme-night) {
+  .notes-page { background: #0F1724 !important; }
+
+  .page-hero {
+    background: linear-gradient(160deg, #0A0F1A 0%, #1A2332 50%, #2A2A1A 100%);
   }
 
-  .page-header {
-    background: rgba(26, 54, 93, 0.85) !important; // Dark blue header
-    border-bottom-color: rgba(250, 243, 224, 0.1) !important;
+  .toolbar-section {
+    background: #151D2E;
+    border-bottom-color: rgba($gold, .06);
   }
 
-  .filter-chips {
-    background: rgba(42, 67, 101, 0.3) !important; // Slightly visible dark blue
-    border-color: rgba(183, 165, 122, 0.2) !important;
-
-    .filter-group {
-      label {
-        color: #B7A57A !important; // Gold
-      }
-
-      .tag-chips {
-        mat-chip-option {
-          background: rgba(250, 243, 224, 0.1) !important;
-          color: #FAF3E0 !important; // Cream text
-          border-color: rgba(183, 165, 122, 0.3) !important;
-
-          &:hover {
-            background: rgba(250, 243, 224, 0.15) !important;
-            border-color: rgba(183, 165, 122, 0.5) !important;
-          }
-
-          &[aria-pressed="true"] {
-            background: rgba(183, 165, 122, 0.3) !important;
-            color: white !important;
-            border-color: rgba(183, 165, 122, 0.6) !important;
-          }
-        }
-      }
-    }
-
-    .clear-filters-btn,
-    button[mat-stroked-button] {
-      background: rgba(250, 243, 224, 0.1) !important;
-      color: #FAF3E0 !important;
-      border-color: rgba(183, 165, 122, 0.3) !important;
-
-      &:hover {
-        background: rgba(250, 243, 224, 0.15) !important;
-        border-color: rgba(183, 165, 122, 0.5) !important;
-      }
-
-      mat-icon {
-        color: #FAF3E0 !important;
-      }
-    }
+  .search-bar {
+    background: #1A2332;
+    border-color: rgba($gold, .1);
+    input { color: #E8E0D2; &::placeholder { color: rgba(white, .3); } }
+    .search-icon { color: rgba(white, .3); }
   }
 
-  .search-field ::ng-deep {
-    .mat-mdc-form-field {
-      background: rgba(250, 243, 224, 0.05) !important;
-    }
-
-    label, input {
-      color: #FAF3E0 !important; // Cream text
-    }
-
-    button mat-icon {
-      color: #FAF3E0 !important;
-    }
+  .compact-filter ::ng-deep {
+    label, .mat-mdc-select-value { color: rgba(white, .6) !important; }
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing { border-color: rgba($gold, .12) !important; }
   }
 
-  .filters-section .surah-filter ::ng-deep {
-    label, input, mat-select {
-      color: #FAF3E0 !important;
-    }
+  .filter-btn, .clear-btn {
+    color: rgba(white, .5) !important;
+    border-color: rgba($gold, .12) !important;
+    &:hover { background: rgba($gold, .08) !important; }
+    &.active { background: rgba($gold, .15) !important; color: $gold-light !important; }
+  }
+
+  .view-toggle {
+    background: #1A2332;
+    button { color: rgba(white, .3) !important; &.active { background: #243044; color: $gold-light !important; } }
+  }
+
+  .tag-chip {
+    background: rgba($gold, .06);
+    border-color: rgba($gold, .1);
+    color: rgba(white, .5);
+    &.selected { background: $gold; color: white; }
   }
 
   .note-card {
-    background: #2A4365 !important;
-    border-color: rgba(183, 165, 122, 0.2) !important;
+    background: #1A2332;
+    border-color: rgba($gold, .08);
+    &:hover { border-color: rgba($gold, .2); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
   }
 
-  .loading-container,
-  .empty-state {
-    background: #2A4365 !important;
-    border-color: rgba(183, 165, 122, 0.2) !important;
+  .surah-name { color: #E8E0D2; }
+  .verse-badge { background: rgba($gold, .15); color: $gold-light; }
+  .card-content { color: rgba(white, .55); ::ng-deep { h1, h2, h3, strong, b { color: #E8E0D2; } } }
+  .card-footer { border-top-color: rgba($gold, .06); color: rgba(white, .3); }
+  .mini-tag { background: rgba($gold, .1); color: $gold-light; }
+
+  .state-container {
+    h3 { color: #E8E0D2; }
+    p { color: rgba(white, .4); }
+    .empty-icon { background: rgba($gold, .08); }
   }
 }

@@ -1,15 +1,15 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, HostListener, NgZone } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { Title, Meta } from '@angular/platform-browser';
-import { Subscription, interval, Observable } from 'rxjs';
+import { Subscription, Observable } from 'rxjs';
 import { ThemeService, Theme } from '../../services/theme.service';
 import { map } from 'rxjs/operators';
+import { MatIconModule } from '@angular/material/icon';
 
 interface ShowcaseSlide {
   text: string;
   source: string;
-  backgroundImage?: string;
 }
 
 @Component({
@@ -19,7 +19,8 @@ interface ShowcaseSlide {
   standalone: true,
   imports: [
     CommonModule,
-    RouterModule
+    RouterModule,
+    MatIconModule
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
@@ -53,23 +54,30 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   ];
   currentSlideIndex = 0;
-  private slideIntervalSubscription: Subscription | null = null;
-  slideInterval = 7000;
+  scrollProgress = 0;
+  private slideTimer: ReturnType<typeof setInterval> | null = null;
   public isDarkMode$: Observable<boolean>;
 
   constructor(
     private titleService: Title,
     private metaService: Meta,
     private cdr: ChangeDetectorRef,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    private ngZone: NgZone
   ) {
     this.isDarkMode$ = this.themeService.currentTheme$.pipe(
       map(theme => theme === 'dark')
     );
   }
 
+  @HostListener('window:scroll')
+  onWindowScroll(): void {
+    const maxScroll = window.innerHeight * 0.55;
+    this.scrollProgress = Math.min(window.scrollY / maxScroll, 1);
+  }
+
   ngOnInit(): void {
-    this.titleService.setTitle('Nura AI - Your Intelligent Islamic Assistant | Home');
+    this.titleService.setTitle('Nura AI - Your Intelligent Muslim Companion | Home');
     this.metaService.addTags([
       { name: 'description', content: 'Welcome to Nura AI, your spiritual companion for Quran, Duas, and AI-powered Islamic learning. Explore Quran reader, Dua collection, and interactive learning tools.' },
       { name: 'keywords', content: 'islamic app, quran reader, dua collection, islamic learning, ai assistant, nura ai, islam' }
@@ -84,16 +92,20 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   startSlideShow(): void {
     this.stopSlideShow();
-    this.slideIntervalSubscription = interval(this.slideInterval).subscribe(() => {
-      this.nextSlide();
-      this.cdr.markForCheck();
+    this.ngZone.runOutsideAngular(() => {
+      this.slideTimer = setInterval(() => {
+        this.ngZone.run(() => {
+          this.nextSlide();
+          this.cdr.detectChanges();
+        });
+      }, 6000);
     });
   }
 
   stopSlideShow(): void {
-    if (this.slideIntervalSubscription) {
-      this.slideIntervalSubscription.unsubscribe();
-      this.slideIntervalSubscription = null;
+    if (this.slideTimer) {
+      clearInterval(this.slideTimer);
+      this.slideTimer = null;
     }
   }
 
@@ -105,5 +117,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.currentSlideIndex = index;
     this.stopSlideShow();
     this.startSlideShow();
+    this.cdr.detectChanges();
   }
 } 

@@ -39,13 +39,17 @@ export class AuthInterceptor implements HttpInterceptor {
           catchError((error) => {
             if (
               error instanceof HttpErrorResponse &&
-              isApiUrl(req.url) && // Only handle errors for our own API
-              !req.url.includes('/auth/signin') && // Avoid retry loop on signin
-              (error.status === 401 || error.status === 403) // Unauthorized or Forbidden
+              isApiUrl(req.url) &&
+              !req.url.includes('/auth/signin')
             ) {
-              return this.handle401Error(req, next);
+              if (error.status === 403 && (error.error?.freeTierExhausted || error.error?.isPremium !== undefined)) {
+                return throwError(() => error);
+              }
+
+              if (error.status === 401 || error.status === 403) {
+                return this.handle401Error(req, next);
+              }
             }
-            // For all other errors (including 404s), just propagate them.
             return throwError(() => error);
           })
         );
@@ -182,14 +186,18 @@ export const authInterceptorFn: HttpInterceptorFn = (
         catchError(error => {
           if (
             error instanceof HttpErrorResponse &&
-            isApiUrl(authReq.url) && // Check if it's our API
-            !authReq.url.includes('/auth/signin') && // Avoid retry loop on signin routes
-            (error.status === 401 || error.status === 403) // Check for Unauthorized or Forbidden
+            isApiUrl(authReq.url) &&
+            !authReq.url.includes('/auth/signin')
           ) {
-            // Call the specific 401/403 handler logic
-            return handle401Error(authReq as HttpRequest<any>, next, authService);
+            // 403 with business-logic flags (e.g. usage limits) are NOT auth errors
+            if (error.status === 403 && (error.error?.freeTierExhausted || error.error?.isPremium !== undefined)) {
+              return throwError(() => error);
+            }
+
+            if (error.status === 401 || error.status === 403) {
+              return handle401Error(authReq as HttpRequest<any>, next, authService);
+            }
           }
-          // For other errors (404, 500, etc.), just pass them along without logging out
           return throwError(() => error);
         })
       );

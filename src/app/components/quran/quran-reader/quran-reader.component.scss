@@ -1755,41 +1755,65 @@ select option {
     }
   }
   
+  // === Reader Hero Dark Mode ===
+  .reader-hero {
+    &__title { color: #B7A57A !important; }
+    &__sub { color: #9CA3AF !important; }
+    &__arabic { color: #D4C5A0 !important; }
+  }
+
+  // === Reader Controls Dark Mode ===
+  .reader-controls {
+    background: #2D3748 !important;
+    border-color: rgba(183, 165, 122, 0.15) !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
+  }
+
+  // === FAB Stack Dark Mode ===
+  .fab-btn {
+    background: linear-gradient(135deg, #D4C5A0, #B7A57A) !important;
+    color: #1A365D !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+  }
+
   // === Verse Card Dark Mode ===
   .verse-card {
-    background-color: #2D3748 !important; // Dark slate gray for neutral contrast
-    border-color: rgba(183, 165, 122, 0.2) !important;
+    background-color: #2D3748 !important;
+    border-color: rgba(183, 165, 122, 0.12) !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
     color: #FAF3E0 !important; 
+
+    &__header {
+      background: rgba(183, 165, 122, 0.06) !important;
+      border-bottom-color: rgba(183, 165, 122, 0.1) !important;
+    }
+
+    .verse-badge {
+      background: rgba(183, 165, 122, 0.15) !important;
+      color: #D4C5A0 !important;
+    }
+
+    .verse-action-btn {
+      color: #9CA3AF !important;
+      &:hover {
+        background: rgba(183, 165, 122, 0.12) !important;
+        color: #D4C5A0 !important;
+      }
+      &.active, &.bookmarked {
+        color: #B7A57A !important;
+      }
+    }
     
     .verse-meaning {
-        background-color: #374151 !important; // Complementary gray for translation
-        border-top-color: rgba(183, 165, 122, 0.2) !important;
-        border-left-color: #D4AF37 !important;
+        background: rgba(183, 165, 122, 0.06) !important;
+        border-left-color: #B7A57A !important;
         background-image: none !important;
         .translation-text,
         .transliteration-text { 
-           color: #B7A57A !important; // Gold color for dark mode
+           color: #B7A57A !important;
            p { color: inherit !important; } 
         }
         .verse-details, .verse-source { color: #9CA3AF !important; }
-    }
-    .verse-number {
-       background-color: rgba(183, 165, 122, 0.15) !important;
-       border-color: rgba(183, 165, 122, 0.3) !important;
-       color: #B7A57A !important;
-    }
-    .verse-actions button.mat-icon-button { 
-       .mat-icon { color: #B7A57A !important; }
-       &:hover:not(:disabled) { 
-           background-color: rgba(183, 165, 122, 0.1) !important;
-           .mat-icon { color: #FAF3E0 !important; }
-       } 
-       &.bookmarked .mat-icon { color: #B7A57A !important; }
-    }
-    // Don't apply color to Tajweed elements - let font colors show
-    > .p-6 > .verse-text:not(.quran-text-uthmanic) { 
-      color: #FAF3E0 !important; 
     }
   } // End .verse-card
 
@@ -1870,6 +1894,193 @@ select option {
 
   .mushaf-controls-header.mobile-header-hidden {
     transform: translateY(-100%);
+  }
+}
+
+// ==========================================
+// REVAMPED UI STYLES
+// ==========================================
+
+// --- Reader Hero ---
+.reader-hero {
+  text-align: center;
+  padding: 4px 0 2px;
+
+  &__title {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: $primary-color;
+    letter-spacing: -0.01em;
+    margin: 0 0 2px;
+  }
+
+  &__sub {
+    font-size: 0.85rem;
+    color: #6B7280;
+    margin: 0;
+    font-weight: 500;
+  }
+
+  &__arabic {
+    font-family: 'Amiri', serif;
+    color: $primary-color;
+    font-size: 1rem;
+    margin-left: 6px;
+  }
+}
+
+// --- Controls Panel ---
+.reader-controls {
+  background: #fff;
+  border: 1px solid rgba($primary-color, 0.12);
+  border-radius: 14px;
+  padding: 16px 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+
+  &:hover {
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.07);
+  }
+}
+
+// --- Verse Cards ---
+.verse-card {
+  background: #fff;
+  border-radius: 16px;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  padding: 0;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  position: relative;
+
+  &:hover {
+    border-color: rgba($primary-color, 0.15);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 20px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+    background: rgba($primary-color, 0.02);
+  }
+
+  .verse-container {
+    padding: 8px 20px 0;
+  }
+
+  .verse-meaning {
+    margin: 0 20px 0;
+    padding: 14px 16px;
+    background: linear-gradient(135deg, rgba($primary-color, 0.04), rgba($primary-color, 0.01));
+    border-radius: 12px;
+    border-left: 3px solid $primary-color;
+    margin-bottom: 16px;
+
+    .translation-text {
+      font-size: 1rem;
+      line-height: 1.75;
+      color: $text-dark;
+      margin: 0;
+
+      p { margin: 0; }
+    }
+
+    .transliteration-text {
+      font-size: 0.85rem;
+      color: $text-medium;
+      font-style: italic;
+      margin-top: 8px;
+      line-height: 1.6;
+
+      p { margin: 0; }
+    }
+  }
+}
+
+.verse-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  background: rgba($primary-color, 0.1);
+  color: $primary-color;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border-radius: 8px;
+  letter-spacing: 0.02em;
+  min-width: 48px;
+}
+
+.verse-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.verse-action-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #9CA3AF;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 0.85rem;
+
+  &:hover {
+    background: rgba($primary-color, 0.08);
+    color: $primary-color;
+  }
+
+  &.active {
+    background: rgba($primary-color, 0.12);
+    color: $primary-color;
+  }
+
+  &.bookmarked {
+    color: $primary-color;
+  }
+}
+
+// --- Floating Action Buttons ---
+.fab-stack {
+  position: fixed;
+  top: 100px;
+  right: 16px;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fab-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: none;
+  background: linear-gradient(135deg, $primary-color, darken($primary-color, 6%));
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba($primary-color, 0.3);
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba($primary-color, 0.4);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 

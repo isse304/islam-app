@@ -1,247 +1,192 @@
 <div class="notes-page">
-  <!-- Header -->
-  <header class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/tafsir/browse" matTooltip="Back to Library">
+
+  <!-- Hero Header -->
+  <section class="page-hero">
+    <div class="hero-bg"></div>
+    <div class="hero-inner">
+      <div class="hero-top-row">
+        <button mat-icon-button class="back-btn" routerLink="/tafsir/browse">
           <mat-icon>arrow_back</mat-icon>
         </button>
-        <div class="header-title">
-          <h1><mat-icon>note</mat-icon> My Notes</h1>
-          <p class="header-subtitle">{{ totalNotes }} notes • {{ totalBookmarks }} bookmarks</p>
+        <div class="hero-actions">
+          <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More Actions">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #moreMenu="matMenu">
+            <button mat-menu-item (click)="exportNotes()">
+              <mat-icon>download</mat-icon>
+              <span>Export Notes</span>
+            </button>
+            <button mat-menu-item (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              <span>Import Notes</span>
+            </button>
+          </mat-menu>
+          <input #fileInput type="file" accept=".json" style="display: none" (change)="importNotes($event)">
         </div>
       </div>
-      
-      <div class="header-right">
-        <!-- View Bookmarks -->
-        <button mat-stroked-button routerLink="/tafsir/bookmarks">
-          <mat-icon>bookmarks</mat-icon>
-          View Bookmarks
+      <h1>My Notes</h1>
+      <p class="hero-subtitle">{{ totalNotes }} notes across your tafsir studies</p>
+
+      <!-- Quick nav -->
+      <div class="hero-nav">
+        <button mat-stroked-button routerLink="/tafsir/bookmarks" class="nav-pill">
+          <mat-icon>bookmarks</mat-icon> Bookmarks
+        </button>
+        <button mat-stroked-button routerLink="/tafsir/highlights" class="nav-pill">
+          <mat-icon>format_color_fill</mat-icon> Highlights
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toolbar: search + filters -->
+  <section class="toolbar-section">
+    <div class="toolbar-inner">
+      <!-- Search -->
+      <div class="search-bar">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input type="text"
+               placeholder="Search notes..."
+               [(ngModel)]="searchQuery"
+               (ngModelChange)="onSearchChange()">
+        <button mat-icon-button *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()" class="clear-search">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Filters row -->
+      <div class="filters-row">
+        <mat-form-field appearance="outline" class="compact-filter">
+          <mat-label>Surah</mat-label>
+          <mat-select [(ngModel)]="selectedSurah" (ngModelChange)="filterBySurah($event)">
+            <mat-option [value]="null">All Surahs</mat-option>
+            <mat-option *ngFor="let surahNum of surahs" [value]="surahNum">
+              {{ surahNum }}. {{ getSurahName(surahNum) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <button mat-stroked-button class="filter-btn"
+                [class.active]="showPrivateOnly"
+                (click)="togglePrivacyFilter()">
+          <mat-icon>{{ showPrivateOnly ? 'lock' : 'lock_open' }}</mat-icon>
+          {{ showPrivateOnly ? 'Private' : 'All' }}
         </button>
 
-        <!-- View Mode Toggle -->
-        <mat-button-toggle-group [value]="viewMode" (change)="setViewMode($event.value)">
-          <mat-button-toggle value="grid" matTooltip="Grid View">
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button mat-icon-button [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" matTooltip="Grid">
             <mat-icon>grid_view</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle value="list" matTooltip="List View">
+          </button>
+          <button mat-icon-button [class.active]="viewMode === 'list'" (click)="setViewMode('list')" matTooltip="List">
             <mat-icon>view_list</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-        
-        <!-- More Actions Menu -->
-        <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More Actions">
-          <mat-icon>more_vert</mat-icon>
+          </button>
+        </div>
+
+        <button mat-stroked-button class="clear-btn"
+                *ngIf="getActiveFilterCount() > 0"
+                (click)="clearFilters()">
+          <mat-icon>filter_list_off</mat-icon>
+          Clear ({{ getActiveFilterCount() }})
         </button>
-        <mat-menu #moreMenu="matMenu">
-          <button mat-menu-item (click)="exportNotes()">
-            <mat-icon>download</mat-icon>
-            <span>Export Notes</span>
-          </button>
-          <button mat-menu-item (click)="fileInput.click()">
-            <mat-icon>upload</mat-icon>
-            <span>Import Notes</span>
-          </button>
-        </mat-menu>
-        <input #fileInput type="file" accept=".json" style="display: none" (change)="importNotes($event)">
-      </div>
-    </div>
-  </header>
-
-  <!-- Filters & Search -->
-  <div class="filters-section">
-    <!-- Search Bar -->
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Search notes...</mat-label>
-      <input matInput 
-             [(ngModel)]="searchQuery" 
-             (ngModelChange)="onSearchChange()"
-             placeholder="Search by content or tags...">
-      <mat-icon matPrefix>search</mat-icon>
-      <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-form-field>
-
-    <!-- Filter Chips -->
-    <div class="filter-chips">
-      <!-- Tag Filters -->
-      <div class="filter-group" *ngIf="tags.length > 0">
-        <label>Tags:</label>
-        <mat-chip-listbox class="tag-chips" [multiple]="true">
-          <mat-chip-option 
-            *ngFor="let tag of tags"
-            [selected]="isTagSelected(tag.name)"
-            (click)="toggleTag(tag.name)">
-            {{ tag.name }} ({{ tag.count }})
-          </mat-chip-option>
-        </mat-chip-listbox>
       </div>
 
-      <!-- Surah Filter -->
-      <mat-form-field appearance="outline" class="surah-filter">
-        <mat-label>Filter by Surah</mat-label>
-        <mat-select [(ngModel)]="selectedSurah" (ngModelChange)="filterBySurah($event)">
-          <mat-option [value]="null">All Surahs</mat-option>
-          <mat-option *ngFor="let surahNum of surahs" [value]="surahNum">
-            {{ surahNum }}. {{ getSurahName(surahNum) }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <!-- Privacy Filter -->
-      <button mat-stroked-button 
-              [color]="showPrivateOnly ? 'accent' : ''"
-              (click)="togglePrivacyFilter()">
-        <mat-icon>{{ showPrivateOnly ? 'lock' : 'lock_open' }}</mat-icon>
-        {{ showPrivateOnly ? 'Private Only' : 'All Notes' }}
-      </button>
-
-      <!-- Clear Filters Button -->
-      <button mat-stroked-button 
-              *ngIf="getActiveFilterCount() > 0" 
-              (click)="clearFilters()"
-              class="clear-filters-btn">
-        <mat-icon>filter_list_off</mat-icon>
-        Clear Filters ({{ getActiveFilterCount() }})
-      </button>
+      <!-- Tags -->
+      <div class="tags-row" *ngIf="tags.length > 0">
+        <span class="tags-label">Tags</span>
+        <button *ngFor="let tag of tags"
+                class="tag-chip"
+                [class.selected]="isTagSelected(tag.name)"
+                (click)="toggleTag(tag.name)">
+          {{ tag.name }} <span class="tag-count">{{ tag.count }}</span>
+        </button>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Loading State -->
-  <div class="loading-container" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
+  <!-- Loading -->
+  <div class="state-container" *ngIf="isLoading">
+    <mat-spinner diameter="40"></mat-spinner>
     <p>Loading notes...</p>
   </div>
 
-  <!-- Empty State -->
-  <div class="empty-state" *ngIf="!isLoading && filteredNotes.length === 0 && allNotes.length === 0">
-    <mat-icon>note_add</mat-icon>
-    <h2>No Notes Yet</h2>
-    <p>Start reading Tafsir and take notes to remember your insights!</p>
-    <button mat-raised-button color="primary" routerLink="/tafsir/browse">
-      <mat-icon>menu_book</mat-icon>
-      Browse Tafsir Library
+  <!-- Empty state -->
+  <div class="state-container" *ngIf="!isLoading && filteredNotes.length === 0 && allNotes.length === 0">
+    <div class="empty-icon"><mat-icon>edit_note</mat-icon></div>
+    <h3>No Notes Yet</h3>
+    <p>Start reading Tafsir and take notes to capture your reflections.</p>
+    <button mat-flat-button class="primary-btn" routerLink="/tafsir/browse">
+      <mat-icon>auto_stories</mat-icon> Browse Tafsir
     </button>
   </div>
 
-  <!-- No Results State -->
-  <div class="empty-state" *ngIf="!isLoading && filteredNotes.length === 0 && allNotes.length > 0">
-    <mat-icon>search_off</mat-icon>
-    <h2>No Matching Notes</h2>
-    <p>Try adjusting your filters or search query</p>
-    <button mat-stroked-button (click)="clearFilters()">
-      <mat-icon>filter_list_off</mat-icon>
-      Clear All Filters
-    </button>
+  <!-- No results -->
+  <div class="state-container" *ngIf="!isLoading && filteredNotes.length === 0 && allNotes.length > 0">
+    <div class="empty-icon"><mat-icon>search_off</mat-icon></div>
+    <h3>No Matching Notes</h3>
+    <p>Try adjusting your search or filters.</p>
+    <button mat-stroked-button class="outline-btn" (click)="clearFilters()">Clear Filters</button>
   </div>
 
-  <!-- Notes Grid View -->
-  <div class="notes-grid" *ngIf="!isLoading && filteredNotes.length > 0 && viewMode === 'grid'">
-    <mat-card class="note-card" 
-              *ngFor="let note of filteredNotes"
-              (click)="openNote(note)">
-      <mat-card-header>
-        <div class="note-reference">
-          <h3>{{ getSurahName(note.surah) }}</h3>
-          <span class="verse-number">{{ note.surah }}:{{ note.verse }}</span>
-        </div>
-        
-        <div class="note-actions">
-          <mat-icon *ngIf="note.isPrivate" class="privacy-icon" matTooltip="Private">lock</mat-icon>
-          <mat-icon *ngIf="!note.isPrivate" class="privacy-icon public" matTooltip="Public">lock_open</mat-icon>
-          
-          <button mat-icon-button [matMenuTriggerFor]="noteMenu" (click)="$event.stopPropagation()">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #noteMenu="matMenu">
-            <button mat-menu-item (click)="toggleNotePrivacy(note, $event)">
-              <mat-icon>{{ note.isPrivate ? 'lock_open' : 'lock' }}</mat-icon>
-              <span>Make {{ note.isPrivate ? 'Public' : 'Private' }}</span>
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item (click)="deleteNote(note, $event)">
-              <mat-icon color="warn">delete</mat-icon>
-              <span>Delete</span>
-            </button>
-          </mat-menu>
-        </div>
-      </mat-card-header>
-      
-      <mat-card-content>
-        <!-- Note Content Preview -->
-        <div class="note-content-preview" [innerHTML]="note.content"></div>
-        
-        <!-- Tags -->
-        <div class="note-tags" *ngIf="note.tags && note.tags.length > 0">
-          <mat-chip *ngFor="let tag of note.tags" class="tag-chip">
-            {{ tag }}
-          </mat-chip>
-        </div>
-        
-        <!-- Metadata -->
-        <div class="note-meta">
-          <span class="meta-date">
-            <mat-icon>schedule</mat-icon>
-            {{ note.createdAt | date:'MMM d, y' }}
-          </span>
-          <span class="meta-words">
-            {{ getWordCount(note) }} words
-          </span>
-          <span class="meta-sync" *ngIf="note.syncStatus === 'synced'">
-            <mat-icon>cloud_done</mat-icon>
-          </span>
-          <span class="meta-sync pending" *ngIf="note.syncStatus === 'pending'">
-            <mat-icon>cloud_queue</mat-icon>
-          </span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+  <!-- Notes Grid -->
+  <section class="notes-container" *ngIf="!isLoading && filteredNotes.length > 0">
+    <div class="notes-grid" [class.list-mode]="viewMode === 'list'">
 
-  <!-- Notes List View -->
-  <div class="notes-list" *ngIf="!isLoading && filteredNotes.length > 0 && viewMode === 'list'">
-    <div class="note-list-item" 
-         *ngFor="let note of filteredNotes"
-         (click)="openNote(note)">
-      <div class="list-item-privacy" [class.private]="note.isPrivate">
-        <mat-icon>{{ note.isPrivate ? 'lock' : 'lock_open' }}</mat-icon>
-      </div>
-      
-      <div class="list-item-content">
-        <div class="list-item-header">
-          <h4>{{ getSurahName(note.surah) }} {{ note.surah }}:{{ note.verse }}</h4>
-          <span class="list-item-date">{{ note.createdAt | date:'short' }}</span>
-        </div>
-        
-        <div class="list-item-text">
-          <div class="note-preview" [innerHTML]="note.content"></div>
-        </div>
-        
-        <div class="list-item-footer">
-          <div class="list-item-tags" *ngIf="note.tags && note.tags.length > 0">
-            <mat-chip *ngFor="let tag of note.tags">{{ tag }}</mat-chip>
+      <div class="note-card" *ngFor="let note of filteredNotes" (click)="openNote(note)">
+        <!-- Accent bar -->
+        <div class="card-accent" [class.public]="!note.isPrivate"></div>
+
+        <div class="card-body">
+          <!-- Header -->
+          <div class="card-header">
+            <div class="verse-ref">
+              <span class="surah-name">{{ getSurahName(note.surah) }}</span>
+              <span class="verse-badge">{{ note.surah }}:{{ note.verse }}</span>
+            </div>
+            <div class="card-actions">
+              <mat-icon class="privacy-indicator" [class.public]="!note.isPrivate"
+                        [matTooltip]="note.isPrivate ? 'Private' : 'Public'">
+                {{ note.isPrivate ? 'lock' : 'public' }}
+              </mat-icon>
+              <button mat-icon-button [matMenuTriggerFor]="noteMenu" (click)="$event.stopPropagation()">
+                <mat-icon>more_horiz</mat-icon>
+              </button>
+              <mat-menu #noteMenu="matMenu">
+                <button mat-menu-item (click)="toggleNotePrivacy(note, $event)">
+                  <mat-icon>{{ note.isPrivate ? 'public' : 'lock' }}</mat-icon>
+                  <span>Make {{ note.isPrivate ? 'Public' : 'Private' }}</span>
+                </button>
+                <button mat-menu-item (click)="deleteNote(note, $event)">
+                  <mat-icon color="warn">delete</mat-icon>
+                  <span>Delete</span>
+                </button>
+              </mat-menu>
+            </div>
           </div>
-          <span class="word-count">{{ getWordCount(note) }} words</span>
+
+          <!-- Content preview -->
+          <div class="card-content" [innerHTML]="note.content"></div>
+
+          <!-- Tags -->
+          <div class="card-tags" *ngIf="note.tags && note.tags.length > 0">
+            <span class="mini-tag" *ngFor="let tag of note.tags">{{ tag }}</span>
+          </div>
+
+          <!-- Footer -->
+          <div class="card-footer">
+            <span class="footer-date">
+              <mat-icon>schedule</mat-icon>
+              {{ note.createdAt | date:'MMM d, y' }}
+            </span>
+            <span class="footer-words">{{ getWordCount(note) }} words</span>
+            <mat-icon class="sync-icon synced" *ngIf="note.syncStatus === 'synced'" matTooltip="Synced">cloud_done</mat-icon>
+            <mat-icon class="sync-icon pending" *ngIf="note.syncStatus === 'pending'" matTooltip="Pending sync">cloud_queue</mat-icon>
+          </div>
         </div>
       </div>
-      
-      <div class="list-item-actions">
-        <button mat-icon-button [matMenuTriggerFor]="listMenu" (click)="$event.stopPropagation()">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-        <mat-menu #listMenu="matMenu">
-          <button mat-menu-item (click)="toggleNotePrivacy(note, $event)">
-            <mat-icon>{{ note.isPrivate ? 'lock_open' : 'lock' }}</mat-icon>
-            <span>Make {{ note.isPrivate ? 'Public' : 'Private' }}</span>
-          </button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="deleteNote(note, $event)">
-            <mat-icon color="warn">delete</mat-icon>
-            <span>Delete</span>
-          </button>
-        </mat-menu>
-      </div>
+
     </div>
-  </div>
+  </section>
+
 </div>

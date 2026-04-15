@@ -1,311 +1,400 @@
-/* Import theme variables if available (adjust path if needed) */
-// @import '../../../styles/theme-variables'; // Uncomment if you have a theme file
+/* ═══════════════════════════════════════════
+   ABOUT PAGE
+   ═══════════════════════════════════════════ */
 
-.about-container {
-  padding: 30px 20px;
-  max-width: 950px;
-  margin: 30px auto;
-  animation: fadeIn 0.6s ease-in-out;
-  // Background set by Tailwind dark:bg-[#1A365D]
-  // background: linear-gradient(135deg, var(--app-background-light, #f8f9fa) 0%, var(--app-background-medium, #e9ecef) 100%);
-  border-radius: 12px;
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+$gold:       #B7A57A;
+$gold-light: #D4C5A0;
+$navy:       #1A365D;
+$navy-deep:  #0F2847;
+$navy-card:  #1E3A5F;
+$cream:      #FAF3E0;
+$text:       #374151;
+$text-muted: #6B7280;
+
+:host { display: block; background: $cream; min-height: 100vh; }
+
+/* ── HERO ── */
+
+.about-hero {
+  position: relative;
+  padding: 120px 24px 80px;
+  text-align: center;
+  overflow: hidden;
 }
 
-.about-card {
-  // Background set by Tailwind dark:bg-[#2A4365]
-  // color: var(--app-text-color, #333);
-  border-radius: 8px;
-  box-shadow: none; // Shadow is on the container now
-  overflow: hidden; // Ensures content respects border radius
-}
+.about-hero__bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, $navy-deep, $navy);
 
-mat-card-header {
-  // Background set by Tailwind dark:bg-[#1A365D]
-  // color: var(--app-header-text-color, #ffffff);
-  padding: 25px 30px;
-  // Border set by Tailwind dark:border-[#B7A57A]
-  // border-bottom: 5px solid var(--app-accent-color, #B7A57A);
-
-  mat-card-title {
-    font-size: 2.2em;
-    font-weight: bold;
-    color: inherit; // Inherit from header color
-    margin-bottom: 8px;
-    line-height: 1.2;
-  }
-
-  mat-card-subtitle {
-    font-size: 1.2em;
-    // Color set by Tailwind dark:text-[#FAF3E0]/85
-    // color: rgba(var(--app-header-text-rgb, 255, 255, 255), 0.85);
-    margin-bottom: 0;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/assets/islamic-pattern-2.png');
+    background-size: 220px;
+    opacity: 0.04;
   }
 }
 
-mat-card-content {
-  padding: 30px;
-  // Base text color set by Tailwind dark:text-[#d1d5db]
-}
+.about-hero__content {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+  margin: 0 auto;
 
-.section {
-  margin-bottom: 35px;
-  padding: 25px;
-  border-radius: 8px;
-  // Background set by Tailwind dark:bg-[#1A365D]/70
-  // background-color: rgba(var(--app-section-background-rgb, 240, 240, 240), 0.5); 
-  // Border set by Tailwind dark:border-gray-700
-  // border: 1px solid var(--app-divider-color, #e0e0e0);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-
-  &:hover {
-     transform: translateY(-3px);
-     box-shadow: 0 6px 15px rgba(0, 0, 0, 0.07);
-  }
-
-  &:last-child {
-    margin-bottom: 0;
-  }
-
-  h2 {
-    display: flex;
-    align-items: center;
-    font-size: 1.6em;
-    font-weight: 600;
-    // Color set by Tailwind dark:text-[#B7A57A]
-    // color: var(--app-primary-color, #1A365D);
-    margin-top: 0;
-    margin-bottom: 20px;
-    padding-bottom: 10px;
-    // Border set by Tailwind dark:border-[#B7A57A]
-    // border-bottom: 2px solid var(--app-accent-color, #B7A57A);
-
-    mat-icon {
-      margin-right: 12px;
-      // Color set by Tailwind dark:text-[#B7A57A]
-      // color: var(--app-accent-color, #B7A57A);
-      font-size: 1.4em; // Make icon slightly larger
-      vertical-align: middle;
-    }
+  h1 {
+    font-size: clamp(2.5rem, 7vw, 4rem);
+    font-weight: 900;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, $gold, $gold-light, #E8D9B0);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
 
   p {
-    line-height: 1.75;
-    margin-bottom: 15px;
-    // Color set by Tailwind dark:text-[#d1d5db]
-    // color: var(--app-secondary-text-color, #555);
-  }
-
-  ul {
-    list-style: none;
-    padding-left: 5px; // Reduced padding
-    // Text color set by Tailwind dark:text-[#d1d5db]
-
-    li {
-      margin-bottom: 14px;
-      padding-left: 30px;
-      position: relative;
-      line-height: 1.65;
-
-      &::before {
-        content: '\2728'; // Unicode sparkle ✨
-        position: absolute;
-        left: 0;
-        top: 2px;
-        // Color set by Tailwind dark:before:text-[#B7A57A]
-        // color: var(--app-accent-color, #B7A57A);
-        font-size: 1.1em;
-        line-height: 1;
-      }
-    }
+    font-size: clamp(1rem, 2vw, 1.15rem);
+    color: rgba(white, 0.65);
+    line-height: 1.6;
+    margin: 0;
   }
 }
 
-.creator-section {
-  // Background set by Tailwind dark:bg-[#B7A57A]/10
-  // background-color: rgba(var(--app-accent-rgb, 183, 165, 122), 0.1);
-  // Border set by Tailwind dark:border-[#B7A57A]
-  // border-left: 4px solid var(--app-accent-color, #B7A57A);
-  padding: 25px;
-  margin-top: 25px;
+.about-tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: $gold-light;
+  background: rgba($gold, 0.1);
+  padding: 5px 14px;
+  border-radius: 20px;
+  margin-bottom: 16px;
+}
+
+/* ── BODY ── */
+
+.about-body {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 56px 24px 80px;
+}
+
+/* ── SECTIONS ── */
+
+.about-section {
+  margin-bottom: 56px;
 
   h2 {
-    border-bottom: none; // Remove double border
-    margin-bottom: 15px;
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: $navy;
+    margin: 0 0 16px;
   }
 
-  p strong {
-      // Color set by Tailwind dark:text-[#B7A57A]
-      // color: var(--app-primary-color, #1A365D);
+  > p {
+    font-size: 0.92rem;
+    color: $text-muted;
+    line-height: 1.75;
+    margin: 0 0 14px;
+
+    strong { color: $text; font-weight: 700; }
   }
 
-  a[mat-stroked-button] {
-    margin-top: 20px;
-    border-width: 2px;
-    // Border/text/hover set by Tailwind dark:...
-    // border-color: var(--app-primary-color, #1A365D);
-    // color: var(--app-primary-color, #1A365D);
-    font-weight: 600;
-    transition: background-color 0.3s ease, color 0.3s ease;
+  &__icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
 
+    mat-icon { font-size: 22px; width: 22px; height: 22px; }
 
-    mat-icon {
-       // Color set by Tailwind dark:text-[#B7A57A]
-       // color: var(--app-primary-color, #1A365D);
-       margin-right: 8px;
-       transition: color 0.3s ease;
+    &.icon--gold {
+      background: rgba($gold, 0.1);
+      mat-icon { color: $gold; }
     }
-    
-    i.fab.fa-instagram {
-       // Color set by Tailwind dark:text-[#B7A57A]
-       margin-right: 8px;
+    &.icon--indigo {
+      background: rgba(99, 102, 241, 0.08);
+      mat-icon { color: #6366F1; }
     }
+    &.icon--emerald {
+      background: rgba(16, 185, 129, 0.08);
+      mat-icon { color: #10B981; }
+    }
+    &.icon--blue {
+      background: rgba(59, 130, 246, 0.08);
+      mat-icon { color: #3B82F6; }
+    }
+  }
+}
 
-    // Hover set by Tailwind dark:hover:...
-    /*
+/* ── FEATURES LIST ── */
+
+.about-features {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.about-feat {
+  display: flex;
+  gap: 14px;
+  padding: 18px 20px;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.05);
+  }
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: $gold;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: $navy;
+    margin-bottom: 4px;
+  }
+
+  span {
+    font-size: 0.84rem;
+    color: $text-muted;
+    line-height: 1.6;
+  }
+}
+
+/* ── HIGHLIGHTS ── */
+
+.about-highlights {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.about-highlight {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+
+  &__num {
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: rgba($gold, 0.2);
+    line-height: 1;
+    flex-shrink: 0;
+    width: 36px;
+  }
+
+  strong {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: $navy;
+    margin-bottom: 4px;
+  }
+
+  p {
+    font-size: 0.84rem;
+    color: $text-muted;
+    line-height: 1.65;
+    margin: 0;
+  }
+}
+
+/* ── AUDIENCE ── */
+
+.about-audience {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.about-audience__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 0.88rem;
+  color: $text;
+  line-height: 1.5;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #10B981;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+}
+
+/* ── CREATOR ── */
+
+.about-creator {
+  margin-top: 56px;
+  padding: 32px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba($gold, 0.06), rgba($gold, 0.02));
+  border: 1px solid rgba($gold, 0.12);
+  border-left: 4px solid $gold;
+}
+
+.about-creator__quote {
+  p {
+    font-size: 0.95rem;
+    font-style: italic;
+    color: $text;
+    line-height: 1.75;
+    margin: 0 0 12px;
+  }
+
+  strong {
+    font-size: 0.9rem;
+    color: $navy;
+    font-style: normal;
+  }
+}
+
+.about-creator__links {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+  flex-wrap: wrap;
+}
+
+.creator-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid rgba($navy, 0.2);
+  color: $navy;
+  transition: all 0.2s ease;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+  }
+
+  &:hover {
+    background: $navy;
+    color: white;
+    border-color: $navy;
+  }
+
+  &--insta {
+    border-color: rgba(193, 53, 132, 0.3);
+    color: #C13584;
+
     &:hover {
-       background-color: var(--app-primary-color, #1A365D);
-       color: var(--app-header-text-color, #ffffff);
-       mat-icon {
-         color: var(--app-header-text-color, #ffffff);
-       }
+      background: #C13584;
+      color: white;
+      border-color: #C13584;
     }
-    */
   }
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(15px);
+/* ═══════════════ DARK MODE ═══════════════ */
+
+:host-context(.dark) {
+  :host { background: $navy-deep; }
+
+  .about-body { color: #E8E0D2; }
+
+  .about-section {
+    h2 { color: #E8E0D2; }
+    > p {
+      color: rgba(white, 0.5);
+      strong { color: #E8E0D2; }
+    }
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+
+  .about-feat {
+    background: $navy-card;
+    border-color: rgba($gold, 0.08);
+
+    &:hover { box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2); }
+
+    strong { color: #E8E0D2; }
+    span { color: rgba(white, 0.45); }
+  }
+
+  .about-highlight {
+    &__num { color: rgba($gold-light, 0.2); }
+    strong { color: #E8E0D2; }
+    p { color: rgba(white, 0.45); }
+  }
+
+  .about-audience__item {
+    color: rgba(white, 0.7);
+  }
+
+  .about-creator {
+    background: linear-gradient(135deg, rgba($gold, 0.08), rgba($gold, 0.03));
+    border-color: rgba($gold, 0.15);
+    border-left-color: $gold;
+
+    &__quote {
+      p { color: rgba(white, 0.7); }
+      strong { color: $gold-light; }
+    }
+  }
+
+  .creator-link {
+    border-color: rgba($gold, 0.2);
+    color: $gold-light;
+
+    &:hover {
+      background: rgba($gold, 0.12);
+      color: white;
+    }
+
+    &--insta {
+      border-color: rgba(193, 53, 132, 0.3);
+      color: #E879A8;
+
+      &:hover {
+        background: rgba(193, 53, 132, 0.15);
+        color: white;
+      }
+    }
   }
 }
 
-// Responsive adjustments (keep these as they affect layout)
-@media (max-width: 768px) {
-  .about-container {
-      padding: 20px 15px;
-      margin: 20px auto;
-  }
-  mat-card-header {
-      padding: 20px 25px;
-  }
-  mat-card-title {
-    font-size: 1.8em;
-  }
-  mat-card-subtitle {
-    font-size: 1.1em;
-  }
-  .section h2 {
-    font-size: 1.4em;
-  }
-}
+/* ═══════════════ RESPONSIVE ═══════════════ */
 
 @media (max-width: 600px) {
-  .about-container {
-    padding: 15px 10px;
-  }
-  mat-card-title {
-    font-size: 1.6em;
-  }
-  mat-card-subtitle {
-    font-size: 1em;
-  }
-  .section h2 {
-    font-size: 1.3em;
-    mat-icon {
-        font-size: 1.2em;
-    }
-  }
-}
+  .about-hero { padding: 100px 20px 56px; }
+  .about-body { padding: 40px 20px 64px; }
 
-/* Reintroduce dark mode block with !important */
-body.dark app-about {
-  .about-container {
-    background-color: transparent !important; // Ensure inner container is transparent
+  .about-creator {
+    padding: 24px;
   }
-  .about-card {
-    background-color: #2A4365 !important; 
-    color: #d1d5db !important; 
-  }
-  mat-card-header {
-    background-color: #1A365D !important; 
-    color: #FAF3E0 !important; 
-    border-bottom-color: #B7A57A !important; 
-    
-    mat-card-title {
-      color: #FAF3E0 !important; 
-    }
-    mat-card-subtitle {
-      color: rgba(250, 243, 224, 0.85) !important; 
-    }
-  }
-  mat-card-content {
-    color: #d1d5db !important; 
-  }
-  .section {
-    background-color: rgba(26, 54, 93, 0.7) !important; 
-    border-color: #4b5563 !important; // Darker gray border
 
-    h2 {
-      color: #B7A57A !important; 
-      border-bottom-color: #B7A57A !important; 
-      mat-icon {
-        color: #B7A57A !important; 
-      }
-    }
-    p {
-      color: #d1d5db !important; 
-    }
-    ul {
-      color: #d1d5db !important; 
-      li::before {
-        color: #B7A57A !important; 
-      }
-      li strong {
-        color: #FAF3E0 !important; // Make list item strong text cream
-      }
-    }
-    strong { // General strong text within section
-        color: #FAF3E0 !important; // Make strong text cream
-    }
-  }
-  .creator-section {
-    background-color: rgba(183, 165, 122, 0.1) !important; 
-    border-left-color: #B7A57A !important; 
-    
-    h2 {
-      color: #B7A57A !important; 
-    }
-    p {
-      color: #d1d5db !important; 
-    }
-    p strong {
-      color: #B7A57A !important; 
-    }
-    a[mat-stroked-button] {
-      border-color: #B7A57A !important; 
-      color: #B7A57A !important; 
-      mat-icon, i.fab {
-        color: #B7A57A !important; 
-      }
-      &:hover {
-        background-color: rgba(183, 165, 122, 0.15) !important; 
-        color: #FAF3E0 !important; 
-         mat-icon, i.fab {
-           color: #FAF3E0 !important; 
-         }
-      }
-    }
-  }
-}
+  .about-creator__links {
+    flex-direction: column;
 
-/* ADDING HIGH SPECIFICITY RULE FOR HOST BACKGROUND */
-html.dark body.dark app-about :host {
-  display: block; // Ensure host can have background
-  background-color: #1A365D !important; // MAX specificity attempt
+    .creator-link { justify-content: center; }
+  }
 }

@@ -18,29 +18,25 @@ export class OpenAIService {
         });
     }
 
-    async generateResponse(prompt: string): Promise<string> {
+    async generateResponse(prompt: string, userMessage?: string): Promise<string> {
         try {
-            console.log('1. Generating response for prompt:', prompt);
-
             const completion = await this.openai.chat.completions.create({
-                model: "gpt-3.5-turbo",
+                model: "gpt-4o-mini",
                 messages: [
                     {
                         role: "system",
-                        content: "You are a knowledgeable Islamic scholar who provides accurate and respectful information about Islam, always citing sources directly."
+                        content: prompt
                     },
                     {
                         role: "user",
-                        content: prompt
+                        content: userMessage || "Please respond according to your instructions above."
                     }
                 ],
-                temperature: 0.2,
+                temperature: 0.1,
                 max_tokens: 1000,
-                frequency_penalty: 1.0,
-                presence_penalty: 1.0
+                frequency_penalty: 0,
+                presence_penalty: 0
             });
-
-            console.log('2. Response generated successfully');
             
             return completion.choices[0]?.message?.content || 'No response generated';
         } catch (error) {

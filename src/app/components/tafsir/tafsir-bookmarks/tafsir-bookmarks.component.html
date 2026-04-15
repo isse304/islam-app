@@ -1,255 +1,199 @@
 <div class="bookmarks-page">
-  <!-- Header -->
-  <header class="page-header">
-    <div class="header-content">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/tafsir/browse" matTooltip="Back to Library">
+
+  <!-- Hero Header -->
+  <section class="page-hero">
+    <div class="hero-bg"></div>
+    <div class="hero-inner">
+      <div class="hero-top-row">
+        <button mat-icon-button class="back-btn" routerLink="/tafsir/browse">
           <mat-icon>arrow_back</mat-icon>
         </button>
-        <div class="header-title">
-          <h1><mat-icon>bookmarks</mat-icon> My Bookmarks</h1>
-          <p class="header-subtitle">{{ totalBookmarks }} bookmarks • {{ totalNotes }} notes</p>
+        <div class="hero-actions">
+          <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More Actions">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          <mat-menu #moreMenu="matMenu">
+            <button mat-menu-item (click)="exportBookmarks()">
+              <mat-icon>download</mat-icon>
+              <span>Export Bookmarks</span>
+            </button>
+            <button mat-menu-item (click)="fileInput.click()">
+              <mat-icon>upload</mat-icon>
+              <span>Import Bookmarks</span>
+            </button>
+          </mat-menu>
+          <input #fileInput type="file" accept=".json" style="display: none" (change)="importBookmarks($event)">
         </div>
       </div>
-      
-      <div class="header-right">
-        <!-- View Notes -->
-        <button mat-stroked-button routerLink="/tafsir/notes">
-          <mat-icon>note</mat-icon>
-          View Notes
-        </button>
+      <h1>My Bookmarks</h1>
+      <p class="hero-subtitle">{{ totalBookmarks }} saved verses across your studies</p>
 
-        <!-- View Mode Toggle -->
-        <mat-button-toggle-group [value]="viewMode" (change)="setViewMode($event.value)">
-          <mat-button-toggle value="grid" matTooltip="Grid View">
+      <!-- Quick nav -->
+      <div class="hero-nav">
+        <button mat-stroked-button routerLink="/tafsir/notes" class="nav-pill">
+          <mat-icon>edit_note</mat-icon> Notes
+        </button>
+        <button mat-stroked-button routerLink="/tafsir/highlights" class="nav-pill">
+          <mat-icon>format_color_fill</mat-icon> Highlights
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Toolbar -->
+  <section class="toolbar-section">
+    <div class="toolbar-inner">
+      <!-- Search -->
+      <div class="search-bar">
+        <mat-icon class="search-icon">search</mat-icon>
+        <input type="text"
+               placeholder="Search bookmarks..."
+               [(ngModel)]="searchQuery"
+               (ngModelChange)="onSearchChange()">
+        <button mat-icon-button *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()" class="clear-search">
+          <mat-icon>close</mat-icon>
+        </button>
+      </div>
+
+      <!-- Filters row -->
+      <div class="filters-row">
+        <!-- Color chips -->
+        <div class="color-chips">
+          <button *ngFor="let color of bookmarkColors"
+                  class="color-chip"
+                  [class.selected]="selectedColor === color.value"
+                  (click)="filterByColor(selectedColor === color.value ? null : color.value)">
+            <span class="chip-dot" [style.background-color]="getColorHex(color.value)"></span>
+            {{ color.label }}
+          </button>
+        </div>
+
+        <!-- Surah filter -->
+        <mat-form-field appearance="outline" class="compact-filter">
+          <mat-label>Surah</mat-label>
+          <mat-select [(ngModel)]="selectedSurah" (ngModelChange)="filterBySurah($event)">
+            <mat-option [value]="null">All Surahs</mat-option>
+            <mat-option *ngFor="let surahNum of surahs" [value]="surahNum">
+              {{ surahNum }}. {{ getSurahName(surahNum) }}
+            </mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <!-- View toggle -->
+        <div class="view-toggle">
+          <button mat-icon-button [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')" matTooltip="Grid">
             <mat-icon>grid_view</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle value="list" matTooltip="List View">
+          </button>
+          <button mat-icon-button [class.active]="viewMode === 'list'" (click)="setViewMode('list')" matTooltip="List">
             <mat-icon>view_list</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
-        
-        <!-- More Actions Menu -->
-        <button mat-icon-button [matMenuTriggerFor]="moreMenu" matTooltip="More Actions">
-          <mat-icon>more_vert</mat-icon>
+          </button>
+        </div>
+
+        <button mat-stroked-button class="clear-btn"
+                *ngIf="getActiveFilterCount() > 0"
+                (click)="clearFilters()">
+          <mat-icon>filter_list_off</mat-icon>
+          Clear ({{ getActiveFilterCount() }})
         </button>
-        <mat-menu #moreMenu="matMenu">
-          <button mat-menu-item (click)="exportBookmarks()">
-            <mat-icon>download</mat-icon>
-            <span>Export Bookmarks</span>
-          </button>
-          <button mat-menu-item (click)="fileInput.click()">
-            <mat-icon>upload</mat-icon>
-            <span>Import Bookmarks</span>
-          </button>
-          <input #fileInput type="file" accept=".json" style="display: none" (change)="importBookmarks($event)">
-        </mat-menu>
+      </div>
+
+      <!-- Tags -->
+      <div class="tags-row" *ngIf="tags.length > 0">
+        <span class="tags-label">Tags</span>
+        <button *ngFor="let tag of tags"
+                class="tag-chip"
+                [class.selected]="isTagSelected(tag.name)"
+                (click)="toggleTag(tag.name)">
+          {{ tag.name }} <span class="tag-count">{{ tag.count }}</span>
+        </button>
       </div>
     </div>
-  </header>
+  </section>
 
-  <!-- Filters & Search -->
-  <div class="filters-section">
-    <!-- Search Bar -->
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Search bookmarks...</mat-label>
-      <input matInput 
-             [(ngModel)]="searchQuery" 
-             (ngModelChange)="onSearchChange()"
-             placeholder="Search by verse text, tags, or tafsir...">
-      <mat-icon matPrefix>search</mat-icon>
-      <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery = ''; onSearchChange()">
-        <mat-icon>close</mat-icon>
-      </button>
-    </mat-form-field>
-
-    <!-- Filter Chips -->
-    <div class="filter-chips">
-      <!-- Color Filters -->
-      <div class="filter-group">
-        <label>Color:</label>
-        <mat-chip-listbox class="color-chips" [multiple]="false">
-          <mat-chip-option 
-            [selected]="selectedColor === color.value"
-            (click)="filterByColor(selectedColor === color.value ? null : color.value)"
-            *ngFor="let color of bookmarkColors"
-            [style.--chip-color]="getColorHex(color.value)">
-            {{ color.icon }} {{ color.label }}
-          </mat-chip-option>
-        </mat-chip-listbox>
-      </div>
-
-      <!-- Tag Filters -->
-      <div class="filter-group" *ngIf="tags.length > 0">
-        <label>Tags:</label>
-        <mat-chip-listbox class="tag-chips" [multiple]="true">
-          <mat-chip-option 
-            *ngFor="let tag of tags"
-            [selected]="isTagSelected(tag.name)"
-            (click)="toggleTag(tag.name)">
-            {{ tag.name }} ({{ tag.count }})
-          </mat-chip-option>
-        </mat-chip-listbox>
-      </div>
-
-      <!-- Surah Filter -->
-      <mat-form-field appearance="outline" class="surah-filter">
-        <mat-label>Filter by Surah</mat-label>
-        <mat-select [(ngModel)]="selectedSurah" (ngModelChange)="filterBySurah($event)">
-          <mat-option [value]="null">All Surahs</mat-option>
-          <mat-option *ngFor="let surahNum of surahs" [value]="surahNum">
-            {{ surahNum }}. {{ getSurahName(surahNum) }}
-          </mat-option>
-        </mat-select>
-      </mat-form-field>
-
-      <!-- Clear Filters Button -->
-      <button mat-stroked-button 
-              *ngIf="getActiveFilterCount() > 0" 
-              (click)="clearFilters()"
-              class="clear-filters-btn">
-        <mat-icon>filter_list_off</mat-icon>
-        Clear Filters ({{ getActiveFilterCount() }})
-      </button>
-    </div>
-  </div>
-
-  <!-- Loading State -->
-  <div class="loading-container" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
+  <!-- Loading -->
+  <div class="state-container" *ngIf="isLoading">
+    <mat-spinner diameter="40"></mat-spinner>
     <p>Loading bookmarks...</p>
   </div>
 
-  <!-- Empty State -->
-  <div class="empty-state" *ngIf="!isLoading && filteredBookmarks.length === 0 && allBookmarks.length === 0">
-    <mat-icon>bookmark_border</mat-icon>
-    <h2>No Bookmarks Yet</h2>
-    <p>Start reading Tafsir and bookmark verses you want to remember!</p>
-    <button mat-raised-button color="primary" routerLink="/tafsir/browse">
-      <mat-icon>menu_book</mat-icon>
-      Browse Tafsir Library
+  <!-- Empty state -->
+  <div class="state-container" *ngIf="!isLoading && filteredBookmarks.length === 0 && allBookmarks.length === 0">
+    <div class="empty-icon"><mat-icon>bookmark_border</mat-icon></div>
+    <h3>No Bookmarks Yet</h3>
+    <p>Start reading Tafsir and bookmark verses you want to remember.</p>
+    <button mat-flat-button class="primary-btn" routerLink="/tafsir/browse">
+      <mat-icon>auto_stories</mat-icon> Browse Tafsir
     </button>
   </div>
 
-  <!-- No Results State -->
-  <div class="empty-state" *ngIf="!isLoading && filteredBookmarks.length === 0 && allBookmarks.length > 0">
-    <mat-icon>search_off</mat-icon>
-    <h2>No Matching Bookmarks</h2>
-    <p>Try adjusting your filters or search query</p>
-    <button mat-stroked-button (click)="clearFilters()">
-      <mat-icon>filter_list_off</mat-icon>
-      Clear All Filters
-    </button>
+  <!-- No results -->
+  <div class="state-container" *ngIf="!isLoading && filteredBookmarks.length === 0 && allBookmarks.length > 0">
+    <div class="empty-icon"><mat-icon>search_off</mat-icon></div>
+    <h3>No Matching Bookmarks</h3>
+    <p>Try adjusting your search or filters.</p>
+    <button mat-stroked-button class="outline-btn" (click)="clearFilters()">Clear Filters</button>
   </div>
 
-  <!-- Bookmarks Grid View -->
-  <div class="bookmarks-grid" *ngIf="!isLoading && filteredBookmarks.length > 0 && viewMode === 'grid'">
-    <mat-card class="bookmark-card" 
-              *ngFor="let bookmark of filteredBookmarks"
-              (click)="openBookmark(bookmark)">
-      <!-- Color Indicator -->
-      <div class="color-indicator" [style.background-color]="getColorHex(bookmark.color)"></div>
-      
-      <mat-card-header>
-        <div class="bookmark-reference">
-          <h3>{{ getSurahName(bookmark.surah) }}</h3>
-          <span class="verse-number">{{ bookmark.surah }}:{{ bookmark.verse }}</span>
-        </div>
-        
-        <div class="bookmark-actions">
-          <button mat-icon-button [matMenuTriggerFor]="bookmarkMenu" (click)="$event.stopPropagation()">
-            <mat-icon>more_vert</mat-icon>
-          </button>
-          <mat-menu #bookmarkMenu="matMenu">
-            <button mat-menu-item *ngFor="let color of bookmarkColors" 
-                    (click)="changeBookmarkColor(bookmark, color.value, $event)">
-              <span [style.color]="getColorHex(color.value)">{{ color.icon }}</span>
-              {{ color.label }}
-            </button>
-            <mat-divider></mat-divider>
-            <button mat-menu-item (click)="deleteBookmark(bookmark, $event)">
-              <mat-icon color="warn">delete</mat-icon>
-              <span>Delete</span>
-            </button>
-          </mat-menu>
-        </div>
-      </mat-card-header>
-      
-      <mat-card-content>
-        <!-- Arabic Verse Text -->
-        <div class="verse-text arabic" *ngIf="bookmark.verseText">
-          {{ bookmark.verseText }}
-        </div>
-        
-        <!-- Tafsir Excerpt -->
-        <div class="tafsir-excerpt" *ngIf="bookmark.tafsirExcerpt">
-          {{ bookmark.tafsirExcerpt }}...
-        </div>
-        
-        <!-- Tags -->
-        <div class="bookmark-tags" *ngIf="bookmark.tags && bookmark.tags.length > 0">
-          <mat-chip *ngFor="let tag of bookmark.tags" class="tag-chip">
-            {{ tag }}
-          </mat-chip>
-        </div>
-        
-        <!-- Metadata -->
-        <div class="bookmark-meta">
-          <span class="meta-date">
-            <mat-icon>schedule</mat-icon>
-            {{ bookmark.createdAt | date:'MMM d, y' }}
-          </span>
-          <span class="meta-sync" *ngIf="bookmark.syncStatus === 'synced'">
-            <mat-icon>cloud_done</mat-icon>
-          </span>
-          <span class="meta-sync pending" *ngIf="bookmark.syncStatus === 'pending'">
-            <mat-icon>cloud_queue</mat-icon>
-          </span>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  </div>
+  <!-- Bookmarks Content -->
+  <section class="bookmarks-container" *ngIf="!isLoading && filteredBookmarks.length > 0">
+    <div class="bookmarks-grid" [class.list-mode]="viewMode === 'list'">
 
-  <!-- Bookmarks List View -->
-  <div class="bookmarks-list" *ngIf="!isLoading && filteredBookmarks.length > 0 && viewMode === 'list'">
-    <div class="bookmark-list-item" 
-         *ngFor="let bookmark of filteredBookmarks"
-         (click)="openBookmark(bookmark)">
-      <div class="list-item-indicator" [style.background-color]="getColorHex(bookmark.color)"></div>
-      
-      <div class="list-item-content">
-        <div class="list-item-header">
-          <h4>{{ getSurahName(bookmark.surah) }} {{ bookmark.surah }}:{{ bookmark.verse }}</h4>
-          <span class="list-item-date">{{ bookmark.createdAt | date:'short' }}</span>
-        </div>
-        
-        <div class="list-item-text">
-          <span class="arabic-preview" *ngIf="bookmark.verseText">{{ bookmark.verseText }}</span>
-          <span class="tafsir-preview" *ngIf="bookmark.tafsirExcerpt">{{ bookmark.tafsirExcerpt }}</span>
-        </div>
-        
-        <div class="list-item-tags" *ngIf="bookmark.tags && bookmark.tags.length > 0">
-          <mat-chip *ngFor="let tag of bookmark.tags">{{ tag }}</mat-chip>
+      <div class="bookmark-card" *ngFor="let bookmark of filteredBookmarks" (click)="openBookmark(bookmark)">
+        <!-- Color accent -->
+        <div class="card-accent" [style.background]="getColorHex(bookmark.color)"></div>
+
+        <div class="card-body">
+          <!-- Header -->
+          <div class="card-header">
+            <div class="verse-ref">
+              <span class="surah-name">{{ getSurahName(bookmark.surah) }}</span>
+              <span class="verse-badge">{{ bookmark.surah }}:{{ bookmark.verse }}</span>
+            </div>
+            <button mat-icon-button [matMenuTriggerFor]="bookmarkMenu" (click)="$event.stopPropagation()" class="more-btn">
+              <mat-icon>more_horiz</mat-icon>
+            </button>
+            <mat-menu #bookmarkMenu="matMenu">
+              <button mat-menu-item *ngFor="let color of bookmarkColors"
+                      (click)="changeBookmarkColor(bookmark, color.value, $event)">
+                <span class="menu-color-dot" [style.background-color]="getColorHex(color.value)"></span>
+                {{ color.label }}
+              </button>
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteBookmark(bookmark, $event)">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>Delete</span>
+              </button>
+            </mat-menu>
+          </div>
+
+          <!-- Arabic verse text -->
+          <div class="arabic-text" *ngIf="bookmark.verseText" dir="rtl">
+            {{ bookmark.verseText }}
+          </div>
+
+          <!-- Tafsir excerpt -->
+          <p class="tafsir-excerpt" *ngIf="bookmark.tafsirExcerpt">
+            {{ bookmark.tafsirExcerpt }}...
+          </p>
+
+          <!-- Tags -->
+          <div class="card-tags" *ngIf="bookmark.tags && bookmark.tags.length > 0">
+            <span class="mini-tag" *ngFor="let tag of bookmark.tags">{{ tag }}</span>
+          </div>
+
+          <!-- Footer -->
+          <div class="card-footer">
+            <span class="footer-date">
+              <mat-icon>schedule</mat-icon>
+              {{ bookmark.createdAt | date:'MMM d, y' }}
+            </span>
+            <mat-icon class="sync-icon synced" *ngIf="bookmark.syncStatus === 'synced'" matTooltip="Synced">cloud_done</mat-icon>
+            <mat-icon class="sync-icon pending" *ngIf="bookmark.syncStatus === 'pending'" matTooltip="Pending sync">cloud_queue</mat-icon>
+          </div>
         </div>
       </div>
-      
-      <div class="list-item-actions">
-        <button mat-icon-button [matMenuTriggerFor]="listMenu" (click)="$event.stopPropagation()">
-          <mat-icon>more_vert</mat-icon>
-        </button>
-        <mat-menu #listMenu="matMenu">
-          <button mat-menu-item *ngFor="let color of bookmarkColors" 
-                  (click)="changeBookmarkColor(bookmark, color.value, $event)">
-            <span [style.color]="getColorHex(color.value)">{{ color.icon }}</span>
-            {{ color.label }}
-          </button>
-          <mat-divider></mat-divider>
-          <button mat-menu-item (click)="deleteBookmark(bookmark, $event)">
-            <mat-icon color="warn">delete</mat-icon>
-            <span>Delete</span>
-          </button>
-        </mat-menu>
-      </div>
+
     </div>
-  </div>
+  </section>
+
 </div>

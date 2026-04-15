@@ -1,222 +1,298 @@
-<div class="min-h-screen bg-[#FAF3E0] dark:bg-[#1A365D] relative">
-  <!-- Background Pattern -->
-  <div class="absolute inset-0 opacity-10 dark:opacity-20">
-    <img src="/islamic-pattern-1.png" alt="" class="w-full h-full object-cover">
-  </div>
+<div class="home" [class.dark-mode]="isDarkMode$ | async">
 
-  <!-- Content -->
-  <div class="relative">
-    <!-- Hero Section -->
-    <div class="container mx-auto px-4 py-16">
-      <div class="flex flex-col items-center justify-center text-center max-w-4xl mx-auto mb-16">
-        <h1 class="text-5xl md:text-6xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-6 leading-tight">
-          Welcome to <span class="text-[#B7A57A] dark:text-[#B7A57A]">Nura AI</span>
-        </h1>
-        <p class="text-xl md:text-2xl text-gray-600 dark:text-gray-300 max-w-3xl mx-auto leading-relaxed">
-          Your spiritual companion for Quran, Duas, and Islamic learning. Explore Quran reader, Dua collection, and AI Tafsir Chat.
-        </p>
+  <!-- ═══════════════ HERO ═══════════════ -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-pattern"></div>
+      <div class="hero-glow hero-glow--1"></div>
+      <div class="hero-glow hero-glow--2"></div>
+    </div>
+
+    <div class="hero-content">
+      <p class="hero-bismillah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</p>
+
+      <h1 class="hero-brand"
+          [style.background-position]="(scrollProgress * 100) + '% 0'">Nura AI</h1>
+
+      <h2 class="hero-title">
+        Your Intelligent
+        <span class="hero-accent">Muslim Companion</span>
+      </h2>
+
+      <p class="hero-sub">
+        Explore the Quran, dive into classical Tafsir with AI&#8209;powered insights,
+        and discover authentic Duas&nbsp;&mdash; all in one beautifully crafted experience.
+      </p>
+
+      <div class="hero-actions">
+        <a routerLink="/quran" class="hero-btn hero-btn--primary">
+          <mat-icon>auto_stories</mat-icon>
+          <span>Read Quran</span>
+        </a>
+        <a routerLink="/tafsir/browse" class="hero-btn hero-btn--secondary">
+          <mat-icon>explore</mat-icon>
+          <span>Explore Tafsir</span>
+        </a>
+        <a routerLink="/dua" class="hero-btn hero-btn--ghost">
+          <mat-icon>favorite</mat-icon>
+          <span>Browse Duas</span>
+        </a>
       </div>
 
-      <!-- ++ NEW: Inspirational Showcase Section ++ -->
-      <section class="inspirational-showcase container mx-auto px-4 mb-16 relative overflow-hidden bg-[#FAF3E0] dark:bg-[#2A4365] rounded-xl shadow-lg p-8 min-h-[250px] flex flex-col justify-center items-center text-center"
-               (mouseenter)="stopSlideShow()"
-               (mouseleave)="startSlideShow()">
-          <!-- Slides Container -->
-          <div class="relative w-full h-full">
-            <ng-container *ngFor="let slide of slides; let i = index">
-              <div class="slide absolute inset-0 flex flex-col justify-center items-center transition-opacity duration-1000 ease-in-out"
-                   [class.opacity-100]="i === currentSlideIndex"
-                   [class.opacity-0]="i !== currentSlideIndex">
-                   <!-- Optional Background Image Div -->
-                   <!-- <div class="absolute inset-0 bg-cover bg-center opacity-10" [style.backgroundImage]="slide.backgroundImage"></div> -->
-                   <p class="text-lg md:text-xl lg:text-2xl text-[#B7A57A] dark:text-[#B7A57A] font-serif italic mb-4 leading-relaxed max-w-3xl relative z-10">
-                       "{{ slide.text }}"
-                   </p>
-                   <p class="text-sm md:text-base text-[#1A365D] dark:text-[#FAF3E0] font-semibold relative z-10">
-                       — {{ slide.source }}
-                   </p>
-              </div>
-            </ng-container>
-          </div>
-
-          <!-- Optional: Navigation Dots -->
-          <div class="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2 z-20">
-              <button *ngFor="let slide of slides; let i = index"
-                      (click)="goToSlide(i)"
-                      class="w-2.5 h-2.5 rounded-full transition-colors duration-300 hover:bg-opacity-70"
-                      [ngClass]="{
-                        'bg-[#1A365D]': !(isDarkMode$ | async),
-                        'bg-[#FAF3E0]': (isDarkMode$ | async),
-                        'bg-opacity-100': i === currentSlideIndex,
-                        'bg-opacity-40': i !== currentSlideIndex
-                      }"
-                      [attr.aria-label]="'Go to slide ' + (i + 1)">
-              </button>
-          </div>
-      </section>
-      <!-- ++ END: Inspirational Showcase Section ++ -->
-
-      <!-- Feature Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
-        <div class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
-          <div class="text-[#B7A57A] dark:text-[#B7A57A] mb-4">
-            <i class="fas fa-book-open text-4xl"></i>
-          </div>
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-4">
-            Quran Reader
-          </h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">
-            Read and listen to the Holy Quran with translations and tafsir. Track your progress and bookmark your favorite verses.
-          </p>
-          <a routerLink="/quran" 
-             class="inline-block px-6 py-3 bg-[#B7A57A] dark:bg-[#B7A57A] text-[#1A365D] dark:text-[#1A365D] font-semibold rounded-lg hover:bg-[#9b8a65] dark:hover:bg-[#a39263] transition-colors duration-300">
-            Start Reading
-          </a>
+      <div class="hero-stats">
+        <div class="hero-stat">
+          <span class="hero-stat__value">6,236</span>
+          <span class="hero-stat__label">Verses</span>
         </div>
-
-        <div class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300 relative overflow-hidden">
-          <!-- Premium Badge -->
-          <div class="absolute top-4 right-4 px-3 py-1 bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] text-[#1A365D] text-xs font-bold rounded-full shadow-md">
-            PREMIUM
-          </div>
-          <div class="text-[#B7A57A] dark:text-[#B7A57A] mb-4">
-            <i class="fas fa-graduation-cap text-4xl"></i>
-          </div>
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-4">
-            AI Tafsir Chat
-          </h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">
-            Improve your Quran knowledge by asking Nura AI any question about the verses of the Holy Quran and receive a detailed explanation.
-          </p>
-          <a routerLink="/ai-tafsir" 
-             class="inline-block px-6 py-3 bg-gradient-to-r from-[#B7A57A] to-[#D4C5A0] text-[#1A365D] font-semibold rounded-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300">
-            Discover AI Tafsir
-          </a>
+        <div class="hero-stat__sep"></div>
+        <div class="hero-stat">
+          <span class="hero-stat__value">114</span>
+          <span class="hero-stat__label">Surahs</span>
         </div>
-
-        <div class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-xl shadow-lg p-8 transform hover:scale-105 transition-transform duration-300">
-          <div class="text-[#B7A57A] dark:text-[#B7A57A] mb-4">
-            <i class="fas fa-hands-praying text-4xl"></i>
-          </div>
-          <h2 class="text-2xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-4">
-            Daily Duas
-          </h2>
-          <p class="text-gray-600 dark:text-gray-300 mb-6">
-            Collection of authentic duas for various occasions. Dive deeper into each dua with AI powered insights or get detailed islamic advice based on your feelings with emotional dua search.
-          </p>
-          <a routerLink="/dua" 
-             class="inline-block px-6 py-3 bg-[#B7A57A] dark:bg-[#B7A57A] text-[#1A365D] dark:text-[#1A365D] font-semibold rounded-lg hover:bg-[#9b8a65] dark:hover:bg-[#a39263] transition-colors duration-300">
-            View Duas
-          </a>
-        </div>
-      </div>
-
-      <!-- AI Features Section -->
-      <div class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-16">
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-8 text-center">
-          Powered by AI
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="text-center">
-            <i class="fas fa-robot text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Smart Tafsir</h3>
-            <p class="text-gray-600 dark:text-gray-300">AI-powered explanations of Quranic verses</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-brain text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Personalized Learning</h3>
-            <p class="text-gray-600 dark:text-gray-300">Adaptive learning paths based on your progress</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-comments text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Smart Dua Suggestions</h3>
-            <p class="text-gray-600 dark:text-gray-300">Context-aware dua recommendations</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-chart-line text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Progress Analytics</h3>
-            <p class="text-gray-600 dark:text-gray-300">AI-driven insights into your learning journey</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Additional Features Section -->
-      <div class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm rounded-xl shadow-lg p-8 mb-16">
-        <h2 class="text-3xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-8 text-center">
-          Why Choose Nura?
-        </h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div class="text-center">
-            <i class="fas fa-mobile-alt text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Mobile Friendly</h3>
-            <p class="text-gray-600 dark:text-gray-300">Access anywhere, anytime</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-bookmark text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Save Progress</h3>
-            <p class="text-gray-600 dark:text-gray-300">Track your learning journey</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-volume-up text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Audio Recitations</h3>
-            <p class="text-gray-600 dark:text-gray-300">Listen to professional reciters</p>
-          </div>
-          <div class="text-center">
-            <i class="fas fa-language text-3xl text-[#B7A57A] dark:text-[#B7A57A] mb-3"></i>
-            <h3 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-2">Multiple Translations</h3>
-            <p class="text-gray-600 dark:text-gray-300">Understand in your language</p>
-          </div>
+        <div class="hero-stat__sep"></div>
+        <div class="hero-stat">
+          <span class="hero-stat__value">100+</span>
+          <span class="hero-stat__label">Duas</span>
         </div>
       </div>
     </div>
+  </section>
 
-    <!-- Footer -->
-    <footer class="bg-white/90 dark:bg-[#2A4365]/90 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
-      <div class="container mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
-          <div>
-            <h3 class="text-xl font-bold text-gray-800 dark:text-[#FAF3E0] mb-4">Nura</h3>
-            <p class="text-gray-600 dark:text-gray-300">
-              Your spiritual companion for Quran, Duas, and Islamic learning.
-            </p>
-          </div>
-          <div>
-            <h4 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-4">Quick Links</h4>
-            <ul class="space-y-2">
-              <li><a routerLink="/quran" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">Quran Reader</a></li>
-              <li><a routerLink="/learn" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">AI Tafsir Chat</a></li>
-              <li><a routerLink="/dua" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">Daily Duas</a></li>
-              <li><a routerLink="/profile" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">My Profile</a></li>
-              <li><a routerLink="/about" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">About</a></li>
-            </ul>
-          </div>
-          <div>
-            <h4 class="text-lg font-semibold text-gray-800 dark:text-[#FAF3E0] mb-4">Support</h4>
-            <ul class="space-y-2">
-              <li><a routerLink="/contact" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#B7A57A]">Contact Us</a></li>
-            </ul>
-          </div>
-          <div>
-            <!-- <h4 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Connect</h4>
-            <div class="flex space-x-4">
-              <a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">
-                <i class="fab fa-facebook text-2xl"></i>
-              </a>
-              <a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">
-                <i class="fab fa-twitter text-2xl"></i>
-              </a>
-              <a href="#" class="text-gray-600 dark:text-gray-300 hover:text-[#B7A57A] dark:hover:text-[#9b8a65]">
-                <i class="fab fa-instagram text-2xl"></i>
-              </a> -->
-            <!-- </div> -->
-          </div>
-        </div>
-        <div class="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700 text-center">
-          <p class="text-gray-500 dark:text-gray-400">
-            &copy; {{ currentYear }} Nura AI. All rights reserved.
-          </p>
+  <!-- ═══════════════ QUOTE CAROUSEL ═══════════════ -->
+  <section class="quotes"
+           (mouseenter)="stopSlideShow()"
+           (mouseleave)="startSlideShow()">
+    <div class="quotes-inner">
+      <div class="quote-ornament">
+        <span class="quote-ornament__line"></span>
+        <span class="quote-ornament__diamond"></span>
+        <span class="quote-ornament__line"></span>
+      </div>
+
+      <div class="quote-mark">&ldquo;</div>
+
+      <div class="quote-stage">
+        <div *ngFor="let slide of slides; let i = index"
+             class="quote-slide"
+             [class.active]="i === currentSlideIndex">
+          <p class="quote-text">{{ slide.text }}</p>
+          <span class="quote-source">&mdash; {{ slide.source }}</span>
         </div>
       </div>
-    </footer>
-  </div>
+
+      <div class="quote-dots">
+        <button *ngFor="let slide of slides; let i = index"
+                class="quote-dot"
+                [class.active]="i === currentSlideIndex"
+                (click)="goToSlide(i)"
+                [attr.aria-label]="'Quote ' + (i + 1)">
+        </button>
+      </div>
+
+      <div class="quote-ornament quote-ornament--bottom">
+        <span class="quote-ornament__line"></span>
+        <span class="quote-ornament__diamond"></span>
+        <span class="quote-ornament__line"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FEATURES ═══════════════ -->
+  <section class="features">
+    <div class="features-header">
+      <span class="section-tag">Core Features</span>
+      <h2>Everything you need for your journey</h2>
+      <p>Three powerful tools, one unified experience</p>
+    </div>
+
+    <div class="features-grid">
+      <!-- Quran Reader -->
+      <a routerLink="/quran" class="feat-card feat-card--quran">
+        <div class="feat-card__icon">
+          <mat-icon>auto_stories</mat-icon>
+        </div>
+        <h3>Quran Reader</h3>
+        <p>Read the Holy Quran with beautiful Arabic typography, multiple translations, and audio recitations by renowned Qaris. Track your progress and bookmark your favorite verses.</p>
+        <span class="feat-card__link">
+          Start Reading
+          <mat-icon>arrow_forward</mat-icon>
+        </span>
+      </a>
+
+      <!-- Tafsir Explorer -->
+      <a routerLink="/tafsir/browse" class="feat-card feat-card--tafsir">
+        <div class="feat-card__badge">PREMIUM</div>
+        <div class="feat-card__icon">
+          <mat-icon>school</mat-icon>
+        </div>
+        <h3>Tafsir Explorer</h3>
+        <p>Study classical tafsir from renowned scholars like Ibn Kathir. Ask questions to our AI assistant and receive explanations grounded in traditional scholarship.</p>
+        <span class="feat-card__link">
+          Explore Tafsir
+          <mat-icon>arrow_forward</mat-icon>
+        </span>
+      </a>
+
+      <!-- Duas -->
+      <a routerLink="/dua" class="feat-card feat-card--dua">
+        <div class="feat-card__icon">
+          <mat-icon>volunteer_activism</mat-icon>
+        </div>
+        <h3>Daily Duas</h3>
+        <p>A curated collection of authentic duas for every occasion. Search by emotion, explore AI-powered insights, and build your personal dua routine.</p>
+        <span class="feat-card__link">
+          Browse Duas
+          <mat-icon>arrow_forward</mat-icon>
+        </span>
+      </a>
+    </div>
+  </section>
+
+  <!-- ═══════════════ AI CAPABILITIES ═══════════════ -->
+  <section class="ai-section">
+    <div class="ai-header">
+      <div class="section-ornament">
+        <span class="section-ornament__line"></span>
+        <span class="section-ornament__diamond"></span>
+        <span class="section-ornament__line"></span>
+      </div>
+      <span class="section-tag">Powered by AI</span>
+      <h2>Intelligence meets tradition</h2>
+      <p>Modern AI technology grounded in classical Islamic scholarship</p>
+    </div>
+
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="ai-card__icon ai-card__icon--purple">
+          <mat-icon>psychology</mat-icon>
+        </div>
+        <h4>Smart Tafsir</h4>
+        <p>Ask any question about a verse and get AI-powered explanations based on classical tafsir sources</p>
+      </div>
+
+      <div class="ai-card">
+        <div class="ai-card__icon ai-card__icon--blue">
+          <mat-icon>emoji_objects</mat-icon>
+        </div>
+        <h4>Dua Insights</h4>
+        <p>Receive context-aware explanations, virtues, and occasions for every dua in our collection</p>
+      </div>
+
+      <div class="ai-card">
+        <div class="ai-card__icon ai-card__icon--green">
+          <mat-icon>self_improvement</mat-icon>
+        </div>
+        <h4>Emotional Search</h4>
+        <p>Describe how you feel and let AI recommend the most relevant duas and Quranic verses</p>
+      </div>
+
+      <div class="ai-card">
+        <div class="ai-card__icon ai-card__icon--amber">
+          <mat-icon>auto_fix_high</mat-icon>
+        </div>
+        <h4>Study Notes</h4>
+        <p>Highlight text, take notes, and bookmark verses across all tafsir editions in one place</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ WHY NURA ═══════════════ -->
+  <section class="why-section">
+    <div class="why-grid">
+      <div class="why-text">
+        <span class="section-tag">Why Nura?</span>
+        <h2>Built for seekers of knowledge</h2>
+        <p>
+          Nura brings together the timeless wisdom of the Quran and classical scholars
+          with modern technology to create a deeply personal Islamic learning experience.
+        </p>
+
+        <div class="why-checks">
+          <div class="why-check">
+            <mat-icon>check_circle</mat-icon>
+            <span>Works beautifully on any device</span>
+          </div>
+          <div class="why-check">
+            <mat-icon>check_circle</mat-icon>
+            <span>Audio recitations from renowned Qaris</span>
+          </div>
+          <div class="why-check">
+            <mat-icon>check_circle</mat-icon>
+            <span>Multiple translations and tafsir editions</span>
+          </div>
+          <div class="why-check">
+            <mat-icon>check_circle</mat-icon>
+            <span>Save progress, notes &amp; bookmarks across devices</span>
+          </div>
+          <div class="why-check">
+            <mat-icon>check_circle</mat-icon>
+            <span>Nura Academy for structured classroom learning</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="why-visual">
+        <div class="why-visual__card why-visual__card--1">
+          <mat-icon>menu_book</mat-icon>
+          <span>Read</span>
+        </div>
+        <div class="why-visual__card why-visual__card--2">
+          <mat-icon>record_voice_over</mat-icon>
+          <span>Listen</span>
+        </div>
+        <div class="why-visual__card why-visual__card--3">
+          <mat-icon>edit_note</mat-icon>
+          <span>Reflect</span>
+        </div>
+        <div class="why-visual__card why-visual__card--4">
+          <mat-icon>school</mat-icon>
+          <span>Learn</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ CTA ═══════════════ -->
+  <section class="cta">
+    <div class="cta-content">
+      <h2>Begin your journey today</h2>
+      <p>Join thousands of Muslims using Nura to deepen their connection with the Quran.</p>
+      <div class="cta-actions">
+        <a routerLink="/quran" class="cta-btn cta-btn--primary">
+          <mat-icon>auto_stories</mat-icon>
+          Get Started
+        </a>
+        <a routerLink="/about" class="cta-btn cta-btn--secondary">
+          Learn More
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════ FOOTER ═══════════════ -->
+  <footer class="home-footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <h3>Nura AI</h3>
+        <p>Your spiritual companion for Quran, Duas, and Islamic learning.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Quick Links</h4>
+        <a routerLink="/quran">Quran Reader</a>
+        <a routerLink="/tafsir/browse">Tafsir Explorer</a>
+        <a routerLink="/dua">Daily Duas</a>
+        <a routerLink="/about">About</a>
+      </div>
+      <div class="footer-links">
+        <h4>Account</h4>
+        <a routerLink="/profile">My Profile</a>
+        <a routerLink="/subscription">Premium</a>
+        <a routerLink="/contact">Contact Us</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; {{ currentYear }} Nura AI. All rights reserved.</p>
+    </div>
+  </footer>
+
 </div>

@@ -1,165 +1,140 @@
-<div class="tafsir-library">
-  
-  <!-- Header -->
-  <header class="library-header">
-    <div class="header-content">
-      <div class="header-left">
-        <button mat-icon-button routerLink="/" matTooltip="Back to Home">
-          <mat-icon>arrow_back</mat-icon>
-        </button>
-        <div class="title-section">
-          <h1>📚 Tafsir Library</h1>
-          <p>Explore comprehensive Quranic commentaries from classical and modern scholars</p>
-        </div>
-      </div>
-      
-      <div class="header-right">
-        <button mat-icon-button routerLink="/tafsir/bookmarks" matTooltip="My Bookmarks">
-          <mat-icon>bookmarks</mat-icon>
-        </button>
-      </div>
+<div class="tafsir-library" [class.dark-mode]="isDarkMode">
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-bg">
+      <div class="hero-ornament hero-ornament--left"></div>
+      <div class="hero-ornament hero-ornament--right"></div>
     </div>
-  </header>
+    <div class="hero-content">
+      <div class="hero-top">
+        <h1>Tafsir Explorer</h1>
+        <p class="hero-subtitle">
+          Classical scholarly commentaries with AI-powered insights, notes, highlights, and bookmarks.
+        </p>
+      </div>
 
-  <!-- Search and Filters -->
-  <section class="filters-section">
-    <div class="filters-container">
-      
-      <!-- Search Bar -->
-      <mat-form-field class="search-field" appearance="outline">
-        <mat-icon matPrefix>search</mat-icon>
-        <input matInput
-               placeholder="Search by name, author, or keyword..."
-               [(ngModel)]="searchQuery"
-               (ngModelChange)="onSearchChange()">
-        <button mat-icon-button matSuffix *ngIf="searchQuery" (click)="searchQuery=''; onSearchChange()">
-          <mat-icon>close</mat-icon>
-        </button>
-      </mat-form-field>
+      <!-- Quick Access Pills -->
+      <div class="hero-pills">
+        <a routerLink="/tafsir/bookmarks" class="hero-pill">
+          <mat-icon>bookmarks</mat-icon>
+          <span>Bookmarks</span>
+        </a>
+        <a routerLink="/tafsir/notes" class="hero-pill">
+          <mat-icon>edit_note</mat-icon>
+          <span>Notes</span>
+        </a>
+        <a routerLink="/tafsir/highlights" class="hero-pill">
+          <mat-icon>format_color_fill</mat-icon>
+          <span>Highlights</span>
+        </a>
+        <a routerLink="/tafsir/conversations" class="hero-pill">
+          <mat-icon>smart_toy</mat-icon>
+          <span>AI Chats</span>
+        </a>
+      </div>
 
-      <!-- Filters -->
-      <div class="filter-controls">
-        <!-- Language Filter -->
-        <mat-form-field appearance="outline">
-          <mat-label>Language</mat-label>
-          <mat-select [(ngModel)]="selectedLanguage" (ngModelChange)="onFilterChange()">
-            <mat-option *ngFor="let lang of availableLanguages" [value]="lang.value">
-              {{ lang.label }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <!-- Difficulty Filter -->
-        <mat-form-field appearance="outline">
-          <mat-label>Difficulty</mat-label>
-          <mat-select [(ngModel)]="selectedDifficulty" (ngModelChange)="onFilterChange()">
-            <mat-option *ngFor="let level of difficultyLevels" [value]="level.value">
-              {{ level.label }}
-            </mat-option>
-          </mat-select>
-        </mat-form-field>
-
-        <!-- View Toggle -->
-        <mat-button-toggle-group [(ngModel)]="viewMode" (ngModelChange)="toggleViewMode()">
-          <mat-button-toggle value="grid">
-            <mat-icon>grid_view</mat-icon>
-          </mat-button-toggle>
-          <mat-button-toggle value="list">
-            <mat-icon>view_list</mat-icon>
-          </mat-button-toggle>
-        </mat-button-toggle-group>
+      <!-- Stats Row -->
+      <div class="hero-stats">
+        <div class="stat-chip">
+          <span class="stat-value">{{ (editions$ | async)?.length || 0 }}</span>
+          <span class="stat-label">Editions</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-value">6,236</span>
+          <span class="stat-label">Verses</span>
+        </div>
+        <div class="stat-chip">
+          <span class="stat-value">114</span>
+          <span class="stat-label">Surahs</span>
+        </div>
       </div>
     </div>
   </section>
 
   <!-- Loading State -->
   <div class="loading-container" *ngIf="isLoading">
-    <mat-spinner diameter="50"></mat-spinner>
+    <mat-spinner diameter="44"></mat-spinner>
     <p>Loading tafsir editions...</p>
   </div>
 
-  <!-- Editions Grid/List -->
+  <!-- Editions Section -->
   <section class="editions-section" *ngIf="!isLoading">
-    <div class="editions-container" [class.grid-view]="viewMode === 'grid'" [class.list-view]="viewMode === 'list'">
-      
-      <mat-card *ngFor="let edition of (filteredEditions$ | async)" 
-                class="edition-card"
-                (click)="openEdition(edition)">
-        
-        <!-- Card Header -->
-        <mat-card-header>
-          <div class="edition-icon" mat-card-avatar>
-            <mat-icon>auto_stories</mat-icon>
-          </div>
-          <mat-card-title>{{ edition.name }}</mat-card-title>
-          <mat-card-subtitle>
-            <span class="author">{{ edition.author }}</span>
-          </mat-card-subtitle>
-        </mat-card-header>
+    <div class="section-header">
+      <div class="section-title-group">
+        <h2>Available Editions</h2>
+        <p class="section-subtitle">Select an edition to start reading</p>
+      </div>
+    </div>
 
-        <!-- Card Content -->
-        <mat-card-content>
-          <p class="description">{{ edition.description }}</p>
-          
-          <!-- Metadata -->
-          <div class="metadata">
-            <span class="language-badge">
-              {{ getLanguageFlag(edition.language) }} 
-              {{ edition.language.toUpperCase() }}
+    <div class="editions-grid">
+      <div class="edition-card" 
+           *ngFor="let edition of (filteredEditions$ | async)"
+           (click)="openEdition(edition)"
+           [class.has-progress]="hasProgress(edition.id)">
+
+        <!-- Card Accent -->
+        <div class="card-accent" [class.arabic]="edition.language === 'ar'"></div>
+
+        <!-- Language Indicator -->
+        <div class="language-tag" [class.arabic-tag]="edition.language === 'ar'">
+          {{ edition.language === 'ar' ? 'عربي' : (edition.language | uppercase) }}
+        </div>
+
+        <!-- Card Body -->
+        <div class="card-body">
+          <!-- Arabic name -->
+          <p class="edition-arabic" *ngIf="edition.nameArabic">{{ edition.nameArabic }}</p>
+
+          <h3 class="edition-name">{{ edition.name }}</h3>
+
+          <p class="edition-author">
+            <mat-icon>person</mat-icon>
+            {{ edition.author }}
+          </p>
+
+          <p class="edition-description">{{ edition.description }}</p>
+
+          <!-- Badges -->
+          <div class="edition-badges">
+            <span class="badge lang-badge">
+              {{ edition.language === 'ar' ? 'Arabic' : 'English' }}
             </span>
-            
-            <span class="difficulty-badge" [style.background-color]="getDifficultyColor(edition.difficulty)">
+            <span class="badge difficulty-badge" 
+                  [class.beginner]="edition.difficulty === 'beginner'"
+                  [class.intermediate]="edition.difficulty === 'intermediate'"
+                  [class.advanced]="edition.difficulty === 'advanced'">
               {{ edition.difficulty | titlecase }}
             </span>
-            
-            <span class="offline-badge" *ngIf="edition.isOfflineAvailable">
-              <mat-icon>offline_pin</mat-icon> Offline
-            </span>
-            
-            <span class="premium-badge" *ngIf="edition.isPremium">
-              <mat-icon>star</mat-icon> Premium
-            </span>
           </div>
 
-          <!-- Stats -->
-          <div class="stats" *ngIf="edition.rating || edition.downloads">
-            <span class="rating" *ngIf="edition.rating">
-              <mat-icon>star</mat-icon> {{ edition.rating | number:'1.1-1' }}
-            </span>
-            <span class="downloads" *ngIf="edition.downloads">
-              <mat-icon>download</mat-icon> {{ edition.downloads | number }}
-            </span>
+          <!-- Rating Row -->
+          <div class="edition-rating" *ngIf="edition.rating">
+            <div class="stars">
+              <mat-icon *ngFor="let s of [1,2,3,4,5]"
+                        [class.filled]="s <= (edition.rating || 0)"
+                        [class.half]="s === 5 && (edition.rating || 0) >= 4.5 && (edition.rating || 0) < 5">
+                {{ s <= (edition.rating || 0) ? 'star' : (s === 5 && (edition.rating || 0) >= 4.5 ? 'star_half' : 'star_border') }}
+              </mat-icon>
+            </div>
+            <span class="rating-value">{{ edition.rating }}</span>
           </div>
-
-          <!-- Tags -->
-          <mat-chip-listbox class="tags-list" *ngIf="edition.tags && edition.tags.length > 0">
-            <mat-chip *ngFor="let tag of edition.tags.slice(0, 3)">
-              {{ tag }}
-            </mat-chip>
-          </mat-chip-listbox>
-        </mat-card-content>
-
-        <!-- Card Actions -->
-        <mat-card-actions>
-          <button mat-raised-button color="primary" (click)="openEdition(edition); $event.stopPropagation()">
-            <mat-icon>{{ hasProgress(edition.id) ? 'play_circle' : 'book_online' }}</mat-icon>
-            {{ hasProgress(edition.id) ? 'Resume Reading' : 'Start Reading' }}
-          </button>
-          <button mat-button (click)="$event.stopPropagation()">
-            <mat-icon>info</mat-icon>
-            Details
-          </button>
-        </mat-card-actions>
-        
-        <!-- Progress Indicator -->
-        <div class="reading-progress" *ngIf="hasProgress(edition.id)">
-          <mat-icon class="progress-icon">bookmark</mat-icon>
-          <span class="progress-text">
-            Last read: {{ getSavedProgress(edition.id)?.surah }}:{{ getSavedProgress(edition.id)?.verse }}
-          </span>
         </div>
-      </mat-card>
 
+        <!-- Card Footer -->
+        <div class="card-footer">
+          <!-- Resume info if progress exists -->
+          <div class="resume-info" *ngIf="hasProgress(edition.id)">
+            <mat-icon>bookmark</mat-icon>
+            <span>Last read {{ getSavedProgress(edition.id)?.surah }}:{{ getSavedProgress(edition.id)?.verse }}</span>
+          </div>
+
+          <button mat-flat-button class="read-btn" (click)="openEdition(edition); $event.stopPropagation()">
+            <mat-icon>{{ hasProgress(edition.id) ? 'play_arrow' : 'auto_stories' }}</mat-icon>
+            {{ hasProgress(edition.id) ? 'Continue Reading' : 'Start Reading' }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Empty State -->
@@ -167,22 +142,54 @@
       <mat-icon>search_off</mat-icon>
       <h3>No editions found</h3>
       <p>Try adjusting your filters or search query</p>
-      <button mat-raised-button color="primary" 
-              (click)="searchQuery=''; selectedLanguage='all'; selectedDifficulty='all'; onFilterChange()">
-        Clear Filters
-      </button>
     </div>
   </section>
 
-  <!-- Popular Editions Section (Optional) -->
-  <section class="popular-section" *ngIf="!searchQuery && selectedLanguage === 'all' && selectedDifficulty === 'all'">
-    <h2>📌 Recommended for You</h2>
-    <p class="section-subtitle">Start with these popular tafsir collections</p>
-    
-    <!-- This could show different recommendations based on user's history -->
-    <div class="popular-cards">
-      <!-- Placeholder for recommended editions -->
+  <!-- Features Section -->
+  <section class="features-section">
+    <h2>What You Can Do</h2>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <mat-icon>auto_stories</mat-icon>
+        </div>
+        <h4>Read & Study</h4>
+        <p>Read tafsir verse-by-verse with Arabic text and translation side by side</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon notes-icon">
+          <mat-icon>edit_note</mat-icon>
+        </div>
+        <h4>Take Notes</h4>
+        <p>Write personal notes and reflections on any verse with a rich text editor</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon highlights-icon">
+          <mat-icon>format_color_fill</mat-icon>
+        </div>
+        <h4>Highlight Text</h4>
+        <p>Mark important passages with multiple colors and review them anytime</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon bookmarks-icon">
+          <mat-icon>bookmark</mat-icon>
+        </div>
+        <h4>Bookmark Verses</h4>
+        <p>Save your place and bookmark verses you want to revisit later</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon ai-icon">
+          <mat-icon>smart_toy</mat-icon>
+        </div>
+        <h4>AI Tafsir Chat</h4>
+        <p>Ask questions about any verse and get AI-powered explanations based on classical scholars</p>
+      </div>
     </div>
+  </section>
+
+  <!-- Coming Soon -->
+  <section class="coming-soon-section">
+    <p>More tafsir editions coming soon, insha'Allah.</p>
   </section>
 
 </div>

@@ -1,0 +1,117 @@
+<!-- Floating Action Button -->
+<button class="chat-fab" 
+        *ngIf="!isExpanded"
+        (click)="toggleChat()"
+        matTooltip="Ask AI about this verse"
+        [matBadge]="freeTierRemaining !== null && !isPremium ? freeTierRemaining : null"
+        [matBadgeHidden]="isPremium === true || freeTierRemaining === null"
+        matBadgeColor="accent"
+        matBadgeSize="small"
+        matBadgePosition="above before">
+  <mat-icon>smart_toy</mat-icon>
+</button>
+
+<!-- Expanded Chat Panel -->
+<div class="chat-panel" *ngIf="isExpanded" [class.visible]="isExpanded">
+  
+  <!-- Header -->
+  <div class="chat-header">
+    <div class="header-left">
+      <mat-icon class="header-icon">smart_toy</mat-icon>
+      <div class="header-text">
+        <span class="header-title">AI Tafsir Chat</span>
+        <span class="header-context">{{surahName || 'Surah ' + surah}} : {{verse}}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="tier-badge" *ngIf="freeTierRemaining !== null && !isPremium">
+        {{freeTierRemaining}} left
+      </span>
+      <span class="tier-badge premium" *ngIf="isPremium">
+        <mat-icon>workspace_premium</mat-icon> Premium
+      </span>
+      <button mat-icon-button (click)="clearChat()" matTooltip="Clear chat" class="header-btn">
+        <mat-icon>delete_outline</mat-icon>
+      </button>
+      <button mat-icon-button [routerLink]="['/tafsir/conversations']" matTooltip="All conversations" class="header-btn">
+        <mat-icon>forum</mat-icon>
+      </button>
+      <button mat-icon-button (click)="toggleChat()" matTooltip="Minimize" class="header-btn">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-messages" #messageContainer>
+    <div *ngFor="let msg of messages" 
+         class="message" 
+         [class.user]="msg.role === 'user'" 
+         [class.assistant]="msg.role === 'assistant'"
+         [class.error]="msg.type === 'error'"
+         [class.paywall]="msg.type === 'paywall'">
+      
+      <div class="message-avatar" *ngIf="msg.role === 'assistant'">
+        <mat-icon *ngIf="msg.type !== 'paywall'">smart_toy</mat-icon>
+        <mat-icon *ngIf="msg.type === 'paywall'">lock</mat-icon>
+      </div>
+
+      <div class="message-bubble">
+        <div class="message-content" [innerHTML]="msg.content | markdown"></div>
+        <div class="message-meta">
+          <span class="message-context" *ngIf="msg.context">
+            {{msg.context.surah}}:{{msg.context.verse}}
+          </span>
+          <span class="message-time">
+            {{msg.timestamp | date:'shortTime'}}
+          </span>
+        </div>
+
+        <!-- Paywall CTA -->
+        <div class="paywall-cta" *ngIf="msg.type === 'paywall'">
+          <button mat-raised-button color="primary" (click)="goToSubscription()">
+            <mat-icon>workspace_premium</mat-icon>
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loading indicator -->
+    <div class="message assistant" *ngIf="isLoading">
+      <div class="message-avatar">
+        <mat-icon>smart_toy</mat-icon>
+      </div>
+      <div class="message-bubble loading">
+        <div class="typing-indicator">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="chat-input-area" [class.disabled]="freeTierExhausted">
+    <div class="input-wrapper" *ngIf="!freeTierExhausted">
+      <input #chatInput
+             type="text"
+             [(ngModel)]="userQuestion"
+             (keydown)="handleKeydown($event)"
+             placeholder="Ask about this verse..."
+             [disabled]="isLoading"
+             autocomplete="off" />
+      <button class="send-btn"
+              (click)="sendQuestion()" 
+              [disabled]="!userQuestion.trim() || isLoading">
+        <mat-icon>send</mat-icon>
+      </button>
+    </div>
+    <div class="paywall-input" *ngIf="freeTierExhausted">
+      <mat-icon>lock</mat-icon>
+      <span>Free questions used</span>
+      <button mat-stroked-button color="primary" (click)="goToSubscription()">
+        Upgrade
+      </button>
+    </div>
+  </div>
+</div>

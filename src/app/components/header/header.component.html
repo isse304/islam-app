@@ -30,11 +30,11 @@
         <span class="nav-text">Quran</span>
       </a>
       
-      <a routerLink="/learn"
+      <a routerLink="/tafsir/browse"
          routerLinkActive="active"
          class="nav-item">
-        <span class="nav-icon">🤖</span>
-        <span class="nav-text">AI Tafsir</span>
+        <span class="nav-icon">📚</span>
+        <span class="nav-text">Tafsir</span>
       </a>
       
       <a routerLink="/dua"
@@ -135,13 +135,30 @@
       </button>
       
       <mat-menu #profileMenu="matMenu" class="modern-dropdown profile-dropdown">
-        <div class="dropdown-content">
+        <div class="dropdown-content profile-content" *ngIf="authService.user$ | async as user">
+          <div class="profile-user-header">
+            <div class="profile-avatar">
+              {{ (user.email || '?').charAt(0).toUpperCase() }}
+            </div>
+            <div class="profile-details">
+              <span class="profile-name">{{ user.firstName || 'User' }}</span>
+              <span class="profile-email">{{ user.email }}</span>
+            </div>
+          </div>
+          <div class="dropdown-divider"></div>
           <a mat-menu-item routerLink="/profile" class="dropdown-item">
             <mat-icon class="item-icon">person</mat-icon>
             <span>Profile</span>
           </a>
+          <a mat-menu-item routerLink="/subscription" class="dropdown-item" *ngIf="!isPremiumUser">
+            <mat-icon class="item-icon">workspace_premium</mat-icon>
+            <span>Upgrade to Premium</span>
+          </a>
           <div class="dropdown-divider"></div>
-          <app-auth-buttons></app-auth-buttons>
+          <button mat-menu-item class="dropdown-item signout-item" (click)="signOut()">
+            <mat-icon class="item-icon">logout</mat-icon>
+            <span>Sign Out</span>
+          </button>
         </div>
       </mat-menu>
       
@@ -160,42 +177,72 @@
   </div>
   
   <!-- Notification Menu -->
-  <mat-menu #notificationsMenu="matMenu" class="modern-dropdown notifications-dropdown">
-    <div class="dropdown-content notifications-content" (click)="$event.stopPropagation()">
-      <div class="notifications-header">
-        <h3>Notifications</h3>
-        <button *ngIf="(notifications$ | async)?.length ?? 0 > 0"
-                (click)="clearAllNotifications()"
-                class="clear-all-btn">
-          Clear All
+  <mat-menu #notificationsMenu="matMenu" class="notifications-dropdown">
+    <div class="notif-panel" (click)="$event.stopPropagation()">
+      <!-- Header -->
+      <div class="notif-header">
+        <div class="notif-header-left">
+          <mat-icon class="notif-header-icon">notifications</mat-icon>
+          <span class="notif-header-title">Notifications</span>
+          <span class="notif-count" *ngIf="((unreadCount$ | async) || 0) > 0">
+            {{ unreadCount$ | async }}
+          </span>
+        </div>
+        <button class="notif-clear-btn"
+                *ngIf="(notifications$ | async)?.length"
+                (click)="clearAllNotifications()">
+          Clear all
         </button>
       </div>
-      
-      <div class="notifications-list" *ngIf="(notifications$ | async) as notifications">
+
+      <!-- List -->
+      <div class="notif-list" *ngIf="(notifications$ | async) as notifications">
         <div *ngFor="let notification of notifications"
-             class="notification-item"
+             class="notif-card"
              [class.unread]="!notification.read"
              (click)="markAsRead(notification)">
-          <button class="delete-btn" 
-                  (click)="deleteNotification($event, notification.id)">
+
+          <!-- Type icon -->
+          <div class="notif-icon"
+               [ngClass]="{
+                 'icon-assignment': notification.type === 'assignment_posted',
+                 'icon-submission': notification.type === 'submission_received',
+                 'icon-graded': notification.type === 'graded',
+                 'icon-due': notification.type === 'due_soon',
+                 'icon-comment': notification.type === 'comment'
+               }">
+            <mat-icon>{{
+              notification.type === 'assignment_posted' ? 'assignment' :
+              notification.type === 'submission_received' ? 'upload_file' :
+              notification.type === 'graded' ? 'grade' :
+              notification.type === 'due_soon' ? 'alarm' :
+              notification.type === 'comment' ? 'chat_bubble' : 'notifications'
+            }}</mat-icon>
+          </div>
+
+          <!-- Body -->
+          <div class="notif-body">
+            <p class="notif-title">{{ notification.title }}</p>
+            <p class="notif-text">{{ notification.body }}</p>
+            <span class="notif-time">{{ getNotificationTime(notification) }}</span>
+          </div>
+
+          <!-- Unread indicator -->
+          <span class="notif-dot" *ngIf="!notification.read"></span>
+
+          <!-- Delete -->
+          <button class="notif-delete"
+                  (click)="deleteNotification($event, notification.id)"
+                  matTooltip="Dismiss">
             <mat-icon>close</mat-icon>
           </button>
-          
-          <div class="notification-content">
-            <p class="notification-title">{{ notification.title }}</p>
-            <p class="notification-body">{{ notification.body }}</p>
-            <p class="notification-time">
-              <mat-icon class="time-icon">schedule</mat-icon>
-              {{ getNotificationTime(notification) }}
-            </p>
-          </div>
-          
-          <div class="unread-dot" *ngIf="!notification.read"></div>
         </div>
-        
-        <div *ngIf="notifications.length === 0" class="empty-notifications">
-          <mat-icon class="empty-icon">notifications_none</mat-icon>
-          <p>No notifications yet</p>
+
+        <!-- Empty state -->
+        <div *ngIf="notifications.length === 0" class="notif-empty">
+          <mat-icon>notifications_none</mat-icon>
+          <p>All caught up</p>
+          <span>No new notifications</span>
         </div>
       </div>
     </div>
@@ -228,9 +275,9 @@
           <span class="mobile-icon">📖</span>
           <span>Quran Reader</span>
         </a>
-        <a routerLink="/learn" class="mobile-nav-item" (click)="closeMobileMenu()">
-          <span class="mobile-icon">🤖</span>
-          <span>AI Tafsir</span>
+        <a routerLink="/tafsir/browse" class="mobile-nav-item" (click)="closeMobileMenu()">
+          <span class="mobile-icon">📚</span>
+          <span>Tafsir</span>
         </a>
         <a routerLink="/dua" class="mobile-nav-item" (click)="closeMobileMenu()">
           <span class="mobile-icon">🤲</span>

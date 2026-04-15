@@ -46,6 +46,7 @@ export class TafsirLibraryComponent implements OnInit {
   editions$!: Observable<TafsirEdition[]>;
   filteredEditions$!: Observable<TafsirEdition[]>;
   isLoading = false;
+  isDarkMode = false;
 
   // Filters
   searchQuery = '';
@@ -79,6 +80,7 @@ export class TafsirLibraryComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.isDarkMode = document.body.classList.contains('theme-dark') || document.body.classList.contains('theme-night');
     this.loadEditions();
   }
 

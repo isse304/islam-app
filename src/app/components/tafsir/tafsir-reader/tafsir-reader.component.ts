@@ -15,6 +15,7 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
+import { MatDividerModule } from '@angular/material/divider';
 
 // Services
 import { TafsirService } from '../../../services/tafsir.service';
@@ -31,6 +32,7 @@ import { Bookmark, Note, Highlight, BookmarkHelpers } from '../../../models/book
 
 // Components
 import { RichTextEditorComponent } from '../../shared/rich-text-editor/rich-text-editor.component';
+import { TafsirChatBubbleComponent } from '../tafsir-chat-bubble/tafsir-chat-bubble.component';
 
 @Component({
   selector: 'app-tafsir-reader',
@@ -48,7 +50,9 @@ import { RichTextEditorComponent } from '../../shared/rich-text-editor/rich-text
     MatTooltipModule,
     MatMenuModule,
     MatSlideToggleModule,
-    RichTextEditorComponent
+    MatDividerModule,
+    RichTextEditorComponent,
+    TafsirChatBubbleComponent
   ],
   templateUrl: './tafsir-reader.component.html',
   styleUrls: ['./tafsir-reader.component.scss']
@@ -74,6 +78,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   splitViewMode = false;
   showSidebar = false;
   focusMode = false;
+  openChatOnLoad = false;
 
   // Typography preferences
   preferences: UserPreferences = {
@@ -183,6 +188,11 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
 
     // Ensure surahs are loaded
     this.quranService.getSurahList().pipe(takeUntil(this.destroy$)).subscribe();
+
+    // Check for openChat query param (from conversations page)
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(qp => {
+      this.openChatOnLoad = qp['openChat'] === 'true';
+    });
 
     // Get route parameters
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {

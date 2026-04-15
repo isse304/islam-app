@@ -5,6 +5,7 @@ import axios from 'axios';
 import { OpenAIService } from '../services/openai.service';
 import { TafsirCacheService } from '../services/tafsir-cache.service';
 import { UserUsage } from '../models/UserUsage';
+import { TafsirVerse } from '../models/TafsirVerse';
 import { UsageService } from '../services/usage.service';
 import { StripeService } from '../services/stripe.service';
 import { EmailService } from '../services/email.service';
@@ -191,8 +192,8 @@ router.get('/:source/:surah/:verse', async (req: Request, res: Response, next: N
   }
 });
 
-// Tafsir chat endpoint (Requires Auth AND Premium)
-router.post('/chat', withPremium(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+// Tafsir chat endpoint (Requires Auth - free tier gets 5 lifetime questions, premium gets daily limit)
+router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   // Log entry into the main handler
   // console.log(`[Tafsir Chat Route] Handler entered for user ${req.auth?.uid}. Question: "${req.body?.question}"`);
   try {
@@ -326,30 +327,22 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
     const surahNumStr = String(surah); // May be "undefined" if not provided yet
     const currentSurahTheme = surahThemesData[surahNumStr]?.theme || 'Not available in theme data.';
     const currentSurahName = surahThemesData[surahNumStr]?.name || `Surah ${surahNumStr}`;
-    let tafsirContent = ''; // Initialize tafsirContent
-    let hasTafsirContent = false; // Initialize flag
+    let tafsirContent = '';
+    let hasTafsirContent = false;
+    let isPreProcessedTafsir = false;
 
-    // --- Determine if we need to fetch Tafsir content ---
-    // Only fetch if surah and verse are provided and it's not just a general theme question
     let fetchTafsir = surah && verse && !isGeneralSurahQuestion;
-    // +++ START Specific check for 1:1 +++
     if (String(surah) === '1' && String(verse) === '1') {
-        // console.log("[Tafsir Chat] Skipping tafsir content fetch for 1:1, will use AI's internal knowledge.");
-        fetchTafsir = false; // Do not fetch content for 1:1
-        hasTafsirContent = false; // Ensure flag is false
+        fetchTafsir = false;
+        hasTafsirContent = false;
     }
-    // +++ END Specific check for 1:1 +++
 
     if (fetchTafsir) {
-         // console.log(`[Tafsir Chat] Attempting to fetch tafsir content for ${surah}:${verse}`);
-        tafsirContent = await getTafsirContent(selectedTafsir, String(surah), String(verse));
+        const result = await getTafsirContent(selectedTafsir, String(surah), String(verse));
+        tafsirContent = result.content;
+        isPreProcessedTafsir = result.isPreProcessed;
         hasTafsirContent = !!tafsirContent;
-         // console.log(`[Tafsir Chat] Tafsir content fetched. Has Content: ${hasTafsirContent}`);
-    } else if (!(String(surah) === '1' && String(verse) === '1')) { // Avoid duplicate log for 1:1
-        // console.log("[Tafsir Chat] Skipping tafsir content fetch (not a specific verse request).");
     }
-
-    // console.log('[Tafsir Chat] Fetched Tafsir Content for Prompt:', tafsirContent ? tafsirContent.substring(0, 300) + '...' : 'None');
 
     // --- Unified System Prompt ---
     systemMessage = `You are NuraAI, a knowledgeable, respectful, and friendly Muslim AI assistant specializing in the Quran. Your primary goal is to help users understand the Quran and engage in relevant, respectful conversation.
@@ -359,7 +352,10 @@ CONTEXT & AVAILABLE DATA:
 - Surah (if relevant): ${surah ? currentSurahName : 'Not specified'} (${surah || 'N/A'})
 - Verse (if relevant): ${verse || 'N/A'}
 - General Theme of Surah ${surah || 'N/A'} (if relevant): ${surah ? currentSurahTheme : 'Not specified'}
-- Tafsir Text for ${surah}:${verse} from ${scholarName} (if relevant and available): ${hasTafsirContent ? '\n' + tafsirContent + '\n' : 'Not Available/Not Requested'}
+- Tafsir Text for ${surah}:${verse} from ${scholarName} (if relevant and available): ${hasTafsirContent ? (isPreProcessedTafsir
+    ? '\n--- TAFSIR TEXT (pre-filtered for this verse only) ---\n' + tafsirContent + '\n--- END TAFSIR TEXT ---\n'
+    : '\n--- BEGIN RAW TAFSIR TEXT (WARNING: may contain commentary on adjacent verses - you must filter) ---\n' + tafsirContent + '\n--- END RAW TAFSIR TEXT ---\n'
+  ) : 'Not Available/Not Requested'}
 
 USER'S CURRENT MESSAGE: ${question}
 
@@ -385,14 +381,18 @@ YOUR TASK & RESPONSE RULES:
     *   If the user asks about a SPECIFIC verse (${surah}:${verse}) AND the relevant 'Tafsir Text' IS AVAILABLE above:
         *   **Usage Check:** (This happens *before* this step in the code).
         *   Your primary goal is to **faithfully convey the relevant details from that specific source** in response to the user's question.
-        *   Follow these rules **ABSOLUTELY STRICTLY**:
-            *   Your answer **MUST** be based **SOLELY** on the provided '[${scholarName}'s Tafsir for Verse ${surah}:${verse}]' text when it is available.
-            *   **DO NOT** introduce external information, interpretations, or context (like generic Bismillah explanations, Isti'adha details, common knowledge about the Surah, etc.) if they are not **explicitly discussed within the provided Tafsir text for the specific verse ${surah}:${verse}**. Your knowledge source for the answer is **ONLY** the text provided here.
-            *   Focus on extracting the **specific points** (like context, interpretations, linguistic notes, cited hadith) made by ${scholarName} regarding verse ${surah}:${verse} **as presented in the provided text**.
-            *   **AVOID SUMMARIZATION.** Present the scholar's specific arguments and evidence that directly address the user's query, using close paraphrasing or brief, attributed quotes from the source text.
-            *   Attribute clearly: Start relevant extractions/paraphrases with "According to ${scholarName} in the provided text..." or similar.
+        *   Follow these rules **ABSOLUTELY STRICTLY**:${!isPreProcessedTafsir ? `
+            *   **VERSE BOUNDARY RULE (CRITICAL - PERFORM THIS BEFORE WRITING YOUR ANSWER):**
+                The raw tafsir text above often contains commentary on MULTIPLE verses in a single passage because classical scholars discuss related verses together. Before you write anything, you MUST mentally perform this filtering step:
+                (a) Scan the raw tafsir text and identify where the scholar begins discussing verse ${surah}:${verse} specifically (look for the verse text, verse number references, or the transition from a previous verse's discussion).
+                (b) Identify where the scholar transitions AWAY from verse ${surah}:${verse} to discuss verse ${surah}:${Number(verse) + 1} or later verses (look for phrases like "then Allah says", "the next verse", "and His saying", new verse quotations, or discussion of topics clearly belonging to a different verse).
+                (c) ONLY use the content between points (a) and (b). Everything outside that range must be completely ignored, as if it were not provided.` : ''}
+            *   **ZERO EXTERNAL KNOWLEDGE RULE (CRITICAL):** Your answer **MUST** contain **ONLY** information that is **explicitly written** in the provided tafsir text above. If a claim, interpretation, theme, symbolism, or moral lesson does NOT appear as actual words in the provided text, you **MUST NOT** include it. Do not infer, extrapolate, or add your own Islamic knowledge. Treat the provided text as the ONLY source of truth. If the text only discusses a hadith about prostration, then your answer is ONLY about that hadith. Do not add what the verse "symbolizes" or "signifies" unless those exact ideas appear in the text.
+            *   Focus on extracting the **specific points** (like context, interpretations, linguistic notes, cited hadith) made by ${scholarName} regarding verse ${surah}:${verse} **as presented in the provided text**. Use close paraphrasing or brief, attributed quotes.
+            *   Attribute clearly: Start with "According to ${scholarName}..." or similar.
+            *   If the provided text is short or covers limited ground, your answer should also be short. Do NOT pad with external knowledge to make a longer response.
             *   If the user asks about something **not covered in the provided text for ${surah}:${verse}**: State clearly: "${scholarName} does not cover this specific point in the provided text for verse ${surah}:${verse}." Do not attempt to answer using external knowledge.
-            *   Theme Connection: Only mention the Surah theme (${currentSurahTheme}) if the **provided text itself** explicitly links the verse to it. Do not add it otherwise.
+            *   Theme Connection: Only mention the Surah theme if the **provided text itself** explicitly links the verse to it. Do not add it otherwise.
         *   Respond directly to the user's question about the verse, incorporating the extracted details.
 
 5.  **TAFSIR REQUESTED BUT TEXT UNAVAILABLE:**
@@ -415,66 +415,66 @@ YOUR TASK & RESPONSE RULES:
 
 **General Tone:** Be helpful, respectful, accurate, and focused on the Quran. Avoid overly casual language.
 **ABSOLUTE RULE: If the user asks a direct question (not just 'hi' or 'salam'), DO NOT start your response with any greeting** (like "Wa alaikum assalam" or "Hello"). Answer the question directly.
+${!isPreProcessedTafsir ? `**ABSOLUTE RULE: When answering about verse ${surah}:${verse}, you must EXCLUDE any content from the tafsir text that pertains to verses ${surah}:${Number(verse) + 1}, ${surah}:${Number(verse) + 2}, or any other verse. The raw tafsir text is a continuous passage covering multiple verses. Your job is to surgically extract ONLY the portion about ${surah}:${verse}.**` : ''}
+**ABSOLUTE RULE: Every sentence in your response must be traceable to a specific passage in the provided tafsir text. If you cannot point to where in the text a claim comes from, DELETE that sentence. Do NOT add your own interpretation, symbolism, moral lessons, or thematic analysis. If the source text is brief, your answer must be brief.**
 `;
     // --- End Unified System Prompt ---
 
-    // --- Determine if AI Usage Should Be Incremented ---
+    // --- Determine user tier and check usage ---
+    const isPremiumUser = !!(req.auth as any)?.premium;
     let shouldIncrementUsage = false;
+    let isFreeTierUser = !isPremiumUser;
+    let userUsage: any = null;
+
     if ((isGeneralSurahQuestion && !verse) || (surah && verse)) {
-        // Increment usage ONLY if it's a specific theme question OR a specific verse question (regardless of whether tafsir text was found)
-        // This avoids incrementing for greetings, capability questions, or invalid requests handled by the AI prompt.
-        // console.log(`[Tafsir Chat] AI call required for specific theme/tafsir. Checking usage for user ${userId}...`);
-        let userUsage;
         try {
             userUsage = await usageService.getOrCreateUsage(userId);
 
-            if (!await userUsage.canMakeAIRequest()) {
-                return res.status(429).json({
-                    success: false,
-                    error: 'AI request limit exceeded for today',
-                    limit: userUsage.aiRequestLimit,
-                    used: userUsage.aiRequests.count
-                });
+            if (isPremiumUser) {
+                if (!await userUsage.canMakeAIRequest()) {
+                    return res.status(429).json({
+                        success: false,
+                        error: 'Daily AI request limit exceeded. Please try again tomorrow.',
+                        limit: userUsage.aiRequestLimit,
+                        used: userUsage.aiRequests.count,
+                        isPremium: true
+                    });
+                }
+            } else {
+                if (!await userUsage.canMakeFreeTierRequest()) {
+                    return res.status(403).json({
+                        success: false,
+                        error: 'You have used all 5 free AI questions for today. Subscribe to Nura Premium for unlimited access, or try again tomorrow.',
+                        freeTierExhausted: true,
+                        used: userUsage.freeTierQuestions.count,
+                        limit: userUsage.freeTierQuestions.limit
+                    });
+                }
             }
-             // console.log(`[Tafsir Chat] Usage check passed for user ${userId}. Proceeding with AI call.`);
-            shouldIncrementUsage = true; // Mark that usage should be incremented AFTER the AI call succeeds.
-
+            shouldIncrementUsage = true;
         } catch (usageError) {
-            // console.error('Error managing user usage in tafsir/chat:', usageError);
             return next(usageError);
         }
-    } else {
-         // console.log(`[Tafsir Chat] AI call is likely for greeting/capability/general chat. Skipping usage check/increment for user ${userId}.`);
     }
-    // --- End Usage Check Logic ---
-
 
     // --- Generate AI Response ---
-    // console.log(`[Tafsir Chat] Generating AI response for user ${userId}. Should increment usage: ${shouldIncrementUsage}`);
-    // console.log(`[Tafsir Chat] PRE-AI_CALL: About to call openai.generateResponse for user ${userId}`);
-    const responseContent = await openai.generateResponse(systemMessage);
-    // console.log(`[Tafsir Chat] POST-AI_CALL: Received response from openai.generateResponse for user ${userId}. Content length: ${responseContent?.length}`);
-    // console.log(`[Tafsir Chat] AI response generated for user ${userId}.`);
-    // --- End Generate AI Response ---
+    const responseContent = await openai.generateResponse(systemMessage, String(question));
 
     // --- Increment Usage (if applicable) ---
-    if (shouldIncrementUsage) {
+    if (shouldIncrementUsage && userUsage) {
         try {
-            // We already retrieved userUsage in the check block
-            const userUsage = await UserUsage.findOne({ userId }); // Re-fetch or use variable from check scope if possible/safe
-            if (userUsage) {
-                 // console.log(`[Tafsir Chat] Incrementing AI request count for user ${userId}.`);
-                await userUsage.incrementAIRequestCount();
-                 // console.log(`[Tafsir Chat] Incremented AI request count for user ${userId}.`);
-            } else {
-                 // console.warn(`[Tafsir Chat] Could not find userUsage record to increment count for user ${userId} after AI call.`);
+            const freshUsage = await UserUsage.findOne({ userId });
+            if (freshUsage) {
+                if (isPremiumUser) {
+                    await freshUsage.incrementAIRequestCount();
+                } else {
+                    await freshUsage.incrementFreeTierCount();
+                }
             }
         } catch (incrementError) {
-             // console.error(`[Tafsir Chat] Error incrementing usage count for user ${userId} after AI call:`, incrementError);
-             // Decide if this should be fatal. Usually, we still want to return the response.
+            // Non-fatal: still return the response
         }
     }
-    // --- End Increment Usage ---
 
     // Determine source based on whether tafsir was used or available
     let responseSource = 'ai_general_chat'; // Default for greetings, capabilities, general fallback
@@ -485,20 +485,27 @@ YOUR TASK & RESPONSE RULES:
     }
 
     // console.log(`[Tafsir Chat] PRE-JSON_RESPONSE: About to send final JSON response. Source: ${responseSource}`);
-    return res.json({
+    const responsePayload: any = {
       success: true,
       content: responseContent,
-      source: responseSource, // Updated source based on logic
-      sources: (responseSource === 'tafsir_sources') ? [ // Only include sources if tafsir was used
+      source: responseSource,
+      sources: (responseSource === 'tafsir_sources') ? [
         {
           name: selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari',
           language: tafsirSources[selectedTafsir].language
         }
-      ] : []
-    });
+      ] : [],
+      isPremium: isPremiumUser
+    };
+
+    if (!isPremiumUser && userUsage) {
+      responsePayload.freeTierRemaining = Math.max(0, userUsage.freeTierQuestions.limit - userUsage.freeTierQuestions.count - (shouldIncrementUsage ? 1 : 0));
+      responsePayload.freeTierLimit = userUsage.freeTierQuestions.limit;
+    }
+
+    return res.json(responsePayload);
 
   } catch (error: any) {
-    // console.error('Error in tafsir chat route:', error);
     next(error);
   }
 }));
@@ -573,26 +580,99 @@ function processTafsirContent(content: string, maxTokens: number = 6000, isArabi
   return processedContent.trim();
 }
 
-// Modified getTafsirContent function with improved Arabic handling and error logging
-async function getTafsirContent(source: string, surah: string, verse: string): Promise<string> {
+/**
+ * Extracts only the tafsir sections belonging to the requested verse from a
+ * multi-verse HTML blob returned by QuranCDN.
+ *
+ * Two structural patterns exist in the data:
+ *
+ * Pattern A (long surahs like An-Nisa): Each H2 section covers ~1 verse.
+ *   totalH2Sections >= totalVerses. We keep sections until we hit a boundary.
+ *
+ * Pattern B (short surahs like Al-Inshiqaq): One H2 section covers many verses.
+ *   totalH2Sections < totalVerses. We can't split within a section, so we return
+ *   the full blob and let the AI prompt handle per-verse filtering.
+ */
+function extractVerseSection(html: string, surah: string, verse: string, allVerses: string[]): string {
+  const requestedVerseNum = parseInt(verse, 10);
+  const nextVerses = allVerses
+    .map(v => parseInt(v.split(':')[1], 10))
+    .filter(v => v > requestedVerseNum)
+    .sort((a, b) => a - b);
+
+  if (nextVerses.length === 0) return html;
+
+  const sections = html.split(/<h2>/i);
+  if (sections.length <= 1) return html;
+
+  const totalH2Sections = sections.length - 1;
+  const totalVerses = allVerses.length;
+
+  // Pattern B: fewer H2 sections than verses means each section covers multiple
+  // verses. We can't reliably split within a section at the code level, so
+  // return the full content and rely on the AI prompt's verse boundary rules.
+  if (totalH2Sections < totalVerses) {
+    return html;
+  }
+
+  // Pattern A: sections roughly map 1:1 to verses. Keep only the first verse's sections.
+  const keptSections: string[] = [];
+  if (sections[0].trim()) {
+    keptSections.push(sections[0]);
+  }
+
+  const estimatedSectionsForFirstVerse = Math.max(1, Math.floor(totalH2Sections / totalVerses));
+  let keepCount = estimatedSectionsForFirstVerse;
+
+  for (let i = estimatedSectionsForFirstVerse + 1; i < sections.length; i++) {
+    const closingIdx = sections[i].indexOf('</h2>');
+    const bodyText = closingIdx >= 0 ? sections[i].substring(closingIdx + 5) : '';
+    const bodyClean = bodyText.replace(/<[^>]+>/g, '').trim();
+
+    // "Allah said," at the start of a section body marks a new verse quotation
+    if (/^Allah(?:'s)?\s+(?:said|statement|command)/i.test(bodyClean)) {
+      break;
+    }
+    keepCount = i;
+  }
+
+  for (let i = 1; i <= keepCount; i++) {
+    keptSections.push('<h2>' + sections[i]);
+  }
+
+  return keptSections.join('');
+}
+
+interface TafsirResult {
+  content: string;
+  isPreProcessed: boolean;
+}
+
+async function getTafsirContent(source: string, surah: string, verse: string): Promise<TafsirResult> {
   try {
-    // console.log('Getting tafsir content for:', { source, surah, verse });
+    // Check pre-processed per-verse MongoDB cache first (best quality for AI chat)
+    const preProcessed = await TafsirVerse.findOne({
+      surah: parseInt(surah, 10),
+      verse: parseInt(verse, 10),
+      edition: source
+    });
+    if (preProcessed?.content) {
+      return { content: preProcessed.content, isPreProcessed: true };
+    }
     
-    // Try to get from cache first
+    // Fallback to in-memory cache
     const cacheKey = `${source}-${surah}-${verse}`;
     const cachedContent = await tafsirCacheService.get(cacheKey);
     if (cachedContent) {
-      // console.log('Found cached content:', { source, contentLength: cachedContent.length });
       const sourceConfig = tafsirSources[source];
       const isArabic = sourceConfig?.language === 'ar';
-      return processTafsirContent(cachedContent, 6000, isArabic);
+      return { content: processTafsirContent(cachedContent, 6000, isArabic), isPreProcessed: false };
     }
 
     // If not in cache, fetch from API
     const sourceConfig = tafsirSources[source];
     if (!sourceConfig) {
-      // console.error('Invalid tafsir source:', source);
-      return '';
+      return { content: '', isPreProcessed: false };
     }
 
     const isArabic = sourceConfig.language === 'ar';
@@ -617,12 +697,22 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
     // });
 
     if (!response.data?.tafsir?.text) {
-      // console.warn('No tafsir content found:', { source, surah, verse });
-      return '';
+      return { content: '', isPreProcessed: false };
+    }
+
+    let rawHtml = response.data.tafsir.text;
+
+    // Filter multi-verse content: the API often returns tafsir spanning multiple
+    // verses in a single blob. Use H2 section headings to extract only the portions
+    // that belong to the requested verse by checking the verses metadata.
+    const versesInResponse = response.data?.tafsir?.verses ? Object.keys(response.data.tafsir.verses) : [];
+    const requestedKey = `${surah}:${verse}`;
+    if (versesInResponse.length > 1 && versesInResponse.includes(requestedKey)) {
+      rawHtml = extractVerseSection(rawHtml, surah, verse, versesInResponse);
     }
 
     // Process the content
-    let cleanText = response.data.tafsir.text
+    let cleanText = rawHtml
       .replace(/<h2>/g, '\n\n')
       .replace(/<\/h2>/g, '\n')
       .replace(/<p>/g, '\n')
@@ -681,8 +771,7 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
         //   error: error instanceof Error ? error.message : String(error),
         //   stack: error instanceof Error ? error.stack : undefined
         // });
-        // Return the original cleaned text if Arabic processing fails
-        return cleanText;
+        return { content: cleanText, isPreProcessed: false };
       }
     }
 
@@ -703,18 +792,10 @@ async function getTafsirContent(source: string, surah: string, verse: string): P
       // console.log('Content cached:', { source, cacheKey });
     }
     
-    return processedContent;
+    return { content: processedContent, isPreProcessed: false };
 
   } catch (error) {
-    // console.error('Error in getTafsirContent:', {
-    //   source,
-    //   surah,
-    //   verse,
-    //   error: error instanceof Error ? error.message : String(error),
-    //   stack: error instanceof Error ? error.stack : undefined,
-    //   response: error instanceof Error && 'response' in error ? (error as any).response?.data : undefined
-    // });
-    return '';
+    return { content: '', isPreProcessed: false };
   }
 }
 

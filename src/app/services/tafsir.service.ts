@@ -26,22 +26,6 @@ export class TafsirService {
   private readonly CACHE_DURATION = 1000 * 60 * 60; // 1 hour
   private cacheTimestamps = new Map<string, number>();
 
-  // Local Somali tafsir (placeholder for future integration)
-  private localSomaliTafsir: TafsirEdition = {
-    id: 'somali-local-1',
-    name: 'Somali Tafsir',
-    nameArabic: 'تفسير الصومالي',
-    author: 'Local Scholar',
-    language: 'so',
-    description: 'Comprehensive Somali Tafsir (Coming Soon)',
-    difficulty: 'beginner',
-    source: 'local',
-    isOfflineAvailable: true,
-    isPremium: false,
-    lastUpdated: new Date(),
-    tags: ['somali', 'beginner', 'local']
-  };
-
   constructor(private http: HttpClient) {
     this.loadEditions();
   }
@@ -333,80 +317,7 @@ export class TafsirService {
         tags: ['classical', 'arabic', 'comprehensive'],
         rating: 4.9,
         downloads: 12000
-      },
-      {
-        id: 'en-jalalayn',
-        name: 'Tafsir al-Jalalayn',
-        nameArabic: 'تفسير الجلالين',
-        author: 'Jalal ad-Din al-Mahalli & as-Suyuti',
-        authorArabic: 'جلال الدين المحلي والسيوطي',
-        language: 'en',
-        description: 'Concise and accessible tafsir, perfect for beginners.',
-        difficulty: 'beginner',
-        source: 'qurancdn',
-        sourceId: 'en-tafsir-jalalayn',
-        isOfflineAvailable: false,
-        isPremium: false,
-        lastUpdated: new Date(),
-        tags: ['concise', 'beginner', 'accessible'],
-        rating: 4.6,
-        downloads: 8000
-      },
-      {
-        id: 'ar-tabari',
-        name: 'Tafsir al-Tabari',
-        nameArabic: 'تفسير الطبري',
-        author: 'Muhammad ibn Jarir al-Tabari',
-        authorArabic: 'محمد بن جرير الطبري',
-        language: 'ar',
-        description: 'One of the earliest and most comprehensive tafsir works.',
-        difficulty: 'advanced',
-        source: 'qurancdn',
-        sourceId: 'ar-tafsir-tabari',
-        isOfflineAvailable: false,
-        isPremium: true,
-        lastUpdated: new Date(),
-        tags: ['classical', 'comprehensive', 'scholarly'],
-        rating: 4.9,
-        downloads: 5000
-      },
-      {
-        id: 'ar-qurtubi',
-        name: 'Tafsir al-Qurtubi',
-        nameArabic: 'تفسير القرطبي',
-        author: 'Al-Qurtubi',
-        authorArabic: 'القرطبي',
-        language: 'ar',
-        description: 'Famous tafsir focusing on Quranic rulings and legal aspects.',
-        difficulty: 'advanced',
-        source: 'qurancdn',
-        sourceId: 'ar-tafsir-qurtubi',
-        isOfflineAvailable: false,
-        isPremium: true,
-        lastUpdated: new Date(),
-        tags: ['classical', 'fiqh', 'rulings'],
-        rating: 4.8,
-        downloads: 4500
-      },
-      {
-        id: 'ur-maududi',
-        name: 'Tafhim-ul-Quran (Urdu)',
-        nameArabic: 'تفهيم القرآن',
-        author: 'Abul Ala Maududi',
-        authorArabic: 'أبو الأعلى المودودي',
-        language: 'ur',
-        description: 'Modern tafsir with emphasis on contemporary issues.',
-        difficulty: 'intermediate',
-        source: 'local',
-        isOfflineAvailable: true,
-        isPremium: false,
-        lastUpdated: new Date(),
-        tags: ['modern', 'contemporary', 'urdu'],
-        rating: 4.7,
-        downloads: 3000
-      },
-      // Add Somali tafsir (placeholder)
-      this.localSomaliTafsir
+      }
     ];
 
     return of(editions);

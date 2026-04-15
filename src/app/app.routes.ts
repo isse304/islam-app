@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 // Import the functional guards
 import { authGuardFn } from './guards/auth.guard';
-import { premiumGuard } from './guards/premium.guard';
 import { NoAuthGuard } from './guards/no-auth.guard';
 import { premiumRedirectGuard } from './guards/premium-redirect.guard';
 import { assignmentGuard } from './guards/assignment.guard';
@@ -58,18 +57,18 @@ export const routes: Routes = [
   },
 
   // ============================================
-  // TAFSIR READER - KINDLE-STYLE (Public Access)
+  // TAFSIR EXPLORER - AUTHENTICATED ACCESS
   // ============================================
   
   {
     path: 'tafsir/browse',
     loadComponent: () => import('./components/tafsir/tafsir-library/tafsir-library.component').then(m => m.TafsirLibraryComponent),
-    canActivate: [softAuthGuard] // Public browsing
+    canActivate: [authGuardFn]
   },
   {
     path: 'tafsir/read/:editionId/:surah/:verse',
     loadComponent: () => import('./components/tafsir/tafsir-reader/tafsir-reader.component').then(m => m.TafsirReaderComponent),
-    canActivate: [softAuthGuard] // Public reading
+    canActivate: [authGuardFn]
   },
   {
     path: 'tafsir/read/:editionId/:surah',
@@ -79,17 +78,22 @@ export const routes: Routes = [
   {
     path: 'tafsir/bookmarks',
     loadComponent: () => import('./components/tafsir/tafsir-bookmarks/tafsir-bookmarks.component').then(m => m.TafsirBookmarksComponent),
-    canActivate: [softAuthGuard] // Bookmarks work offline too
+    canActivate: [authGuardFn]
   },
   {
     path: 'tafsir/notes',
     loadComponent: () => import('./components/tafsir/tafsir-notes/tafsir-notes.component').then(m => m.TafsirNotesComponent),
-    canActivate: [softAuthGuard] // Notes work offline too
+    canActivate: [authGuardFn]
   },
   {
     path: 'tafsir/highlights',
     loadComponent: () => import('./components/tafsir/tafsir-highlights/tafsir-highlights.component').then(m => m.TafsirHighlightsComponent),
-    canActivate: [softAuthGuard] // Highlights work offline too
+    canActivate: [authGuardFn]
+  },
+  {
+    path: 'tafsir/conversations',
+    loadComponent: () => import('./components/tafsir/tafsir-conversations/tafsir-conversations.component').then(m => m.TafsirConversationsComponent),
+    canActivate: [authGuardFn]
   },
   {
     path: 'tafsir',
@@ -117,24 +121,9 @@ export const routes: Routes = [
     // No guard - accessible to all (NoAuthGuard applied in auth module itself)
   },
 
-  // ============================================
-  // PREMIUM FEATURES (Login + Subscription Required)
-  // ============================================
-  
-  // AI Tafsir Teaser for anonymous users
-  {
-    path: 'ai-tafsir',
-    loadComponent: () => import('./components/ai-tafsir-teaser/ai-tafsir-teaser.component').then(m => m.AiTafsirTeaserComponent),
-    // Public - shows what users will get with premium
-  },
-
-  // AI Tafsir Chat - Premium feature (shows teaser for non-premium users)
-  {
-    path: 'learn',
-    loadComponent: () => import('./components/learn/learn.component').then(m => m.LearnComponent),
-    canActivate: [premiumGuard], // Updated guard checks auth first, then premium
-    data: { feature: 'AI Tafsir Chat', showTeaser: true } // Show teaser instead of subscription page
-  },
+  // Legacy redirects for removed AI Tafsir standalone routes
+  { path: 'ai-tafsir', redirectTo: 'tafsir/browse', pathMatch: 'full' },
+  { path: 'learn', redirectTo: 'tafsir/browse', pathMatch: 'full' },
 
   // ============================================
   // AUTHENTICATED USER ROUTES
@@ -149,7 +138,7 @@ export const routes: Routes = [
   {
     path: 'subscription',
     loadComponent: () => import('./components/subscription/subscription.component').then(m => m.SubscriptionComponent),
-    canActivate: [authGuardFn, premiumRedirectGuard] // Requires login
+    canActivate: [premiumRedirectGuard]
   },
 
   // ============================================

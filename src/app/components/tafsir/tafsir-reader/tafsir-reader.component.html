@@ -2,145 +2,58 @@
   
   <!-- Top Toolbar -->
   <header class="reader-toolbar" *ngIf="!focusMode">
+    <!-- Left: Navigation + Location -->
     <div class="toolbar-left">
-      <button mat-icon-button (click)="goToLibrary()" 
-              matTooltip="Back to Library">
+      <button mat-icon-button (click)="goToLibrary()" matTooltip="Back to Library" class="tb-btn">
         <mat-icon>arrow_back</mat-icon>
       </button>
-      <button mat-icon-button routerLink="/home" 
-              matTooltip="Home">
-        <mat-icon>home</mat-icon>
-      </button>
-      
-      <div class="edition-info" *ngIf="edition">
-        <h3>{{ edition.name }}</h3>
-        <div class="surah-selector">
-          <mat-form-field appearance="outline" class="compact-field">
-            <mat-label>Surah</mat-label>
-            <mat-select [(ngModel)]="currentSurah" (selectionChange)="onSurahChange()">
-              <mat-option *ngFor="let surah of (surahs$ | async)" [value]="surah.number">
-                {{ surah.number }}. {{ surah.englishName }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
-          
-          <mat-form-field appearance="outline" class="compact-field verse-selector">
-            <mat-label>Verse</mat-label>
-            <mat-select [(ngModel)]="currentVerse" (selectionChange)="onVerseChange()">
-              <mat-option *ngFor="let verseNum of getVerseNumbers()" [value]="verseNum">
-                {{ verseNum }}
-              </mat-option>
-            </mat-select>
-          </mat-form-field>
+
+      <div class="toolbar-location" *ngIf="edition">
+        <span class="toolbar-edition">{{ edition.name }}</span>
+        <span class="toolbar-sep">|</span>
+        <div class="toolbar-selects">
+          <select class="toolbar-select"
+                  [(ngModel)]="currentSurah"
+                  (ngModelChange)="onSurahChange()">
+            <option *ngFor="let surah of (surahs$ | async)" [ngValue]="surah.number">
+              {{ surah.number }}. {{ surah.englishName }}
+            </option>
+          </select>
+          <span class="toolbar-colon">:</span>
+          <select class="toolbar-select toolbar-select--verse"
+                  [(ngModel)]="currentVerse"
+                  (ngModelChange)="onVerseChange()">
+            <option *ngFor="let verseNum of getVerseNumbers()" [ngValue]="verseNum">
+              {{ verseNum }}
+            </option>
+          </select>
         </div>
       </div>
     </div>
 
+    <!-- Right: Primary actions + overflow -->
     <div class="toolbar-right">
-      <!-- Theme Toggle -->
-      <button mat-icon-button [matMenuTriggerFor]="themeMenu" 
-              matTooltip="Theme (D)">
-        <mat-icon>{{
-          preferences.theme === 'light' ? 'light_mode' :
-          preferences.theme === 'dark' ? 'dark_mode' :
-          preferences.theme === 'sepia' ? 'auto_stories' : 'nightlight'
-        }}</mat-icon>
-      </button>
-      <mat-menu #themeMenu="matMenu">
-        <button mat-menu-item *ngFor="let theme of themes" 
-                (click)="changeTheme(theme.value)">
-          <span>{{ theme.icon }} {{ theme.label }}</span>
-        </button>
-      </mat-menu>
-
-      <!-- Typography -->
-      <button mat-icon-button [matMenuTriggerFor]="typographyMenu" 
-              matTooltip="Typography (T)">
-        <mat-icon>text_fields</mat-icon>
-      </button>
-      <mat-menu #typographyMenu="matMenu" class="typography-menu">
-        <div class="typography-controls" (click)="$event.stopPropagation()">
-          <div class="control-group">
-            <label>Font Family</label>
-            <mat-select [(ngModel)]="preferences.fontFamily" 
-                       (ngModelChange)="changeFontFamily($event)">
-              <mat-option *ngFor="let font of fontFamilies" [value]="font.value">
-                {{ font.label }}
-              </mat-option>
-            </mat-select>
-          </div>
-
-          <div class="control-group">
-            <label>Font Size: {{ preferences.fontSize }}px</label>
-            <mat-slider min="14" max="26" step="1" discrete>
-              <input matSliderThumb [(ngModel)]="preferences.fontSize"
-                     (ngModelChange)="changeFontSize($event)">
-            </mat-slider>
-          </div>
-
-          <div class="control-group">
-            <label>Line Height: {{ preferences.lineHeight }}</label>
-            <mat-slider min="1.0" max="2.5" step="0.1" discrete>
-              <input matSliderThumb [(ngModel)]="preferences.lineHeight"
-                     (ngModelChange)="changeLineHeight($event)">
-            </mat-slider>
-          </div>
-
-          <div class="control-group">
-            <label>Page Width: {{ preferences.maxWidth }}px</label>
-            <mat-slider min="600" max="900" step="50" discrete>
-              <input matSliderThumb [(ngModel)]="preferences.maxWidth"
-                     (ngModelChange)="changeMaxWidth($event)">
-            </mat-slider>
-          </div>
-        </div>
-      </mat-menu>
-
-      <!-- Bookmark Button -->
+      <!-- Bookmark toggle -->
       <button mat-icon-button 
               (click)="toggleBookmarkCurrent()" 
-              [color]="isBookmarkedCurrent ? 'accent' : ''"
-              matTooltip="Bookmark this verse (B)">
+              [class.active-accent]="isBookmarkedCurrent"
+              matTooltip="Bookmark (B)" class="tb-btn">
         <mat-icon>{{ isBookmarkedCurrent ? 'bookmark' : 'bookmark_border' }}</mat-icon>
-        <span class="badge" *ngIf="getBookmarkCount() > 1">{{ getBookmarkCount() }}</span>
       </button>
 
-      <!-- Notes Button -->
+      <!-- Notes toggle -->
       <button mat-icon-button 
               (click)="toggleNotesPanel()" 
-              [color]="showNotesPanel ? 'accent' : ''"
-              matTooltip="Add Note (N)">
+              [class.active-accent]="showNotesPanel"
+              matTooltip="Notes (N)" class="tb-btn">
         <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
-        <span class="badge" *ngIf="getNoteCount() > 0">{{ getNoteCount() }}</span>
       </button>
 
-      <!-- View All Bookmarks -->
-      <button mat-icon-button 
-              (click)="viewBookmarks()" 
-              matTooltip="View All Bookmarks">
-        <mat-icon>bookmarks</mat-icon>
-      </button>
-
-      <!-- View All Notes -->
-      <button mat-icon-button 
-              (click)="viewNotes()" 
-              matTooltip="View All Notes">
-        <mat-icon>sticky_note_2</mat-icon>
-      </button>
-
-      <!-- View All Highlights -->
-      <button mat-icon-button 
-              (click)="viewHighlights()" 
-              matTooltip="View All Highlights">
-        <mat-icon>format_color_fill</mat-icon>
-      </button>
-
-      <!-- Highlight Color Selector -->
+      <!-- Highlight color quick-pick -->
       <button mat-icon-button 
               [matMenuTriggerFor]="highlightMenu" 
-              matTooltip="Highlight Color (H)">
+              matTooltip="Highlight color" class="tb-btn">
         <mat-icon [style.color]="getHighlightColorHex(selectedHighlightColor)">format_color_fill</mat-icon>
-        <span class="highlight-badge" *ngIf="getHighlightCount() > 0">{{ getHighlightCount() }}</span>
       </button>
       <mat-menu #highlightMenu="matMenu" class="highlight-menu-dropdown">
         <div class="highlight-colors-grid" (click)="$event.stopPropagation()">
@@ -155,30 +68,116 @@
         </div>
       </mat-menu>
 
-      <!-- Split View Toggle -->
-      <button mat-icon-button (click)="toggleSplitView()" 
-              [class.active]="splitViewMode"
-              matTooltip="Split View (S)">
-        <mat-icon>view_sidebar</mat-icon>
+      <!-- Theme -->
+      <button mat-icon-button [matMenuTriggerFor]="themeMenu" 
+              matTooltip="Theme (D)" class="tb-btn">
+        <mat-icon>{{
+          preferences.theme === 'light' ? 'light_mode' :
+          preferences.theme === 'dark' ? 'dark_mode' :
+          preferences.theme === 'sepia' ? 'auto_stories' : 'nightlight'
+        }}</mat-icon>
       </button>
+      <mat-menu #themeMenu="matMenu">
+        <button mat-menu-item *ngFor="let theme of themes" 
+                (click)="changeTheme(theme.value)">
+          <span>{{ theme.icon }} {{ theme.label }}</span>
+        </button>
+      </mat-menu>
 
-      <!-- Link to Quran Reader -->
-      <button mat-icon-button (click)="openInQuranReader()" 
-              matTooltip="Open in Quran Reader (Q)">
-        <mat-icon>open_in_new</mat-icon>
+      <!-- Overflow "More" Menu -->
+      <button mat-icon-button [matMenuTriggerFor]="moreMenu" 
+              matTooltip="More options" class="tb-btn">
+        <mat-icon>more_vert</mat-icon>
       </button>
+      <mat-menu #moreMenu="matMenu">
+        <!-- Typography -->
+        <button mat-menu-item [matMenuTriggerFor]="typographyMenu">
+          <mat-icon>text_fields</mat-icon>
+          <span>Typography</span>
+        </button>
 
-      <!-- Focus Mode -->
-      <button mat-icon-button (click)="toggleFocusMode()" 
-              matTooltip="Focus Mode (F)">
-        <mat-icon>fullscreen</mat-icon>
-      </button>
+        <mat-divider></mat-divider>
 
-      <!-- Settings -->
-      <button mat-icon-button [matMenuTriggerFor]="settingsMenu" 
-              matTooltip="Settings">
-        <mat-icon>settings</mat-icon>
-      </button>
+        <!-- View toggles -->
+        <button mat-menu-item (click)="toggleSplitView()">
+          <mat-icon>view_sidebar</mat-icon>
+          <span>{{ splitViewMode ? 'Single View' : 'Split View' }}</span>
+        </button>
+        <button mat-menu-item (click)="toggleFocusMode()">
+          <mat-icon>fullscreen</mat-icon>
+          <span>Focus Mode</span>
+        </button>
+        <button mat-menu-item (click)="openInQuranReader()">
+          <mat-icon>open_in_new</mat-icon>
+          <span>Open in Quran Reader</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Browse pages -->
+        <button mat-menu-item (click)="viewBookmarks()">
+          <mat-icon>bookmarks</mat-icon>
+          <span>All Bookmarks</span>
+        </button>
+        <button mat-menu-item (click)="viewNotes()">
+          <mat-icon>sticky_note_2</mat-icon>
+          <span>All Notes</span>
+        </button>
+        <button mat-menu-item (click)="viewHighlights()">
+          <mat-icon>format_color_fill</mat-icon>
+          <span>All Highlights</span>
+        </button>
+
+        <mat-divider></mat-divider>
+
+        <!-- Settings sub-menu -->
+        <button mat-menu-item [matMenuTriggerFor]="settingsMenu">
+          <mat-icon>settings</mat-icon>
+          <span>Settings</span>
+        </button>
+        <button mat-menu-item routerLink="/home">
+          <mat-icon>home</mat-icon>
+          <span>Home</span>
+        </button>
+      </mat-menu>
+
+      <!-- Typography sub-menu -->
+      <mat-menu #typographyMenu="matMenu" class="typography-menu">
+        <div class="typography-controls" (click)="$event.stopPropagation()">
+          <div class="control-group">
+            <label>Font Family</label>
+            <mat-select [(ngModel)]="preferences.fontFamily" 
+                       (ngModelChange)="changeFontFamily($event)">
+              <mat-option *ngFor="let font of fontFamilies" [value]="font.value">
+                {{ font.label }}
+              </mat-option>
+            </mat-select>
+          </div>
+          <div class="control-group">
+            <label>Font Size: {{ preferences.fontSize }}px</label>
+            <mat-slider min="14" max="26" step="1" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.fontSize"
+                     (ngModelChange)="changeFontSize($event)">
+            </mat-slider>
+          </div>
+          <div class="control-group">
+            <label>Line Height: {{ preferences.lineHeight }}</label>
+            <mat-slider min="1.0" max="2.5" step="0.1" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.lineHeight"
+                     (ngModelChange)="changeLineHeight($event)">
+            </mat-slider>
+          </div>
+          <div class="control-group">
+            <label>Page Width: {{ preferences.maxWidth }}px</label>
+            <mat-slider min="600" max="900" step="50" discrete>
+              <input matSliderThumb [(ngModel)]="preferences.maxWidth"
+                     (ngModelChange)="changeMaxWidth($event)">
+            </mat-slider>
+          </div>
+        </div>
+      </mat-menu>
+
+      <!-- Settings sub-menu -->
       <mat-menu #settingsMenu="matMenu">
         <div class="settings-panel" (click)="$event.stopPropagation()">
           <mat-slide-toggle [(ngModel)]="preferences.showArabicVerse"
@@ -333,9 +332,9 @@
       <div class="empty-state" *ngIf="!tafsirContent && !isLoadingVerse">
         <mat-icon>auto_stories</mat-icon>
         <h3>No Tafsir Available</h3>
-        <p>Tafsir for this verse is not available in the selected edition.</p>
+        <p>Tafsir for this verse is not available yet. Try a different verse.</p>
         <button mat-raised-button color="primary" (click)="router.navigate(['/tafsir/browse'])">
-          Browse Other Editions
+          Back to Library
         </button>
       </div>
     </div>
@@ -536,3 +535,12 @@
   </div>
 
 </div>
+
+<!-- AI Chat Bubble -->
+<app-tafsir-chat-bubble
+  [surah]="currentSurah"
+  [verse]="currentVerse"
+  [editionId]="editionId"
+  [surahName]="getSurahName()"
+  [autoOpen]="openChatOnLoad">
+</app-tafsir-chat-bubble>
