@@ -235,18 +235,19 @@
       </div>
   
       <!-- Category Selector -->
-      <div class="flex flex-wrap justify-center gap-4 mb-8">
-        <button *ngFor="let category of categories"
-                (click)="onCategoryChange(category)"
-                class="px-6 py-2 rounded-lg shadow-md transition-colors capitalize"
-                [class.bg-[#B7A57A]]="selectedCategory === category"
-                [class.text-white]="selectedCategory === category"
-                [class.bg-white]="selectedCategory !== category"
-                [class.text-[#B7A57A]]="selectedCategory !== category"
-                [class.ring-2]="['morning', 'evening'].includes(category)"
-                [class.ring-[#B7A57A]]="['morning', 'evening'].includes(category)">
-          {{category}} Duas
-        </button>
+      <div class="category-scroll-container mb-6 sm:mb-8">
+        <div class="category-chips flex flex-wrap sm:flex-wrap justify-center gap-2 sm:gap-3">
+          <button *ngFor="let category of categories"
+                  (click)="onCategoryChange(category)"
+                  class="category-chip px-4 sm:px-6 py-2 rounded-full shadow-sm sm:shadow-md transition-all duration-200 capitalize text-sm sm:text-base font-medium"
+                  [ngClass]="{
+                    'category-chip-active': selectedCategory === category,
+                    'category-chip-inactive': selectedCategory !== category,
+                    'category-chip-highlight': isHighlightedCategory(category)
+                  }">
+            {{category}} Duas
+          </button>
+        </div>
       </div>
   
       <!-- Loading State for Duas -->
@@ -266,30 +267,60 @@
       </div>
   
       <!-- Duas List -->
-      <div *ngIf="!isLoadingDuas && !error" class="space-y-6">
+      <div *ngIf="!isLoadingDuas && !error" class="space-y-4 sm:space-y-6">
         <div *ngFor="let dua of filteredDuas" class="dua-card">
-          <div class="flex justify-between items-start mb-4">
+          <div class="flex justify-between items-start mb-3 sm:mb-4">
             <h3 class="dua-title">{{ dua.title }}</h3>
-            <span class="dua-reference">{{ dua.reference }}</span>
+            <span class="dua-reference text-xs sm:text-sm">{{ dua.reference }}</span>
           </div>
           
-          <div class="space-y-4">
-            <!-- Arabic Text -->
-            <div class="arabic-text" [style.fontSize.px]="fontSize">
-              {{ dua.arabic }}
-            </div>
-            
-            <!-- Transliteration -->
-            <p class="dua-transliteration">{{ dua.transliteration }}</p>
-            
-            <!-- Translation -->
-            <p class="dua-translation">{{ dua.translation }}</p>
+          <div class="space-y-3 sm:space-y-4">
+            <!-- Three Quls: Show surah names instead of full text -->
+            <ng-container *ngIf="isThreeQuls(dua); else normalDua">
+              <div class="surah-reference-card bg-[#fcfaf5] border-2 border-[#B7A57A]/30 rounded-xl p-4 sm:p-6">
+                <p class="text-sm sm:text-base text-gray-600 mb-3">Recite the following three surahs:</p>
+                <div class="space-y-2">
+                  <div class="surah-list-item flex items-center gap-3 py-2 border-b border-[#B7A57A]/10 last:border-0">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-[#B7A57A]/15 text-[#B7A57A] text-sm font-bold">1</span>
+                    <div>
+                      <span class="font-semibold text-[#2c3e50]">Surah Al-Ikhlas</span>
+                      <span class="text-gray-500 text-sm ml-1">(112)</span>
+                    </div>
+                  </div>
+                  <div class="surah-list-item flex items-center gap-3 py-2 border-b border-[#B7A57A]/10 last:border-0">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-[#B7A57A]/15 text-[#B7A57A] text-sm font-bold">2</span>
+                    <div>
+                      <span class="font-semibold text-[#2c3e50]">Surah Al-Falaq</span>
+                      <span class="text-gray-500 text-sm ml-1">(113)</span>
+                    </div>
+                  </div>
+                  <div class="surah-list-item flex items-center gap-3 py-2 border-b border-[#B7A57A]/10 last:border-0">
+                    <span class="flex items-center justify-center w-8 h-8 rounded-full bg-[#B7A57A]/15 text-[#B7A57A] text-sm font-bold">3</span>
+                    <div>
+                      <span class="font-semibold text-[#2c3e50]">Surah An-Nas</span>
+                      <span class="text-gray-500 text-sm ml-1">(114)</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ng-container>
+
+            <!-- Normal Dua Display -->
+            <ng-template #normalDua>
+              <div class="arabic-text" [style.fontSize.px]="fontSize">
+                {{ dua.arabic }}
+              </div>
+              
+              <p class="dua-transliteration">{{ dua.transliteration }}</p>
+              
+              <p class="dua-translation">{{ dua.translation }}</p>
+            </ng-template>
 
             <!-- Recitation Count -->
-            <div class="mt-4 flex items-center text-sm text-gray-600">
-              <span class="font-medium mr-2">Recite:</span>
+            <div class="mt-3 sm:mt-4 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-gray-600">
+              <span class="font-medium">Recite:</span>
               <span class="bg-[#B7A57A]/10 px-2 py-1 rounded">{{dua.recitationCount}} times</span>
-              <span class="ml-2">{{dua.time}}</span>
+              <span *ngIf="dua.time" class="text-gray-500">{{dua.time}}</span>
             </div>
 
             <!-- Virtue -->
@@ -298,10 +329,10 @@
             </div>
 
             <!-- AI Insights Button -->
-            <div class="mt-4 relative">
+            <div class="mt-3 sm:mt-4 relative">
               <button 
                 (click)="onDuaSelect(dua)"
-                class="w-full py-2 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors"
+                class="w-full py-2.5 px-4 bg-[#B7A57A] text-white rounded-lg hover:bg-[#9b8a65] transition-colors text-sm sm:text-base"
                 [class.opacity-75]="!(firebaseAuthService.user$ | async)?.isPremium"
                 [class.pointer-events-none]="!(firebaseAuthService.user$ | async)?.isPremium">
                 <i class="fas fa-robot mr-2"></i>
@@ -313,9 +344,9 @@
                    class="absolute inset-0 bg-black/20 backdrop-blur-[2px] rounded-lg flex items-center justify-center cursor-pointer"
                    [appPremiumHoverPreview]="duaInsightsPreview"
                    (click)="$event.stopPropagation(); subscriptionService.showSubscriptionPage('AI Insights')">
-                <div class="flex items-center gap-2 bg-black/50 px-4 py-2 rounded-lg hover:bg-black/70 transition-all backdrop-blur-sm">
+                <div class="flex items-center gap-2 bg-black/50 px-3 sm:px-4 py-2 rounded-lg hover:bg-black/70 transition-all backdrop-blur-sm">
                   <i class="fas fa-lock text-white"></i>
-                  <span class="text-white text-sm font-semibold">Hover for Preview</span>
+                  <span class="text-white text-xs sm:text-sm font-semibold">Hover for Preview</span>
                 </div>
               </div>
             </div>
@@ -388,7 +419,7 @@
 
   .arabic-text {
     font-size: 24px;
-    line-height: 1.6;
+    line-height: 3.6;
     text-align: right;
     direction: rtl;
     margin-bottom: 12px;

@@ -611,5 +611,124 @@
       "time": "When starting a journey",
       "emotion": ["anxious", "hopeful", "seeking protection"]
     }
+  ],
+  "marriage": [
+    {
+      "id": 100,
+      "title": "Dua When Seeing a Potential Spouse",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَهَا وَخَيْرَ مَا جَبَلْتَهَا عَلَيْهِ، وَأَعُوذُ بِكَ مِنْ شَرِّهَا وَشَرِّ مَا جَبَلْتَهَا عَلَيْهِ",
+      "translation": "O Allah, I ask You for the goodness within her and the goodness that You have made her inclined towards, and I seek refuge with You from the evil within her and the evil that You have made her inclined towards.",
+      "transliteration": "Allahumma inni as'aluka khayrahaa wa khayra ma jabaltahaa 'alayh, wa a'udhu bika min sharrihaa wa sharri ma jabaltahaa 'alayh",
+      "reference": "Abu Dawud, Ibn Majah",
+      "category": "marriage",
+      "recitationCount": 1,
+      "virtue": "The Prophet (peace be upon him) recommended this dua when one intends to marry someone.",
+      "time": "When considering marriage",
+      "emotion": ["hopeful", "excited", "nervous", "seeking guidance"]
+    },
+    {
+      "id": 101,
+      "title": "Istikhara for Marriage",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْتَخِيرُكَ بِعِلْمِكَ وَأَسْتَقْدِرُكَ بِقُدْرَتِكَ وَأَسْأَلُكَ مِنْ فَضْلِكَ الْعَظِيمِ فَإِنَّكَ تَقْدِرُ وَلَا أَقْدِرُ وَتَعْلَمُ وَلَا أَعْلَمُ وَأَنْتَ عَلَّامُ الْغُيُوبِ",
+      "translation": "O Allah, I seek Your guidance by virtue of Your knowledge, and I seek ability by virtue of Your power, and I ask You of Your great bounty. You have power; I have none. And You know; I know not. You are the Knower of hidden things.",
+      "transliteration": "Allahumma inni astakhiruka bi 'ilmika wa astaqdiruka bi qudratika wa as'aluka min fadlikal-'adhim, fa innaka taqdiru wa la aqdiru wa ta'lamu wa la a'lamu wa anta 'allamul-ghuyub",
+      "reference": "Bukhari",
+      "category": "marriage",
+      "recitationCount": 1,
+      "virtue": "The Prophet (peace be upon him) used to teach the companions istikhara for all matters, including marriage.",
+      "time": "After praying two rak'ahs",
+      "emotion": ["uncertain", "seeking guidance", "hopeful", "anxious", "trusting"]
+    },
+    {
+      "id": 102,
+      "title": "Dua for a Righteous Spouse",
+      "arabic": "رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا",
+      "translation": "Our Lord, grant us from among our spouses and offspring comfort to our eyes and make us a leader for the righteous.",
+      "transliteration": "Rabbana hab lana min azwajina wa dhurriyyatina qurrata a'yunin waj'alna lil-muttaqina imama",
+      "reference": "Quran 25:74",
+      "category": "marriage",
+      "recitationCount": 3,
+      "virtue": "One of the most beloved duas to Allah for family and marriage, mentioned in the Quran as a quality of the servants of the Most Merciful.",
+      "time": "Any time, especially after obligatory prayers",
+      "emotion": ["hopeful", "longing", "grateful", "seeking blessings"]
+    },
+    {
+      "id": 103,
+      "title": "Blessing for the Newlywed",
+      "arabic": "بَارَكَ اللَّهُ لَكَ وَبَارَكَ عَلَيْكَ وَجَمَعَ بَيْنَكُمَا فِي خَيْرٍ",
+      "translation": "May Allah bless you, and shower His blessings upon you, and join you together in goodness.",
+      "transliteration": "Barakallahu laka wa baraka 'alayka wa jama'a baynakuma fi khayr",
+      "reference": "Abu Dawud, Tirmidhi",
+      "category": "marriage",
+      "recitationCount": 1,
+      "virtue": "The Prophet (peace be upon him) used to say this when congratulating someone on their marriage.",
+      "time": "At the time of marriage/wedding",
+      "emotion": ["joyful", "grateful", "excited", "blessed"]
+    },
+    {
+      "id": 104,
+      "title": "Dua on Wedding Night",
+      "arabic": "اللَّهُمَّ إِنِّي أَسْأَلُكَ خَيْرَهَا وَخَيْرَ مَا جَبَلْتَهَا عَلَيْهِ وَأَعُوذُ بِكَ مِنْ شَرِّهَا وَمِنْ شَرِّ مَا جَبَلْتَهَا عَلَيْهِ",
+      "translation": "O Allah, I ask You for the good in her and the good You have created in her nature, and I seek refuge in You from the evil in her and the evil You have created in her nature.",
+      "transliteration": "Allahumma inni as'aluka khayrahaa wa khayra maa jabaltahaa 'alayhi, wa a'udhu bika min sharrihaa wa min sharri maa jabaltahaa 'alayh",
+      "reference": "Abu Dawud",
+      "category": "marriage",
+      "recitationCount": 1,
+      "virtue": "Placing one's hand on the forehead of the spouse and reciting this dua brings blessings to the marriage.",
+      "time": "Wedding night",
+      "emotion": ["hopeful", "nervous", "seeking blessings", "grateful"]
+    },
+    {
+      "id": 105,
+      "title": "Dua for Love and Mercy Between Spouses",
+      "arabic": "رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ",
+      "translation": "Our Lord, give us in this world that which is good and in the Hereafter that which is good, and protect us from the punishment of the Fire.",
+      "transliteration": "Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina 'adhab an-nar",
+      "reference": "Quran 2:201",
+      "category": "marriage",
+      "recitationCount": 3,
+      "virtue": "A comprehensive dua asking for goodness in this life (including a good spouse) and the Hereafter. The Prophet (peace be upon him) used to make this dua frequently.",
+      "time": "After every salah",
+      "emotion": ["hopeful", "grateful", "seeking goodness"]
+    },
+    {
+      "id": 106,
+      "title": "Dua for Harmony in Marriage",
+      "arabic": "اللَّهُمَّ أَلِّفْ بَيْنَ قُلُوبِنَا وَأَصْلِحْ ذَاتَ بَيْنِنَا وَاهْدِنَا سُبُلَ السَّلَامِ",
+      "translation": "O Allah, bring our hearts together, reconcile between us, guide us to paths of peace, and deliver us from darkness into light.",
+      "transliteration": "Allahumma allif bayna quloobina wa aslih dhata baynina wahdina subulas-salam",
+      "reference": "Abu Dawud",
+      "category": "marriage",
+      "recitationCount": 1,
+      "virtue": "Asking Allah to unite hearts and bring peace between spouses, rectifying their relationship.",
+      "time": "Any time",
+      "emotion": ["seeking peace", "hopeful", "troubled", "seeking reconciliation"]
+    },
+    {
+      "id": 107,
+      "title": "Dua for Righteous Offspring",
+      "arabic": "رَبِّ هَبْ لِي مِنْ لَدُنْكَ ذُرِّيَّةً طَيِّبَةً إِنَّكَ سَمِيعُ الدُّعَاءِ",
+      "translation": "My Lord, grant me from Yourself good offspring. Indeed, You are the Hearer of supplication.",
+      "transliteration": "Rabbi hab li min ladunka dhurriyyatan tayyibatan innaka sami'ud-du'a",
+      "reference": "Quran 3:38",
+      "category": "marriage",
+      "recitationCount": 3,
+      "virtue": "The dua of Prophet Zakariyya (peace be upon him) asking Allah for righteous children. Allah answered his prayer and blessed him with Prophet Yahya.",
+      "time": "Any time, especially in the last third of the night",
+      "emotion": ["longing", "hopeful", "patient", "trusting"]
+    },
+    {
+      "id": 108,
+      "title": "Dua for Steadfastness in Prayer & Family",
+      "arabic": "رَبِّ اجْعَلْنِي مُقِيمَ الصَّلَاةِ وَمِنْ ذُرِّيَّتِي ۚ رَبَّنَا وَتَقَبَّلْ دُعَاءِ ﴿٤٠﴾ رَبَّنَا اغْفِرْ لِي وَلِوَالِدَيَّ وَلِلْمُؤْمِنِينَ يَوْمَ يَقُومُ الْحِسَابُ ﴿٤١﴾",
+      "translation": "My Lord, make me an establisher of prayer, and from my descendants. Our Lord, and accept my supplication. Our Lord, forgive me and my parents and the believers the Day the account is established.",
+      "transliteration": "Rabbi ij'alni muqimas-salati wa min dhurriyyati, Rabbana wa taqabbal du'a. Rabbana-ghfir li wa li walidayya wa lil-mu'minina yawma yaqumul-hisab",
+      "reference": "Quran 14:40-41",
+      "category": "marriage",
+      "recitationCount": 3,
+      "virtue": "The dua of Prophet Ibrahim (peace be upon him) asking Allah to make him and his descendants steadfast in prayer. A profound supplication for a family rooted in worship.",
+      "time": "After every salah, especially in sujood",
+      "emotion": ["hopeful", "devoted", "seeking guidance", "grateful", "prayerful"]
+    }
   ]
-} 
+}

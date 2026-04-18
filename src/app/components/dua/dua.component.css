@@ -1,7 +1,7 @@
 .arabic-text {
   font-family: 'Scheherazade', 'Traditional Arabic', 'Amiri', serif;
   font-size: 2.5rem;
-  line-height: 2.5;
+  line-height: 3.6;
   text-align: right;
   direction: rtl;
   color: #1a1a1a;
@@ -12,6 +12,8 @@
   border-radius: 12px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
+  word-spacing: 0.2em;
+  letter-spacing: 0.03em;
 }
 
 .arabic-text:hover {
@@ -243,6 +245,134 @@ button:active {
   color: #4a5568;
 }
 
+/* Category Chips */
+.category-chip-active {
+  background-color: #B7A57A;
+  color: white;
+  box-shadow: 0 4px 12px rgba(183, 165, 122, 0.4);
+}
+
+.category-chip-inactive {
+  background-color: white;
+  color: #B7A57A;
+}
+
+.category-chip-inactive:hover {
+  background-color: rgba(183, 165, 122, 0.1);
+}
+
+.category-chip-highlight {
+  ring: 2px;
+  box-shadow: 0 0 0 2px rgba(183, 165, 122, 0.5);
+}
+
+/* Surah Reference Card */
+.surah-reference-card {
+  transition: all 0.3s ease;
+}
+
+.surah-reference-card:hover {
+  border-color: rgba(183, 165, 122, 0.6);
+}
+
+/* Mobile Responsive */
+@media (max-width: 640px) {
+  .arabic-text {
+    font-size: 1.5rem;
+    line-height: 3.8;
+    padding: 1rem 0.75rem;
+    margin: 1rem 0;
+    word-spacing: 0.25em;
+    letter-spacing: 0.03em;
+  }
+
+  .dua-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 10px;
+  }
+
+  .dua-title {
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .dua-translation {
+    font-size: 0.95rem;
+    margin: 0.75rem 0;
+    line-height: 1.5;
+  }
+
+  .dua-transliteration {
+    font-size: 0.85rem;
+    margin: 0.5rem 0;
+  }
+
+  .dua-reference {
+    font-size: 0.8rem;
+  }
+
+  .dua-virtue {
+    font-size: 0.9rem;
+    padding: 0.4rem;
+  }
+
+  .search-section {
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .category-scroll-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 0.5rem;
+    margin: 0 -1rem;
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .category-scroll-container::-webkit-scrollbar {
+    display: none;
+  }
+
+  .category-scroll-container .category-chips {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+    width: max-content;
+  }
+
+  .category-scroll-container .category-chip {
+    flex-shrink: 0;
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
+  }
+
+  .surah-list-item {
+    font-size: 1rem;
+    padding: 0.6rem 0;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 768px) {
+  .arabic-text {
+    font-size: 2rem;
+    line-height: 3.6;
+    padding: 1.5rem;
+  }
+
+  .dua-card {
+    padding: 1.25rem;
+  }
+
+  .dua-title {
+    font-size: 1.3rem;
+  }
+}
+
 /* Dark Mode Overrides */
 .dark app-dua {
   .min-h-screen,
@@ -293,6 +423,27 @@ button:active {
   .arabic-text:hover {
     border-color: rgba(183, 165, 122, 0.7);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .surah-reference-card {
+    background-color: #1A365D !important;
+    border-color: rgba(183, 165, 122, 0.4) !important;
+  }
+
+  .surah-reference-card p {
+    color: #9ca3af !important;
+  }
+
+  .surah-reference-card .font-semibold {
+    color: #FAF3E0 !important;
+  }
+
+  .surah-reference-card .text-gray-500 {
+    color: #6b7280 !important;
+  }
+
+  .surah-reference-card .border-b {
+    border-color: rgba(183, 165, 122, 0.2) !important;
   }
 
   .search-section {
@@ -417,6 +568,19 @@ button:active {
     color: #1A365D !important;
     &:hover {
       background-color: darken(#B7A57A, 5%) !important;
+    }
+  }
+
+  .category-chip-active {
+    background-color: #B7A57A !important;
+    color: #1A365D !important;
+  }
+
+  .category-chip-inactive {
+    background-color: #3A5F8A !important;
+    color: #B7A57A !important;
+    &:hover {
+      background-color: #2A4365 !important;
     }
   }
 } 

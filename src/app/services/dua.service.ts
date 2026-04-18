@@ -11,7 +11,7 @@ import { FirebaseAuthService } from './firebase-auth.service';
 import duaInsightsData from '../../../server/data/dua-insights.json';
 import emotionalDuasJson from '../../../server/data/emotional-duas.json';
 
-export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness';
+export type DuaCategory = 'morning' | 'evening' | 'protection' | 'forgiveness' | 'anxiety' | 'general' | 'sleep' | 'travel' | 'eating' | 'hardship' | 'gratitude' | 'guidance' | 'sadness' | 'marriage';
 
 export interface Dua {
   id: number;

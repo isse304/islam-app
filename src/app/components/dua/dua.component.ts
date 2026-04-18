@@ -128,6 +128,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     'forgiveness',
     'anxiety',
     'general',
+    'marriage',
     'sleep',
     'travel',
     'eating',
@@ -496,6 +497,14 @@ export class DuaComponent implements OnInit, OnDestroy {
     } catch (error: any) {
       console.error('Error checking premium status:', error);
     }
+  }
+
+  isThreeQuls(dua: Dua): boolean {
+    return dua.title.toLowerCase().includes('three quls');
+  }
+
+  isHighlightedCategory(category: DuaCategory): boolean {
+    return ['morning', 'evening'].includes(category);
   }
 
   clearEmotionSearch() {
