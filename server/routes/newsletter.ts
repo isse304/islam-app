@@ -6,6 +6,7 @@ import { OpenAI } from 'openai';
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { NewsletterUnsubscribe } from '../models/NewsletterUnsubscribe';
+import { PendingNewsletter } from '../models/PendingNewsletter';
 
 const router = express.Router();
 const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] });
@@ -134,6 +135,131 @@ WRITING RULES:
     max_tokens: 800
   });
   return completion.choices[0]?.message?.content || 'No response generated';
+}
+
+/**
+ * Validate a generated reflection against the original tafsir source.
+ * Returns { passed, issues } — if issues are found, the reflection should be regenerated.
+ */
+async function validateReflection(
+  reflection: string,
+  tafsirText: string,
+  surah: number,
+  verse: number,
+  surahName: string
+): Promise<{ passed: boolean; issues: string[] }> {
+  if (!tafsirText) {
+    const issues: string[] = [];
+    if (/#{1,6}\s/.test(reflection)) issues.push('Contains markdown headers');
+    if (/\*\*[^*]+\*\*/.test(reflection)) issues.push('Contains markdown bold');
+    const wordCount = reflection.split(/\s+/).length;
+    if (wordCount < 80) issues.push(`Too short (${wordCount} words)`);
+    if (wordCount > 350) issues.push(`Too long (${wordCount} words)`);
+    return { passed: issues.length === 0, issues };
+  }
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `You are a strict Islamic content validator. Your job is to compare a generated reflection against the original Ibn Kathir tafsir text and flag ANY inaccuracies. Be ruthlessly precise.`
+        },
+        {
+          role: 'user',
+          content: `ORIGINAL TAFSIR TEXT (Ibn Kathir) for Surah ${surah} (${surahName}), Verse ${verse}:
+---
+${tafsirText}
+---
+
+GENERATED REFLECTION:
+---
+${reflection}
+---
+
+Check the reflection against the tafsir text. For EACH sentence in the reflection, verify it has a direct basis in the tafsir text above.
+
+Respond in this EXACT JSON format (no markdown, no code fences):
+{
+  "passed": true/false,
+  "issues": ["issue 1", "issue 2"]
+}
+
+Flag as issues:
+1. Any claim attributed to Ibn Kathir that is NOT in the tafsir text above
+2. Any invented metaphors or symbolic language not in the source (e.g. "the spirit of X", "symbolizes Y")
+3. Any markdown formatting (# headers, **bold**, etc.)
+4. Any scholar names mentioned that do NOT appear in the tafsir text
+5. If the reflection discusses a different verse number than ${verse}
+
+Do NOT flag:
+- General Islamic knowledge used in the practical takeaway section (this is allowed)
+- The reflective question at the end (this is allowed to be original)
+
+If there are zero issues, return: {"passed": true, "issues": []}`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 500
+    });
+
+    const raw = completion.choices[0]?.message?.content || '';
+    const cleaned = raw.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+    try {
+      const result = JSON.parse(cleaned);
+      return {
+        passed: result.passed === true && (!result.issues || result.issues.length === 0),
+        issues: result.issues || []
+      };
+    } catch {
+      console.error('[Newsletter] Failed to parse validation response:', raw);
+      return { passed: true, issues: ['Validation parse error — defaulting to pass'] };
+    }
+  } catch (error) {
+    console.error('[Newsletter] Validation LLM call failed:', error);
+    return { passed: true, issues: ['Validation call failed — defaulting to pass'] };
+  }
+}
+
+const MAX_VALIDATION_ATTEMPTS = 3;
+
+/**
+ * Generate a reflection with validation and retry logic.
+ * Tries up to MAX_VALIDATION_ATTEMPTS times to produce a validated reflection.
+ */
+async function generateValidatedReflection(
+  surah: number, verse: number, surahName: string, surahTheme: string,
+  tafsirText: string, verseText: { arabic: string; translation: string } | null
+): Promise<{ reflection: string; validation: { passed: boolean; attempts: number; issues: string[] } }> {
+  let lastReflection = '';
+  let lastIssues: string[] = [];
+
+  for (let attempt = 1; attempt <= MAX_VALIDATION_ATTEMPTS; attempt++) {
+    const prompt = buildReflectionPrompt(surah, verse, surahName, surahTheme, tafsirText, verseText);
+
+    if (attempt > 1 && lastIssues.length > 0) {
+      const retryNote = `\n\nIMPORTANT: A previous version of this reflection was rejected for the following issues:\n${lastIssues.map(i => `- ${i}`).join('\n')}\n\nFix ALL of these issues in your new response. Be extra careful to only state what is explicitly in the tafsir text.`;
+      lastReflection = await generateReflection(prompt + retryNote);
+    } else {
+      lastReflection = await generateReflection(prompt);
+    }
+
+    const validation = await validateReflection(lastReflection, tafsirText, surah, verse, surahName);
+    console.log(`[Newsletter] Validation attempt ${attempt}: ${validation.passed ? 'PASSED' : 'FAILED'}`, validation.issues);
+
+    if (validation.passed) {
+      return { reflection: lastReflection, validation: { passed: true, attempts: attempt, issues: [] } };
+    }
+
+    lastIssues = validation.issues;
+  }
+
+  return {
+    reflection: lastReflection,
+    validation: { passed: false, attempts: MAX_VALIDATION_ATTEMPTS, issues: lastIssues }
+  };
 }
 
 /**
@@ -338,6 +464,90 @@ router.get('/resubscribe', async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/newsletter/approve/:contentId?token=...
+router.get('/approve/:contentId', async (req: Request, res: Response) => {
+  try {
+    const { contentId } = req.params;
+    const token = req.query.token as string || '';
+    const expectedToken = generateUnsubscribeToken(contentId);
+
+    if (!token || token !== expectedToken) {
+      res.status(400).send(approvalPage('Invalid approval link.', false));
+      return;
+    }
+
+    const pending = await PendingNewsletter.findOne({ contentId, status: 'pending' });
+    if (!pending) {
+      res.status(404).send(approvalPage('This newsletter has already been sent or does not exist.', false));
+      return;
+    }
+
+    pending.status = 'approved';
+    pending.approvedAt = new Date();
+    await pending.save();
+
+    const n8nWebhookUrl = process.env['N8N_APPROVE_WEBHOOK'];
+    if (n8nWebhookUrl) {
+      try {
+        await axios.post(n8nWebhookUrl, {
+          contentId,
+          surah: pending.surah,
+          verse: pending.verse,
+          surahName: pending.surahName,
+          verseText: pending.verseText,
+          usedScholarlySources: pending.usedScholarlySources,
+          reflection: pending.reflection
+        }, { timeout: 15000 });
+      } catch (webhookError) {
+        console.error('[Newsletter] Failed to trigger n8n webhook:', webhookError);
+      }
+    }
+
+    res.send(approvalPage(
+      `Newsletter approved! Sending "${pending.surahName}, Verse ${pending.verse}" to all subscribers now.`,
+      true
+    ));
+  } catch (error) {
+    console.error('[Newsletter] Approve error:', error);
+    res.status(500).send(approvalPage('Something went wrong. Please try again.', false));
+  }
+});
+
+// GET /api/newsletter/reject/:contentId?token=...
+router.get('/reject/:contentId', async (req: Request, res: Response) => {
+  try {
+    const { contentId } = req.params;
+    const token = req.query.token as string || '';
+    const expectedToken = generateUnsubscribeToken(contentId);
+
+    if (!token || token !== expectedToken) {
+      res.status(400).send(approvalPage('Invalid link.', false));
+      return;
+    }
+
+    await PendingNewsletter.findOneAndUpdate({ contentId }, { status: 'rejected' });
+    res.send(approvalPage('Newsletter rejected. It will not be sent to subscribers.', true));
+  } catch (error) {
+    console.error('[Newsletter] Reject error:', error);
+    res.status(500).send(approvalPage('Something went wrong. Please try again.', false));
+  }
+});
+
+function approvalPage(message: string, success: boolean): string {
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Nura Reflections — Admin</title></head>
+<body style="margin:0;padding:40px 20px;font-family:Georgia,serif;background:#f5f5f0;text-align:center;">
+  <div style="max-width:480px;margin:0 auto;background:#fff;padding:40px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+    <h1 style="color:#1b5e20;font-size:24px;margin:0 0 8px 0;">Nura Reflections</h1>
+    <p style="color:#888;font-size:13px;margin:0 0 16px 0;">Admin Panel</p>
+    <div style="font-size:32px;margin:16px 0;">${success ? '✅' : '⚠️'}</div>
+    <p style="color:#333;font-size:16px;line-height:1.6;">${message}</p>
+    <a href="https://nura-ai.app" style="display:inline-block;margin-top:20px;background:#1b5e20;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-size:14px;">Open Nura AI</a>
+  </div>
+</body></html>`;
+}
+
 function unsubscribePage(message: string, success: boolean): string {
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -496,8 +706,9 @@ router.post('/tafsir-reflection', async (req: Request, res: Response) => {
 
 // ──────────────────────────────────────────────
 // POST /api/newsletter/generate
-// Generates the weekly newsletter content (tafsir reflection only for now)
-// This is the main endpoint n8n should call
+// Generates validated weekly newsletter content and stores it for approval.
+// n8n calls this, then sends a preview email to the admin.
+// The admin clicks Approve, which triggers a webhook to send to all users.
 // Body (optional): { surah, verse }
 // ──────────────────────────────────────────────
 router.post('/generate', async (req: Request, res: Response) => {
@@ -515,11 +726,33 @@ router.post('/generate', async (req: Request, res: Response) => {
       fetchVerseText(surah, verse)
     ]);
 
-    const prompt = buildReflectionPrompt(surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText, verseText);
-    const reflection = await generateReflection(prompt);
+    const { reflection, validation } = await generateValidatedReflection(
+      surah, verse, surahName, surahInfo?.theme || 'General guidance', tafsirText, verseText
+    );
+
+    const contentId = crypto.randomBytes(16).toString('hex');
+    const approveToken = generateUnsubscribeToken(contentId);
+    const baseUrl = process.env['APP_URL'] || 'https://nura-ai.app';
+
+    await PendingNewsletter.create({
+      contentId,
+      surah,
+      verse,
+      surahName,
+      verseText: verseText || null,
+      usedScholarlySources: !!tafsirText,
+      reflection,
+      tafsirSource: tafsirText ? tafsirText.slice(0, 2000) : '',
+      validation,
+      status: 'pending'
+    });
 
     res.json({
       success: true,
+      contentId,
+      approveUrl: `${baseUrl}/api/newsletter/approve/${contentId}?token=${approveToken}`,
+      rejectUrl: `${baseUrl}/api/newsletter/reject/${contentId}?token=${approveToken}`,
+      validation,
       tafsir_reflection: {
         surah,
         verse,
@@ -532,6 +765,42 @@ router.post('/generate', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('[Newsletter] Error generating newsletter content:', error);
     res.status(500).json({ error: 'Failed to generate newsletter content' });
+  }
+});
+
+// ──────────────────────────────────────────────
+// GET /api/newsletter/pending/:contentId
+// Returns the stored content for a pending newsletter (used by the send workflow)
+// ──────────────────────────────────────────────
+router.get('/pending/:contentId', async (req: Request, res: Response) => {
+  try {
+    const pending = await PendingNewsletter.findOne({
+      contentId: req.params.contentId,
+      status: 'approved'
+    });
+
+    if (!pending) {
+      res.status(404).json({ error: 'Newsletter not found or not approved' });
+      return;
+    }
+
+    pending.status = 'sent';
+    await pending.save();
+
+    res.json({
+      success: true,
+      tafsir_reflection: {
+        surah: pending.surah,
+        verse: pending.verse,
+        surahName: pending.surahName,
+        verseText: pending.verseText,
+        usedScholarlySources: pending.usedScholarlySources,
+        reflection: pending.reflection
+      }
+    });
+  } catch (error) {
+    console.error('[Newsletter] Error fetching pending newsletter:', error);
+    res.status(500).json({ error: 'Failed to fetch pending newsletter' });
   }
 });
 
