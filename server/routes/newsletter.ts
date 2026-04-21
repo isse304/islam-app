@@ -164,7 +164,7 @@ async function validateReflection(
       messages: [
         {
           role: 'system',
-          content: `You are a strict Islamic content validator. Your job is to compare a generated reflection against the original Ibn Kathir tafsir text and flag ANY inaccuracies. Be ruthlessly precise.`
+          content: `You are a Muslim content validator. Your job is to compare a generated reflection against the original Ibn Kathir tafsir text and flag genuine inaccuracies. Be precise but fair.`
         },
         {
           role: 'user',
@@ -178,7 +178,7 @@ GENERATED REFLECTION:
 ${reflection}
 ---
 
-Check the reflection against the tafsir text. For EACH sentence in the reflection, verify it has a direct basis in the tafsir text above.
+Check the reflection against the tafsir text. Focus on whether the SCHOLARLY CLAIMS are supported by the tafsir.
 
 Respond in this EXACT JSON format (no markdown, no code fences):
 {
@@ -186,18 +186,24 @@ Respond in this EXACT JSON format (no markdown, no code fences):
   "issues": ["issue 1", "issue 2"]
 }
 
-Flag as issues:
-1. Any claim attributed to Ibn Kathir that is NOT in the tafsir text above
-2. Any invented metaphors or symbolic language not in the source (e.g. "the spirit of X", "symbolizes Y")
-3. Any markdown formatting (# headers, **bold**, etc.)
-4. Any scholar names mentioned that do NOT appear in the tafsir text
-5. If the reflection discusses a different verse number than ${verse}
+FLAG as issues (these are serious problems):
+1. A specific factual claim attributed to Ibn Kathir that has NO basis in the tafsir text above (e.g. inventing a hadith, adding a story not present)
+2. Invented metaphors or symbolic concepts not in the source (e.g. "the spirit of Salsabeel", "symbolizes the cosmic order")
+3. Markdown formatting (# headers, **bold**, etc.)
+4. Scholar names mentioned that do NOT appear in the tafsir text
+5. If the reflection discusses a DIFFERENT verse than ${verse}
 
-Do NOT flag:
-- General Islamic knowledge used in the practical takeaway section (this is allowed)
-- The reflective question at the end (this is allowed to be original)
+Do NOT flag (these are acceptable):
+- Quoting the verse translation itself (e.g. quoting "${verse}" text is NOT a paraphrase — it is the actual verse)
+- The practical takeaway section — this is ALLOWED to contain the author's own wisdom and life application
+- The reflective question at the end — this is ALLOWED to be original
+- Reasonable summary or paraphrasing of what Ibn Kathir says, as long as the core meaning is preserved
+- Phrases like "this serves as a warning" or "this highlights" when they reasonably follow from the tafsir content
+- General Islamic knowledge that does not contradict the tafsir
 
-If there are zero issues, return: {"passed": true, "issues": []}`
+The threshold for FAILURE should be: the reflection contains a claim that would mislead the reader about what Ibn Kathir actually said, OR it invents scholarly content not in the source.
+
+If the issues are only minor wording concerns, return: {"passed": true, "issues": []}`
         }
       ],
       temperature: 0.1,
