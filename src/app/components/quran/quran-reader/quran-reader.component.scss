@@ -2110,3 +2110,54 @@ select option {
   box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.15);
 }
 
+$word-popover-bg: rgba(26, 54, 93, 0.96);
+
+.word-popover {
+  position: fixed;
+  z-index: 1200;
+  transform: translate(-50%, -100%);
+  margin-top: -10px;
+  max-width: 60vw;
+  padding: 0.45rem 0.7rem;
+  border-radius: 0.5rem;
+  background: $word-popover-bg;
+  color: #FAF3E0;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  text-align: center;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  // Never let the popover itself become a scroll dead zone
+  pointer-events: none;
+  animation: wordPopoverFade 0.15s ease-out;
+}
+
+.word-popover__arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 6px solid transparent;
+  border-top-color: $word-popover-bg;
+}
+
+.word-popover--below {
+  transform: translate(-50%, 0);
+  margin-top: 10px;
+
+  .word-popover__arrow {
+    top: auto;
+    bottom: 100%;
+    border-top-color: transparent;
+    border-bottom-color: $word-popover-bg;
+  }
+}
+
+@keyframes wordPopoverFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+

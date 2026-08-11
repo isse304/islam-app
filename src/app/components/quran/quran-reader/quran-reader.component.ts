@@ -239,6 +239,19 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   verse: QuranVerse | null = null;
   activeWord: any = null;
   isMobile = window.innerWidth < 768;
+  @ViewChild('wordPopoverRef') wordPopoverRef?: ElementRef<HTMLElement>;
+  // Tablets are wider than the isMobile breakpoint but still have no hover, so key the
+  // tap-to-translate popover to hover support rather than screen width.
+  private readonly isHoverlessDevice = window.matchMedia?.('(hover: none)').matches ?? false;
+  wordPopover: {
+    translation: string;
+    left: number;
+    top: number;
+    arrowLeft: number | null;
+    below: boolean;
+  } | null = null;
+  private tappedWordElement: HTMLElement | null = null;
+  private tappedWordRect: DOMRect | null = null;
   preferences: any = {
     lastState: { lastSurah: 1, lastVerse: 1 },
     selectedTranslation: '20', // Default to Sahih International (ID 20)
@@ -2726,6 +2739,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // +++ ADD Scroll Listener +++
   @HostListener('window:scroll')
   onWindowScroll(): void {
+    this.dismissWordPopover();
+
     const currentScrollPosition = window.pageYOffset || document.documentElement.scrollTop;
     const scrollDifference = currentScrollPosition - this.lastScrollPosition;
 
@@ -4358,6 +4373,78 @@ getSurahName(surahNumber: string | number): string {
     return this.fontLoader.getFallbackFont();
   }
   
+  /**
+   * Shows a word's translation on tap.
+   * Touch devices only: Material's tooltip is switched off there because its long-press
+   * gesture sets touch-action: none on every word, which blocks scrolling over the verse text.
+   */
+  onWordTap(word: any, event: Event): void {
+    if (!this.isHoverlessDevice) return;
+
+    const element = event.currentTarget as HTMLElement;
+    const translation = (word.translation || '').trim();
+
+    if (!translation || this.tappedWordElement === element) {
+      this.dismissWordPopover();
+      return;
+    }
+
+    event.stopPropagation();
+
+    const rect = element.getBoundingClientRect();
+    this.tappedWordElement = element;
+    this.tappedWordRect = rect;
+    this.wordPopover = {
+      translation,
+      left: rect.left + rect.width / 2,
+      top: rect.top,
+      arrowLeft: null,
+      below: false
+    };
+    this.changeDetector.markForCheck();
+
+    setTimeout(() => this.placeWordPopover());
+  }
+
+  @HostListener('document:click')
+  dismissWordPopover(): void {
+    if (!this.wordPopover) return;
+
+    this.wordPopover = null;
+    this.tappedWordElement = null;
+    this.tappedWordRect = null;
+    this.changeDetector.markForCheck();
+  }
+
+  /**
+   * Nudges the popover away from the viewport edges once its size is known,
+   * keeping the arrow pointing at the tapped word.
+   */
+  private placeWordPopover(): void {
+    const element = this.wordPopoverRef?.nativeElement;
+    const rect = this.tappedWordRect;
+    if (!element || !rect || !this.wordPopover) return;
+
+    const margin = 12;
+    const halfWidth = element.offsetWidth / 2;
+    const wordCenter = rect.left + rect.width / 2;
+    const left = Math.min(
+      Math.max(wordCenter, margin + halfWidth),
+      Math.max(window.innerWidth - margin - halfWidth, margin + halfWidth)
+    );
+    // 64px clears the fixed app header, which the popover would otherwise sit behind.
+    const below = rect.top - element.offsetHeight - margin < 64;
+
+    this.wordPopover = {
+      ...this.wordPopover,
+      left,
+      top: below ? rect.bottom : rect.top,
+      arrowLeft: wordCenter - (left - halfWidth),
+      below
+    };
+    this.changeDetector.markForCheck();
+  }
+
   /**
    * Get the text to display for a word
    * Uses QCF V4 glyph codes when font is loaded, otherwise uses fallback text
