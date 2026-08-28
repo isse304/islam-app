@@ -82,5 +82,6 @@ public/quran-pages/
 
 # Firebase Service Account Keys
 **/serviceAccountKey.json
-**/firebase-adminsdk-*.json
-**/*-service-account*.json
+**/*firebase-adminsdk*.json
+**/*service-account*.json
+**/*serviceaccount*.json
