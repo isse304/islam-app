@@ -12,18 +12,60 @@ services:
         value: 3000
       - key: DOMAIN
         value: www.nura-ai.app
+
+      # Secrets: set these in the Render dashboard. Never commit them.
+      # The server has no .env file in production, so these must exist here.
+
+      # Required at startup; the process exits if any are missing.
+      - key: FIREBASE_CONFIG
+        sync: false  # Entire service account JSON, compacted to one line
       - key: MONGODB_URI
-        sync: false  # Will be set manually in Render dashboard
-      - key: CLERK_SECRET_KEY
         sync: false
       - key: OPENAI_API_KEY
         sync: false
-      - key: ELEVEN_LABS_KEY
+      - key: STRIPE_SECRET_KEY
         sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+
+      # Required for subscriptions to function
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: CLIENT_URL
+        value: https://www.nura-ai.app  # Stripe checkout and portal redirects
+
+      # Email delivery. SMTP_HOST and SMTP_PORT default to smtp.gmail.com:587.
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
+      - key: ALERT_EMAIL
+        sync: false
+
+      # Newsletter automation
+      - key: NEWSLETTER_API_KEY
+        sync: false
+      - key: N8N_APPROVE_WEBHOOK
+        sync: false
+      - key: APP_URL
+        value: https://nura-ai.app
+
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
-      - key: CORS_ORIGIN
-        value: https://nura-ai-frontend.onrender.com,https://nura-ai.app
+
+      # Limits and logging
+      - key: LOG_LEVEL
+        value: info
+      - key: RATE_LIMIT_WINDOW_MS
+        value: 900000
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: DAILY_USER_LIMIT
+        value: 30
     autoDeploy: true 
 
   - type: web
