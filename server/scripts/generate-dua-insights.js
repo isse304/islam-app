@@ -1,12 +1,14 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import fetch from 'node-fetch';
 import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
-import { dirname, join } from 'path';
+import { dirname, join, resolve } from 'path';
 
 // Get current file's directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+dotenv.config({ path: resolve(__dirname, '../.env') });
 
 // Configuration
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
