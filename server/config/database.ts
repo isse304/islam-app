@@ -22,7 +22,7 @@ const logger = winston.createLogger({
 
 const configs: Record<string, DatabaseConfig> = {
     development: {
-        uri: process.env['MONGODB_URI'] || 'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura',
+        uri: process.env['MONGODB_URI'] || 'mongodb://127.0.0.1:27017/nura',
         options: {
             serverSelectionTimeoutMS: 30000,
             socketTimeoutMS: 45000,
@@ -98,6 +98,10 @@ export async function connectDatabase(): Promise<void> {
 
     if (!config) {
         throw new Error(`No database configuration found for environment: ${env}`);
+    }
+
+    if (!config.uri) {
+        throw new Error('MONGODB_URI is not set.');
     }
 
     try {

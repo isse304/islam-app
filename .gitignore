@@ -81,5 +81,6 @@ public/quran-pages/
 /src/environments/environment.prod.ts
 
 # Firebase Service Account Keys
-/serviceAccountKey.json
-/firebase-adminsdk-*.json
+**/serviceAccountKey.json
+**/firebase-adminsdk-*.json
+**/*-service-account*.json

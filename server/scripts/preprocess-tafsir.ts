@@ -45,8 +45,10 @@ interface BlobGroup {
 const openai = new OpenAI({ apiKey: process.env['OPENAI_API_KEY'] });
 
 async function connectDb() {
-  const uri = process.env['MONGODB_URI'] ||
-    'mongodb+srv://isse304:ExrjEBm54q0yJWKQ@nura.inxyo.mongodb.net/?retryWrites=true&w=majority&appName=Nura';
+  const uri = process.env['MONGODB_URI'];
+  if (!uri) {
+    throw new Error('MONGODB_URI is not set. Add it to server/.env before running this script.');
+  }
   await mongoose.connect(uri, { serverSelectionTimeoutMS: 30000 });
   console.log('Connected to MongoDB');
 }

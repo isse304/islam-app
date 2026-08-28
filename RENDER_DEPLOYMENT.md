@@ -64,10 +64,10 @@ For Stripe to work properly, ensure the following:
 
 2. Your Stripe secret key is set in your backend `.env` file:
    ```
-   STRIPE_SECRET_KEY=sk_test_51R1RShGYeNehzlUZCB9rXDHw4lkmc1DIFzQU7lXfrzFUMAFuCEOU1MuVEaxZd0taQEsfPwqJLsG5MZibxy2qTXnb00pcMjpa6q
-   STRIPE_PUBLISHABLE_KEY=pk_test_51R1RShGYeNehzlUZBgXi4s6sf5u4BvRkXP7YNb07aNwpYnaPl7VL9GJ4rnGdkLvWDYtd7Jg2w6NPmeXgifPCwd220010zxsvdj
-   STRIPE_WEBHOOK_SECRET=whsec_LF67b5WFdxHOlAnmaIPpiuuigFbGeBlu
-   STRIPE_PRICE_ID=price_1R1TPjGYeNehzlUZi71dNilr
+   STRIPE_SECRET_KEY=<your_stripe_secret_key>
+   STRIPE_PUBLISHABLE_KEY=<your_stripe_publishable_key>
+   STRIPE_WEBHOOK_SECRET=<your_stripe_webhook_secret>
+   STRIPE_PRICE_ID=<your_stripe_price_id>
    ```
 
 3. Make sure your backend API is properly configured to handle Stripe requests.

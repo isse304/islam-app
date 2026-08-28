@@ -1,2 +1,8 @@
-process.env.OPENAI_API_KEY = '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';
-require('./generate-dua-insights.js'); 
+require('dotenv').config();
+
+if (!process.env.OPENAI_API_KEY) {
+  console.error('OPENAI_API_KEY is not set. Add it to server/.env before running this script.');
+  process.exit(1);
+}
+
+require('./generate-dua-insights.js');
