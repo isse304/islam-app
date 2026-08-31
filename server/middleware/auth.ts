@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import { AuthenticatedRequest } from '../types/express';
+import { evaluatePremiumAccess } from '../utils/premium-access';
 
 export const withAuth = (handler: (req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => 
     async (req: Request, res: Response, next: NextFunction) => {
@@ -21,8 +22,17 @@ export const withAuth = (handler: (req: AuthenticatedRequest, res: Response, nex
 
 export const withPremium = (handler: (req: AuthenticatedRequest, res: Response, next: NextFunction) => void) => 
     withAuth(async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-        if (!(req.auth as any)?.premium) { // Cast to any to check for premium claim
-            return res.status(403).send({ error: 'Forbidden: Premium access required' });
+        const access = evaluatePremiumAccess(req.auth as any);
+        if (!access.granted) {
+            // Distinguish a lapsed subscription so the client can prompt to renew
+            // rather than pitching a plan the user already had.
+            return res.status(403).send({
+                error: access.reason === 'subscription_expired'
+                    ? 'Forbidden: Premium subscription expired'
+                    : 'Forbidden: Premium access required',
+                reason: access.reason,
+                subscriptionEnd: access.subscriptionEnd
+            });
         }
         return handler(req, res, next);
     }); 

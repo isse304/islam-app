@@ -4,6 +4,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { withAuth } from '../middleware/auth';
 import { auth } from '../config/firebase';
 import { EmailService } from '../services/email.service';
+import { hasPremiumAccess } from '../utils/premium-access';
 
 const router = express.Router();
 const emailService = new EmailService();
@@ -81,7 +82,7 @@ router.get('/status', withAuth(async (req: AuthenticatedRequest, res: Response, 
     // Use DB status primarily. If DB is inactive, double-check claims just in case.
     let effectiveStatus = dbStatus || 'inactive'; 
     const isPremiumDB = effectiveStatus === 'active' || effectiveStatus === 'trialing';
-    const isPremiumClaim = claims.premium === true || claimsStatus === 'active' || claimsStatus === 'trialing';
+    const isPremiumClaim = hasPremiumAccess(claims);
 
     // If DB says inactive but claims say active, trust claims (potential DB update lag?)
     if (!isPremiumDB && isPremiumClaim) {

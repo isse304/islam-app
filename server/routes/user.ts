@@ -2,6 +2,7 @@ import express, { Response, NextFunction } from 'express';
 import * as admin from 'firebase-admin';
 import { AuthenticatedRequest } from '../types/express';
 import { withAuth, withPremium } from '../middleware/auth';
+import { hasPremiumAccess } from '../utils/premium-access';
 import mongoose, { Document, Schema } from 'mongoose';
 import { UserSubscription, IUserSubscription } from '../models/UserSubscription';
 import { StripeService } from '../services/stripe.service';
@@ -656,7 +657,7 @@ router.get('/:userId/profile', withAuth(async (req: AuthenticatedRequest, res: R
 
         // Determine premium status: prioritize token claim, fallback to active subscription status
         const hasActiveSubscription = subscriptionDoc?.status === 'active';
-        const isPremium = req.auth?.['premium'] === true || hasActiveSubscription; // Allow token claim to override DB
+        const isPremium = hasPremiumAccess(req.auth as any) || hasActiveSubscription; // Allow token claim to override DB
 
         // Get preferences, using defaults if not found in DB
         const preferencesData = prefsDoc?.preferences || getDefaultPreferences();

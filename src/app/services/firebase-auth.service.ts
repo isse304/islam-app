@@ -8,6 +8,7 @@ import { MatDialog } from '@angular/material/dialog';
 import { ReauthDialogComponent } from '../components/reauth-dialog/reauth-dialog.component';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from './api.service';
+import { hasPremiumAccess } from '../utils/premium-access';
 // Firebase imports
 import { initializeApp } from 'firebase/app';
 import {
@@ -229,10 +230,8 @@ export class FirebaseAuthService {
     const subStatusClaim = claims['subscriptionStatus'];
     const subscriptionStatus = typeof subStatusClaim === 'string' ? subStatusClaim : 'inactive';
 
-    // Determine premium status based on claims (including 'trialing')
-    const isPremium = claims['premium'] === true || 
-                      subscriptionStatus === 'active' || 
-                      subscriptionStatus === 'trialing';
+    // Premium requires the claim to still be within its subscriptionEnd date.
+    const isPremium = hasPremiumAccess(claims);
 
     const subEndClaim = claims['subscriptionEnd'];
     const subscriptionEnd = typeof subEndClaim === 'number' ? subEndClaim : null;
@@ -693,7 +692,7 @@ export class FirebaseAuthService {
                 this.http.get<any>(`${environment.apiUrl}/api/subscription/status`)
             );
 
-            const isPremium = response.isPremium || idTokenResult.claims['premium'] === true;
+            const isPremium = response.isPremium || hasPremiumAccess(idTokenResult.claims);
             const features = response.features || idTokenResult.claims['features'] || {};
 
             // Update user state
@@ -718,7 +717,7 @@ export class FirebaseAuthService {
             // ////console.warn('Error checking subscription status:', error);
             
             // Fallback to token claims if server check fails
-            const isPremium = idTokenResult.claims['premium'] === true;
+            const isPremium = hasPremiumAccess(idTokenResult.claims);
             const features = idTokenResult.claims['features'] || {};
             
             if (this._user.value) {
@@ -1402,7 +1401,7 @@ export class FirebaseAuthService {
         // Decode the token locally (or ideally verify server-side if crucial)
         // For client-side check, simple check is okay
         const decoded: any = JSON.parse(atob(token.split('.')[1]));
-        if (decoded.premium === true) {
+        if (hasPremiumAccess(decoded)) {
            // // //////console.log('[isPremiumUser] Determined premium status from token claim.');
           return true;
         }
@@ -1871,9 +1870,7 @@ export class FirebaseAuthService {
           ...currentUserState,
           token: newToken,
           // Update premium-related claims from the refreshed token
-          isPremium: idTokenResult.claims['premium'] === true || 
-                     idTokenResult.claims['subscriptionStatus'] === 'active' ||
-                     idTokenResult.claims['subscriptionStatus'] === 'trialing',
+          isPremium: hasPremiumAccess(idTokenResult.claims),
           subscriptionStatus: (idTokenResult.claims['subscriptionStatus'] as string | undefined) || currentUserState.subscriptionStatus,
           subscriptionEnd: (idTokenResult.claims['subscriptionEnd'] as number | null | undefined) || currentUserState.subscriptionEnd,
           isAdmin: idTokenResult.claims['admin'] === true,

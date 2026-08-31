@@ -5,6 +5,7 @@ import { AuthenticatedRequest } from '../types/express';
 import { withAuth } from '../middleware/auth';
 import * as admin from 'firebase-admin';
 import { EmailService } from '../services/email.service';
+import { hasPremiumAccess } from '../utils/premium-access';
 
 interface UsageLimitsResponse {
     status: 'free' | 'active';
@@ -38,7 +39,7 @@ router.get('/limits', withAuth(async (req: AuthenticatedRequest, res: Response, 
         const dbStatus = await stripeService.getSubscriptionStatus(req.auth!.uid);
         const userRecord = await admin.auth().getUser(req.auth!.uid);
         const claims = userRecord.customClaims || {};
-        const isPremiumClaim = claims['premium'] === true || claims['subscriptionStatus'] === 'active';
+        const isPremiumClaim = hasPremiumAccess(claims);
 
         // Determine the effective status (prioritize claims)
         const effectiveStatus = isPremiumClaim ? 'active' : dbStatus;

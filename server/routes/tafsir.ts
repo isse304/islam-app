@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../types/express';
 import { withAuth, withPremium } from '../middleware/auth';
+import { hasPremiumAccess } from '../utils/premium-access';
 import axios from 'axios';
 import { OpenAIService } from '../services/openai.service';
 import { TafsirCacheService } from '../services/tafsir-cache.service';
@@ -421,7 +422,7 @@ ${!isPreProcessedTafsir ? `**ABSOLUTE RULE: When answering about verse ${surah}:
     // --- End Unified System Prompt ---
 
     // --- Determine user tier and check usage ---
-    const isPremiumUser = !!(req.auth as any)?.premium;
+    const isPremiumUser = hasPremiumAccess(req.auth as any);
     let shouldIncrementUsage = false;
     let isFreeTierUser = !isPremiumUser;
     let userUsage: any = null;

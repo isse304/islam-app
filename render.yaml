@@ -57,6 +57,11 @@ services:
       - key: SESSION_SECRET
         generateValue: true  # Render will generate a random value
 
+      # Days a lapsed subscription keeps premium after subscriptionEnd, absorbing
+      # webhook lag and stale ID tokens. Defaults to 1 when unset.
+      - key: PREMIUM_GRACE_DAYS
+        value: 1
+
       # Limits and logging
       - key: LOG_LEVEL
         value: info
