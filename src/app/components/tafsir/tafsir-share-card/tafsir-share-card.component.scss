@@ -1,0 +1,340 @@
+// Share Card Dialog
+// =================
+
+.share-dialog {
+  padding: 24px;
+  max-width: 480px;
+  width: 100%;
+  box-sizing: border-box;
+  background: #111827;
+  color: #e5e7eb;
+  border-radius: 16px;
+}
+
+// Header
+.share-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f3f4f6;
+    letter-spacing: -0.01em;
+  }
+
+  button {
+    color: #9ca3af;
+
+    &:hover {
+      color: #f3f4f6;
+    }
+  }
+}
+
+// Card Preview Container
+.card-preview-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+// The Share Card (1:1 aspect ratio preview)
+.share-card {
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  gap: 0;
+
+  // Geometric overlay pattern
+  &__pattern {
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    pointer-events: none;
+    background:
+      repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 30px,
+        rgba(255, 255, 255, 0.5) 30px,
+        rgba(255, 255, 255, 0.5) 31px
+      ),
+      repeating-linear-gradient(
+        -45deg,
+        transparent,
+        transparent 30px,
+        rgba(255, 255, 255, 0.5) 30px,
+        rgba(255, 255, 255, 0.5) 31px
+      );
+  }
+
+  // Branding (top)
+  &__branding {
+    position: absolute;
+    top: 16px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.45);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    z-index: 1;
+  }
+
+  // Arabic text
+  &__arabic {
+    font-family: 'Traditional Arabic', 'Arabic Typesetting', 'Amiri', serif;
+    font-size: clamp(20px, 5.5vw, 28px);
+    line-height: 1.9;
+    color: #ffffff;
+    text-align: center;
+    text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    margin-top: 30px;
+    padding: 0 8px;
+    word-break: break-word;
+    z-index: 1;
+  }
+
+  // Decorative divider
+  &__divider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin: 14px 0;
+    width: 100%;
+    z-index: 1;
+
+    .divider-line {
+      display: inline-block;
+      width: 80px;
+      height: 1px;
+      background: rgba(183, 165, 122, 0.6);
+    }
+
+    .divider-diamond {
+      color: rgba(183, 165, 122, 0.8);
+      font-size: 10px;
+      line-height: 1;
+    }
+  }
+
+  // Translation
+  &__translation {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: clamp(13px, 3.5vw, 16px);
+    line-height: 1.7;
+    color: rgba(235, 220, 185, 0.95);
+    text-align: center;
+    font-style: italic;
+    padding: 0 16px;
+    z-index: 1;
+    max-height: 120px;
+    overflow: hidden;
+  }
+
+  // Tafsir excerpt
+  &__tafsir {
+    margin-top: 10px;
+    text-align: center;
+    z-index: 1;
+    padding: 0 20px;
+
+    .tafsir-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: rgba(183, 165, 122, 0.85);
+      letter-spacing: 1px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    p {
+      margin: 0;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(11px, 2.8vw, 13px);
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.65);
+      max-height: 65px;
+      overflow: hidden;
+    }
+  }
+
+  // Footer
+  &__footer {
+    position: absolute;
+    bottom: 44px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    z-index: 1;
+
+    .verse-ref {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.9);
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      margin-bottom: 4px;
+    }
+
+    .edition {
+      display: block;
+      font-size: 11px;
+      color: rgba(183, 165, 122, 0.7);
+      font-family: 'Segoe UI', Roboto, sans-serif;
+    }
+  }
+
+  // Watermark
+  &__watermark {
+    position: absolute;
+    bottom: 12px;
+    right: 16px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.3);
+    font-family: 'Segoe UI', Roboto, sans-serif;
+    z-index: 1;
+  }
+}
+
+// Style Picker
+.style-options {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+
+  .style-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    &:hover {
+      transform: scale(1.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+
+    &.active {
+      border-color: #B7A57A;
+      transform: scale(1.15);
+      box-shadow: 0 0 0 2px rgba(183, 165, 122, 0.3), 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+  }
+}
+
+// Share Action Buttons
+.share-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.3px;
+    border-radius: 10px !important;
+    padding: 8px 20px !important;
+    min-height: 42px;
+    text-transform: none;
+    transition: all 0.2s ease;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+    }
+  }
+
+  .download-btn {
+    background: #1d4ed8 !important;
+    color: #ffffff !important;
+
+    &:hover:not(:disabled) {
+      background: #2563eb !important;
+    }
+  }
+
+  .copy-btn {
+    background: #374151 !important;
+    color: #e5e7eb !important;
+
+    &:hover:not(:disabled) {
+      background: #4b5563 !important;
+    }
+  }
+
+  .share-btn {
+    background: #059669 !important;
+    color: #ffffff !important;
+
+    &:hover:not(:disabled) {
+      background: #10b981 !important;
+    }
+  }
+}
+
+// Responsive
+@media (max-width: 480px) {
+  .share-dialog {
+    padding: 16px;
+  }
+
+  .share-card {
+    max-width: 320px;
+  }
+
+  .share-actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
+// Override Angular Material dialog container for dark theme
+::ng-deep .share-card-dialog {
+  .mat-mdc-dialog-container {
+    background: transparent !important;
+    border-radius: 16px;
+    overflow: hidden;
+
+    .mdc-dialog__surface {
+      background: transparent !important;
+      box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5) !important;
+      border-radius: 16px !important;
+    }
+  }
+}

@@ -1,0 +1,68 @@
+<div class="share-dialog">
+  <div class="share-header">
+    <h2>Share This Verse</h2>
+    <button mat-icon-button (click)="close()" matTooltip="Close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- Card Preview (scaled down version of the 1080x1080 card) -->
+  <div class="card-preview-container">
+    <div class="share-card" #shareCard
+         [style.background]="currentStyle.gradient">
+      <!-- Subtle overlay pattern -->
+      <div class="share-card__pattern"></div>
+
+      <div class="share-card__branding">Nura AI</div>
+
+      <div class="share-card__arabic" dir="rtl">{{ data.arabicText }}</div>
+
+      <div class="share-card__divider">
+        <span class="divider-line"></span>
+        <span class="divider-diamond">◆</span>
+        <span class="divider-line"></span>
+      </div>
+
+      <div class="share-card__translation">"{{ data.translation }}"</div>
+
+      <div class="share-card__tafsir" *ngIf="data.tafsirExcerpt">
+        <span class="tafsir-label">— Tafsir Insight —</span>
+        <p>{{ getTafsirExcerpt() }}</p>
+      </div>
+
+      <div class="share-card__footer">
+        <span class="verse-ref">{{ data.surahName }} · Verse {{ data.verse }}</span>
+        <span class="edition">{{ data.editionName }}</span>
+      </div>
+
+      <div class="share-card__watermark">{{ siteUrl }}</div>
+    </div>
+  </div>
+
+  <!-- Style Options -->
+  <div class="style-options">
+    <button *ngFor="let style of cardStyles"
+            class="style-btn"
+            [class.active]="selectedStyle === style.id"
+            [style.background]="style.preview"
+            [matTooltip]="style.name"
+            (click)="selectStyle(style.id)">
+    </button>
+  </div>
+
+  <!-- Share Actions -->
+  <div class="share-actions">
+    <button mat-raised-button (click)="downloadCard()" class="download-btn" [disabled]="isGenerating">
+      <mat-icon>download</mat-icon>
+      Download PNG
+    </button>
+    <button mat-raised-button (click)="copyToClipboard()" class="copy-btn" [disabled]="isGenerating">
+      <mat-icon>content_copy</mat-icon>
+      Copy Image
+    </button>
+    <button mat-raised-button (click)="shareNative()" *ngIf="canShare" class="share-btn" [disabled]="isGenerating">
+      <mat-icon>share</mat-icon>
+      Share
+    </button>
+  </div>
+</div>

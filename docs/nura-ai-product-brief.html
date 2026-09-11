@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Nura AI — Product Brief</title>
+  <style>
+    @page {
+      size: letter;
+      margin: 0.7in 0.75in;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #FAF3E0;
+      color: #1A365D;
+      font-family: "Segoe UI", Calibri, "Helvetica Neue", Arial, sans-serif;
+      font-size: 11.5pt;
+      line-height: 1.55;
+    }
+
+    .page-break { page-break-before: always; break-before: page; }
+
+    /* Cover */
+    .cover {
+      min-height: 10.2in;
+      background: linear-gradient(165deg, #0F2847 0%, #1A365D 55%, #2A4365 100%);
+      color: #FAF3E0;
+      padding: 1.4in 0.9in 0.8in;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      margin: -0.7in -0.75in 0;
+      width: calc(100% + 1.5in);
+    }
+
+    .cover-kicker {
+      letter-spacing: 0.28em;
+      font-size: 9.5pt;
+      color: #B7A57A;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .cover h1 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 56pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 18px 0 8px;
+      color: #FAF3E0;
+    }
+
+    .cover .gold-rule {
+      width: 72px;
+      height: 3px;
+      background: #B7A57A;
+      margin: 18px 0 22px;
+    }
+
+    .cover-sub {
+      font-size: 16pt;
+      max-width: 5.8in;
+      color: #E6DACE;
+      line-height: 1.4;
+    }
+
+    .cover-meta {
+      font-size: 10pt;
+      color: #B7A57A;
+      letter-spacing: 0.04em;
+    }
+
+    .cover-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      border-top: 1px solid rgba(183, 165, 122, 0.35);
+      padding-top: 18px;
+      font-size: 10pt;
+      color: #D4C5A0;
+    }
+
+    h2 {
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 18pt;
+      color: #1A365D;
+      margin: 0 0 12px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #B7A57A;
+    }
+
+    h3 {
+      font-size: 12.5pt;
+      color: #1A365D;
+      margin: 18px 0 6px;
+      font-weight: 700;
+    }
+
+    p { margin-bottom: 10px; color: #2D3748; }
+
+    .lede {
+      font-size: 13pt;
+      color: #1A365D;
+      margin-bottom: 14px;
+    }
+
+    .section { margin-top: 22px; }
+
+    .callout {
+      background: #1A365D;
+      color: #FAF3E0;
+      padding: 16px 18px;
+      border-radius: 8px;
+      margin: 14px 0 16px;
+    }
+
+    .callout strong { color: #D4C5A0; }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 12px 0 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin: 12px 0 16px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid rgba(183, 165, 122, 0.35);
+      border-radius: 8px;
+      padding: 14px 14px 12px;
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    .card h3 { margin-top: 0; font-size: 12pt; }
+    .card p { margin-bottom: 0; font-size: 10.5pt; color: #4A5568; }
+
+    .card .tag {
+      display: inline-block;
+      font-size: 8pt;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #B7A57A;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    ul { margin: 6px 0 12px 18px; color: #2D3748; }
+    li { margin-bottom: 4px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 10px 0 16px;
+      font-size: 10.5pt;
+    }
+
+    th {
+      text-align: left;
+      background: #1A365D;
+      color: #FAF3E0;
+      padding: 8px 10px;
+      font-weight: 600;
+    }
+
+    td {
+      padding: 8px 10px;
+      border-bottom: 1px solid #E6DACE;
+      vertical-align: top;
+      color: #2D3748;
+    }
+
+    tr:nth-child(even) td { background: rgba(250, 243, 224, 0.65); }
+
+    .swatches { display: flex; gap: 10px; margin: 10px 0 14px; flex-wrap: wrap; }
+
+    .swatch {
+      width: 108px;
+      border-radius: 6px;
+      overflow: hidden;
+      border: 1px solid rgba(26, 54, 93, 0.12);
+      font-size: 8.5pt;
+      background: #fff;
+    }
+
+    .swatch .chip { height: 36px; }
+    .swatch .label { padding: 6px 8px; color: #4A5568; }
+
+    .muted { color: #6B7280; font-size: 10pt; }
+
+    .footer-note {
+      margin-top: 28px;
+      padding-top: 10px;
+      border-top: 1px solid #E6DACE;
+      font-size: 9pt;
+      color: #6B7280;
+    }
+
+    .arabic {
+      font-family: "Amiri", "Times New Roman", serif;
+      font-size: 16pt;
+      direction: rtl;
+      color: #1A365D;
+    }
+  </style>
+</head>
+<body>
+
+  <section class="cover">
+    <div>
+      <div class="cover-kicker">Product briefing for marketing</div>
+      <h1>Nura AI</h1>
+      <div class="gold-rule"></div>
+      <p class="cover-sub">Your intelligent Muslim companion for Quran, tafsir, and dua — modern tools, grounded in classical scholarship.</p>
+    </div>
+    <div class="cover-footer">
+      <div>nura-ai.app</div>
+      <div>Internal briefing · September 2026</div>
+    </div>
+  </section>
+
+  <section class="page-break section">
+    <h2>What Nura AI is</h2>
+    <p class="lede">Nura AI is a web app that helps Muslims <strong>read</strong> the Quran, <strong>understand</strong> it through classical tafsir and AI-assisted study, and <strong>connect</strong> with authentic duas for real life — including finding the right supplication based on how they feel.</p>
+    <p>It is not a chatbot with a Muslim skin. The Quran, tafsir, and dua library are the product. AI sits on top of those sources to make them easier to study and more personal to use.</p>
+
+    <div class="callout">
+      <strong>In one sentence:</strong> Nura is a beautifully crafted Islamic study companion — a full Quran reader, classical tafsir you can ask questions about, and an authentic dua library with AI that helps you find and understand the right words.
+    </div>
+
+    <h3>What Nura is not</h3>
+    <ul>
+      <li>Not a fatwa service, “AI imam,” or replacement for a scholar</li>
+      <li>Not a memorization / hifz error-correction app</li>
+      <li>Not a generic ChatGPT wrapper</li>
+      <li>Not only a Quran recitation player</li>
+    </ul>
+  </section>
+
+  <section class="section">
+    <h2>Two layers, one brand</h2>
+    <p>Everything lives at <strong>nura-ai.app</strong>. There are two related products. A marketer should understand both, even if most public content is about the consumer app.</p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="tag">Consumer</div>
+        <h3>Nura AI</h3>
+        <p>For everyday Muslims: Quran reading, translations, audio, tafsir study, AI questions on a verse, duas, and emotional dua search. This is the public face of the brand.</p>
+      </div>
+      <div class="card">
+        <div class="tag">Education</div>
+        <h3>Nura Academy</h3>
+        <p>For Quran teachers, tutors, weekend schools, and homeschool families: classes, assignments inside the Quran reader, student audio, a gradebook, parent visibility, and virtual lessons.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>Who it is for</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Audience</th>
+          <th>What they need</th>
+          <th>How Nura helps</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Busy young Muslims</strong></td>
+          <td>To actually understand what they recite, not just scroll Arabic</td>
+          <td>Word-by-word translation, audio, clean reader</td>
+        </tr>
+        <tr>
+          <td><strong>People in a feeling</strong> (anxious, grateful, lost, grieving)</td>
+          <td>The right dua, with a real source</td>
+          <td>Emotional Dua Search + authentic library</td>
+        </tr>
+        <tr>
+          <td><strong>Students of knowledge</strong></td>
+          <td>Classical tafsir without hunting through PDFs</td>
+          <td>Tafsir Explorer + ask-a-verse AI chat</td>
+        </tr>
+        <tr>
+          <td><strong>Reverts and new Muslims</strong></td>
+          <td>A gentle, complete starting point</td>
+          <td>Reader + translations + duas in one place</td>
+        </tr>
+        <tr>
+          <td><strong>Quran teachers</strong></td>
+          <td>A real classroom instead of WhatsApp</td>
+          <td>Nura Academy: assign, hear, grade, inform parents</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="page-break section">
+    <h2>Core features</h2>
+
+    <h3>1. Quran Reader</h3>
+    <p>A full digital mushaf experience for all 114 surahs and 6,236 verses.</p>
+    <ul>
+      <li>Uthmani Arabic script, designed to look like a real Quran on screen</li>
+      <li>Word-by-word translation — tap any Arabic word to see its meaning</li>
+      <li>Multiple English (and other) translations</li>
+      <li>Audio recitation from renowned qaris (for example Mishary Rashid Alafasy)</li>
+      <li>Tajweed color-coding in light mode, with an on-screen legend (ghunnah, qalqalah, madd, and others)</li>
+      <li>Mushaf page view (like a printed Quran) or translation / verse-list view</li>
+      <li>Search by surah or verse content, bookmarks, reading history, light and dark themes</li>
+    </ul>
+    <p class="muted">The reader is the visual heart of the product. Core reading is free.</p>
+
+    <h3>2. Tafsir Explorer</h3>
+    <p>Study classical commentary verse by verse — currently including works such as Tafsir Ibn Kathir — in a dedicated reader, not a dump of text.</p>
+    <ul>
+      <li>Browse editions and read alongside the Arabic and translation</li>
+      <li>Highlights, notes, and bookmarks across tafsir</li>
+      <li>Continue-reading so you pick up where you left off</li>
+      <li>Share a verse as a branded image (Arabic, translation, optional tafsir excerpt)</li>
+    </ul>
+
+    <h3>3. AI Tafsir Chat (Premium)</h3>
+    <p>On a given verse, the user can ask a question and receive an explanation grounded in classical tafsir — context, scholarly insight, how verses connect. It is a <strong>study aid</strong>, not a source of Islamic legal rulings.</p>
+    <p>Good examples of questions: “What is the context of this verse?” “What does Ibn Kathir say here?” “How does this ayah relate to the next?”</p>
+    <p>It should never be positioned as issuing fatwas, relationship advice, or medical/legal guidance.</p>
+
+    <h3>4. Dua library</h3>
+    <p>A curated collection of 100+ authentic duas with Arabic, translation, transliteration, and virtues, drawn from established sources (for example Sahih Bukhari where applicable). Built for daily use — morning, evening, protection, gratitude, and more.</p>
+
+    <h3>5. Emotional Dua Search (Premium)</h3>
+    <p>The user types how they feel — anxious, grateful, seeking guidance, heartbroken — and Nura matches authentic duas to that state. This is one of the most human, distinctive parts of the product: it starts from the person, then returns to the Sunnah, with the source on the card.</p>
+
+    <h3>6. Dua Insights (Premium)</h3>
+    <p>Deeper explanation of a chosen dua: meaning, related Quranic guidance, prophetic example, and how to live it — not just the text.</p>
+  </section>
+
+  <section class="section">
+    <h2>Nura Academy</h2>
+    <p>A learning layer for Islamic education, especially Quran teachers who today run classes through WhatsApp, notebooks, or memory.</p>
+    <ul>
+      <li>Teacher dashboard: classes and 1-on-1 students</li>
+      <li>Assignments tied to a surah/ayah range, completed inside the in-app Quran reader</li>
+      <li>Students can submit recitation audio</li>
+      <li>Gradebook with scores and a tajweed / fluency / accuracy rubric, plus written feedback</li>
+      <li>Progress tracking and a parent view of the child’s work</li>
+      <li>Calendar and video calling for virtual lessons</li>
+    </ul>
+  </section>
+
+  <section class="page-break section">
+    <h2>Free vs Premium</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Free</th>
+          <th>Premium — 7-day free trial, then $5.99 / month</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            Complete Quran text<br>
+            Multiple translations<br>
+            Word-by-word translation<br>
+            Multiple reciters<br>
+            Basic bookmarking<br>
+            Dua library (core access)
+          </td>
+          <td>
+            Everything in Free, plus:<br>
+            AI Tafsir Chat<br>
+            Emotional Dua Search<br>
+            Dua Insights &amp; analysis<br>
+            Full tafsir study experience
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>When talking about the product publicly: the Quran reader is free to use. AI-powered understanding and personalized dua tools are Premium. Do not advertise Premium features as if they were free.</p>
+  </section>
+
+  <section class="section">
+    <h2>Brand</h2>
+    <h3>Promise</h3>
+    <p>Intelligence meets tradition. Modern technology in service of Quran, classical scholars, and authentic duas — a deeply personal Islamic learning experience.</p>
+
+    <h3>Voice</h3>
+    <p>Calm, intelligent, sincere. Slightly elevated, never preachy, never “hack your deen.” We say <em>deepen, understand, reflect, companion, classical, authentic, grounded</em>. We do not say <em>AI sheikh, unlock secret verses, guaranteed answers</em>.</p>
+
+    <h3>Look</h3>
+    <p>Navy, gold, and cream. Subtle Islamic geometry at low opacity. Large, careful Arabic typography. The app should feel like a quiet study space, not a neon tech startup.</p>
+
+    <div class="swatches">
+      <div class="swatch">
+        <div class="chip" style="background:#1A365D;"></div>
+        <div class="label"><strong>Navy</strong><br>#1A365D</div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#0F2847;"></div>
+        <div class="label"><strong>Deep navy</strong><br>#0F2847</div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#B7A57A;"></div>
+        <div class="label"><strong>Gold</strong><br>#B7A57A</div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#FAF3E0;"></div>
+        <div class="label"><strong>Cream</strong><br>#FAF3E0</div>
+      </div>
+      <div class="swatch">
+        <div class="chip" style="background:#D4C5A0;"></div>
+        <div class="label"><strong>Light gold</strong><br>#D4C5A0</div>
+      </div>
+    </div>
+
+    <p>Logo: the NURA mark (N + wordmark). Live site: <strong>https://www.nura-ai.app</strong></p>
+  </section>
+
+  <section class="section">
+    <h2>How Nura is different</h2>
+    <p>People already know Quran.com, Muslim Pro, Tarteel, and generic AI chat. Nura’s distinction:</p>
+    <ul>
+      <li><strong>Vs. most Quran apps:</strong> we do not stop at reading. You can tap a word, hear a reciter, open classical tafsir, and ask a question on that verse.</li>
+      <li><strong>Vs. hifz apps:</strong> we are not primarily about catching memorization mistakes. We are study, reflection, and dua — plus a classroom for teachers.</li>
+      <li><strong>Vs. ChatGPT:</strong> the AI is attached to a verse and to tafsir, inside a product built for Muslims. It is not a blank chat box.</li>
+    </ul>
+    <p>A useful way to hold it: <strong>Read. Listen. Understand. Ask. Make dua.</strong> For teachers: <strong>Assign. Hear. Grade.</strong></p>
+  </section>
+
+  <section class="section">
+    <h2>Guardrails</h2>
+    <p>These matter for any public explanation of Nura, including social content.</p>
+    <ul>
+      <li>AI is a study companion grounded in classical tafsir. Always say that. Never “AI scholar” or “replaces your sheikh.”</li>
+      <li>Do not demo fiqh rulings, marriage advice, medical claims, or politics.</li>
+      <li>When a dua is shown, keep the source visible. Do not imply a dua “cures” anxiety or illness.</li>
+      <li>Quran recitation should be treated with respect — not under a beat, not as a joke, not stitched to comedy audio.</li>
+      <li>Arabic should be taken from the app, not retyped from memory.</li>
+      <li>Do not invent user numbers. “Thousands of Muslims” is the language already used on the site. Do not claim millions or scholarly endorsements you do not have.</li>
+      <li>Do not dunk on other Muslim apps. Show Nura.</li>
+    </ul>
+  </section>
+
+  <section class="page-break section">
+    <h2>Facts at a glance</h2>
+    <table>
+      <tbody>
+        <tr><td><strong>Name</strong></td><td>Nura AI (Academy layer: Nura Academy)</td></tr>
+        <tr><td><strong>URL</strong></td><td>https://www.nura-ai.app</td></tr>
+        <tr><td><strong>Platform</strong></td><td>Web app — phone and desktop in the browser</td></tr>
+        <tr><td><strong>Quran</strong></td><td>114 surahs · 6,236 verses · Uthmani script · translations · audio · tajweed colors · mushaf view</td></tr>
+        <tr><td><strong>Duas</strong></td><td>100+ authentic duas · emotion search · insights</td></tr>
+        <tr><td><strong>Tafsir</strong></td><td>Classical editions (e.g. Ibn Kathir) · notes · highlights · AI Q&amp;A on the verse · shareable verse cards</td></tr>
+        <tr><td><strong>Price</strong></td><td>Core reader free · Premium $5.99/month after a 7-day trial</td></tr>
+        <tr><td><strong>Tagline in product</strong></td><td>“Your Intelligent Muslim Companion”</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Where to click to see it</h2>
+    <table>
+      <thead>
+        <tr><th>Area</th><th>Path</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Home</td><td>nura-ai.app</td></tr>
+        <tr><td>Quran Reader</td><td>nura-ai.app/quran</td></tr>
+        <tr><td>Tafsir</td><td>nura-ai.app/tafsir/browse</td></tr>
+        <tr><td>Duas</td><td>nura-ai.app/dua</td></tr>
+      </tbody>
+    </table>
+
+    <p class="lede" style="margin-top:18px;">This briefing is the source of truth for what Nura is. Use it to design the social plan — positioning, stories, and visuals — without inventing features or overclaiming what the AI can do.</p>
+
+    <div class="footer-note">
+      Nura AI · Product briefing for marketing · Confidential to the team · nura-ai.app
+    </div>
+  </section>
+
+</body>
+</html>
