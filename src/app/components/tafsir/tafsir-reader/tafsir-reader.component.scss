@@ -218,19 +218,21 @@
 
 // Progress Bar
 .progress-bar {
-  height: 2px !important;
-  background: var(--bg-secondary);
+  height: 3px !important;
+  background: transparent;
   transition: opacity 0.3s ease;
   position: fixed !important;
   top: 48px;
   left: 0;
   right: 0;
   z-index: 999;
+  pointer-events: none;
 
   .progress-fill {
     height: 100%;
     background: var(--accent-color);
     transition: width 0.3s ease;
+    border-radius: 0 2px 2px 0;
   }
 }
 
@@ -240,7 +242,7 @@
 .reader-main-wrapper {
   position: fixed;
   top: 50px;    // toolbar 48px + progress 2px
-  bottom: 52px; // bottom nav
+  bottom: 56px; // bottom nav (flexible)
   left: 0;
   right: 0;
   display: flex;
@@ -616,10 +618,10 @@
   right: 0 !important;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
-  padding: 10px 16px !important;
-  height: 52px !important;
-  min-height: 52px !important;
-  max-height: 52px !important;
+  padding: 6px 16px !important;
+  height: auto !important;
+  min-height: 48px !important;
+  max-height: none !important;
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 1000;
   box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
@@ -630,14 +632,16 @@
 
   .nav-container {
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
+    gap: 8px;
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
     height: 100%;
 
-    button {
+    // Only style the Previous/Next raised buttons, not mat-icon-buttons
+    > button[mat-raised-button] {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -674,6 +678,8 @@
     }
 
     .verse-selector {
+      text-align: center;
+
       .verse-location {
         font-size: 14px !important;
         font-weight: 600;
@@ -688,7 +694,19 @@
   }
 
   .quick-actions {
-    display: none; // Hide for now to save space
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
+
+    button {
+      color: var(--text-secondary);
+
+      &:hover {
+        color: var(--accent-color);
+      }
+    }
   }
 }
 
@@ -776,15 +794,24 @@
 // Responsive Design
 @media (max-width: 768px) {
   .reader-toolbar {
-    padding: 0 8px !important;
+    padding: 0 6px !important;
 
-    .toolbar-location .toolbar-edition {
-      max-width: 100px;
-      font-size: 12px;
-    }
-
+    .toolbar-location .toolbar-edition,
     .toolbar-location .toolbar-sep {
       display: none;
+    }
+
+    .toolbar-location .toolbar-selects {
+      min-width: 0;
+    }
+
+    .toolbar-location .toolbar-select {
+      font-size: 16px; // iOS zooms the page if focused controls are < 16px
+      max-width: 42vw;
+    }
+
+    .tb-desktop {
+      display: none !important;
     }
   }
 
@@ -805,12 +832,71 @@
   }
 
   .reader-navigation {
-    padding: 12px 16px;
+    padding: 6px 8px !important;
 
-    .nav-container button {
-      padding: 10px 16px;
-      font-size: 14px;
+    .nav-container {
+      gap: 4px;
+
+      .nav-label {
+        display: none;
+      }
+
+      > button[mat-raised-button] {
+        padding: 6px 8px !important;
+        font-size: 12px !important;
+        min-width: 40px;
+      }
     }
+
+    .quick-actions {
+      display: none;
+    }
+  }
+
+  .tafsir-reader.notes-open {
+    .reader-navigation {
+      display: none;
+    }
+
+    .reader-main-wrapper {
+      bottom: 0;
+    }
+  }
+
+  .notes-panel.open {
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: calc(48px + var(--tafsir-vv-offset, 0px));
+    height: calc(var(--tafsir-vv-height, 100dvh) - 48px);
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    z-index: 1100;
+    border-left: none;
+    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.18);
+  }
+
+  .notes-panel-content {
+    display: flex;
+    flex-direction: column;
+
+    .note-editor {
+      order: -1;
+      padding-top: 0;
+    }
+
+    .adjacent-verse-notes,
+    .editor-tips {
+      display: none;
+    }
+  }
+
+  .note-editor-actions {
+    position: sticky;
+    bottom: 0;
+    background: var(--bg-primary);
+    padding-bottom: env(safe-area-inset-bottom, 8px);
   }
 }
 
@@ -1097,14 +1183,7 @@
   }
 }
 
-// Mobile adjustments for notes panel
-@media (max-width: 768px) {
-  .notes-panel.open {
-    width: 100%;
-    min-width: 100%;
-    max-width: 100%;
-  }
-}
+// Mobile notes sheet is defined in the main 768px breakpoint above.
 
 // ============================================
 // TEXT HIGHLIGHTING STYLES
@@ -1482,5 +1561,251 @@
   to {
     opacity: 1;
     transform: scale(1);
+  }
+}
+
+// ============================================
+// VERSE GROUP STYLES
+// ============================================
+
+.verse-coverage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  color: var(--accent-color);
+  font-weight: 500;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+.group-verse-item {
+  margin-bottom: 16px;
+
+  .arabic-text {
+    position: relative;
+  }
+
+  .verse-number-badge {
+    display: inline-block;
+    font-family: 'Traditional Arabic', serif;
+    font-size: 0.65em;
+    color: var(--accent-color);
+    margin-right: 4px;
+    vertical-align: middle;
+    opacity: 0.85;
+  }
+
+  .translation-text {
+    margin-top: 8px;
+  }
+}
+
+.verse-separator {
+  border: none;
+  border-top: 1px dashed var(--border-color);
+  margin: 12px 0;
+}
+
+// Passage skip buttons in bottom nav
+.passage-skip-btn {
+  color: var(--text-secondary) !important;
+  background: transparent !important;
+  padding: 4px !important;
+  width: 36px !important;
+  min-width: 36px !important;
+  height: 36px !important;
+  min-height: 36px !important;
+  flex-shrink: 0;
+  border: none !important;
+  border-radius: 50% !important;
+
+  mat-icon {
+    font-size: 22px !important;
+    width: 22px !important;
+    height: 22px !important;
+  }
+
+  &:hover:not(:disabled) {
+    color: var(--accent-color) !important;
+    background: rgba(183, 165, 122, 0.1) !important;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+  }
+}
+
+// Passage indicator between nav buttons
+.passage-indicator {
+  display: block;
+  font-size: 11px !important;
+  color: var(--accent-color);
+  font-weight: 500;
+  line-height: 1.2;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+// ============================================
+// PAGE TRANSITION ANIMATIONS (Feature 2)
+// ============================================
+
+.single-container, .split-container {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+
+  &.slide-out-left {
+    animation: slideOutLeft 0.3s ease forwards;
+  }
+  &.slide-out-right {
+    animation: slideOutRight 0.3s ease forwards;
+  }
+  &.slide-in-left {
+    animation: slideInLeft 0.3s ease forwards;
+  }
+  &.slide-in-right {
+    animation: slideInRight 0.3s ease forwards;
+  }
+}
+
+@keyframes slideOutLeft {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-30px); }
+}
+@keyframes slideOutRight {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(30px); }
+}
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(-30px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+// Swipe Indicator
+.swipe-indicator {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 50%;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+
+  mat-icon {
+    color: var(--text-primary);
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    opacity: 0.7;
+  }
+
+  &.swipe-left {
+    right: 16px;
+  }
+
+  &.swipe-right {
+    left: 16px;
+  }
+}
+
+:host-context(.theme-dark) .swipe-indicator,
+:host-context(.theme-night) .swipe-indicator {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+// ==================== PREMIUM GATING ====================
+
+// Small lock icon overlay on toolbar buttons for non-premium users
+.premium-lock-badge {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  font-size: 12px !important;
+  width: 12px !important;
+  height: 12px !important;
+  color: #B7A57A;
+  background: var(--bg-secondary);
+  border-radius: 50%;
+  padding: 1px;
+  line-height: 12px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Ensure toolbar buttons can position the badge
+.tb-btn {
+  position: relative;
+}
+
+// Premium upsell card displayed inside the notes panel for non-premium users
+.premium-upsell-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 24px;
+  margin: 16px 0;
+  background: linear-gradient(135deg, var(--bg-secondary) 0%, rgba(183, 165, 122, 0.08) 100%);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+
+  .upsell-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    color: #B7A57A;
+    margin-bottom: 16px;
+  }
+
+  h4 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  p {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    margin: 0 0 20px 0;
+    max-width: 300px;
+  }
+
+  button {
+    background: #B7A57A !important;
+    color: white !important;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 500;
+    padding: 8px 24px;
+    border-radius: 8px;
+    transition: background 0.2s ease;
+
+    &:hover {
+      background: #9b8a65 !important;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
   }
 }

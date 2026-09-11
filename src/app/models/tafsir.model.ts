@@ -182,3 +182,9 @@ export interface QuranCDNTafsirResponse {
     language_name: string;
   };
 }
+
+export interface VerseGroupInfo {
+  startVerse: number;
+  endVerse: number;
+  verses: number[];
+}

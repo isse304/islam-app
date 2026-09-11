@@ -39,7 +39,23 @@ const tafsirSources: Record<string, TafsirSourceConfig> = {
   'tabari': {
     baseUrl: 'https://api.qurancdn.com/api/qdc/tafsirs/ar-tafsir-al-tabari',
     language: 'ar'
+  },
+  'maarif-ul-quran': {
+    baseUrl: 'https://api.qurancdn.com/api/qdc/tafsirs/en-tafsir-maarif-ul-quran',
+    language: 'en'
+  },
+  'tazkirul-quran': {
+    baseUrl: 'https://api.qurancdn.com/api/qdc/tafsirs/tazkirul-quran-en',
+    language: 'en'
   }
+};
+
+// Human-readable scholar names for each tafsir source
+const scholarNames: Record<string, string> = {
+  'ibn-kathir': 'Ibn Kathir',
+  'tabari': 'Al-Tabari',
+  'maarif-ul-quran': 'Mufti Muhammad Shafi',
+  'tazkirul-quran': 'Maulana Wahiduddin Khan'
 };
 
 // --- Load Surah Themes --- 
@@ -204,13 +220,17 @@ router.post('/chat', withAuth(async (req: AuthenticatedRequest, res: Response, n
       verse, 
       question, 
       isFirstResponse = false, 
-      selectedTafsir = 'ibn-kathir' 
+      selectedTafsir = 'ibn-kathir',
+      verseGroupStart,
+      verseGroupEnd
     }: { 
       surah?: number | string, 
       verse?: number | string, 
       question?: string, 
       isFirstResponse?: boolean, 
-      selectedTafsir?: string 
+      selectedTafsir?: string,
+      verseGroupStart?: number,
+      verseGroupEnd?: number
     } = req.body;
 
     const userId = req.auth!.uid;
@@ -324,7 +344,7 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
     // --- AI Usage Check and Increment are now MOVED INSIDE specific processing blocks --- 
 
     let systemMessage = '';
-    const scholarName = selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari';
+    const scholarName = scholarNames[selectedTafsir] || 'Ibn Kathir';
     const surahNumStr = String(surah); // May be "undefined" if not provided yet
     const currentSurahTheme = surahThemesData[surahNumStr]?.theme || 'Not available in theme data.';
     const currentSurahName = surahThemesData[surahNumStr]?.name || `Surah ${surahNumStr}`;
@@ -333,7 +353,7 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
     let isPreProcessedTafsir = false;
 
     let fetchTafsir = surah && verse && !isGeneralSurahQuestion;
-    if (String(surah) === '1' && String(verse) === '1') {
+    if (String(surah) === '1' && String(verse) === '1' && selectedTafsir === 'ibn-kathir') {
         fetchTafsir = false;
         hasTafsirContent = false;
     }
@@ -351,11 +371,14 @@ Imam Ibn Kathir (رحمه الله) begins his tafsir of Surah Al-Fātiḥah by 
 CONTEXT & AVAILABLE DATA:
 - Selected Scholar (if relevant): ${scholarName}
 - Surah (if relevant): ${surah ? currentSurahName : 'Not specified'} (${surah || 'N/A'})
-- Verse (if relevant): ${verse || 'N/A'}
+- Verse (if relevant): ${verse || 'N/A'}${verseGroupStart && verseGroupEnd && verseGroupStart !== verseGroupEnd ? `
+- Verse Group: This tafsir passage covers verses ${verseGroupStart}–${verseGroupEnd} as a single discussion. The user is currently reading verse ${verse}.` : ''}
 - General Theme of Surah ${surah || 'N/A'} (if relevant): ${surah ? currentSurahTheme : 'Not specified'}
 - Tafsir Text for ${surah}:${verse} from ${scholarName} (if relevant and available): ${hasTafsirContent ? (isPreProcessedTafsir
     ? '\n--- TAFSIR TEXT (pre-filtered for this verse only) ---\n' + tafsirContent + '\n--- END TAFSIR TEXT ---\n'
-    : '\n--- BEGIN RAW TAFSIR TEXT (WARNING: may contain commentary on adjacent verses - you must filter) ---\n' + tafsirContent + '\n--- END RAW TAFSIR TEXT ---\n'
+    : verseGroupStart && verseGroupEnd && verseGroupStart !== verseGroupEnd
+      ? `\n--- TAFSIR TEXT (covers verses ${verseGroupStart}–${verseGroupEnd} together) ---\n` + tafsirContent + '\n--- END TAFSIR TEXT ---\n'
+      : '\n--- BEGIN RAW TAFSIR TEXT (WARNING: may contain commentary on adjacent verses - you must filter) ---\n' + tafsirContent + '\n--- END RAW TAFSIR TEXT ---\n'
   ) : 'Not Available/Not Requested'}
 
 USER'S CURRENT MESSAGE: ${question}
@@ -369,7 +392,7 @@ YOUR TASK & RESPONSE RULES:
     *   If the conversation strays, gently guide it back. Example: "That's an interesting point. Returning to the Quran, did you have a question about a specific verse or theme?"
 
 2.  **CAPABILITY QUESTIONS:**
-    *   If asked "what can you do?", "how do you work?", etc., explain your functions clearly: "I can provide tafsir (explanations) for specific Quran verses based on scholars like ${Object.keys(tafsirSources).join(', ')}. I can also discuss the overall theme of a Surah based on available data. Ask me about a specific verse (e.g., 'Explain Surah 2 Verse 155 using Ibn Kathir') or a Surah's theme (e.g., 'What is the theme of Surah Al-Fatiha?')."
+    *   If asked "what can you do?", "how do you work?", etc., explain your functions clearly: "I can provide tafsir (explanations) for specific Quran verses based on scholars like ${Object.values(scholarNames).join(', ')}. I can also discuss the overall theme of a Surah based on available data. Ask me about a specific verse (e.g., 'Explain Surah 2 Verse 155 using Ibn Kathir') or a Surah's theme (e.g., 'What is the theme of Surah Al-Fatiha?')."
 
 3.  **GENERAL SURAH THEME QUESTIONS:**
     *   If the user asks about the theme/summary of a Surah (e.g., "Tell me about Surah Al-Baqarah", "Theme of Surah 18") AND *specific tafsir text was NOT requested/provided for a verse*:
@@ -382,12 +405,21 @@ YOUR TASK & RESPONSE RULES:
     *   If the user asks about a SPECIFIC verse (${surah}:${verse}) AND the relevant 'Tafsir Text' IS AVAILABLE above:
         *   **Usage Check:** (This happens *before* this step in the code).
         *   Your primary goal is to **faithfully convey the relevant details from that specific source** in response to the user's question.
-        *   Follow these rules **ABSOLUTELY STRICTLY**:${!isPreProcessedTafsir ? `
-            *   **VERSE BOUNDARY RULE (CRITICAL - PERFORM THIS BEFORE WRITING YOUR ANSWER):**
-                The raw tafsir text above often contains commentary on MULTIPLE verses in a single passage because classical scholars discuss related verses together. Before you write anything, you MUST mentally perform this filtering step:
-                (a) Scan the raw tafsir text and identify where the scholar begins discussing verse ${surah}:${verse} specifically (look for the verse text, verse number references, or the transition from a previous verse's discussion).
-                (b) Identify where the scholar transitions AWAY from verse ${surah}:${verse} to discuss verse ${surah}:${Number(verse) + 1} or later verses (look for phrases like "then Allah says", "the next verse", "and His saying", new verse quotations, or discussion of topics clearly belonging to a different verse).
-                (c) ONLY use the content between points (a) and (b). Everything outside that range must be completely ignored, as if it were not provided.` : ''}
+        *   Follow these rules **ABSOLUTELY STRICTLY**:${isPreProcessedTafsir ? '' : verseGroupStart && verseGroupEnd && verseGroupStart !== verseGroupEnd ? `
+            *   **VERSE GROUP CONTEXT (IMPORTANT):**
+                The tafsir text above is a single scholarly passage that discusses verses ${verseGroupStart}–${verseGroupEnd} together. ${scholarName} groups these verses because they share a common theme or narrative.
+                The user is asking about verse ${verse} specifically. When answering:
+                (a) Focus on the parts of the passage that are most relevant to verse ${verse}.
+                (b) If the passage discusses the group as a whole without distinguishing individual verses, it is acceptable to present the group's shared commentary — but always clarify that "${scholarName} discusses verses ${verseGroupStart}–${verseGroupEnd} together in this passage."
+                (c) Do NOT pretend the passage is only about verse ${verse} if it clearly covers the entire group.
+                (d) If a specific part of the passage explicitly mentions or quotes verse ${verse}, prioritize that content.
+                (e) Do NOT discuss content from verses outside this ${verseGroupStart}–${verseGroupEnd} range, even if stray references appear in the text.` : `
+            *   **VERSE BOUNDARY RULE (IMPORTANT):**
+                The tafsir text above may contain commentary covering multiple verses together, as classical scholars often discuss related verses as a unit.
+                (a) Focus your answer on content most relevant to verse ${surah}:${verse}.
+                (b) If you can identify where the scholar discusses verse ${verse} specifically, prioritize that portion.
+                (c) If the passage discusses multiple verses together without clear boundaries, present the relevant commentary and note that "${scholarName} discusses this verse as part of a larger passage."
+                (d) Do NOT say the tafsir text is unavailable — it HAS been provided above. Use it.`}
             *   **ZERO EXTERNAL KNOWLEDGE RULE (CRITICAL):** Your answer **MUST** contain **ONLY** information that is **explicitly written** in the provided tafsir text above. If a claim, interpretation, theme, symbolism, or moral lesson does NOT appear as actual words in the provided text, you **MUST NOT** include it. Do not infer, extrapolate, or add your own Islamic knowledge. Treat the provided text as the ONLY source of truth. If the text only discusses a hadith about prostration, then your answer is ONLY about that hadith. Do not add what the verse "symbolizes" or "signifies" unless those exact ideas appear in the text.
             *   Focus on extracting the **specific points** (like context, interpretations, linguistic notes, cited hadith) made by ${scholarName} regarding verse ${surah}:${verse} **as presented in the provided text**. Use close paraphrasing or brief, attributed quotes.
             *   Attribute clearly: Start with "According to ${scholarName}..." or similar.
@@ -416,7 +448,9 @@ YOUR TASK & RESPONSE RULES:
 
 **General Tone:** Be helpful, respectful, accurate, and focused on the Quran. Avoid overly casual language.
 **ABSOLUTE RULE: If the user asks a direct question (not just 'hi' or 'salam'), DO NOT start your response with any greeting** (like "Wa alaikum assalam" or "Hello"). Answer the question directly.
-${!isPreProcessedTafsir ? `**ABSOLUTE RULE: When answering about verse ${surah}:${verse}, you must EXCLUDE any content from the tafsir text that pertains to verses ${surah}:${Number(verse) + 1}, ${surah}:${Number(verse) + 2}, or any other verse. The raw tafsir text is a continuous passage covering multiple verses. Your job is to surgically extract ONLY the portion about ${surah}:${verse}.**` : ''}
+${isPreProcessedTafsir ? '' : verseGroupStart && verseGroupEnd && verseGroupStart !== verseGroupEnd
+? `**ABSOLUTE RULE: The tafsir passage covers verses ${verseGroupStart}–${verseGroupEnd} as a unit. The user is on verse ${verse}. Focus your answer on verse ${verse} within that group. Acknowledge the group context if relevant ("${scholarName} discusses verses ${verseGroupStart}–${verseGroupEnd} together"). Do NOT include content about verses outside this range.**`
+: `**ABSOLUTE RULE: Tafsir text HAS been provided above — do NOT say it is unavailable. Focus your answer on verse ${surah}:${verse}. If the passage covers multiple verses together, present the commentary and note the broader scope. Do NOT include content clearly about unrelated verses.**`}
 **ABSOLUTE RULE: Every sentence in your response must be traceable to a specific passage in the provided tafsir text. If you cannot point to where in the text a claim comes from, DELETE that sentence. Do NOT add your own interpretation, symbolism, moral lessons, or thematic analysis. If the source text is brief, your answer must be brief.**
 `;
     // --- End Unified System Prompt ---
@@ -492,8 +526,8 @@ ${!isPreProcessedTafsir ? `**ABSOLUTE RULE: When answering about verse ${surah}:
       source: responseSource,
       sources: (responseSource === 'tafsir_sources') ? [
         {
-          name: selectedTafsir === 'ibn-kathir' ? 'Ibn Kathir' : 'Al-Tabari',
-          language: tafsirSources[selectedTafsir].language
+          name: scholarNames[selectedTafsir] || selectedTafsir,
+          language: tafsirSources[selectedTafsir]?.language || 'en'
         }
       ] : [],
       isPremium: isPremiumUser

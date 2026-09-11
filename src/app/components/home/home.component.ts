@@ -27,6 +27,45 @@ interface ShowcaseSlide {
 export class HomeComponent implements OnInit, OnDestroy {
   currentYear = new Date().getFullYear();
 
+  // ── Tafsir Continue Reading ──
+  hasTafsirProgress = false;
+  tafsirProgress: any = null;
+  tafsirEditionName = '';
+  tafsirSurahName = '';
+  tafsirTimeAgo = '';
+  tafsirCompletionPercent = 0;
+
+  private static readonly SURAH_NAMES: string[] = [
+    'Al-Fatihah', 'Al-Baqarah', "Ali 'Imran", 'An-Nisa', "Al-Ma'idah", "Al-An'am",
+    "Al-A'raf", 'Al-Anfal', 'At-Tawbah', 'Yunus', 'Hud', 'Yusuf', "Ar-Ra'd",
+    'Ibrahim', 'Al-Hijr', 'An-Nahl', "Al-Isra'", 'Al-Kahf', 'Maryam', 'Ta-Ha',
+    "Al-Anbiya'", 'Al-Hajj', "Al-Mu'minun", 'An-Nur', 'Al-Furqan', "Ash-Shu'ara'",
+    'An-Naml', 'Al-Qasas', "Al-'Ankabut", 'Ar-Rum', 'Luqman', 'As-Sajdah',
+    'Al-Ahzab', "Saba'", 'Fatir', 'Ya-Sin', 'As-Saffat', 'Sad', 'Az-Zumar',
+    'Ghafir', 'Fussilat', 'Ash-Shura', 'Az-Zukhruf', 'Ad-Dukhan', 'Al-Jathiyah',
+    'Al-Ahqaf', 'Muhammad', 'Al-Fath', 'Al-Hujurat', 'Qaf', 'Adh-Dhariyat',
+    'At-Tur', 'An-Najm', 'Al-Qamar', 'Ar-Rahman', "Al-Waqi'ah", 'Al-Hadid',
+    'Al-Mujadilah', 'Al-Hashr', 'Al-Mumtahanah', 'As-Saff', "Al-Jumu'ah",
+    'Al-Munafiqun', 'At-Taghabun', 'At-Talaq', 'At-Tahrim', 'Al-Mulk', 'Al-Qalam',
+    'Al-Haqqah', "Al-Ma'arij", 'Nuh', 'Al-Jinn', 'Al-Muzzammil', 'Al-Muddaththir',
+    'Al-Qiyamah', 'Al-Insan', 'Al-Mursalat', "An-Naba'", "An-Nazi'at", "'Abasa",
+    'At-Takwir', 'Al-Infitar', 'Al-Mutaffifin', 'Al-Inshiqaq', 'Al-Buruj',
+    'At-Tariq', "Al-A'la", 'Al-Ghashiyah', 'Al-Fajr', 'Al-Balad', 'Ash-Shams',
+    'Al-Layl', 'Ad-Duha', 'Ash-Sharh', 'At-Tin', "Al-'Alaq", 'Al-Qadr',
+    'Al-Bayyinah', 'Az-Zalzalah', "Al-'Adiyat", "Al-Qari'ah", 'At-Takathur',
+    "Al-'Asr", 'Al-Humazah', 'Al-Fil', 'Quraysh', "Al-Ma'un", 'Al-Kawthar',
+    'Al-Kafirun', 'An-Nasr', 'Al-Masad', 'Al-Ikhlas', 'Al-Falaq', 'An-Nas'
+  ];
+
+  private static readonly EDITION_NAMES: Record<string, string> = {
+    'en-ibn-kathir': 'Tafsir Ibn Kathir',
+    'ar-ibn-kathir': 'Tafsir Ibn Kathir (Arabic)',
+    'en-maarif-ul-quran': "Ma'arif al-Qur'an",
+    'en-tazkirul-quran': 'Tazkirul Quran'
+  };
+
+  private static readonly TOTAL_QURAN_VERSES = 6236;
+
   slides: ShowcaseSlide[] = [
     {
       text: "This is a blessed Book which We have revealed to you, so that they may reflect upon its verses and those of understanding would be reminded.",
@@ -84,6 +123,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     ]);
 
     this.startSlideShow();
+    this.loadTafsirProgress();
   }
 
   ngOnDestroy(): void {
@@ -118,5 +158,67 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.stopSlideShow();
     this.startSlideShow();
     this.cdr.detectChanges();
+  }
+
+  // ── Tafsir Continue Reading ──
+
+  loadTafsirProgress(): void {
+    let mostRecent: any = null;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('tafsir_progress_')) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key)!);
+          if (data && data.lastReadAt) {
+            if (!mostRecent || new Date(data.lastReadAt) > new Date(mostRecent.lastReadAt)) {
+              mostRecent = data;
+            }
+          }
+        } catch {
+          // skip malformed entries
+        }
+      }
+    }
+
+    if (mostRecent) {
+      this.hasTafsirProgress = true;
+      this.tafsirProgress = mostRecent;
+      this.tafsirEditionName =
+        HomeComponent.EDITION_NAMES[mostRecent.editionId] || mostRecent.editionId;
+      this.tafsirSurahName =
+        HomeComponent.SURAH_NAMES[mostRecent.surah - 1] || `Surah ${mostRecent.surah}`;
+      this.tafsirTimeAgo = this.getRelativeTime(mostRecent.lastReadAt);
+      this.tafsirCompletionPercent =
+        Math.min(Math.round((mostRecent.verse / HomeComponent.TOTAL_QURAN_VERSES) * 100 * 10) / 10, 100);
+      this.cdr.detectChanges();
+    }
+  }
+
+  getReadingTimeFormatted(): string {
+    const totalSeconds = this.tafsirProgress?.totalReadTime ?? 0;
+    if (totalSeconds < 60) return `${totalSeconds}s`;
+    const hrs = Math.floor(totalSeconds / 3600);
+    const mins = Math.floor((totalSeconds % 3600) / 60);
+    if (hrs > 0) return mins > 0 ? `${hrs} hr ${mins} min` : `${hrs} hr`;
+    return `${mins} min`;
+  }
+
+  private getRelativeTime(dateStr: string): string {
+    const now = Date.now();
+    const then = new Date(dateStr).getTime();
+    const diffMs = now - then;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHr = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHr / 24);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffMin < 60) return `${diffMin} min ago`;
+    if (diffHr < 24) return `${diffHr} hour${diffHr > 1 ? 's' : ''} ago`;
+    if (diffDay === 1) return 'Yesterday';
+    if (diffDay < 7) return `${diffDay} days ago`;
+    if (diffDay < 30) return `${Math.floor(diffDay / 7)} week${Math.floor(diffDay / 7) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffDay / 30)} month${Math.floor(diffDay / 30) > 1 ? 's' : ''} ago`;
   }
 } 

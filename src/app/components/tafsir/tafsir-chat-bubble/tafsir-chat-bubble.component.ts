@@ -1,4 +1,4 @@
-import { Component, Input, OnChanges, OnDestroy, SimpleChanges, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
+import { Component, Input, OnChanges, OnDestroy, OnInit, SimpleChanges, ViewChild, ElementRef, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule, Router } from '@angular/router';
@@ -62,12 +62,14 @@ interface StoredConversation {
   templateUrl: './tafsir-chat-bubble.component.html',
   styleUrls: ['./tafsir-chat-bubble.component.scss']
 })
-export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
+export class TafsirChatBubbleComponent implements OnInit, OnChanges, OnDestroy {
   @Input() surah: number = 1;
   @Input() verse: number = 1;
   @Input() editionId: string = 'en-ibn-kathir';
   @Input() surahName: string = '';
   @Input() autoOpen: boolean = false;
+  @Input() verseGroupStart: number = 0;
+  @Input() verseGroupEnd: number = 0;
 
   @ViewChild('messageContainer') messageContainer!: ElementRef;
   @ViewChild('chatInput') chatInput!: ElementRef;
@@ -83,13 +85,20 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
 
   private storageKeyPrefix = 'tafsir_chat_';
   private hasShownWelcome = false;
+  private isMobile = false;
+  private viewportHandler: (() => void) | null = null;
 
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
+    private elRef: ElementRef,
     public router: Router,
     private authService: FirebaseAuthService
   ) {}
+
+  ngOnInit(): void {
+    this.isMobile = window.innerWidth <= 480;
+  }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['surah'] || changes['editionId']) {
@@ -102,6 +111,8 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.saveConversation();
+    this.detachViewportHandler();
+    document.body.style.overflow = '';
   }
 
   get storageKey(): string {
@@ -111,6 +122,8 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
   get selectedTafsir(): string {
     if (this.editionId.includes('ibn-kathir')) return 'ibn-kathir';
     if (this.editionId.includes('tabari')) return 'tabari';
+    if (this.editionId.includes('maarif')) return 'maarif-ul-quran';
+    if (this.editionId.includes('tazkirul')) return 'tazkirul-quran';
     return 'ibn-kathir';
   }
 
@@ -128,10 +141,19 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
         });
         this.hasShownWelcome = true;
       }
+      if (this.isMobile) {
+        this.attachViewportHandler();
+        document.body.style.overflow = 'hidden';
+      }
       setTimeout(() => {
         this.scrollToBottom();
         this.focusInput();
       }, 200);
+    } else {
+      if (this.isMobile) {
+        this.detachViewportHandler();
+        document.body.style.overflow = '';
+      }
     }
   }
 
@@ -190,7 +212,14 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
       const payload: any = {
         question,
         selectedTafsir: this.selectedTafsir,
-        ...(!isGeneralQuery && { surah: this.surah, verse: this.verse })
+        ...(!isGeneralQuery && {
+          surah: this.surah,
+          verse: this.verse,
+          ...(this.verseGroupStart > 0 && this.verseGroupEnd > 0 && {
+            verseGroupStart: this.verseGroupStart,
+            verseGroupEnd: this.verseGroupEnd
+          })
+        })
       };
 
       const response = await firstValueFrom(
@@ -340,6 +369,32 @@ export class TafsirChatBubbleComponent implements OnChanges, OnDestroy {
         this.chatInput.nativeElement.focus();
       }
     }, 300);
+  }
+
+  private attachViewportHandler(): void {
+    if (!window.visualViewport) return;
+    this.viewportHandler = () => {
+      const vv = window.visualViewport!;
+      const panel = this.elRef.nativeElement.querySelector('.chat-panel') as HTMLElement;
+      if (!panel) return;
+      panel.style.height = `${vv.height}px`;
+      panel.style.top = `${vv.offsetTop}px`;
+      this.scrollToBottom();
+    };
+    window.visualViewport.addEventListener('resize', this.viewportHandler);
+    window.visualViewport.addEventListener('scroll', this.viewportHandler);
+  }
+
+  private detachViewportHandler(): void {
+    if (!this.viewportHandler || !window.visualViewport) return;
+    window.visualViewport.removeEventListener('resize', this.viewportHandler);
+    window.visualViewport.removeEventListener('scroll', this.viewportHandler);
+    const panel = this.elRef.nativeElement.querySelector('.chat-panel') as HTMLElement;
+    if (panel) {
+      panel.style.height = '';
+      panel.style.top = '';
+    }
+    this.viewportHandler = null;
   }
 
   static getAllConversations(): StoredConversation[] {

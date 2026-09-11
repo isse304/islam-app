@@ -496,9 +496,16 @@ $border-dark: #3a3a4a;
   }
 
   .chat-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
-    height: calc(100vh - 140px);
-    border-radius: 16px 16px 0 0;
+    height: 100%;
+    border-radius: 0;
+    z-index: 1001;
+    animation: mobileSlideUp 0.25s ease-out;
   }
 
   .chat-fab {
@@ -510,5 +517,16 @@ $border-dark: #3a3a4a;
       width: 22px;
       height: 22px;
     }
+  }
+}
+
+@keyframes mobileSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

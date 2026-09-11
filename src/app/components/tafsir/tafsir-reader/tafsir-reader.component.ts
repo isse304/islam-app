@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
-import { Observable, Subject, takeUntil, forkJoin } from 'rxjs';
+import { Observable, Subject, takeUntil, forkJoin, merge, fromEvent } from 'rxjs';
 
 // Material imports
 import { MatIconModule } from '@angular/material/icon';
@@ -16,6 +16,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 // Services
 import { TafsirService } from '../../../services/tafsir.service';
@@ -24,15 +25,18 @@ import { ThemeService } from '../../../services/theme.service';
 import { BookmarkService } from '../../../services/bookmark.service';
 import { NoteService } from '../../../services/note.service';
 import { HighlightService } from '../../../services/highlight.service';
+import { FirebaseAuthService } from '../../../services/firebase-auth.service';
 
 // Models
-import { TafsirEdition, TafsirContent, UserPreferences } from '../../../models/tafsir.model';
+import { TafsirEdition, TafsirContent, UserPreferences, VerseGroupInfo } from '../../../models/tafsir.model';
 import { QuranVerse } from '../../../services/quran.service';
 import { Bookmark, Note, Highlight, BookmarkHelpers } from '../../../models/bookmark.model';
 
 // Components
 import { RichTextEditorComponent } from '../../shared/rich-text-editor/rich-text-editor.component';
 import { TafsirChatBubbleComponent } from '../tafsir-chat-bubble/tafsir-chat-bubble.component';
+import { PremiumPromptComponent } from '../../premium-prompt/premium-prompt.component';
+import { TafsirShareCardComponent, ShareCardData } from '../tafsir-share-card/tafsir-share-card.component';
 
 @Component({
   selector: 'app-tafsir-reader',
@@ -51,6 +55,7 @@ import { TafsirChatBubbleComponent } from '../tafsir-chat-bubble/tafsir-chat-bub
     MatMenuModule,
     MatSlideToggleModule,
     MatDividerModule,
+    MatDialogModule,
     RichTextEditorComponent,
     TafsirChatBubbleComponent
   ],
@@ -80,6 +85,14 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   focusMode = false;
   openChatOnLoad = false;
 
+  // Premium status
+  isPremium: boolean = false;
+
+  /** Phone-sized layout: compact chrome, notes as a keyboard-safe sheet. */
+  isCompactViewport = typeof window !== 'undefined' && window.innerWidth < 768;
+  vvHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+  vvOffset = 0;
+
   // Typography preferences
   preferences: UserPreferences = {
     userId: '',
@@ -97,6 +110,25 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     syncWithQuranReader: false,
     offlineMode: false
   };
+
+  // Verse Group Navigation (Feature 1)
+  verseGroupStart: number = 0;
+  verseGroupEnd: number = 0;
+  verseGroup: number[] = [];
+  groupVerseData: QuranVerse[] = [];
+  currentPassageNumber: number = 0;
+  totalPassages: number = 0;
+
+  // Swipe Gestures & Page Transitions (Feature 2)
+  isTransitioning = false;
+  transitionDirection: 'left' | 'right' | 'enter-left' | 'enter-right' | null = null;
+  private touchStartX = 0;
+  private touchStartY = 0;
+  private touchDeltaX = 0;
+  private touchDeltaY = 0;
+  private isSwiping = false;
+  swipeIndicatorOpacity = 0;
+  swipeIndicatorDirection: 'left' | 'right' | null = null;
 
   // Reading progress
   readingStartTime: number = 0;
@@ -172,7 +204,9 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     private sanitizer: DomSanitizer,
     public bookmarkService: BookmarkService, // Public for template access
     public noteService: NoteService, // Public for template access
-    public highlightService: HighlightService // Public for template access
+    public highlightService: HighlightService, // Public for template access
+    private dialog: MatDialog,
+    private authService: FirebaseAuthService
   ) {
     // Initialize surahs observable
     this.surahs$ = this.quranService.surahs$;
@@ -185,6 +219,12 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     
     // Load user preferences from localStorage
     this.loadPreferences();
+
+    // Check premium status (non-blocking)
+    this.authService.isPremiumUser().then(premium => {
+      this.isPremium = premium;
+      this.cdr.detectChanges();
+    });
 
     // Ensure surahs are loaded
     this.quranService.getSurahList().pipe(takeUntil(this.destroy$)).subscribe();
@@ -211,6 +251,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
       this.loadVerseCount();
     });
 
+    this.bindVisualViewport();
+
     // Start reading timer
     this.readingStartTime = Date.now();
 
@@ -236,6 +278,28 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
 
     // Save reading time
     this.saveReadingProgress();
+  }
+
+  /**
+   * Keep the notes sheet inside the visible viewport when the mobile keyboard opens.
+   * iOS/Android shrink visualViewport instead of the layout viewport.
+   */
+  private bindVisualViewport(): void {
+    this.syncVisualViewport();
+    const streams = [fromEvent(window, 'resize')];
+    const vv = window.visualViewport;
+    if (vv) {
+      streams.push(fromEvent(vv, 'resize'), fromEvent(vv, 'scroll'));
+    }
+    merge(...streams).pipe(takeUntil(this.destroy$)).subscribe(() => this.syncVisualViewport());
+  }
+
+  private syncVisualViewport(): void {
+    const vv = window.visualViewport;
+    this.vvHeight = Math.round(vv?.height ?? window.innerHeight);
+    this.vvOffset = Math.round(vv?.offsetTop ?? 0);
+    this.isCompactViewport = window.innerWidth < 768;
+    this.cdr.markForCheck();
   }
 
   /**
@@ -308,6 +372,9 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
         this.tafsirContent = content;
         tafsirLoaded = true;
         this.cdr.detectChanges(); // Force update immediately
+
+        // Detect verse group for this tafsir passage
+        this.detectVerseGroup();
 
         // Prefetch next verses
         this.prefetchNextVerses();
@@ -394,13 +461,81 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Navigate to next verse
+   * Detect the verse group sharing the same tafsir passage as the current verse
+   */
+  detectVerseGroup(): void {
+    this.tafsirService.getVerseGroupForTafsir(this.editionId, this.currentSurah, this.currentVerse)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (group: VerseGroupInfo) => {
+          this.verseGroupStart = group.startVerse;
+          this.verseGroupEnd = group.endVerse;
+          this.verseGroup = group.verses;
+          this.totalPassages = this.tafsirService.getPassageCountForSurah(this.editionId, this.currentSurah);
+
+          // Load Arabic verses for all verses in the group when showing Arabic
+          if (this.showArabicVerse && group.verses.length > 1) {
+            this.loadGroupVerseData(group.verses);
+          }
+
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.verseGroupStart = this.currentVerse;
+          this.verseGroupEnd = this.currentVerse;
+          this.verseGroup = [this.currentVerse];
+        }
+      });
+  }
+
+  /**
+   * Load Arabic verse data for all verses in a group
+   */
+  loadGroupVerseData(verses: number[]): void {
+    const verseFetches = verses.map(v => this.quranService.getVerse(this.currentSurah, v));
+    forkJoin(verseFetches).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (data) => {
+        this.groupVerseData = data;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.groupVerseData = [];
+      }
+    });
+  }
+
+  /**
+   * Check if current tafsir covers a multi-verse group
+   */
+  isMultiVerseGroup(): boolean {
+    return this.verseGroup.length > 1;
+  }
+
+  /**
+   * Get verse group label for display
+   */
+  getVerseGroupLabel(): string {
+    if (this.verseGroup.length <= 1) {
+      return `Verse ${this.currentVerse}`;
+    }
+    return `Verses ${this.verseGroupStart}–${this.verseGroupEnd}`;
+  }
+
+  /**
+   * Navigate to next verse. If at the end of a group, skip to next group.
+   * Otherwise, step through individual verses within the group.
    */
   nextVerse(): void {
-    // Get total verses in current surah
+    if (this.isTransitioning) return;
+
     this.quranService.getVerseCount(this.currentSurah).subscribe(data => {
       if (this.currentVerse < data.numberOfAyahs) {
-        this.currentVerse++;
+        // If at the end of a group, skip to start of next group
+        if (this.verseGroupEnd > 0 && this.currentVerse >= this.verseGroupEnd) {
+          this.currentVerse = this.verseGroupEnd + 1;
+        } else {
+          this.currentVerse++;
+        }
       } else {
         // Move to next surah
         if (this.currentSurah < 114) {
@@ -410,21 +545,30 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
       }
       this.updateRoute();
       this.loadTafsir();
-      // Save will happen automatically via interval or on position change
     });
   }
 
   /**
-   * Navigate to previous verse
+   * Navigate to previous verse. Skips back to start of previous group.
    */
   previousVerse(): void {
+    if (this.isTransitioning) return;
+
     if (this.currentVerse > 1) {
+      // If at the start of a group, go to start of previous group
+      if (this.verseGroupStart > 0 && this.currentVerse <= this.verseGroupStart && this.verseGroupStart > 1) {
+        // Need to find the previous group's start verse
+        const targetVerse = this.verseGroupStart - 1;
+        this.currentVerse = targetVerse;
+        this.updateRoute();
+        this.loadTafsir();
+        return;
+      }
       this.currentVerse--;
     } else {
       // Move to previous surah
       if (this.currentSurah > 1) {
         this.currentSurah--;
-        // Get last verse of previous surah
         this.quranService.getVerseCount(this.currentSurah).subscribe(data => {
           this.currentVerse = data.numberOfAyahs;
           this.updateRoute();
@@ -435,7 +579,45 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     }
     this.updateRoute();
     this.loadTafsir();
-    // Save will happen automatically via interval or on position change
+  }
+
+  /**
+   * Skip to next distinct tafsir passage (always jumps past the current group)
+   */
+  nextPassage(): void {
+    if (this.isTransitioning) return;
+
+    this.quranService.getVerseCount(this.currentSurah).subscribe(data => {
+      const nextStart = this.verseGroupEnd > 0 ? this.verseGroupEnd + 1 : this.currentVerse + 1;
+      if (nextStart <= data.numberOfAyahs) {
+        this.currentVerse = nextStart;
+      } else if (this.currentSurah < 114) {
+        this.currentSurah++;
+        this.currentVerse = 1;
+      }
+      this.updateRoute();
+      this.loadTafsir();
+    });
+  }
+
+  /**
+   * Skip to previous distinct tafsir passage (jumps to start of previous group)
+   */
+  previousPassage(): void {
+    if (this.isTransitioning) return;
+
+    if (this.verseGroupStart > 1) {
+      this.currentVerse = this.verseGroupStart - 1;
+      this.updateRoute();
+      this.loadTafsir();
+    } else if (this.currentSurah > 1) {
+      this.currentSurah--;
+      this.quranService.getVerseCount(this.currentSurah).subscribe(data => {
+        this.currentVerse = data.numberOfAyahs;
+        this.updateRoute();
+        this.loadTafsir();
+      });
+    }
   }
 
   /**
@@ -461,9 +643,35 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Check if user has premium access; if not, show the upgrade dialog.
+   * Returns true when the user IS premium, false otherwise.
+   */
+  requirePremium(featureName: string): boolean {
+    if (this.isPremium) {
+      return true;
+    }
+    this.dialog.open(PremiumPromptComponent, {
+      data: {
+        feature: featureName,
+        benefits: [
+          'Notes & Annotations on every verse',
+          'Text highlighting with multiple colors',
+          'Split View reading mode',
+          'Focus Mode for distraction-free study',
+          'AI-powered Tafsir Chat'
+        ]
+      },
+      panelClass: 'premium-dialog',
+      maxWidth: '500px'
+    });
+    return false;
+  }
+
+  /**
    * Toggle split view mode
    */
   toggleSplitView(): void {
+    if (!this.requirePremium('Split View Reading')) return;
     this.splitViewMode = !this.splitViewMode;
     this.preferences.viewMode = this.splitViewMode ? 'split' : 'single';
     this.savePreferences();
@@ -492,6 +700,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
    * Toggle focus mode (hide all controls)
    */
   toggleFocusMode(): void {
+    if (!this.requirePremium('Focus Mode')) return;
     this.focusMode = !this.focusMode;
   }
 
@@ -609,11 +818,11 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get progress percentage
+   * Get progress percentage based on current verse position in the surah
    */
   getProgressPercentage(): number {
-    // Calculate based on total verses read in this surah
-    return 0; // TODO: Implement actual progress tracking
+    if (this.totalVersesInCurrentSurah <= 0) return 0;
+    return Math.round((this.currentVerse / this.totalVersesInCurrentSurah) * 100);
   }
 
   /**
@@ -716,10 +925,12 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
         event.preventDefault();
         break;
       case 's':
+        if (!this.requirePremium('Split View Reading')) { event.preventDefault(); break; }
         this.toggleSplitView();
         event.preventDefault();
         break;
       case 'f':
+        if (!this.requirePremium('Focus Mode')) { event.preventDefault(); break; }
         this.toggleFocusMode();
         event.preventDefault();
         break;
@@ -742,6 +953,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
         break;
       case 'n':
         // Open notes panel
+        if (!this.requirePremium('Notes & Annotations')) { event.preventDefault(); break; }
         this.toggleNotesPanel();
         event.preventDefault();
         break;
@@ -923,6 +1135,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
    * Toggle notes panel
    */
   toggleNotesPanel(): void {
+    if (!this.requirePremium('Notes & Annotations')) return;
     this.showNotesPanel = !this.showNotesPanel;
     
     // If opening panel and no draft exists, create one
@@ -1091,6 +1304,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
    * Handle text selection in the tafsir content
    */
   handleTextSelection(event: MouseEvent): void {
+    if (!this.isPremium) return;
     this.isSelecting = false;
     
     // Don't process if clicking on menu buttons
@@ -1546,5 +1760,130 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
    */
   viewHighlights(): void {
     this.router.navigate(['/tafsir/highlights']);
+  }
+
+  // ==================== SWIPE GESTURES & PAGE TRANSITIONS ====================
+
+  /**
+   * Handle touch start event for swipe detection
+   */
+  onTouchStart(event: TouchEvent): void {
+    if (this.isTransitioning) return;
+    const touch = event.touches[0];
+    this.touchStartX = touch.clientX;
+    this.touchStartY = touch.clientY;
+    this.touchDeltaX = 0;
+    this.touchDeltaY = 0;
+    this.isSwiping = false;
+    this.swipeIndicatorOpacity = 0;
+    this.swipeIndicatorDirection = null;
+  }
+
+  /**
+   * Handle touch move event for swipe detection and visual indicator
+   */
+  onTouchMove(event: TouchEvent): void {
+    if (this.isTransitioning) return;
+    const touch = event.touches[0];
+    this.touchDeltaX = touch.clientX - this.touchStartX;
+    this.touchDeltaY = touch.clientY - this.touchStartY;
+
+    // Only consider horizontal swipes (vertical movement under threshold)
+    if (Math.abs(this.touchDeltaY) > 100) {
+      this.swipeIndicatorOpacity = 0;
+      this.swipeIndicatorDirection = null;
+      return;
+    }
+
+    const absDeltaX = Math.abs(this.touchDeltaX);
+    if (absDeltaX > 20) {
+      this.isSwiping = true;
+      this.swipeIndicatorDirection = this.touchDeltaX < 0 ? 'left' : 'right';
+      this.swipeIndicatorOpacity = Math.min(absDeltaX / 100, 1);
+      this.cdr.detectChanges();
+    }
+  }
+
+  /**
+   * Handle touch end event — trigger navigation if swipe threshold met
+   */
+  onTouchEnd(event: TouchEvent): void {
+    if (this.isTransitioning) return;
+    this.swipeIndicatorOpacity = 0;
+    this.swipeIndicatorDirection = null;
+
+    if (!this.isSwiping) return;
+    this.isSwiping = false;
+
+    const absDeltaX = Math.abs(this.touchDeltaX);
+    const absDeltaY = Math.abs(this.touchDeltaY);
+
+    // Minimum horizontal distance 50px, max vertical 100px
+    if (absDeltaX >= 50 && absDeltaY <= 100) {
+      if (this.touchDeltaX < 0) {
+        // Swipe left → next
+        this.animateTransition('left', () => this.nextVerse());
+      } else {
+        // Swipe right → previous
+        this.animateTransition('right', () => this.previousVerse());
+      }
+    }
+
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Play slide-out / slide-in animation, then call the navigation callback
+   */
+  animateTransition(direction: 'left' | 'right', navigationFn: () => void): void {
+    if (this.isTransitioning) return;
+    this.isTransitioning = true;
+    this.transitionDirection = direction;
+    this.cdr.detectChanges();
+
+    // After slide-out animation completes, navigate and slide-in
+    setTimeout(() => {
+      this.transitionDirection = null;
+      navigationFn();
+
+      // After navigation loads, play slide-in
+      setTimeout(() => {
+        this.transitionDirection = direction === 'left' ? 'enter-left' : 'enter-right';
+        this.cdr.detectChanges();
+
+      setTimeout(() => {
+        this.transitionDirection = null;
+          this.isTransitioning = false;
+          this.cdr.detectChanges();
+        }, 300);
+      }, 50);
+    }, 300);
+  }
+
+  // ==================== SHARE ====================
+
+  /**
+   * Open the share card dialog with current verse data
+   */
+  shareVerse(): void {
+    if (!this.verseData || !this.tafsirContent) return;
+
+    const data: ShareCardData = {
+      surah: this.currentSurah,
+      verse: this.currentVerse,
+      surahName: this.getSurahName(),
+      arabicText: this.verseData.text || '',
+      translation: this.verseData.translation || '',
+      tafsirExcerpt: this.tafsirContent.text || '',
+      editionName: this.edition?.name || ''
+    };
+
+    this.dialog.open(TafsirShareCardComponent, {
+      data,
+      panelClass: 'share-card-dialog',
+      maxWidth: '520px',
+      width: '95vw',
+      autoFocus: false
+    });
   }
 }

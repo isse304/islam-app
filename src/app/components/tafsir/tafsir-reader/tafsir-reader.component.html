@@ -1,4 +1,9 @@
-<div class="tafsir-reader" [class.focus-mode]="focusMode" [class.split-view-active]="splitViewMode">
+<div class="tafsir-reader"
+     [class.focus-mode]="focusMode"
+     [class.split-view-active]="splitViewMode"
+     [class.notes-open]="showNotesPanel"
+     [style.--tafsir-vv-height]="vvHeight + 'px'"
+     [style.--tafsir-vv-offset]="vvOffset + 'px'">
   
   <!-- Top Toolbar -->
   <header class="reader-toolbar" *ngIf="!focusMode">
@@ -37,7 +42,7 @@
       <button mat-icon-button 
               (click)="toggleBookmarkCurrent()" 
               [class.active-accent]="isBookmarkedCurrent"
-              matTooltip="Bookmark (B)" class="tb-btn">
+              matTooltip="Bookmark (B)" class="tb-btn tb-desktop">
         <mat-icon>{{ isBookmarkedCurrent ? 'bookmark' : 'bookmark_border' }}</mat-icon>
       </button>
 
@@ -45,15 +50,17 @@
       <button mat-icon-button 
               (click)="toggleNotesPanel()" 
               [class.active-accent]="showNotesPanel"
-              matTooltip="Notes (N)" class="tb-btn">
+              matTooltip="Notes (N) {{ isPremium ? '' : '🔒 Premium' }}" class="tb-btn">
         <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
+        <mat-icon *ngIf="!isPremium" class="premium-lock-badge">lock</mat-icon>
       </button>
 
       <!-- Highlight color quick-pick -->
       <button mat-icon-button 
               [matMenuTriggerFor]="highlightMenu" 
-              matTooltip="Highlight color" class="tb-btn">
+              matTooltip="Highlight color {{ isPremium ? '' : '🔒 Premium' }}" class="tb-btn tb-desktop">
         <mat-icon [style.color]="getHighlightColorHex(selectedHighlightColor)">format_color_fill</mat-icon>
+        <mat-icon *ngIf="!isPremium" class="premium-lock-badge">lock</mat-icon>
       </button>
       <mat-menu #highlightMenu="matMenu" class="highlight-menu-dropdown">
         <div class="highlight-colors-grid" (click)="$event.stopPropagation()">
@@ -68,9 +75,17 @@
         </div>
       </mat-menu>
 
+      <!-- Share -->
+      <button mat-icon-button (click)="shareVerse()"
+              matTooltip="Share Verse"
+              class="tb-btn tb-desktop"
+              [disabled]="!verseData || !tafsirContent">
+        <mat-icon>share</mat-icon>
+      </button>
+
       <!-- Theme -->
       <button mat-icon-button [matMenuTriggerFor]="themeMenu" 
-              matTooltip="Theme (D)" class="tb-btn">
+              matTooltip="Theme (D)" class="tb-btn tb-desktop">
         <mat-icon>{{
           preferences.theme === 'light' ? 'light_mode' :
           preferences.theme === 'dark' ? 'dark_mode' :
@@ -86,11 +101,33 @@
 
       <!-- Overflow "More" Menu -->
       <button mat-icon-button [matMenuTriggerFor]="moreMenu" 
-              matTooltip="More options" class="tb-btn">
+              matTooltip="More options" class="tb-btn tb-more">
         <mat-icon>more_vert</mat-icon>
       </button>
       <mat-menu #moreMenu="matMenu">
-        <!-- Typography -->
+        <ng-container *ngIf="isCompactViewport">
+          <button mat-menu-item (click)="toggleNotesPanel()">
+            <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
+            <span>{{ showNotesPanel ? 'Close Notes' : 'Add Note' }}{{ isPremium ? '' : ' (Premium)' }}</span>
+          </button>
+          <button mat-menu-item (click)="toggleBookmarkCurrent()">
+            <mat-icon>{{ isBookmarkedCurrent ? 'bookmark' : 'bookmark_border' }}</mat-icon>
+            <span>{{ isBookmarkedCurrent ? 'Remove Bookmark' : 'Bookmark Verse' }}</span>
+          </button>
+          <button mat-menu-item (click)="shareVerse()" [disabled]="!verseData || !tafsirContent">
+            <mat-icon>share</mat-icon>
+            <span>Share Verse</span>
+          </button>
+          <button mat-menu-item [matMenuTriggerFor]="themeMenu">
+            <mat-icon>palette</mat-icon>
+            <span>Theme</span>
+          </button>
+          <button mat-menu-item [matMenuTriggerFor]="highlightMenu">
+            <mat-icon>format_color_fill</mat-icon>
+            <span>Highlight Color{{ isPremium ? '' : ' (Premium)' }}</span>
+          </button>
+          <mat-divider></mat-divider>
+        </ng-container>
         <button mat-menu-item [matMenuTriggerFor]="typographyMenu">
           <mat-icon>text_fields</mat-icon>
           <span>Typography</span>
@@ -101,11 +138,11 @@
         <!-- View toggles -->
         <button mat-menu-item (click)="toggleSplitView()">
           <mat-icon>view_sidebar</mat-icon>
-          <span>{{ splitViewMode ? 'Single View' : 'Split View' }}</span>
+          <span>{{ splitViewMode ? 'Single View' : 'Split View' }}{{ isPremium ? '' : ' (Premium)' }}</span>
         </button>
         <button mat-menu-item (click)="toggleFocusMode()">
           <mat-icon>fullscreen</mat-icon>
-          <span>Focus Mode</span>
+          <span>Focus Mode{{ isPremium ? '' : ' (Premium)' }}</span>
         </button>
         <button mat-menu-item (click)="openInQuranReader()">
           <mat-icon>open_in_new</mat-icon>
@@ -205,7 +242,10 @@
   <!-- Main content + Notes side-by-side (notes do not overlay tafsir) -->
   <div class="reader-main-wrapper" [class.notes-open]="showNotesPanel">
     <!-- Main Content Area -->
-    <main class="reader-content" [class.loading]="isLoadingVerse">
+    <main class="reader-content" [class.loading]="isLoadingVerse"
+          (touchstart)="onTouchStart($event)"
+          (touchmove)="onTouchMove($event)"
+          (touchend)="onTouchEnd($event)">
     
     <!-- Loading Spinner -->
     <div class="loading-spinner" *ngIf="isLoadingVerse">
@@ -213,8 +253,21 @@
       <p>Loading tafsir...</p>
     </div>
 
+    <!-- Swipe Indicator -->
+    <div class="swipe-indicator" 
+         *ngIf="swipeIndicatorDirection"
+         [class.swipe-left]="swipeIndicatorDirection === 'left'"
+         [class.swipe-right]="swipeIndicatorDirection === 'right'"
+         [style.opacity]="swipeIndicatorOpacity">
+      <mat-icon>{{ swipeIndicatorDirection === 'left' ? 'arrow_forward' : 'arrow_back' }}</mat-icon>
+    </div>
+
     <!-- Split View Layout -->
-    <div class="split-container" *ngIf="splitViewMode && !isLoadingVerse">
+    <div class="split-container" *ngIf="splitViewMode && !isLoadingVerse"
+         [class.slide-out-left]="transitionDirection === 'left'"
+         [class.slide-out-right]="transitionDirection === 'right'"
+         [class.slide-in-left]="transitionDirection === 'enter-left'"
+         [class.slide-in-right]="transitionDirection === 'enter-right'">
       <!-- Left: Verse Panel -->
       <div class="verse-panel" *ngIf="verseData">
         <div class="panel-header">
@@ -257,12 +310,16 @@
     </div>
 
     <!-- Single View Layout -->
-    <div class="single-container" *ngIf="!splitViewMode && !isLoadingVerse">
+    <div class="single-container" *ngIf="!splitViewMode && !isLoadingVerse"
+         [class.slide-out-left]="transitionDirection === 'left'"
+         [class.slide-out-right]="transitionDirection === 'right'"
+         [class.slide-in-left]="transitionDirection === 'enter-left'"
+         [class.slide-in-right]="transitionDirection === 'enter-right'">
       
       <!-- Verse Reference -->
       <div class="verse-reference">
         <h2>{{ getSurahName() }}</h2>
-        <p class="verse-number">Verse {{ currentVerse }}</p>
+        <p class="verse-number">{{ getVerseGroupLabel() }}</p>
       </div>
 
       <!-- Arabic Verse (Collapsible) -->
@@ -297,6 +354,10 @@
           </span>
           <span class="word-count">
             {{ tafsirContent.wordCount }} words
+          </span>
+          <span class="verse-coverage" *ngIf="isMultiVerseGroup()">
+            <mat-icon>library_books</mat-icon>
+            Covers verses {{ verseGroupStart }}–{{ verseGroupEnd }}
           </span>
         </div>
 
@@ -350,8 +411,19 @@
     </div>
 
     <div class="notes-panel-content">
+      <!-- Premium Upsell (shown if non-premium user somehow opens notes panel) -->
+      <div class="premium-upsell-card" *ngIf="!isPremium">
+        <mat-icon class="upsell-icon">workspace_premium</mat-icon>
+        <h4>Premium Feature</h4>
+        <p>Notes & Annotations require a premium subscription. Upgrade to unlock note-taking, highlights, and more!</p>
+        <button mat-raised-button color="primary" (click)="requirePremium('Notes & Annotations')">
+          <mat-icon>star</mat-icon>
+          Upgrade to Premium
+        </button>
+      </div>
+
       <!-- Notes for previous verse -->
-      <div class="existing-notes adjacent-verse-notes" *ngIf="getPreviousVerseRef() as prevRef">
+      <div class="existing-notes adjacent-verse-notes" *ngIf="isPremium && getPreviousVerseRef() as prevRef">
         <h4>Notes for {{ prevRef.surah }}:{{ prevRef.verse }} (previous)</h4>
         <div class="note-card" *ngFor="let note of previousVerseNotes">
           <div class="note-content" [innerHTML]="note.content"></div>
@@ -366,7 +438,7 @@
       </div>
 
       <!-- Notes for current verse -->
-      <div class="existing-notes" *ngIf="currentNotes.length > 0">
+      <div class="existing-notes" *ngIf="isPremium && currentNotes.length > 0">
         <h4>Your notes ({{ currentSurah }}:{{ currentVerse }}):</h4>
         <div class="note-card" *ngFor="let note of currentNotes">
           <div class="note-content" [innerHTML]="note.content"></div>
@@ -385,13 +457,13 @@
       </div>
 
       <!-- Note Editor -->
-      <div class="note-editor">
+      <div class="note-editor" *ngIf="isPremium">
         <h4>{{ editingNoteId ? 'Edit Note' : 'Add New Note' }} ({{ currentSurah }}:{{ currentVerse }}):</h4>
         
         <app-rich-text-editor
           #richEditor
           [placeholder]="'Write your thoughts about this verse...'"
-          [minHeight]="'200px'"
+          [minHeight]="isCompactViewport ? '96px' : '200px'"
           (contentChange)="onNoteContentChange($event)">
         </app-rich-text-editor>
 
@@ -418,7 +490,7 @@
       </div>
 
       <!-- Notes for next verse -->
-      <div class="existing-notes adjacent-verse-notes" *ngIf="getNextVerseRef() as nextRef">
+      <div class="existing-notes adjacent-verse-notes" *ngIf="isPremium && getNextVerseRef() as nextRef">
         <h4>Notes for {{ nextRef.surah }}:{{ nextRef.verse }} (next)</h4>
         <div class="note-card" *ngFor="let note of nextVerseNotes">
           <div class="note-content" [innerHTML]="note.content"></div>
@@ -438,22 +510,41 @@
   <!-- Bottom Navigation -->
   <footer class="reader-navigation" *ngIf="!focusMode">
     <div class="nav-container">
+      <!-- Previous Passage (double-arrow skip) -->
+      <button mat-icon-button class="passage-skip-btn" 
+              (click)="previousPassage()" 
+              [disabled]="currentSurah === 1 && verseGroupStart <= 1"
+              matTooltip="Previous Passage">
+        <mat-icon>skip_previous</mat-icon>
+      </button>
+
       <button mat-raised-button (click)="previousVerse()" 
               [disabled]="currentSurah === 1 && currentVerse === 1">
         <mat-icon>arrow_back</mat-icon>
-        Previous
+        <span class="nav-label">Previous</span>
       </button>
 
       <div class="verse-selector">
         <span class="verse-location">
           {{ currentSurah }}:{{ currentVerse }}
         </span>
+        <span class="passage-indicator" *ngIf="isMultiVerseGroup()">
+          {{ getVerseGroupLabel() }}
+        </span>
       </div>
 
       <button mat-raised-button (click)="nextVerse()" 
               [disabled]="currentSurah === 114 && currentVerse === 6">
-        Next
+        <span class="nav-label">Next</span>
         <mat-icon>arrow_forward</mat-icon>
+      </button>
+
+      <!-- Next Passage (double-arrow skip) -->
+      <button mat-icon-button class="passage-skip-btn" 
+              (click)="nextPassage()" 
+              [disabled]="currentSurah === 114 && currentVerse >= totalVersesInCurrentSurah"
+              matTooltip="Next Passage">
+        <mat-icon>skip_next</mat-icon>
       </button>
     </div>
 
@@ -468,10 +559,12 @@
       <button mat-icon-button 
               (click)="toggleNotesPanel()"
               [color]="showNotesPanel ? 'accent' : ''"
-              matTooltip="Add Note (N)">
+              matTooltip="Add Note (N) {{ isPremium ? '' : '🔒 Premium' }}">
         <mat-icon>{{ getNoteCount() > 0 ? 'note' : 'note_add' }}</mat-icon>
+        <mat-icon *ngIf="!isPremium" class="premium-lock-badge">lock</mat-icon>
       </button>
-      <button mat-icon-button matTooltip="Share">
+      <button mat-icon-button (click)="shareVerse()" matTooltip="Share"
+              [disabled]="!verseData || !tafsirContent">
         <mat-icon>share</mat-icon>
       </button>
     </div>
@@ -538,9 +631,12 @@
 
 <!-- AI Chat Bubble -->
 <app-tafsir-chat-bubble
+  *ngIf="!(showNotesPanel && isCompactViewport)"
   [surah]="currentSurah"
   [verse]="currentVerse"
   [editionId]="editionId"
   [surahName]="getSurahName()"
-  [autoOpen]="openChatOnLoad">
+  [autoOpen]="openChatOnLoad"
+  [verseGroupStart]="verseGroupStart"
+  [verseGroupEnd]="verseGroupEnd">
 </app-tafsir-chat-bubble>

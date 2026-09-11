@@ -236,6 +236,210 @@ $text-muted: #6B7280;
   }
 }
 
+/* ═══════════════ CONTINUE READING ═══════════════ */
+
+@keyframes cr-slide-up {
+  0%   { opacity: 0; transform: translateY(24px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cr-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba($gold, 0.25); }
+  50%      { box-shadow: 0 0 0 10px rgba($gold, 0); }
+}
+
+.continue-reading {
+  position: relative;
+  padding: 0 24px;
+  margin-top: -40px;
+  z-index: 2;
+  animation: cr-slide-up 0.6s ease-out both;
+
+  &__inner {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 24px 32px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, $navy 0%, $navy-deep 60%, darken($navy-deep, 3%) 100%);
+    border: 1px solid rgba($gold, 0.15);
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.2),
+      0 0 60px rgba($gold, 0.06);
+    position: relative;
+    overflow: hidden;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('/assets/islamic-pattern-2.png');
+      background-size: 200px;
+      opacity: 0.03;
+      pointer-events: none;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba($gold, 0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+  }
+
+  &__icon {
+    position: relative;
+    flex-shrink: 0;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba($gold, 0.15), rgba($gold, 0.06));
+    border: 1px solid rgba($gold, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: cr-pulse 3s ease-in-out infinite;
+
+    mat-icon {
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
+      color: $gold-light;
+      position: relative;
+      z-index: 1;
+    }
+
+    .continue-reading__ring {
+      position: absolute;
+      inset: -4px;
+      width: calc(100% + 8px);
+      height: calc(100% + 8px);
+      color: $gold;
+      transform: rotate(0deg);
+    }
+  }
+
+  &__info {
+    flex: 1;
+    min-width: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  &__label {
+    display: inline-block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: $gold;
+    background: rgba($gold, 0.1);
+    padding: 3px 10px;
+    border-radius: 10px;
+    margin-bottom: 6px;
+  }
+
+  &__title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: white;
+    margin: 0 0 3px;
+    letter-spacing: -0.01em;
+  }
+
+  &__detail {
+    font-size: 0.88rem;
+    color: rgba(white, 0.6);
+    margin: 0 0 8px;
+  }
+
+  &__meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+
+    span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.75rem;
+      color: rgba(white, 0.4);
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+        color: rgba($gold, 0.6);
+      }
+    }
+  }
+
+  &__btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, $gold, $gold-light);
+    color: $navy-deep;
+    font-weight: 700;
+    font-size: 0.9rem;
+    text-decoration: none;
+    transition: all 0.25s ease;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 16px rgba($gold, 0.3);
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    &:hover {
+      transform: scale(1.06);
+      box-shadow: 0 6px 24px rgba($gold, 0.45);
+      background: linear-gradient(135deg, lighten($gold, 4%), lighten($gold-light, 4%));
+    }
+
+    &:active {
+      transform: scale(0.98);
+    }
+  }
+}
+
+/* Continue Reading — mobile */
+@media (max-width: 600px) {
+  .continue-reading {
+    margin-top: -28px;
+    padding: 0 16px;
+
+    &__inner {
+      flex-direction: column;
+      text-align: center;
+      padding: 24px 20px;
+      gap: 16px;
+    }
+
+    &__meta {
+      justify-content: center;
+    }
+
+    &__btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
+}
+
 /* ═══════════════ QUOTE CAROUSEL ═══════════════ */
 
 .quotes {
@@ -1017,6 +1221,14 @@ $text-muted: #6B7280;
 .home.dark-mode {
   background: $navy-deep;
   color: #E8E0D2;
+
+  .continue-reading__inner {
+    background: linear-gradient(135deg, lighten($navy, 4%) 0%, $navy 60%, darken($navy, 2%) 100%);
+    border-color: rgba($gold-light, 0.12);
+    box-shadow:
+      0 16px 48px rgba(0, 0, 0, 0.35),
+      0 0 60px rgba($gold, 0.04);
+  }
 
   .quotes {
     background: linear-gradient(180deg, $navy 0%, lighten($navy, 2%) 50%, $navy 100%);

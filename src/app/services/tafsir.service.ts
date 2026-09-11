@@ -9,7 +9,8 @@ import {
   QuranHubEditionsResponse,
   QuranHubTafsirResponse,
   QuranCDNTafsirResponse,
-  DownloadProgress
+  DownloadProgress,
+  VerseGroupInfo
 } from '../models/tafsir.model';
 
 @Injectable({
@@ -25,6 +26,7 @@ export class TafsirService {
   private contentCache = new Map<string, TafsirContent>();
   private readonly CACHE_DURATION = 1000 * 60 * 60; // 1 hour
   private cacheTimestamps = new Map<string, number>();
+  private verseGroupCache = new Map<string, VerseGroupInfo>();
 
   constructor(private http: HttpClient) {
     this.loadEditions();
@@ -241,11 +243,160 @@ export class TafsirService {
   }
 
   /**
+   * Get the verse group sharing the same tafsir passage for a given verse.
+   * Scans forward and backward (up to the full surah) to find the complete
+   * range of consecutive verses returning identical tafsir text from the API.
+   *
+   * Leverages cached group info from adjacent verses so that a previously
+   * detected group boundary is reused instead of re-scanned with a short window.
+   */
+  getVerseGroupForTafsir(
+    editionId: string,
+    surah: number,
+    verse: number
+  ): Observable<VerseGroupInfo> {
+    const groupCacheKey = `group:${editionId}:${surah}:${verse}`;
+    const cached = this.verseGroupCache.get(groupCacheKey);
+    if (cached) {
+      return of(cached);
+    }
+
+    const verseCounts = this.getSurahVerseCounts();
+    const maxVerse = verseCounts[surah - 1];
+
+    // Check if the previous verse already has a cached group with the same tafsir.
+    // If so, we know the group starts at least at that cached group's startVerse.
+    let knownStart: number | null = null;
+    if (verse > 1) {
+      const prevGroupKey = `group:${editionId}:${surah}:${verse - 1}`;
+      const prevGroup = this.verseGroupCache.get(prevGroupKey);
+      if (prevGroup) {
+        knownStart = prevGroup.startVerse;
+      }
+    }
+
+    return this.getTafsirForVerse(editionId, surah, verse).pipe(
+      switchMap(currentContent => {
+        const currentHash = this.hashText(currentContent.text);
+
+        // Scan the full remaining surah forward (all cached after prefetch)
+        const lookAheadCount = maxVerse - verse;
+        // Scan backward: if we have a known start from cache, only go back to that.
+        // Otherwise scan all the way to verse 1.
+        const lookBehindCount = knownStart !== null
+          ? verse - knownStart
+          : verse - 1;
+
+        const forwardFetches: Observable<TafsirContent>[] = [];
+        for (let i = 1; i <= lookAheadCount; i++) {
+          forwardFetches.push(this.getTafsirForVerse(editionId, surah, verse + i));
+        }
+
+        const backwardFetches: Observable<TafsirContent>[] = [];
+        for (let i = 1; i <= lookBehindCount; i++) {
+          backwardFetches.push(this.getTafsirForVerse(editionId, surah, verse - i));
+        }
+
+        const forward$ = forwardFetches.length > 0 ? forkJoin(forwardFetches) : of([] as TafsirContent[]);
+        const backward$ = backwardFetches.length > 0 ? forkJoin(backwardFetches) : of([] as TafsirContent[]);
+
+        return forkJoin([forward$, backward$]).pipe(
+          map(([forwardResults, backwardResults]) => {
+            let endVerse = verse;
+            for (const result of forwardResults) {
+              if (this.hashText(result.text) === currentHash) {
+                endVerse = result.verse;
+              } else {
+                break;
+              }
+            }
+
+            // If we have a known start from a cached adjacent group, use it
+            // when the backward scan confirms the text still matches.
+            let startVerse = verse;
+            for (const result of backwardResults) {
+              if (this.hashText(result.text) === currentHash) {
+                startVerse = result.verse;
+              } else {
+                break;
+              }
+            }
+            // If we leveraged a cached group start and all backward scans
+            // matched, adopt the known start (covers verses beyond our scan).
+            if (knownStart !== null && startVerse <= knownStart) {
+              startVerse = knownStart;
+            }
+
+            const verses: number[] = [];
+            for (let v = startVerse; v <= endVerse; v++) {
+              verses.push(v);
+            }
+
+            const groupInfo: VerseGroupInfo = { startVerse, endVerse, verses };
+
+            // Cache the group info for every verse in the group
+            for (const v of verses) {
+              this.verseGroupCache.set(`group:${editionId}:${surah}:${v}`, groupInfo);
+            }
+
+            return groupInfo;
+          })
+        );
+      }),
+      catchError(() => {
+        const fallback: VerseGroupInfo = { startVerse: verse, endVerse: verse, verses: [verse] };
+        return of(fallback);
+      })
+    );
+  }
+
+  /**
+   * Simple string hash for comparing tafsir texts
+   */
+  private hashText(text: string): string {
+    const normalized = text.replace(/\s+/g, ' ').trim();
+    let hash = 0;
+    for (let i = 0; i < normalized.length; i++) {
+      const char = normalized.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0; // Convert to 32bit integer
+    }
+    return hash.toString(36);
+  }
+
+  /**
+   * Get the total number of distinct tafsir passages in a surah.
+   * Uses cached content when available, otherwise returns an estimate.
+   */
+  getPassageCountForSurah(editionId: string, surah: number): number {
+    const verseCounts = this.getSurahVerseCounts();
+    const maxVerse = verseCounts[surah - 1];
+    const seenHashes = new Set<string>();
+    let counted = 0;
+
+    for (let v = 1; v <= maxVerse; v++) {
+      const cacheKey = `${editionId}:${surah}:${v}`;
+      const cached = this.contentCache.get(cacheKey);
+      if (cached) {
+        const hash = this.hashText(cached.text);
+        if (!seenHashes.has(hash)) {
+          seenHashes.add(hash);
+          counted++;
+        }
+      } else {
+        counted++;
+      }
+    }
+    return counted;
+  }
+
+  /**
    * Clear cache
    */
   clearCache(): void {
     this.contentCache.clear();
     this.cacheTimestamps.clear();
+    this.verseGroupCache.clear();
     this.editionsCache$.next(null);
   }
 
@@ -317,6 +468,42 @@ export class TafsirService {
         tags: ['classical', 'arabic', 'comprehensive'],
         rating: 4.9,
         downloads: 12000
+      },
+      {
+        id: 'en-maarif-ul-quran',
+        name: "Ma'arif al-Qur'an",
+        nameArabic: 'معارف القرآن',
+        author: 'Mufti Muhammad Shafi',
+        authorArabic: 'مفتی محمد شفیع',
+        language: 'en',
+        description: "Comprehensive tafsir by Mufti Muhammad Shafi, combining classical scholarship with practical fiqh rulings. A cornerstone of Hanafi scholarship.",
+        difficulty: 'intermediate',
+        source: 'qurancdn',
+        sourceId: 'en-tafsir-maarif-ul-quran',
+        isOfflineAvailable: false,
+        isPremium: false,
+        lastUpdated: new Date(),
+        tags: ['classical', 'comprehensive', 'hanafi', 'fiqh'],
+        rating: 4.7,
+        downloads: 8000
+      },
+      {
+        id: 'en-tazkirul-quran',
+        name: 'Tazkirul Quran',
+        nameArabic: 'تذکیر القرآن',
+        author: 'Maulana Wahiduddin Khan',
+        authorArabic: 'مولانا وحید الدین خان',
+        language: 'en',
+        description: 'A modern, accessible tafsir focused on spiritual reflection and applying Quranic wisdom to contemporary life.',
+        difficulty: 'beginner',
+        source: 'qurancdn',
+        sourceId: 'tazkirul-quran-en',
+        isOfflineAvailable: false,
+        isPremium: false,
+        lastUpdated: new Date(),
+        tags: ['modern', 'accessible', 'spiritual', 'beginner-friendly'],
+        rating: 4.6,
+        downloads: 5000
       }
     ];
 

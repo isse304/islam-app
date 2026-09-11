@@ -58,6 +58,40 @@
     </div>
   </section>
 
+  <!-- ═══════════════ CONTINUE READING ═══════════════ -->
+  <section class="continue-reading" *ngIf="hasTafsirProgress">
+    <div class="continue-reading__inner">
+      <div class="continue-reading__icon">
+        <mat-icon>auto_stories</mat-icon>
+        <svg class="continue-reading__ring" viewBox="0 0 48 48">
+          <circle cx="24" cy="24" r="21" fill="none" stroke="currentColor" opacity="0.12" stroke-width="3"/>
+          <circle cx="24" cy="24" r="21"
+                  fill="none" stroke="currentColor" stroke-width="3"
+                  stroke-linecap="round"
+                  [style.stroke-dasharray]="(2 * 3.1416 * 21)"
+                  [style.stroke-dashoffset]="(2 * 3.1416 * 21) - (2 * 3.1416 * 21 * tafsirCompletionPercent / 100)"
+                  transform="rotate(-90 24 24)"/>
+        </svg>
+      </div>
+      <div class="continue-reading__info">
+        <span class="continue-reading__label">Continue Reading</span>
+        <h3 class="continue-reading__title">{{ tafsirEditionName }}</h3>
+        <p class="continue-reading__detail">
+          {{ tafsirSurahName }} · Verse {{ tafsirProgress.verse }}
+        </p>
+        <div class="continue-reading__meta">
+          <span><mat-icon>schedule</mat-icon> {{ tafsirTimeAgo }}</span>
+          <span><mat-icon>timer</mat-icon> {{ getReadingTimeFormatted() }} read</span>
+        </div>
+      </div>
+      <a [routerLink]="['/tafsir/read', tafsirProgress.editionId, tafsirProgress.surah, tafsirProgress.verse]"
+         class="continue-reading__btn">
+        <mat-icon>play_arrow</mat-icon>
+        Resume
+      </a>
+    </div>
+  </section>
+
   <!-- ═══════════════ QUOTE CAROUSEL ═══════════════ -->
   <section class="quotes"
            (mouseenter)="stopSlideShow()"
