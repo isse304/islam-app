@@ -764,7 +764,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         // ++ Add a small delay before calculating position and scrolling ++
         setTimeout(() => {
           document.querySelectorAll('.highlighted-verse').forEach(el => {
-            el.classList.remove('.highlighted-verse');
+            el.classList.remove('highlighted-verse');
           });
           verseElement.classList.add('highlighted-verse');
 
@@ -802,7 +802,7 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
 
           // Remove highlight after scroll settles + delay
           setTimeout(() => {
-            verseElement.classList.remove('.highlighted-verse');
+            verseElement.classList.remove('highlighted-verse');
           }, 2500); // Longer highlight duration
 
           scrolledSuccessfully = true;
@@ -2770,8 +2770,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck(); 
         }
         
-        // Near top: Restore controls (optional - comment out if you want controls to stay minimized)
-        if (currentScrollPosition < 50 && this.isMainControlsMinimized) {
+        // Keep the hover dock as the control surface; don't expand the
+        // inline settings panel again just because we scrolled to the top.
+        if (currentScrollPosition < 50 && this.isMainControlsMinimized && !this.isMobile) {
           this.isMainControlsMinimized = false;
           this.cdr.markForCheck();
         }
@@ -3756,25 +3757,26 @@ getSurahName(surahNumber: string | number): string {
    */
   public executeJumpToVerse(): void {
     const verseNumber = Number(this.jumpToVerseNumber);
-    
-    // Validate verse number
-    if (verseNumber < 1 || verseNumber > this.verses.length) {
-      this.toastService.showError(`Please enter a verse between 1 and ${this.verses.length}`);
+    const targetVerse = this.verses.find(v => Number(v.number) === verseNumber);
+
+    if (!targetVerse) {
+      const maxVerse = this.verses.length
+        ? Math.max(...this.verses.map(v => Number(v.number)))
+        : 0;
+      this.toastService.showError(
+        maxVerse > 0
+          ? `Please enter a verse between 1 and ${maxVerse}`
+          : 'Verse not found'
+      );
       return;
     }
-    
-    // Close dialog
+
     this.closeJumpToVerseDialog();
-    
-    // Scroll to verse
+    this.lastClickedVerse = verseNumber;
+
     setTimeout(() => {
-      const scrolled = this.scrollToVerse(verseNumber);
-      if (scrolled) {
-        this.toastService.success(`Jumped to verse ${verseNumber}`);
-        this.lastClickedVerse = verseNumber;
-      } else {
-        this.toastService.showError('Verse not found');
-      }
+      this.scrollToVerse(verseNumber);
+      this.toastService.success(`Jumped to verse ${verseNumber}`);
     }, 100);
   }
 

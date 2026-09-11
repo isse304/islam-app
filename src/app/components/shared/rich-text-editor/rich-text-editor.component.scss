@@ -61,7 +61,7 @@
   min-height: 200px;
   max-height: 400px;
   overflow-y: auto;
-  font-size: 14px;
+  font-size: 16px;
   line-height: 1.6;
   color: var(--text-primary, #212121);
   outline: none;
@@ -266,5 +266,18 @@
     &:empty:before {
       color: var(--text-secondary, #757575);
     }
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-toolbar {
+    padding: 4px 6px;
+    gap: 2px;
+  }
+
+  .editor-content {
+    max-height: min(220px, 36dvh);
+    padding: 12px;
+    font-size: 16px !important; // below 16px, iOS zooms the whole page on focus
   }
 }

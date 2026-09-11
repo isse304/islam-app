@@ -1769,11 +1769,27 @@ select option {
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2) !important;
   }
 
-  // === FAB Stack Dark Mode ===
+  // === Reader dock Dark Mode ===
+  .fab-stack {
+    background: rgba(26, 54, 93, 0.94) !important;
+    border-color: rgba(183, 165, 122, 0.28) !important;
+    box-shadow: 0 10px 32px rgba(0, 0, 0, 0.35) !important;
+  }
+
   .fab-btn {
-    background: linear-gradient(135deg, #D4C5A0, #B7A57A) !important;
-    color: #1A365D !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3) !important;
+    background: transparent !important;
+    color: #FAF3E0 !important;
+    box-shadow: none !important;
+
+    &:hover {
+      background: rgba(183, 165, 122, 0.16) !important;
+      color: #D4C5A0 !important;
+    }
+
+    &--primary {
+      background: linear-gradient(135deg, #D4C5A0, #B7A57A) !important;
+      color: #1A365D !important;
+    }
   }
 
   // === Verse Card Dark Mode ===
@@ -2048,39 +2064,85 @@ select option {
   }
 }
 
-// --- Floating Action Buttons ---
+// --- Reader dock (settings / play / jump) ---
+// Sits at the bottom so it never covers verse headers or Arabic.
 .fab-stack {
   position: fixed;
-  top: 100px;
-  right: 16px;
-  z-index: 20;
+  left: 50%;
+  right: auto;
+  top: auto;
+  bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  z-index: 45;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-direction: row;
+  align-items: center;
+  gap: 2px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba($primary-color, 0.22);
+  border-radius: 22px;
+  box-shadow: 0 10px 32px rgba(26, 54, 93, 0.14);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: bottom 0.25s ease;
+
+  &--above-audio {
+    bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+  }
+
+  &--above-homework {
+    bottom: calc(160px + env(safe-area-inset-bottom, 0px));
+  }
+
+  &--above-homework-mini {
+    bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (min-width: 768px) {
+  .fab-stack {
+    left: auto;
+    right: 24px;
+    transform: none;
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .fab-btn {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: 14px;
   border: none;
-  background: linear-gradient(135deg, $primary-color, darken($primary-color, 6%));
-  color: #fff;
+  background: transparent;
+  color: #1A365D;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.95rem;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba($primary-color, 0.3);
+  box-shadow: none;
   transition: all 0.2s ease;
 
   &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba($primary-color, 0.4);
+    background: rgba($primary-color, 0.14);
+    color: darken($primary-color, 8%);
+    transform: none;
   }
 
   &:active {
-    transform: translateY(0);
+    transform: scale(0.96);
+  }
+
+  &--primary {
+    background: linear-gradient(135deg, $primary-color, darken($primary-color, 6%));
+    color: #fff;
+    box-shadow: 0 2px 8px rgba($primary-color, 0.28);
+
+    &:hover {
+      background: linear-gradient(135deg, lighten($primary-color, 4%), $primary-color);
+      color: #fff;
+    }
   }
 }
 
