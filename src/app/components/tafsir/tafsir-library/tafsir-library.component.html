@@ -1,3 +1,9 @@
+<!-- Walkthrough overlay (first visit or replay) -->
+<app-tafsir-walkthrough
+  *ngIf="showWalkthrough"
+  (completed)="onWalkthroughComplete()">
+</app-tafsir-walkthrough>
+
 <div class="tafsir-library" [class.dark-mode]="isDarkMode">
 
   <!-- Hero Section -->
@@ -12,6 +18,9 @@
         <p class="hero-subtitle">
           Classical scholarly commentaries with AI-powered insights, notes, highlights, and bookmarks.
         </p>
+        <button class="tour-btn" (click)="replayWalkthrough()">
+          <mat-icon>play_circle</mat-icon> Take a Tour
+        </button>
       </div>
 
       <!-- Quick Access Pills -->

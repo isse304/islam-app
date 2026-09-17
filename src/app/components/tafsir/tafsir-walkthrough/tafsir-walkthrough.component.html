@@ -1,0 +1,171 @@
+<div class="walkthrough-overlay">
+
+  <!-- Skip button -->
+  <button class="skip-btn" (click)="skip()" *ngIf="!isLastSlide">
+    Skip <mat-icon>arrow_forward</mat-icon>
+  </button>
+
+  <!-- Slides container -->
+  <div class="slides-container" #slidesContainer>
+
+    <!-- Slide 1: Welcome -->
+    <div class="slide slide-welcome">
+      <div class="slide-bg">
+        <div class="geo-pattern"></div>
+        <div class="radial-glow"></div>
+      </div>
+      <div class="slide-inner">
+        <div class="welcome-icon-wrap">
+          <div class="icon-ring">
+            <mat-icon>auto_stories</mat-icon>
+          </div>
+        </div>
+        <p class="bismillah">بِسْمِ ٱللَّهِ ٱلرَّحْمَـٰنِ ٱلرَّحِيمِ</p>
+        <h1>{{ slides[0].title }}</h1>
+        <p class="slide-subtitle">{{ slides[0].subtitle }}</p>
+        <div class="welcome-stats">
+          <div class="wstat"><span class="wstat-val">3</span><span class="wstat-lbl">Editions</span></div>
+          <div class="wstat-divider"></div>
+          <div class="wstat"><span class="wstat-val">6,236</span><span class="wstat-lbl">Verses</span></div>
+          <div class="wstat-divider"></div>
+          <div class="wstat"><span class="wstat-val">114</span><span class="wstat-lbl">Surahs</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 2: Read & Study -->
+    <div class="slide slide-read">
+      <div class="slide-bg">
+        <div class="geo-pattern"></div>
+      </div>
+      <div class="slide-inner">
+        <div class="slide-icon-wrap">
+          <mat-icon>{{ slides[1].icon }}</mat-icon>
+        </div>
+        <span class="free-badge">Free</span>
+        <h2>{{ slides[1].title }}</h2>
+        <p class="slide-subtitle">{{ slides[1].subtitle }}</p>
+        <div class="feature-list">
+          <div class="feature-item" *ngFor="let f of slides[1].features">
+            <mat-icon class="fi-icon">{{ f.icon }}</mat-icon>
+            <span>{{ f.text }}</span>
+          </div>
+        </div>
+        <div class="mock-reader">
+          <div class="mock-toolbar">
+            <span class="mock-dot"></span><span class="mock-dot"></span><span class="mock-dot"></span>
+          </div>
+          <div class="mock-body">
+            <p class="mock-arabic">ٱللَّهُ لَآ إِلَـٰهَ إِلَّا هُوَ ٱلْحَىُّ ٱلْقَيُّومُ</p>
+            <p class="mock-line"></p>
+            <p class="mock-line short"></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: AI Insights -->
+    <div class="slide slide-ai">
+      <div class="slide-bg">
+        <div class="geo-pattern"></div>
+      </div>
+      <div class="slide-inner">
+        <div class="slide-icon-wrap ai-glow">
+          <mat-icon>{{ slides[2].icon }}</mat-icon>
+        </div>
+        <span class="free-badge">5 Free Daily</span>
+        <h2>{{ slides[2].title }}</h2>
+        <p class="slide-subtitle">{{ slides[2].subtitle }}</p>
+        <div class="feature-list">
+          <div class="feature-item" *ngFor="let f of slides[2].features" [class.premium]="f.premium">
+            <mat-icon class="fi-icon" [class.premium-icon]="f.premium">{{ f.icon }}</mat-icon>
+            <span>{{ f.text }}</span>
+            <mat-icon class="premium-lock" *ngIf="f.premium">workspace_premium</mat-icon>
+          </div>
+        </div>
+        <div class="mock-chat">
+          <div class="chat-msg user"><span>What does Ayat al-Kursi teach us?</span></div>
+          <div class="chat-msg bot">
+            <div class="bot-avatar"><mat-icon>smart_toy</mat-icon></div>
+            <span>According to Ibn Kathir, this is the greatest Ayah in the Book of Allah...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Study Tools -->
+    <div class="slide slide-tools">
+      <div class="slide-bg">
+        <div class="geo-pattern"></div>
+      </div>
+      <div class="slide-inner">
+        <div class="slide-icon-wrap">
+          <mat-icon>{{ slides[3].icon }}</mat-icon>
+        </div>
+        <h2>{{ slides[3].title }}</h2>
+        <p class="slide-subtitle">{{ slides[3].subtitle }}</p>
+        <div class="tools-split">
+          <div class="tools-col free-col">
+            <h4>Free</h4>
+            <div class="feature-item" *ngFor="let f of slides[3].features" [class.hidden-item]="f.premium">
+              <mat-icon class="fi-icon">{{ f.icon }}</mat-icon>
+              <span>{{ f.text }}</span>
+            </div>
+          </div>
+          <div class="tools-divider"></div>
+          <div class="tools-col premium-col">
+            <h4><mat-icon>workspace_premium</mat-icon> Premium</h4>
+            <div class="feature-item" *ngFor="let f of slides[3].features" [class.hidden-item]="!f.premium">
+              <mat-icon class="fi-icon premium-icon">{{ f.icon }}</mat-icon>
+              <span>{{ f.text }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: CTA -->
+    <div class="slide slide-cta">
+      <div class="slide-bg">
+        <div class="geo-pattern"></div>
+        <div class="radial-glow"></div>
+      </div>
+      <div class="slide-inner">
+        <div class="welcome-icon-wrap">
+          <div class="icon-ring">
+            <mat-icon>explore</mat-icon>
+          </div>
+        </div>
+        <h1>{{ slides[4].title }}</h1>
+        <p class="slide-subtitle">{{ slides[4].subtitle }}</p>
+        <div class="cta-buttons">
+          <button class="cta-primary" (click)="finish()">
+            <mat-icon>auto_stories</mat-icon>
+            Start Exploring
+          </button>
+          <button class="cta-secondary" routerLink="/subscription" (click)="finish()">
+            <mat-icon>workspace_premium</mat-icon>
+            Upgrade to Premium
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom bar: dots + next button -->
+  <div class="bottom-bar">
+    <div class="dots">
+      <button *ngFor="let s of slides; let i = index"
+              class="dot"
+              [class.active]="i === currentSlide"
+              (click)="goToSlide(i)">
+      </button>
+    </div>
+    <button class="next-btn" (click)="next()">
+      {{ isLastSlide ? 'Get Started' : 'Next' }}
+      <mat-icon>{{ isLastSlide ? 'check' : 'arrow_forward' }}</mat-icon>
+    </button>
+  </div>
+
+</div>

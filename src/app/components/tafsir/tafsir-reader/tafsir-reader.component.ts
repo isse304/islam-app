@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -268,16 +268,14 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
-    // Clear the auto-save interval
     if (this.saveInterval) {
       clearInterval(this.saveInterval);
     }
 
     this.destroy$.next();
     this.destroy$.complete();
-
-    // Save reading time
     this.saveReadingProgress();
+    document.body.style.overflow = '';
   }
 
   /**
@@ -299,7 +297,26 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     this.vvHeight = Math.round(vv?.height ?? window.innerHeight);
     this.vvOffset = Math.round(vv?.offsetTop ?? 0);
     this.isCompactViewport = window.innerWidth < 768;
+    if (this.isCompactViewport && this.showNotesPanel) {
+      this.syncNotesPanelViewport();
+    }
     this.cdr.markForCheck();
+  }
+
+  private syncNotesPanelViewport(): void {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const panel = document.querySelector('.notes-panel.open') as HTMLElement;
+    if (!panel) return;
+    panel.style.height = `${vv.height}px`;
+    panel.style.top = `${vv.offsetTop}px`;
+  }
+
+  private clearNotesPanelViewport(): void {
+    const panel = document.querySelector('.notes-panel.open') as HTMLElement;
+    if (!panel) return;
+    panel.style.height = '';
+    panel.style.top = '';
   }
 
   /**
@@ -1137,12 +1154,20 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   toggleNotesPanel(): void {
     if (!this.requirePremium('Notes & Annotations')) return;
     this.showNotesPanel = !this.showNotesPanel;
-    
-    // If opening panel and no draft exists, create one
+
     if (this.showNotesPanel) {
       const existingDraft = this.noteService.getCurrentDraft();
       if (!existingDraft) {
         this.noteService.createDraft(this.editionId, this.currentSurah, this.currentVerse);
+      }
+      if (this.isCompactViewport) {
+        document.body.style.overflow = 'hidden';
+        this.syncNotesPanelViewport();
+      }
+    } else {
+      if (this.isCompactViewport) {
+        document.body.style.overflow = '';
+        this.clearNotesPanelViewport();
       }
     }
   }

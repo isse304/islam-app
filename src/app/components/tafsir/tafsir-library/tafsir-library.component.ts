@@ -22,6 +22,9 @@ import { TafsirService } from '../../../services/tafsir.service';
 // Models
 import { TafsirEdition } from '../../../models/tafsir.model';
 
+// Components
+import { TafsirWalkthroughComponent } from '../tafsir-walkthrough/tafsir-walkthrough.component';
+
 @Component({
   selector: 'app-tafsir-library',
   standalone: true,
@@ -37,7 +40,8 @@ import { TafsirEdition } from '../../../models/tafsir.model';
     MatChipsModule,
     MatCardModule,
     MatProgressSpinnerModule,
-    MatButtonToggleModule
+    MatButtonToggleModule,
+    TafsirWalkthroughComponent
   ],
   templateUrl: './tafsir-library.component.html',
   styleUrls: ['./tafsir-library.component.scss']
@@ -47,6 +51,7 @@ export class TafsirLibraryComponent implements OnInit {
   filteredEditions$!: Observable<TafsirEdition[]>;
   isLoading = false;
   isDarkMode = false;
+  showWalkthrough = false;
 
   // Filters
   searchQuery = '';
@@ -81,7 +86,16 @@ export class TafsirLibraryComponent implements OnInit {
 
   ngOnInit(): void {
     this.isDarkMode = document.body.classList.contains('theme-dark') || document.body.classList.contains('theme-night');
+    this.showWalkthrough = !localStorage.getItem('tafsir_walkthrough_seen');
     this.loadEditions();
+  }
+
+  onWalkthroughComplete(): void {
+    this.showWalkthrough = false;
+  }
+
+  replayWalkthrough(): void {
+    this.showWalkthrough = true;
   }
 
   loadEditions(): void {

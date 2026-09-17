@@ -91,6 +91,34 @@ $red-soft: #EF4444;
   }
 }
 
+.tour-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  padding: 6px 18px 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(white, .08);
+  color: rgba(white, .7);
+  border: 1px solid rgba(white, .12);
+  cursor: pointer;
+  transition: all 0.2s;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: $gold-light;
+  }
+
+  &:hover {
+    background: rgba(white, .14);
+    color: white;
+  }
+}
+
 // Quick-access pills inside the hero
 .hero-pills {
   display: flex;

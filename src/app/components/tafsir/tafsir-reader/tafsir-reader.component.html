@@ -401,8 +401,9 @@
     </div>
   </main>
 
-  <!-- Notes Panel (side-by-side with content, does not overlay) -->
+  <!-- Notes Panel (side-by-side on desktop, bottom sheet on mobile via fixed pos) -->
   <aside class="notes-panel" [class.open]="showNotesPanel">
+    <div class="sheet-handle"><div class="handle-bar"></div></div>
     <div class="notes-panel-header">
       <h3>Notes for {{ currentSurah }}:{{ currentVerse }}</h3>
       <button mat-icon-button (click)="toggleNotesPanel()">
@@ -411,7 +412,7 @@
     </div>
 
     <div class="notes-panel-content">
-      <!-- Premium Upsell (shown if non-premium user somehow opens notes panel) -->
+      <!-- Premium Upsell -->
       <div class="premium-upsell-card" *ngIf="!isPremium">
         <mat-icon class="upsell-icon">workspace_premium</mat-icon>
         <h4>Premium Feature</h4>
@@ -459,7 +460,7 @@
       <!-- Note Editor -->
       <div class="note-editor" *ngIf="isPremium">
         <h4>{{ editingNoteId ? 'Edit Note' : 'Add New Note' }} ({{ currentSurah }}:{{ currentVerse }}):</h4>
-        
+
         <app-rich-text-editor
           #richEditor
           [placeholder]="'Write your thoughts about this verse...'"
@@ -506,6 +507,9 @@
     </div>
   </aside>
   </div>
+
+  <!-- Notes backdrop (mobile only) -->
+  <div class="notes-backdrop" [class.open]="showNotesPanel" (click)="toggleNotesPanel()"></div>
 
   <!-- Bottom Navigation -->
   <footer class="reader-navigation" *ngIf="!focusMode">

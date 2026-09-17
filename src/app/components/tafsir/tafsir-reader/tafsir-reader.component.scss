@@ -863,40 +863,135 @@
     }
   }
 
+  // Mobile notes backdrop
+  .notes-backdrop {
+    display: none;
+
+    &.open {
+      display: block;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1099;
+      animation: backdropFadeIn 0.2s ease;
+    }
+  }
+
+  @keyframes backdropFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  // Bottom sheet notes panel
   .notes-panel.open {
     position: fixed;
     left: 0;
     right: 0;
-    top: calc(48px + var(--tafsir-vv-offset, 0px));
-    height: calc(var(--tafsir-vv-height, 100dvh) - 48px);
+    bottom: 0;
+    top: auto;
     width: 100% !important;
     min-width: 100% !important;
     max-width: 100% !important;
+    height: 100%;
     z-index: 1100;
     border-left: none;
-    box-shadow: 0 -8px 28px rgba(0, 0, 0, 0.18);
+    border-radius: 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.2);
+    animation: sheetSlideUp 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  @keyframes sheetSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(100%);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  // Drag handle indicator
+  .sheet-handle {
+    display: flex;
+    justify-content: center;
+    padding: 10px 0 0;
+    flex-shrink: 0;
+    background: var(--bg-primary);
+
+    .handle-bar {
+      width: 36px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--text-secondary, #999);
+      opacity: 0.35;
+    }
+  }
+
+  .notes-panel-header {
+    padding: 8px 16px 10px !important;
+
+    h3 {
+      font-size: 16px !important;
+    }
   }
 
   .notes-panel-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
 
+    // Editor first, fixed size — never squished by keyboard
     .note-editor {
       order: -1;
-      padding-top: 0;
+      flex-shrink: 0;
+      padding: 8px 16px 0 !important;
+
+      h4 {
+        font-size: 14px !important;
+        margin-bottom: 8px !important;
+      }
+
+      app-rich-text-editor {
+        margin-bottom: 8px !important;
+      }
     }
 
+    .note-editor-actions {
+      flex-shrink: 0;
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      background: var(--bg-primary);
+      padding: 8px 16px;
+      padding-bottom: env(safe-area-inset-bottom, 10px);
+      border-top: 1px solid var(--border-color);
+      gap: 8px !important;
+    }
+
+    // Existing notes below editor — scrollable, absorbs keyboard shrink
+    .existing-notes {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+      padding: 0 16px;
+    }
+
+    // Hide adjacent verse notes + tips on mobile to reduce clutter
     .adjacent-verse-notes,
     .editor-tips {
       display: none;
     }
-  }
 
-  .note-editor-actions {
-    position: sticky;
-    bottom: 0;
-    background: var(--bg-primary);
-    padding-bottom: env(safe-area-inset-bottom, 8px);
+    // Premium upsell card
+    .premium-upsell-card {
+      flex-shrink: 0;
+    }
   }
 }
 
@@ -955,6 +1050,15 @@
   line-height: 1;
   min-width: 16px;
   text-align: center;
+}
+
+// Hide mobile-only elements on desktop
+.notes-backdrop {
+  display: none;
+}
+
+.sheet-handle {
+  display: none;
 }
 
 // Notes Panel (side-by-side with content; does not overlay tafsir)
