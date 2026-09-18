@@ -1,4 +1,5 @@
 <div class="tafsir-reader"
+     [ngClass]="'theme-' + preferences.theme"
      [class.focus-mode]="focusMode"
      [class.split-view-active]="splitViewMode"
      [class.notes-open]="showNotesPanel"
@@ -400,8 +401,12 @@
       </div>
     </div>
   </main>
+  </div>
 
-  <!-- Notes Panel (side-by-side on desktop, bottom sheet on mobile via fixed pos) -->
+  <!-- Notes backdrop (mobile only) -->
+  <div class="notes-backdrop" [class.open]="showNotesPanel" (click)="toggleNotesPanel()"></div>
+
+  <!-- Notes Panel (fixed overlay on both desktop and mobile, outside wrapper for z-index) -->
   <aside class="notes-panel" [class.open]="showNotesPanel">
     <div class="sheet-handle"><div class="handle-bar"></div></div>
     <div class="notes-panel-header">
@@ -506,10 +511,6 @@
       </div>
     </div>
   </aside>
-  </div>
-
-  <!-- Notes backdrop (mobile only) -->
-  <div class="notes-backdrop" [class.open]="showNotesPanel" (click)="toggleNotesPanel()"></div>
 
   <!-- Bottom Navigation -->
   <footer class="reader-navigation" *ngIf="!focusMode">

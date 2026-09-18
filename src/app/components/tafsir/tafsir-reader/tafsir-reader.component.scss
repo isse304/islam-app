@@ -3,6 +3,11 @@
 
 // Variables
 :host {
+  display: block;
+  height: 100%;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+
   --toolbar-height: 48px;
   --nav-height: 50px;
   --progress-height: 2px;
@@ -14,65 +19,94 @@
   --max-width: var(--user-max-width, 700px);
   --margin: var(--user-margin, 40px);
   
-  // Theme colors (set by theme class on body)
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --border-color: #e0e0e0;
-  --highlight-bg: #ffeb3b;
-  --accent-color: #B7A57A;
+  // Default: warm parchment (light)
+  --bg-primary: #F4E9D0;
+  --bg-secondary: #EADCBB;
+  --text-primary: #2E2218;
+  --text-secondary: #6F5844;
+  --border-color: rgba(139, 105, 70, 0.24);
+  --highlight-bg: #E8C872;
+  --accent-color: #B8956A;
+  --bg-glow: radial-gradient(ellipse 120% 55% at 50% -8%, rgba(196, 164, 106, 0.28), transparent 58%),
+             linear-gradient(180deg, #F8F0DC 0%, #F3E6C8 46%, #EDDCB8 100%);
 }
 
-// Theme: Light
+// Theme: Light — parchment / sepia paper with ink-brown text
+:host(.theme-light),
 :host-context(.theme-light) {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f5f5f5;
-  --text-primary: #333333;
-  --text-secondary: #666666;
-  --border-color: #e0e0e0;
-  --highlight-bg: #ffeb3b;
+  --bg-primary: #F4E9D0;
+  --bg-secondary: #EADCBB;
+  --text-primary: #2E2218;
+  --text-secondary: #6F5844;
+  --border-color: rgba(139, 105, 70, 0.24);
+  --highlight-bg: #E8C872;
+  --accent-color: #B8956A;
+  --bg-glow: radial-gradient(ellipse 120% 55% at 50% -8%, rgba(196, 164, 106, 0.28), transparent 58%),
+             linear-gradient(180deg, #F8F0DC 0%, #F3E6C8 46%, #EDDCB8 100%);
 }
 
-// Theme: Dark
+// Theme: Dark — navy / slate with silver-white text
+:host(.theme-dark),
 :host-context(.theme-dark) {
-  --bg-primary: #1a1a1a;
-  --bg-secondary: #2a2a2a;
-  --text-primary: #e0e0e0;
-  --text-secondary: #a0a0a0;
-  --border-color: #404040;
-  --highlight-bg: #ffa000;
+  --bg-primary: #152238;
+  --bg-secondary: #1D2F4A;
+  --text-primary: #F3F0E8;
+  --text-secondary: #C5C0B4;
+  --border-color: rgba(196, 180, 138, 0.2);
+  --highlight-bg: #3D5A80;
+  --accent-color: #D0C09A;
+  --bg-glow: radial-gradient(ellipse 110% 50% at 50% -10%, rgba(72, 104, 148, 0.42), transparent 62%),
+             linear-gradient(180deg, #1A2A44 0%, #142136 52%, #101C30 100%);
 }
 
-// Theme: Sepia (Kindle-style)
+// Theme: Sepia — deeper classic Kindle cream
+:host(.theme-sepia),
 :host-context(.theme-sepia) {
-  --bg-primary: #f4ecd8;
-  --bg-secondary: #e6ddc4;
-  --text-primary: #5b4636;
-  --text-secondary: #8b7355;
-  --border-color: #d4c5a9;
-  --highlight-bg: #ffd54f;
+  --bg-primary: #E8D5A8;
+  --bg-secondary: #DCC89A;
+  --text-primary: #3F2C1C;
+  --text-secondary: #7A5A3C;
+  --border-color: #C9B07E;
+  --highlight-bg: #E0B84A;
+  --accent-color: #A67C52;
+  --bg-glow: radial-gradient(ellipse 120% 55% at 50% -8%, rgba(166, 124, 82, 0.2), transparent 58%),
+             linear-gradient(180deg, #F0E0B4 0%, #E6D09E 100%);
 }
 
-// Theme: Night (Warm colors for night reading)
+// Theme: Night — warm ember reading lamp
+:host(.theme-night),
 :host-context(.theme-night) {
-  --bg-primary: #2b1810;
-  --bg-secondary: #3d2418;
-  --text-primary: #f0d0b0;
-  --text-secondary: #d0a880;
-  --border-color: #5d3828;
-  --highlight-bg: #ff9800;
+  --bg-primary: #1C1410;
+  --bg-secondary: #2A1C16;
+  --text-primary: #F3DCC4;
+  --text-secondary: #C9A888;
+  --border-color: #4A3228;
+  --highlight-bg: #C47A2A;
+  --accent-color: #D4A574;
+  --bg-glow: radial-gradient(ellipse 110% 50% at 50% -8%, rgba(196, 122, 42, 0.16), transparent 55%),
+             linear-gradient(180deg, #241810 0%, #1A1210 100%);
 }
 
 // Main Container
 .tafsir-reader {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  background: var(--bg-primary);
+  height: 100%;
+  min-height: 100%;
+  background-color: var(--bg-primary);
+  background-image: var(--bg-glow);
   color: var(--text-primary);
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, color 0.3s ease;
   position: relative;
+  overflow: hidden;
+
+  h1, h2, h3, h4, h5, h6 {
+    color: var(--text-primary);
+  }
+
+  a {
+    color: var(--accent-color);
+  }
 
   &.focus-mode {
     .reader-toolbar,
@@ -100,7 +134,8 @@
   min-height: 48px !important;
   max-height: 48px !important;
   padding: 0 12px !important;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   border-bottom: 1px solid var(--border-color);
   transition: opacity 0.3s ease, transform 0.3s ease;
   position: fixed !important;
@@ -109,7 +144,7 @@
   right: 0;
   z-index: 1000;
   box-sizing: border-box;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: none;
 
   .tb-btn {
     padding: 4px !important;
@@ -117,11 +152,13 @@
     width: 34px !important;
     height: 34px !important;
     line-height: 34px !important;
+    color: var(--text-primary);
 
     mat-icon {
       font-size: 20px;
       width: 20px;
       height: 20px;
+      color: inherit;
     }
 
     &.active-accent {
@@ -216,6 +253,13 @@
   }
 }
 
+:host(.theme-dark) .toolbar-select,
+:host(.theme-night) .toolbar-select,
+:host-context(.theme-dark) .toolbar-select,
+:host-context(.theme-night) .toolbar-select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23C5C0B4'/%3E%3C/svg%3E");
+}
+
 // Progress Bar
 .progress-bar {
   height: 3px !important;
@@ -236,9 +280,8 @@
   }
 }
 
-// Wrapper for main content + notes panel (side-by-side so notes don't cover tafsir)
-// Pinned between the fixed toolbar (50px) and fixed bottom nav (52px) so each
-// child can have its own independent scroll bar.
+// Wrapper for main content.
+// Pinned between the fixed toolbar (50px) and fixed bottom nav (52px).
 .reader-main-wrapper {
   position: fixed;
   top: 50px;    // toolbar 48px + progress 2px
@@ -246,25 +289,33 @@
   left: 0;
   right: 0;
   display: flex;
-  overflow: hidden; // each child scrolls independently
+  flex-direction: column;
+  overflow: hidden;
+  transition: right 0.3s ease-in-out;
+  background-color: var(--bg-primary);
+  background-image: var(--bg-glow);
 
-  &.notes-open .reader-content {
-    flex: 1;
-    min-width: 0;
+  &.notes-open {
+    right: 400px; // make room for the notes panel on desktop
   }
 }
 
 // Main Content — independent vertical scroll
 .reader-content {
-  flex: 1;
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
+  position: absolute;
+  inset: 0;
   padding-top: 20px !important;
   padding-left: 20px !important;
   padding-right: 20px !important;
   padding-bottom: 20px !important;
   margin: 0 !important;
-  overflow-y: scroll;
+  overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   box-sizing: border-box;
 
   // Styled scrollbar (tafsir side)
@@ -616,7 +667,7 @@
   bottom: 0 !important;
   left: 0 !important;
   right: 0 !important;
-  background: var(--bg-secondary);
+  background: var(--bg-primary);
   border-top: 1px solid var(--border-color);
   padding: 6px 16px !important;
   height: auto !important;
@@ -624,7 +675,7 @@
   max-height: none !important;
   transition: opacity 0.3s ease, transform 0.3s ease;
   z-index: 1000;
-  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: none;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -860,6 +911,7 @@
 
     .reader-main-wrapper {
       bottom: 0;
+      right: 0; // override desktop right: 400px shift on mobile
     }
   }
 
@@ -885,13 +937,11 @@
   // Bottom sheet notes panel
   .notes-panel.open {
     position: fixed;
+    top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    top: auto;
     width: 100% !important;
-    min-width: 100% !important;
-    max-width: 100% !important;
     height: 100%;
     z-index: 1100;
     border-left: none;
@@ -1061,27 +1111,27 @@
   display: none;
 }
 
-// Notes Panel (side-by-side with content; does not overlay tafsir)
-// The panel itself scrolls; its header is sticky so it stays pinned at the top.
+// Notes Panel — fixed overlay on the right side of the screen.
+// On desktop it sits beside the content; on mobile it becomes a full-screen bottom sheet.
 .notes-panel {
+  position: fixed;
+  top: 50px;
+  bottom: 56px;
+  right: 0;
   width: 0;
-  min-width: 0;
   overflow: hidden;
   background: var(--bg-primary);
   border-left: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  transition: width 0.3s ease-in-out, min-width 0.3s ease-in-out;
-  flex-shrink: 0;
+  transition: width 0.3s ease-in-out;
+  z-index: 1100;
 
   &.open {
     width: 400px;
-    min-width: 400px;
-    max-width: 400px;
-    overflow-y: scroll; // independent scroll bar for notes
+    overflow-y: scroll;
     overflow-x: hidden;
 
-    // Styled scrollbar (notes side — distinct teal tint for quick distinction)
     &::-webkit-scrollbar {
       width: 8px;
     }
@@ -1461,8 +1511,11 @@
 }
 
 // Dark theme for context menu
-:host-context(.theme-dark) .highlight-context-menu {
-  background: #2a2a2a;
+:host(.theme-dark) .highlight-context-menu,
+:host-context(.theme-dark) .highlight-context-menu,
+:host(.theme-night) .highlight-context-menu,
+:host-context(.theme-night) .highlight-context-menu {
+  background: var(--bg-secondary);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
@@ -1562,8 +1615,11 @@
 }
 
 // Dark theme for tooltip
-:host-context(.theme-dark) .highlight-tooltip {
-  background: #2a2a2a;
+:host(.theme-dark) .highlight-tooltip,
+:host-context(.theme-dark) .highlight-tooltip,
+:host(.theme-night) .highlight-tooltip,
+:host-context(.theme-night) .highlight-tooltip {
+  background: var(--bg-secondary);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
@@ -1619,7 +1675,10 @@
 }
 
 // Dark theme adjustments for highlights
-:host-context(.theme-dark) .tafsir-text ::ng-deep .highlight {
+:host(.theme-dark) .tafsir-text ::ng-deep .highlight,
+:host-context(.theme-dark) .tafsir-text ::ng-deep .highlight,
+:host(.theme-night) .tafsir-text ::ng-deep .highlight,
+:host-context(.theme-night) .tafsir-text ::ng-deep .highlight {
   &.highlight-yellow {
     background-color: rgba(251, 191, 36, 0.3);
     border-bottom-color: #fbbf24;
@@ -1826,7 +1885,9 @@
   }
 }
 
+:host(.theme-dark) .swipe-indicator,
 :host-context(.theme-dark) .swipe-indicator,
+:host(.theme-night) .swipe-indicator,
 :host-context(.theme-night) .swipe-indicator {
   background: rgba(255, 255, 255, 0.15);
 }

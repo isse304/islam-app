@@ -65,6 +65,13 @@ export interface AppUser {
   history: any[];
 }
 
+// Google sign-in either completes in-page (popup) or hands control to Google and
+// finishes on the next app start (redirect). Callers must branch on this because
+// the redirect case tears the calling component down.
+export type GoogleSignInOutcome =
+  | { method: 'popup'; credential: UserCredential }
+  | { method: 'redirect' };
+
 export interface BookmarkResponse {
   success: boolean;
   message: string;
@@ -127,6 +134,9 @@ export class FirebaseAuthService {
   redirectUrl: string | null = null;
   private readonly LAST_ROUTE_KEY = 'lastRoute';
   private readonly ROUTE_STATE_KEY = 'routeState';
+  private readonly PENDING_REDIRECT_KEY = 'auth_redirect_pending';
+  private readonly REDIRECT_BROKEN_KEY = 'auth_redirect_unsupported';
+  private readonly REDIRECT_BROKEN_TTL_MS = 24 * 60 * 60 * 1000;
   private lastEmailVerifiedState: boolean | null = null;
   private refreshTriggeredForVerification = false;
 
@@ -910,57 +920,144 @@ export class FirebaseAuthService {
       });
   }
 
-  // Sign in with Google
-  async signInWithGoogle(): Promise<UserCredential> {
+  // Sign in with Google.
+  // Uses a full-page redirect so the flow survives popup blockers and browsers
+  // that refuse window.open outside a trusted gesture. Only falls back to a
+  // popup once a redirect round-trip has actually been seen to lose the
+  // credential - see processPendingRedirectResult.
+  async signInWithGoogle(): Promise<GoogleSignInOutcome> {
     const provider = new GoogleAuthProvider();
-    // //////console.log('[AuthService] Attempting signInWithPopup with Google provider.'); // Log explicit popup attempt
-    try {
+    // Without this, a browser holding a single Google session signs straight
+    // back in and the user can never pick a different account.
+    provider.setCustomParameters({ prompt: 'select_account' });
+
+    if (this.isRedirectKnownBroken()) {
       const credential = await signInWithPopup(this.auth, provider);
-      // //////console.log('[AuthService] signInWithPopup successful.'); // Log success
-      // No need to call handleUserSignedIn here, onAuthStateChanged will handle it.
-      return credential;
-    } catch (error: any) { // Add type annotation to error
-      ////console.error('[AuthService] signInWithPopup error:', error);
-      // Handle specific errors if needed
-      if (error.code === 'auth/popup-closed-by-user') {
-        // Handle popup closed specifically, maybe just log or return null/reject differently
-        // //////console.log('[AuthService] Google Sign-In popup closed by user.');
-      } else if (error.code === 'auth/cancelled-popup-request') {
-        // //////console.log('[AuthService] Google Sign-In popup request cancelled (multiple popups?).');
-      }
-      throw error; // Re-throw the error for the component to catch
+      return { method: 'popup', credential };
+    }
+
+    this.setPendingRedirect();
+    try {
+      await signInWithRedirect(this.auth, provider);
+    } catch (error) {
+      this.clearPendingRedirect();
+      throw error;
+    }
+    return { method: 'redirect' };
+  }
+
+  private setPendingRedirect(): void {
+    try {
+      sessionStorage.setItem(this.PENDING_REDIRECT_KEY, String(Date.now()));
+    } catch {
+      // Storage can throw in private mode; losing the marker only costs us the
+      // ability to detect a failed round-trip, so sign-in should still proceed.
     }
   }
 
-  // Handle redirect result
-  private async handleRedirectResult(): Promise<void> {
-    // //////console.log('[AuthService] handleRedirectResult: Checking for redirect result...'); // Log entry
+  private hasPendingRedirect(): boolean {
+    try {
+      return sessionStorage.getItem(this.PENDING_REDIRECT_KEY) !== null;
+    } catch {
+      return false;
+    }
+  }
+
+  private clearPendingRedirect(): void {
+    try {
+      sessionStorage.removeItem(this.PENDING_REDIRECT_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  // Scoped to the authDomain and the origin it failed under, and allowed to
+  // expire. A config fix, a scheme change, or a one-off failure then all
+  // recover on their own rather than pinning someone to the popup forever.
+  private isRedirectKnownBroken(): boolean {
+    try {
+      const raw = localStorage.getItem(this.REDIRECT_BROKEN_KEY);
+      if (!raw) {
+        return false;
+      }
+      const record = JSON.parse(raw);
+      return record.authDomain === environment.firebase.authDomain
+        && record.origin === window.location.origin
+        && Date.now() - record.at < this.REDIRECT_BROKEN_TTL_MS;
+    } catch {
+      // Unreadable or legacy value: treat redirect as usable again.
+      return false;
+    }
+  }
+
+  private markRedirectBroken(): void {
+    try {
+      localStorage.setItem(
+        this.REDIRECT_BROKEN_KEY,
+        JSON.stringify({
+          authDomain: environment.firebase.authDomain,
+          origin: window.location.origin,
+          at: Date.now(),
+        })
+      );
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  private clearRedirectBrokenFlag(): void {
+    try {
+      localStorage.removeItem(this.REDIRECT_BROKEN_KEY);
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
+  // A redirect sign-in rebuilds the whole app, so the trial intent recorded
+  // before leaving is turned into the redirectUrl that the auth state listener
+  // already knows how to navigate to.
+  private applyPostRedirectIntent(): void {
+    const intent = localStorage.getItem('signupIntent');
+    localStorage.removeItem('signupIntent');
+    if (intent === 'start_trial' && !localStorage.getItem('redirectUrl')) {
+      localStorage.setItem('redirectUrl', '/subscription?initiateCheckout=true');
+    }
+  }
+
+  // Completes a sign-in started by signInWithRedirect. Runs once per app start,
+  // before the auth state listener is attached.
+  private async processPendingRedirectResult(): Promise<void> {
+    const hadPendingRedirect = this.hasPendingRedirect();
     this._isLoading.next(true);
     try {
       const credential = await getRedirectResult(this.auth);
-      // //////console.log('[AuthService] handleRedirectResult: getRedirectResult returned:', credential); // Log result
+
       if (credential) {
-        // //////console.log('[AuthService] handleRedirectResult: Redirect credential found. Processing...'); // Log processing
-        const user = await this.handleUserSignedIn(credential.user);
-        if (user) {
-          // Navigate only if a user was successfully processed from redirect
-          // //////console.log(`[AuthService] handleRedirectResult: Navigating to ${this.redirectUrl || '/home'} after redirect sign-in.`); // Log navigation
-          this.ngZone.run(() => {
-             this.router.navigateByUrl(this.redirectUrl || '/home').catch(err => {
-               ////console.error('[AuthService] handleRedirectResult: Navigation failed after redirect:', err);
-               this.router.navigate(['/home']); // Fallback
-             });
-          });
-        } else {
-            ////console.warn('[AuthService] handleRedirectResult: Redirect credential processed, but handleUserSignedIn resulted in null user.');
-        }
-      } else {
-        // //////console.log('[AuthService] handleRedirectResult: No redirect credential found.'); // Log no result
+        this.clearRedirectBrokenFlag();
+        this.applyPostRedirectIntent();
+        // handleUserSignedIn and the navigation both run from
+        // onAuthStateChanged, which fires right after this.
+      } else if (hadPendingRedirect && !this.auth.currentUser) {
+        // We left for Google and came back with nothing. This is what a browser
+        // that partitions third-party storage does when authDomain is a
+        // different origin than the app, so stop using redirect on this device.
+        this.markRedirectBroken();
+        this.snackBar.open(
+          'Google sign-in could not be completed in this browser. Please tap "Continue with Google" once more.',
+          'Close',
+          { duration: 8000 }
+        );
       }
     } catch (error: any) {
-      ////console.error('[AuthService] handleRedirectResult: Error processing redirect result:', error); // Log error
-      // Avoid navigating on error, let the normal auth state handle it
+      const code = error?.code;
+      if (code === 'auth/account-exists-with-different-credential') {
+        this.snackBar.open('An account already exists with this email using a different sign-in method.', 'Close', { duration: 7000 });
+      } else if (code !== 'auth/user-cancelled' && code !== 'auth/redirect-cancelled-by-user') {
+        this.snackBar.open('Google sign-in failed. Please try again.', 'Close', { duration: 5000 });
+      }
+      localStorage.removeItem('signupIntent');
     } finally {
+      this.clearPendingRedirect();
       this._isLoading.next(false);
     }
   }
@@ -2286,17 +2383,9 @@ export class FirebaseAuthService {
     ////console.log('[AuthService] Initializing Auth and State Listener START...'); // Log: initializeAuthAndStateListener start
     let redirectProcessed = false; // Local flag for this init sequence
     try {
-      // 1. Check and process redirect result FIRST
-      ////console.log('[AuthService] Checking for redirect result START...'); // Log: getRedirectResult start
-      const credential = await getRedirectResult(this.auth);
-      ////console.log('[AuthService] getRedirectResult finished. Credential:', credential ? `Exists (User: ${credential.user.uid})` : 'null'); // Log: getRedirectResult end
-    } catch (error: any) {
-      //console.error('[AuthService] Error processing redirect result:', error); // Log: getRedirectResult error
-      if (error.code === 'auth/account-exists-with-different-credential') {
-        this.snackBar.open('An account already exists with this email using a different sign-in method.', 'Close', { duration: 7000 });
-      } else {
-        this.snackBar.open(`Login failed during redirect: ${error.message}`, 'Close', { duration: 5000 });
-      }
+      // 1. Complete any redirect sign-in FIRST, so the auth state listener sees
+      // the restored user on its very first callback.
+      await this.processPendingRedirectResult();
     } finally {
       ////console.log('[AuthService] Marking redirect result as processed LOCALLY.'); // Log: redirectResultProcessed set
       redirectProcessed = true; // Mark local flag

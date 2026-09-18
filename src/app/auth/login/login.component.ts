@@ -224,28 +224,30 @@ export class LoginComponent implements OnInit, OnDestroy {
     this.isLoading = true;
     this.cdr.markForCheck(); // Update UI for loading state
 
-    // Store the intent before starting the Google flow
+    // Both of these have to be in storage before control leaves the page: the
+    // redirect flow destroys this component and rebuilds the app on return.
     const intentToStore = this.loginIntent || localStorage.getItem('signupIntent');
     if (intentToStore) {
       localStorage.setItem('signupIntent', intentToStore);
       // //console.log(`[LoginComponent loginWithGoogle] Stored intent: ${intentToStore}`);
     }
+    if (this.returnUrl && !localStorage.getItem('redirectUrl')) {
+      localStorage.setItem('redirectUrl', this.returnUrl);
+    }
 
     // Run the Firebase call outside Angular zone
     this.zone.runOutsideAngular(() => {
       this.authService.signInWithGoogle()
-        .then(async (credential) => { // Make the success handler async
+        .then(outcome => {
           // Bring the result handling back into the Angular zone
           this.zone.run(async () => {
-            // //console.log('[LoginComponent] signInWithGoogle promise resolved. Credential:', credential); // Log credential
+            if (outcome.method === 'redirect') {
+              // The browser is navigating to Google. Keep the spinner up and let
+              // FirebaseAuthService finish the sign-in on the way back.
+              return;
+            }
+            const credential = outcome.credential;
             if (credential && credential.user) {
-              // //console.log('[LoginComponent] Valid credential received from popup.');
-              // Before calling navigateOnLoginSuccess, ensure 'redirectUrl' is in localStorage if it was in query
-              // This is already handled by constructor/ngOnInit, but double check for Google flow
-              if (this.returnUrl && !localStorage.getItem('redirectUrl')) {
-                  localStorage.setItem('redirectUrl', this.returnUrl);
-                  // //console.log(`[LoginComponent loginWithGoogle success] Ensured returnUrl '${this.returnUrl}' is in localStorage.`);
-              }
               this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
               await this.navigateOnLoginSuccess(); // Wait for navigation logic
             } else {
@@ -263,23 +265,24 @@ export class LoginComponent implements OnInit, OnDestroy {
             localStorage.removeItem('signupIntent'); // Clear intent on error
             console.error('[LoginComponent] signInWithGoogle failed:', error);
             this.isLoading = false;
-            let errorMessage = 'Google Sign-In failed.';
-            if (error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') { 
-              errorMessage = 'Google login failed. Please try again.';
-              this.snackBar.open(errorMessage, 'Close', {
+            if (!LoginComponent.isUserCancellation(error?.code)) {
+              this.snackBar.open('Google login failed. Please try again.', 'Close', {
                   duration: 5000,
                   panelClass: ['error-snackbar']
               });
-            } else {
-              //console.log('[LoginComponent] Google Sign-In popup closed by user.');
             }
-            // Always reset loading state on error or popup close
-            this.isLoading = false;
             this.cdr.markForCheck(); // Update UI
           });
         });
     });
        // No finally block here, handle isLoading in then/catch inside the zone
+  }
+
+  private static isUserCancellation(code?: string): boolean {
+    return code === 'auth/popup-closed-by-user'
+      || code === 'auth/cancelled-popup-request'
+      || code === 'auth/user-cancelled'
+      || code === 'auth/redirect-cancelled-by-user';
   }
 
   private startAutoRotate() {

@@ -15,6 +15,7 @@ export class QuranFontLoaderService {
 
   constructor() {
     this.preloadUnicodeFallbackFont();
+    this.injectDarkPalettes();
   }
 
   /**
@@ -39,10 +40,10 @@ export class QuranFontLoaderService {
    * Supports both COLRv1 (Chrome/Safari/Edge) and OT-SVG (Firefox) formats
    * 
    * @param pageNumber - Mushaf page number (1-604)
-   * @param theme - Theme for OT-SVG fonts ('light', 'dark', 'sepia')
+   * @param _theme - Kept for callers; COLRv1 is used for every theme
    * @returns Promise resolving to the font family name
    */
-  async loadTajweedFont(pageNumber: number, theme: 'light' | 'dark' | 'sepia' = 'dark'): Promise<string> {
+  async loadTajweedFont(pageNumber: number, _theme: 'light' | 'dark' | 'sepia' = 'light'): Promise<string> {
     const fontName = `p${pageNumber}-v4`;
     
     // Return if already loaded
@@ -57,7 +58,7 @@ export class QuranFontLoaderService {
     }
     
     // Create new loading promise
-    const loadingPromise = this.loadFontWithFallback(pageNumber, fontName, theme);
+    const loadingPromise = this.loadFontWithFallback(pageNumber, fontName);
     this.loadingPromises.set(fontName, loadingPromise);
 
     try {
@@ -73,25 +74,51 @@ export class QuranFontLoaderService {
   }
 
   /**
-   * Load appropriate font format based on theme
+   * Always load COLRv1 first. CSS fill flattens OT-SVG color glyphs, but COLR
+   * keeps tajweed layers. Dark mode uses --qcf-dark (light tajweed hues with
+   * cream ink) so colors match light mode on dark cards.
    */
   private async loadFontWithFallback(
     pageNumber: number,
-    fontName: string,
-    theme: 'light' | 'dark' | 'sepia'
+    fontName: string
   ): Promise<string> {
-    // For light theme, use COLRv1 (supports Tajweed colors)
     const colrUrl = `${this.CDN_BASE}/v4/colrv1/woff2/p${pageNumber}.woff2`;
-    
+    const svgUrl = `${this.CDN_BASE}/v4/ot-svg/light/woff2/p${pageNumber}.woff2`;
+
     try {
-      await this.loadSingleFont(fontName, colrUrl, theme);
+      await this.loadSingleFont(fontName, colrUrl);
       return fontName;
-    } catch (error) {
-      // Fallback to OT-SVG
-      const svgUrl = `${this.CDN_BASE}/v4/ot-svg/${theme}/woff2/p${pageNumber}.woff2`;
+    } catch {
       await this.loadSingleFont(fontName, svgUrl);
       return fontName;
     }
+  }
+
+  /**
+   * Palette 0 is the light tajweed set (same reds/greens/blues as light mode).
+   * Indices 0/13/14 are the black base ink — recolor those to cream so letters
+   * read on dark cards without shifting tajweed hues (invert made red look pink).
+   * Palette 4 is the non-tajweed dark set (white ink) for the off toggle.
+   */
+  private injectDarkPalettes(): void {
+    if (typeof document === 'undefined' || document.getElementById('qcf-v4-dark-palette')) {
+      return;
+    }
+    const families = Array.from({ length: 604 }, (_, i) => `p${i + 1}-v4`).join(', ');
+    const style = document.createElement('style');
+    style.id = 'qcf-v4-dark-palette';
+    style.textContent = `
+      @font-palette-values --qcf-dark {
+        font-family: ${families};
+        base-palette: 0;
+        override-colors: 0 #F4EDE0, 13 #F4EDE0, 14 #F4EDE0;
+      }
+      @font-palette-values --qcf-mono {
+        font-family: ${families};
+        base-palette: 4;
+      }
+    `;
+    document.head.appendChild(style);
   }
 
   /**
@@ -99,8 +126,7 @@ export class QuranFontLoaderService {
    */
   private async loadSingleFont(
     fontName: string,
-    url: string,
-    palette?: string
+    url: string
   ): Promise<void> {
     const fontFace = new FontFace(fontName, `url('${url}')`);
     fontFace.display = 'swap'; // Use fallback font then swap when ready (faster initial render)
@@ -116,7 +142,7 @@ export class QuranFontLoaderService {
    * @param pageNumbers - Array of page numbers to preload
    * @param theme - Theme for OT-SVG fonts
    */
-  async preloadPages(pageNumbers: number[], theme: 'light' | 'dark' | 'sepia' = 'dark'): Promise<void> {
+  async preloadPages(pageNumbers: number[], theme: 'light' | 'dark' | 'sepia' = 'light'): Promise<void> {
     const uniquePages = [...new Set(pageNumbers)];
     
     if (uniquePages.length === 0) return;

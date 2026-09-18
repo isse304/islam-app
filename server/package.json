@@ -45,6 +45,7 @@
         "firebase": "^11.5.0",
         "firebase-admin": "^13.0.1",
         "helmet": "^7.0.0",
+        "http-proxy-middleware": "^3.0.7",
         "mongoose": "^7.0.0",
         "node-cron": "^3.0.3",
         "node-fetch": "^3.3.2",

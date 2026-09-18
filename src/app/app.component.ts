@@ -2,12 +2,10 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
-import { FirebaseAuthService } from './services/firebase-auth.service';
 import { ThemeService } from './services/theme.service';
 import { CallInvitationListenerService } from './services/call-invitation-listener.service';
-import { Observable, timer, combineLatest, Subject } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
 import { filter, map, startWith, distinctUntilChanged, takeUntil } from 'rxjs/operators';
-import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ToastComponent } from './components/shared/toast/toast.component';
 
 @Component({
@@ -19,35 +17,22 @@ import { ToastComponent } from './components/shared/toast/toast.component';
     CommonModule,
     RouterOutlet,
     HeaderComponent,
-    MatProgressSpinnerModule,
     ToastComponent
   ],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AppComponent implements OnInit, OnDestroy {
   title = 'IslamApp';
-  displayLoading$: Observable<boolean>;
   showHeader$: Observable<boolean>;
   isHeaderVisible: boolean = true;
   private destroy$ = new Subject<void>();
-  private minLoadingTime = 1500;
 
   constructor(
-    private authService: FirebaseAuthService,
     private themeService: ThemeService,
     private router: Router,
     private cdr: ChangeDetectorRef,
     private callInvitationListener: CallInvitationListenerService
   ) {
-    const authIsLoading$ = this.authService.isLoading$;
-
-    const minDisplayTime$ = timer(this.minLoadingTime).pipe(map(() => false), startWith(true));
-
-    this.displayLoading$ = combineLatest([authIsLoading$, minDisplayTime$]).pipe(
-      map(([authLoading, timerRunning]) => authLoading || timerRunning),
-      startWith(true)
-    );
-
     // Define routes where the header AND toggle should be hidden
     const authPath = '/auth';
     const rootPath = '/';
@@ -56,14 +41,18 @@ export class AppComponent implements OnInit, OnDestroy {
       filter((event): event is NavigationEnd => event instanceof NavigationEnd)
     );
 
+    const shouldShowHeader = (url: string): boolean => {
+      const path = (url || '').split('?')[0];
+      return path !== rootPath
+        && !path.startsWith(authPath)
+        && !path.startsWith('/tafsir/read');
+    };
+
+    this.isHeaderVisible = shouldShowHeader(this.router.url);
+
     this.showHeader$ = navigationEnd$.pipe(
-      map(event => {
-        const url = event.urlAfterRedirects;
-        // Show header if URL is NOT exactly root AND does NOT start with /auth
-        return url !== rootPath && !url.startsWith(authPath);
-      }),
-      // Set initial state based on the current URL
-      startWith(this.router.url !== rootPath && !this.router.url.startsWith(authPath)),
+      map(event => shouldShowHeader(event.urlAfterRedirects)),
+      startWith(shouldShowHeader(this.router.url)),
       distinctUntilChanged()
     );
 

@@ -287,9 +287,9 @@ rule {
   text-rendering: optimizeLegibility;
   font-feature-settings: "liga" 1, "dlig" 1, "calt" 1;
   
-  /* Dark mode */
-  .dark & {
-    color: #B7A57A; /* Gold in dark mode */
+  /* Dark mode default (tajweed-off). Enabled tajweed uses QCF dark palettes. */
+  .dark &:not(.tajweed-enabled) {
+    color: #B7A57A;
   }
 }
 
@@ -359,39 +359,51 @@ html.dark {
   -webkit-font-smoothing: antialiased;
 }
 
-/* ===== CRITICAL: Override ALL tajweed colors in dark mode with gold ===== */
-/* This must come AFTER all the rule definitions above to have proper specificity */
-html.dark rule,
-html.dark rule[class],
-html.dark rule[class*="idgham"],
-html.dark rule[class*="ghunnah"],
-html.dark rule[class*="qalaqah"],
-html.dark rule[class*="madd"],
-html.dark rule[class*="ikhafa"],
-html.dark rule[class*="ikhfa"],
-html.dark rule[class*="iqlab"],
-html.dark rule[class*="ham_wasl"],
-html.dark rule[class*="hamzat_wasl"],
-html.dark rule[class*="slnt"],
-html.dark rule[class*="silent"],
-html.dark .verse-text,
-html.dark .verse-text *,
-html.dark .verse-text span,
-html.dark .quran-word,
-html.dark .quran-word *,
-html.dark .quran-text-uthmanic,
-html.dark .quran-text-uthmanic * {
+/* ===== Dark mode Arabic: gold only when tajweed is off ===== */
+html.dark .tajweed-disabled.verse-text,
+html.dark .tajweed-disabled.quran-text-uthmanic,
+html.dark .tajweed-disabled .word-tooltip-trigger,
+html.dark .tajweed-disabled .quran-word,
+html.dark .tajweed-disabled .quran-word *,
+html.dark .tajweed-disabled rule,
+html.dark .tajweed-disabled rule[class] {
   color: #B7A57A !important;
   -webkit-text-fill-color: #B7A57A !important;
   text-shadow: none !important;
 }
 
-/* Apply grayscale to QCF font glyphs in dark mode */
-html.dark .quran-word,
-html.dark .verse-text .quran-word,
+html.dark .tajweed-disabled .quran-word {
+  filter: none;
+  -webkit-filter: none;
+  font-palette: --qcf-mono;
+}
+
+/* ===== Dark mode: same tajweed hues as light, cream ink on near-black cards ===== */
+html.dark .tajweed-enabled.verse-text,
+html.dark .tajweed-enabled.quran-text-uthmanic {
+  color: #F4EDE0;
+  -webkit-text-fill-color: unset;
+}
+
 html.dark .tajweed-enabled .quran-word {
-  filter: grayscale(100%) brightness(1.1) contrast(0.9) !important;
-  -webkit-filter: grayscale(100%) brightness(1.1) contrast(0.9) !important;
+  filter: none !important;
+  -webkit-filter: none !important;
+  -webkit-text-fill-color: unset !important;
+  color: unset;
+  text-shadow: none;
+  font-palette: --qcf-dark;
+}
+
+html.dark .verse-text .quran-word:hover,
+html.dark .quran-text-uthmanic .quran-word:hover {
+  opacity: 1;
+}
+
+html.dark .tajweed-enabled rule {
+  filter: none !important;
+  -webkit-filter: none !important;
+  -webkit-text-fill-color: unset !important;
+  text-shadow: none;
 }
 
 /* Premium Preview Dialog Container */
@@ -765,10 +777,10 @@ html.dark .tajweed-enabled .quran-word {
   font-family: 'Traditional Arabic', 'Amiri', 'Scheherazade', 'Arabic Typesetting', serif !important;
 }
 
-/* Optimized dark mode Arabic text - simplified selectors for performance */
-html.dark .verse-text,
-html.dark .quran-text-uthmanic,
-html.dark .word-tooltip-trigger {
+/* Optimized dark mode Arabic text — gold only when tajweed is off */
+html.dark .tajweed-disabled.verse-text,
+html.dark .tajweed-disabled.quran-text-uthmanic,
+html.dark .tajweed-disabled .word-tooltip-trigger {
   color: #D4AF37 !important;
   -webkit-text-fill-color: #D4AF37 !important;
 }

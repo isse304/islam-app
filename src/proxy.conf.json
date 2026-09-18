@@ -1,4 +1,11 @@
 {
+  "/__/auth": {
+    "target": "https://nuraai.firebaseapp.com",
+    "secure": true,
+    "changeOrigin": true,
+    "cookieDomainRewrite": "",
+    "logLevel": "debug"
+  },
   "/api/alquran/*": {
     "target": "https://api.alquran.cloud/v1",
     "secure": true,

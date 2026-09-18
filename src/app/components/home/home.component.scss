@@ -612,12 +612,57 @@ $text-muted: #6B7280;
   margin-bottom: 16px;
 }
 
+/* Eight-pointed Islamic star (two overlapping squares) */
+.geom-star {
+  position: relative;
+  display: inline-block;
+  flex-shrink: 0;
+
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, $gold, $gold-light);
+  }
+
+  &::after { transform: rotate(45deg); }
+
+  &--sm {
+    width: 11px;
+    height: 11px;
+  }
+
+  &--lg {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /* ═══════════════ FEATURES ═══════════════ */
+
+@keyframes feat-shine {
+  0%   { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(220%) skewX(-12deg); }
+}
+
+@keyframes feat-ring {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes feat-rise {
+  0%   { opacity: 0; transform: translateY(28px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
 
 .features {
   position: relative;
-  padding: 88px 24px;
-  background: $cream;
+  padding: 100px 24px 110px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 0%, rgba($gold, 0.12) 0%, transparent 55%),
+    linear-gradient(180deg, #FBF6EA 0%, $cream 40%, #F3E9D2 100%);
+  overflow: hidden;
 
   &::after {
     content: '';
@@ -625,119 +670,302 @@ $text-muted: #6B7280;
     bottom: 0;
     left: 50%;
     transform: translateX(-50%);
-    width: 200px;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, rgba($gold, 0.2), transparent);
+    width: 280px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba($gold, 0.45), transparent);
     border-radius: 2px;
+    z-index: 1;
+  }
+}
+
+.features-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  &__pattern {
+    position: absolute;
+    inset: 0;
+    background-image: url('/assets/islamic-pattern-2.png');
+    background-size: 280px;
+    opacity: 0.035;
+  }
+
+  &__glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+
+    &--1 {
+      width: 420px;
+      height: 420px;
+      top: -80px;
+      left: -80px;
+      background: rgba($gold, 0.16);
+    }
+
+    &--2 {
+      width: 360px;
+      height: 360px;
+      bottom: -60px;
+      right: -40px;
+      background: rgba($navy, 0.08);
+    }
   }
 }
 
 .features-header {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  max-width: 560px;
-  margin: 0 auto 56px;
+  max-width: 640px;
+  margin: 0 auto 64px;
+  animation: feat-rise 0.7s ease both;
 
   h2 {
-    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    font-size: clamp(1.75rem, 4vw, 2.6rem);
     font-weight: 800;
     color: $navy;
-    margin: 0 0 8px;
-    letter-spacing: -0.01em;
+    margin: 0 0 12px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+
+    em {
+      font-style: italic;
+      font-weight: 700;
+      background: linear-gradient(135deg, $gold 0%, #8A7344 40%, $gold-light 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
 
   p {
-    font-size: 1rem;
+    font-size: 1.05rem;
     color: $text-muted;
     margin: 0;
   }
 }
 
 .features-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  max-width: 1100px;
+  gap: 22px;
+  max-width: 1140px;
   margin: 0 auto;
 
-  @media (max-width: 900px) {
+  @media (max-width: 960px) {
     grid-template-columns: 1fr;
-    max-width: 480px;
+    max-width: 440px;
   }
 }
 
 .feat-card {
   display: flex;
   flex-direction: column;
-  padding: 36px 30px 30px;
-  border-radius: 20px;
-  background: white;
-  border: 1px solid rgba(0, 0, 0, 0.06);
+  min-height: 420px;
+  padding: 40px 32px 28px;
+  border-radius: 24px;
   text-decoration: none;
-  color: $text;
-  transition: all 0.3s ease;
+  color: inherit;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.4s ease;
   position: relative;
   overflow: hidden;
+  animation: feat-rise 0.8s ease both;
+
+  &:nth-child(1) { animation-delay: 0.08s; }
+  &:nth-child(2) { animation-delay: 0.16s; }
+  &:nth-child(3) { animation-delay: 0.24s; }
 
   &:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+    transform: translateY(-10px);
 
     .feat-card__link mat-icon {
-      transform: translateX(4px);
+      transform: translateX(5px);
     }
+
+    .feat-card__shine {
+      animation: feat-shine 0.85s ease;
+    }
+
+    .feat-card__icon::after {
+      border-color: rgba($gold, 0.7);
+    }
+
+    .feat-card__watermark {
+      opacity: 1;
+    }
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('/assets/islamic-pattern-2.png');
+    background-size: 160px;
+    opacity: 0.07;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  &__index {
+    position: absolute;
+    top: 22px;
+    left: 28px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.22em;
+    color: rgba($gold, 0.7);
+    z-index: 2;
+  }
+
+  &__corners {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 2;
+
+    .c {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-style: solid;
+      border-color: rgba($gold, 0.45);
+    }
+
+    .c--tl { top: 14px; left: 14px; border-width: 1.5px 0 0 1.5px; }
+    .c--tr { top: 14px; right: 14px; border-width: 1.5px 1.5px 0 0; }
+    .c--bl { bottom: 14px; left: 14px; border-width: 0 0 1.5px 1.5px; }
+    .c--br { bottom: 14px; right: 14px; border-width: 0 1.5px 1.5px 0; }
+  }
+
+  &__watermark {
+    position: absolute;
+    bottom: 58px;
+    right: 14px;
+    font-family: 'Amiri', 'Traditional Arabic', serif;
+    font-size: 5.2rem;
+    font-weight: 700;
+    line-height: 1;
+    color: rgba($gold-light, 0.2);
+    pointer-events: none;
+    user-select: none;
+    z-index: 0;
+    opacity: 0.95;
+    transition: opacity 0.35s ease;
+  }
+
+  &__shine {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 45%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(white, 0.14) 50%,
+      transparent 100%
+    );
+    transform: translateX(-120%) skewX(-12deg);
+    pointer-events: none;
+    z-index: 3;
   }
 
   &__badge {
     position: absolute;
-    top: 16px;
-    right: 16px;
+    top: 20px;
+    right: 36px;
     font-size: 9px;
     font-weight: 800;
-    letter-spacing: 0.08em;
-    padding: 4px 10px;
-    border-radius: 6px;
+    letter-spacing: 0.1em;
+    padding: 5px 12px;
+    border-radius: 999px;
     background: linear-gradient(135deg, $gold, $gold-light);
     color: $navy-deep;
+    box-shadow: 0 4px 14px rgba($gold, 0.35);
+    z-index: 3;
   }
 
   &__icon {
-    width: 52px;
-    height: 52px;
-    border-radius: 14px;
+    position: relative;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 20px;
+    margin: 28px 0 22px;
+    background: radial-gradient(circle at 35% 30%, rgba($gold-light, 0.35), rgba($gold, 0.1));
+    box-shadow:
+      0 0 0 1px rgba($gold, 0.28),
+      0 8px 24px rgba($gold, 0.18);
+    z-index: 1;
 
     mat-icon {
-      font-size: 26px;
-      width: 26px;
-      height: 26px;
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      color: $gold;
+    }
+
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      border: 1.5px dashed rgba($gold, 0.42);
+      animation: feat-ring 22s linear infinite;
     }
   }
 
   h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: $navy;
-    margin: 0 0 10px;
+    position: relative;
+    z-index: 1;
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin: 0 0 12px;
+    letter-spacing: -0.015em;
   }
 
   p {
-    font-size: 0.9rem;
-    color: $text-muted;
-    line-height: 1.65;
-    margin: 0 0 20px;
+    position: relative;
+    z-index: 1;
+    font-size: 0.92rem;
+    line-height: 1.7;
+    margin: 0 0 28px;
     flex: 1;
   }
 
-  &__link {
+  &__footer {
+    position: relative;
+    z-index: 1;
     display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid rgba($gold, 0.18);
+  }
+
+  &__stat {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba($gold, 0.85);
+  }
+
+  &__link {
+    display: inline-flex;
     align-items: center;
     gap: 4px;
     font-size: 0.85rem;
-    font-weight: 600;
-    color: $gold;
+    font-weight: 700;
+    color: $gold-light;
 
     mat-icon {
       font-size: 18px;
@@ -747,51 +975,88 @@ $text-muted: #6B7280;
     }
   }
 
-  &--quran .feat-card__icon {
-    background: rgba(99, 102, 241, 0.08);
-    mat-icon { color: #6366F1; }
+  /* ── Quran: deep navy mushaf ── */
+  &--quran {
+    background:
+      radial-gradient(ellipse at 100% 0%, rgba($gold, 0.18) 0%, transparent 50%),
+      linear-gradient(165deg, $navy 0%, $navy-deep 55%, #0C1F36 100%);
+    border: 1px solid rgba($gold, 0.18);
+    box-shadow: 0 18px 40px rgba($navy-deep, 0.22);
+
+    h3 { color: #F7F0DE; }
+    p { color: rgba(white, 0.62); }
+
+    &:hover {
+      box-shadow:
+        0 28px 56px rgba($navy-deep, 0.35),
+        0 0 0 1px rgba($gold, 0.28);
+    }
   }
 
-  &--tafsir .feat-card__icon {
-    background: rgba($gold, 0.1);
-    mat-icon { color: $gold; }
+  /* ── Tafsir: illuminated manuscript ── */
+  &--tafsir {
+    background:
+      radial-gradient(ellipse at 0% 100%, rgba($gold, 0.22) 0%, transparent 50%) padding-box,
+      linear-gradient(165deg, #FFFBF2 0%, #F8EFD8 50%, #F3E6C8 100%) padding-box,
+      linear-gradient(135deg, $gold-light, $gold, $gold-light) border-box;
+    border: 1.5px solid transparent;
+    box-shadow:
+      0 18px 40px rgba($gold, 0.18),
+      0 0 0 1px rgba($gold, 0.12),
+      inset 0 0 0 1px rgba(white, 0.55);
+
+    h3 { color: $navy-deep; }
+    p { color: $text; }
+    .feat-card__link { color: #8A7344; }
+    .feat-card__watermark { color: rgba($gold, 0.2); }
+
+    &::before { opacity: 0.05; }
+
+    .feat-card__icon {
+      background: radial-gradient(circle at 35% 30%, rgba($gold-light, 0.55), rgba($gold, 0.18));
+      mat-icon { color: #8A7344; }
+    }
+
+    &:hover {
+      box-shadow:
+        0 28px 56px rgba($gold, 0.28),
+        0 0 0 1px rgba($gold, 0.45);
+    }
   }
 
-  &--dua .feat-card__icon {
-    background: rgba(16, 185, 129, 0.08);
-    mat-icon { color: #10B981; }
+  /* ── Duas: emerald sanctuary ── */
+  &--dua {
+    background:
+      radial-gradient(ellipse at 0% 0%, rgba($gold, 0.16) 0%, transparent 48%),
+      linear-gradient(165deg, #1A3D34 0%, #12302A 55%, #0D241F 100%);
+    border: 1px solid rgba($gold, 0.16);
+    box-shadow: 0 18px 40px rgba(#0D241F, 0.28);
+
+    h3 { color: #F7F0DE; }
+    p { color: rgba(white, 0.62); }
+
+    .feat-card__icon {
+      background: radial-gradient(circle at 35% 30%, rgba(#6EE7B7, 0.22), rgba($gold, 0.1));
+    }
+
+    &:hover {
+      box-shadow:
+        0 28px 56px rgba(#0D241F, 0.4),
+        0 0 0 1px rgba($gold, 0.28);
+    }
   }
 }
 
 /* ═══════════════ AI SECTION ═══════════════ */
 
-.ai-section {
-  position: relative;
-  padding: 88px 24px;
-  background: linear-gradient(180deg, #FFFFFF 0%, #FDFBF4 40%, #FBF7EC 100%);
-  overflow: hidden;
+@keyframes ai-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.45; }
+  50%      { transform: scale(1.18); opacity: 0.15; }
+}
 
-  &::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 200px;
-    height: 3px;
-    background: linear-gradient(90deg, transparent, rgba($gold, 0.3), transparent);
-    border-radius: 2px;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background-image: url('/assets/islamic-pattern-2.png');
-    background-size: 300px;
-    opacity: 0.015;
-    pointer-events: none;
-  }
+@keyframes ai-drift {
+  0%   { transform: translate(0, 0); }
+  100% { transform: translate(24px, -18px); }
 }
 
 .section-ornament {
@@ -802,12 +1067,12 @@ $text-muted: #6B7280;
   margin-bottom: 20px;
 
   &__line {
-    width: 40px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba($gold, 0.3));
+    width: 56px;
+    height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba($gold, 0.65));
 
     &:last-of-type {
-      background: linear-gradient(90deg, rgba($gold, 0.3), transparent);
+      background: linear-gradient(90deg, rgba($gold, 0.65), transparent);
     }
   }
 
@@ -820,99 +1085,326 @@ $text-muted: #6B7280;
   }
 }
 
+.ai-section {
+  position: relative;
+  padding: 110px 24px;
+  background: linear-gradient(165deg, $navy-deep 0%, #0C1F36 42%, $navy 100%);
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba($gold, 0.5), transparent);
+    z-index: 1;
+  }
+}
+
+.ai-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  &__pattern {
+    position: absolute;
+    inset: 0;
+    background-image: url('/assets/islamic-pattern-2.png');
+    background-size: 240px;
+    opacity: 0.045;
+  }
+
+  &__stars {
+    position: absolute;
+    inset: 0;
+    background-image:
+      radial-gradient(1.5px 1.5px at 12% 22%, rgba($gold-light, 0.55), transparent),
+      radial-gradient(1.5px 1.5px at 78% 18%, rgba($gold-light, 0.4), transparent),
+      radial-gradient(1px 1px at 32% 68%, rgba(white, 0.35), transparent),
+      radial-gradient(1.5px 1.5px at 88% 72%, rgba($gold, 0.45), transparent),
+      radial-gradient(1px 1px at 54% 12%, rgba(white, 0.28), transparent),
+      radial-gradient(1px 1px at 64% 84%, rgba($gold-light, 0.35), transparent);
+  }
+
+  &__glow {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(90px);
+    animation: ai-drift 16s ease-in-out infinite alternate;
+
+    &--1 {
+      width: 480px;
+      height: 480px;
+      top: -120px;
+      right: -80px;
+      background: rgba($gold, 0.14);
+    }
+
+    &--2 {
+      width: 340px;
+      height: 340px;
+      bottom: -80px;
+      left: -60px;
+      background: rgba(99, 102, 241, 0.12);
+      animation-duration: 20s;
+      animation-direction: alternate-reverse;
+    }
+
+    &--3 {
+      width: 260px;
+      height: 260px;
+      top: 40%;
+      left: 40%;
+      background: rgba($gold, 0.06);
+      animation-duration: 22s;
+    }
+  }
+}
+
+.ai-layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 0.85fr 1.15fr;
+  gap: 72px;
+  align-items: center;
+  max-width: 1140px;
+  margin: 0 auto;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+    gap: 48px;
+  }
+}
+
+.ai-star {
+  position: relative;
+  width: 108px;
+  height: 108px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 32px;
+
+  .geom-star--lg {
+    z-index: 1;
+    filter: drop-shadow(0 0 12px rgba($gold, 0.7));
+  }
+
+  &__ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1px solid rgba($gold, 0.28);
+
+    &--2 {
+      inset: -14px;
+      border-style: dashed;
+      border-color: rgba($gold, 0.18);
+      animation: feat-ring 28s linear infinite;
+    }
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba($gold, 0.28) 0%, transparent 70%);
+    animation: ai-pulse 4.5s ease-in-out infinite;
+  }
+}
+
 .ai-header {
-  text-align: center;
-  max-width: 560px;
-  margin: 0 auto 56px;
+  text-align: left;
+  position: relative;
+
+  @media (max-width: 900px) {
+    text-align: center;
+
+    .ai-star { margin-left: auto; margin-right: auto; }
+  }
 
   h2 {
-    font-size: clamp(1.6rem, 3.5vw, 2.2rem);
+    font-size: clamp(1.8rem, 4vw, 2.7rem);
     font-weight: 800;
-    color: $navy;
-    margin: 0 0 8px;
+    color: #F7F0DE;
+    margin: 0 0 16px;
+    letter-spacing: -0.02em;
+    line-height: 1.2;
+
+    em {
+      font-style: italic;
+      font-weight: 700;
+      background: linear-gradient(135deg, $gold 0%, $gold-light 50%, #E8D9B0 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
   }
 
   p {
-    font-size: 1rem;
-    color: $text-muted;
+    font-size: 1.05rem;
+    color: rgba(white, 0.58);
     margin: 0;
+    line-height: 1.7;
+    max-width: 380px;
+
+    @media (max-width: 900px) {
+      margin: 0 auto;
+    }
+  }
+
+  .section-tag {
+    background: rgba($gold, 0.12);
+    border: 1px solid rgba($gold, 0.18);
+    color: $gold-light;
+  }
+
+  &__arabic {
+    display: block;
+    margin-top: 32px;
+    font-family: 'Amiri', 'Traditional Arabic', serif;
+    font-size: 1.85rem;
+    color: rgba($gold-light, 0.55);
+    letter-spacing: 0.12em;
   }
 }
 
 .ai-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-
-  @media (max-width: 900px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 
   @media (max-width: 520px) {
     grid-template-columns: 1fr;
-    max-width: 380px;
+    max-width: 400px;
+    margin: 0 auto;
   }
 }
 
 .ai-card {
-  padding: 28px 24px;
-  border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
-  background: $cream;
-  transition: all 0.25s ease;
+  position: relative;
+  padding: 28px 24px 26px;
+  border-radius: 20px;
+  border: 1px solid rgba($gold, 0.12);
+  background: linear-gradient(165deg, rgba(white, 0.07) 0%, rgba(white, 0.025) 100%);
+  backdrop-filter: blur(14px);
+  overflow: hidden;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+              border-color 0.35s ease,
+              box-shadow 0.35s ease;
+  animation: feat-rise 0.8s ease both;
+
+  &:nth-child(1) { animation-delay: 0.1s; }
+  &:nth-child(2) { animation-delay: 0.18s; }
+  &:nth-child(3) { animation-delay: 0.26s; }
+  &:nth-child(4) { animation-delay: 0.34s; }
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 3px;
+    height: 100%;
+    background: linear-gradient(180deg, $gold, transparent);
+    opacity: 0.55;
+  }
 
   &:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.06);
+    transform: translateY(-6px);
+    border-color: rgba($gold, 0.35);
+    box-shadow:
+      0 18px 40px rgba(0, 0, 0, 0.28),
+      0 0 32px rgba($gold, 0.08);
+
+    .ai-card__icon {
+      transform: scale(1.08);
+    }
+  }
+
+  &__index {
+    position: absolute;
+    top: 16px;
+    right: 18px;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 1.4rem;
+    font-style: italic;
+    color: rgba($gold, 0.18);
+    line-height: 1;
+    pointer-events: none;
   }
 
   &__icon {
-    width: 44px;
-    height: 44px;
-    border-radius: 12px;
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 16px;
+    margin-bottom: 18px;
+    transition: transform 0.35s ease;
+    position: relative;
 
     mat-icon {
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
     }
 
     &--purple {
-      background: rgba(139, 92, 246, 0.1);
-      mat-icon { color: #8B5CF6; }
+      background: rgba(167, 139, 250, 0.16);
+      box-shadow: 0 0 22px rgba(139, 92, 246, 0.25);
+      mat-icon { color: #C4B5FD; }
     }
     &--blue {
-      background: rgba(59, 130, 246, 0.1);
-      mat-icon { color: #3B82F6; }
+      background: rgba(96, 165, 250, 0.16);
+      box-shadow: 0 0 22px rgba(59, 130, 246, 0.22);
+      mat-icon { color: #93C5FD; }
     }
     &--green {
-      background: rgba(16, 185, 129, 0.1);
-      mat-icon { color: #10B981; }
+      background: rgba(52, 211, 153, 0.14);
+      box-shadow: 0 0 22px rgba(16, 185, 129, 0.22);
+      mat-icon { color: #6EE7B7; }
     }
     &--amber {
-      background: rgba(245, 158, 11, 0.1);
-      mat-icon { color: #F59E0B; }
+      background: rgba($gold, 0.16);
+      box-shadow: 0 0 22px rgba($gold, 0.22);
+      mat-icon { color: $gold-light; }
     }
   }
 
   h4 {
-    font-size: 0.95rem;
+    font-size: 1.05rem;
     font-weight: 700;
-    color: $navy;
-    margin: 0 0 6px;
+    color: #F7F0DE;
+    margin: 0 0 8px;
   }
 
   p {
-    font-size: 0.82rem;
-    color: $text-muted;
-    line-height: 1.6;
+    font-size: 0.84rem;
+    color: rgba(white, 0.52);
+    line-height: 1.65;
     margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feat-card,
+  .ai-card,
+  .features-header {
+    animation: none;
+  }
+
+  .feat-card__icon::after,
+  .ai-star__ring--2,
+  .ai-bg__glow,
+  .ai-star::before {
+    animation: none;
   }
 }
 
@@ -1258,52 +1750,88 @@ $text-muted: #6B7280;
   }
 
   .features {
-    background: $navy-deep;
-    &::after { background: linear-gradient(90deg, transparent, rgba($gold-light, 0.12), transparent); }
+    background:
+      radial-gradient(ellipse 80% 50% at 50% 0%, rgba($gold, 0.08) 0%, transparent 55%),
+      linear-gradient(180deg, $navy-deep 0%, #0C1F36 50%, $navy-deep 100%);
+    &::after { background: linear-gradient(90deg, transparent, rgba($gold-light, 0.22), transparent); }
+  }
+
+  .features-bg {
+    &__pattern { opacity: 0.04; }
+    &__glow--1 { background: rgba($gold, 0.1); }
+    &__glow--2 { background: rgba($gold, 0.05); }
   }
 
   .features-header {
-    h2 { color: #E8E0D2; }
+    h2 { color: #F7F0DE; }
     p { color: rgba(white, 0.45); }
   }
 
   .feat-card {
-    background: $navy;
-    border-color: rgba($gold, 0.08);
-
-    &:hover {
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
-      border-color: rgba($gold, 0.2);
+    &--quran {
+      background:
+        radial-gradient(ellipse at 100% 0%, rgba($gold, 0.16) 0%, transparent 50%),
+        linear-gradient(165deg, lighten($navy, 4%) 0%, $navy 55%, $navy-deep 100%);
+      border-color: rgba($gold, 0.16);
     }
 
-    h3 { color: #E8E0D2; }
-    p { color: rgba(white, 0.5); }
-    &__link { color: $gold-light; }
-    &__badge { color: $navy-deep; }
+    &--tafsir {
+      background:
+        radial-gradient(ellipse at 0% 100%, rgba($gold, 0.18) 0%, transparent 50%),
+        linear-gradient(165deg, lighten($navy, 6%) 0%, $navy 50%, darken($navy, 2%) 100%);
+      border-color: rgba($gold, 0.38);
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.28),
+        0 0 40px rgba($gold, 0.08);
+
+      h3 { color: #F7F0DE; }
+      p { color: rgba(white, 0.58); }
+      .feat-card__link { color: $gold-light; }
+      .feat-card__watermark { color: rgba($gold, 0.12); }
+
+      .feat-card__icon {
+        background: radial-gradient(circle at 35% 30%, rgba($gold-light, 0.28), rgba($gold, 0.1));
+        mat-icon { color: $gold-light; }
+      }
+
+      &:hover {
+        box-shadow:
+          0 28px 56px rgba(0, 0, 0, 0.4),
+          0 0 0 1px rgba($gold, 0.5);
+      }
+    }
+
+    &--dua {
+      background:
+        radial-gradient(ellipse at 0% 0%, rgba($gold, 0.14) 0%, transparent 48%),
+        linear-gradient(165deg, #1A3D34 0%, #12302A 55%, #0D241F 100%);
+      border-color: rgba($gold, 0.14);
+    }
   }
 
   .ai-section {
-    background: linear-gradient(180deg, $navy 0%, lighten($navy, 2%) 40%, $navy 100%);
+    background: linear-gradient(165deg, #0A1830 0%, $navy-deep 40%, #122A4A 100%);
 
-    &::before { background: linear-gradient(90deg, transparent, rgba($gold-light, 0.2), transparent); }
-    &::after { opacity: 0.025; }
+    &::before { background: linear-gradient(90deg, transparent, rgba($gold-light, 0.35), transparent); }
   }
 
   .ai-header {
-    h2 { color: #E8E0D2; }
-    p { color: rgba(white, 0.45); }
+    h2 { color: #F7F0DE; }
+    p { color: rgba(white, 0.52); }
   }
 
   .ai-card {
-    background: rgba(white, 0.04);
-    border-color: rgba(white, 0.06);
+    background: linear-gradient(165deg, rgba(white, 0.06) 0%, rgba(white, 0.02) 100%);
+    border-color: rgba($gold, 0.14);
 
     &:hover {
-      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+      box-shadow:
+        0 18px 40px rgba(0, 0, 0, 0.35),
+        0 0 32px rgba($gold, 0.1);
     }
 
-    h4 { color: #E8E0D2; }
-    p { color: rgba(white, 0.45); }
+    h4 { color: #F7F0DE; }
+    p { color: rgba(white, 0.5); }
   }
 
   .why-section {
@@ -1360,7 +1888,9 @@ $text-muted: #6B7280;
 
   .hero-stat__value { font-size: 1.2rem; }
 
-  .features, .ai-section, .why-section { padding: 56px 20px; }
+  .features, .ai-section, .why-section { padding: 64px 20px; }
+
+  .feat-card { min-height: 360px; }
 
   .cta { padding: 56px 20px; }
 

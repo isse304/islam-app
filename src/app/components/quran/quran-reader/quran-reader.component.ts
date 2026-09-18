@@ -195,7 +195,10 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   showingTranslation: boolean = true;
   showTajweedLegend: boolean = false;
   showTajweedLegendDialog: boolean = false;
-  tajweedEnabled: boolean = true; // Toggle for tajweed colors
+  tajweedEnabled: boolean = typeof document !== 'undefined'
+    && document.documentElement.classList.contains('dark')
+      ? false
+      : true;
   currentSurahDetails?: Surah;
   isRepeatEnabled: boolean = false;
   currentRecitingVerse: number | null = null;
@@ -512,7 +515,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
         this.checkDarkMode();
         
         // Wait for preferences ONLY to get lastState if needed for default view
-        const prefs = await preferencesPromise; 
+        const prefs = await preferencesPromise;
+        this.applyTajweedPreference(prefs || this.preferences);
+        this.changeDetector.markForCheck(); 
 
         // Ensure selectedTranslation is a valid ID from the loaded translations
         if (this.translations.length > 0) {
@@ -671,8 +676,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
       map(verses => {
         this.verses = verses;
         
-        // Preload QCF V4 fonts after verses are loaded (light mode only)
-        if (!this.isDarkMode && this.tajweedEnabled) {
+        // Preload QCF V4 fonts after verses are loaded so tajweed colors can render
+        if (this.tajweedEnabled) {
           setTimeout(() => this.preloadTajweedFonts(), 100);
         }
         
@@ -1403,6 +1408,27 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
   // Add back the missing methods
   
 
+  private isCurrentlyDark(): boolean {
+    return this.isDarkMode
+      || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark'));
+  }
+
+  private readStoredReaderPreferences(): any {
+    try {
+      const raw = localStorage.getItem('quran_reader_preferences');
+      return raw ? JSON.parse(raw) : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private applyTajweedPreference(prefs: any = this.preferences): void {
+    const stored = prefs || {};
+    this.tajweedEnabled = this.isCurrentlyDark()
+      ? stored.tajweedEnabledDark === true
+      : stored.tajweedEnabled !== false;
+  }
+
   private savePreferences() {
     try {
         // Get current URL state first
@@ -1426,11 +1452,17 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             };
 
         // Prepare preferences to save, including the built lastState and urlState
+        const storedPrefs = this.readStoredReaderPreferences();
         const prefsToSave = {
             selectedReciter: this.selectedReciter?.id,
             selectedTranslation: this.selectedTranslation,
             fontSize: this.fontSize,
-            tajweedEnabled: this.tajweedEnabled, // Save tajweed preference
+            tajweedEnabled: this.isCurrentlyDark()
+              ? storedPrefs.tajweedEnabled !== false
+              : this.tajweedEnabled,
+            tajweedEnabledDark: this.isCurrentlyDark()
+              ? this.tajweedEnabled
+              : storedPrefs.tajweedEnabledDark === true,
             // readingHistory is handled separately
             lastState: lastStateObject, // Assign the conditionally built object
             urlState: { // urlState uses urlParams defined above
@@ -1508,9 +1540,12 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     ).subscribe(theme => {
       const wasDarkMode = this.isDarkMode;
       this.isDarkMode = theme === 'dark';
-      
-      // Only reload if theme changed AND this is not the initial load
+
       if (this.themeInitialized && wasDarkMode !== this.isDarkMode) {
+        if (this.isDarkMode) {
+          this.tajweedEnabled = false;
+          this.savePreferences();
+        }
         // Set a flag in sessionStorage to prevent infinite reload loop
         const reloadFlag = sessionStorage.getItem('theme-reload-flag');
         if (!reloadFlag) {
@@ -2939,9 +2974,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
             this.fontSize = prefs.fontSize;
             // ////////console.log.log(`[loadUserPreferences] Applied font size pref: ${this.fontSize}`);
         }
-        // Load tajweed preference (default to true if not set or undefined)
-        // Explicitly default to true for new users or when preference is missing
-        this.tajweedEnabled = prefs.tajweedEnabled !== false; // Only false if explicitly set to false
+        // Light mode defaults on; dark mode defaults off and is stored separately
+        this.applyTajweedPreference(prefs);
 
          // Apply isMainControlsMinimized state (default to false if not set)
          if (prefs.lastState && typeof prefs.lastState.isMainControlsMinimized === 'boolean') {
@@ -3747,6 +3781,9 @@ getSurahName(surahNumber: string | number): string {
     this.toastService.success(
       this.tajweedEnabled ? '🎨 Tajweed colors enabled' : '🎨 Tajweed colors disabled'
     );
+    if (this.tajweedEnabled) {
+      this.preloadTajweedFonts();
+    }
     // Save the preference
     this.savePreferences();
     this.changeDetector.markForCheck();
@@ -4492,7 +4529,8 @@ getSurahName(surahNumber: string | number): string {
     }
     
     try {
-      await this.fontLoader.preloadPages(pageNumbers);
+      const theme = this.isDarkMode ? 'dark' : 'light';
+      await this.fontLoader.preloadPages(pageNumbers, theme);
       this.changeDetector.detectChanges(); // Trigger re-render with fonts
     } catch (error) {
       console.error('✗ Error loading QCF V4 fonts:', error);

@@ -168,13 +168,19 @@ export class SignupComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = null;
 
-    // Store the intent before starting the Google flow
+    // The intent has to be in storage before control leaves the page: the
+    // redirect flow destroys this component and rebuilds the app on return.
     if (this.signupIntent) {
       localStorage.setItem('signupIntent', this.signupIntent);
     }
 
     this.authService.signInWithGoogle()
-      .then(async () => {
+      .then(outcome => {
+        if (outcome.method === 'redirect') {
+          // The browser is navigating to Google. Keep the spinner up and let
+          // FirebaseAuthService finish the sign-in on the way back.
+          return;
+        }
         this.isLoading = false;
         this.snackBar.open('Account created/linked successfully!', 'Close', {
           duration: 5000,
@@ -186,7 +192,14 @@ export class SignupComponent implements OnInit {
       .catch(error => {
         this.isLoading = false;
         // Clear the intent if Google Sign-In fails
-        localStorage.removeItem('signupIntent'); 
+        localStorage.removeItem('signupIntent');
+        const code = error?.code;
+        if (code === 'auth/popup-closed-by-user'
+          || code === 'auth/cancelled-popup-request'
+          || code === 'auth/user-cancelled'
+          || code === 'auth/redirect-cancelled-by-user') {
+          return;
+        }
         this.errorMessage = error.message || 'Google Sign-In failed.';
         if (this.errorMessage) {
           this.snackBar.open(this.errorMessage, 'Close', {

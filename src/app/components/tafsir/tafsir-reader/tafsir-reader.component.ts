@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, HostListener, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, HostListener, HostBinding, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -194,6 +194,19 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     { value: 'night', label: 'Night', icon: '🌃' }
   ];
 
+  @HostBinding('class.theme-light') get isThemeLight(): boolean {
+    return this.preferences.theme === 'light';
+  }
+  @HostBinding('class.theme-dark') get isThemeDark(): boolean {
+    return this.preferences.theme === 'dark';
+  }
+  @HostBinding('class.theme-sepia') get isThemeSepia(): boolean {
+    return this.preferences.theme === 'sepia';
+  }
+  @HostBinding('class.theme-night') get isThemeNight(): boolean {
+    return this.preferences.theme === 'night';
+  }
+
   constructor(
     private route: ActivatedRoute,
     public router: Router, // Public for template access
@@ -217,8 +230,9 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     this.isLoading = false;
     this.isLoadingVerse = true;
     
-    // Load user preferences from localStorage
+    // Load user preferences from localStorage, then match light/dark to the app theme
     this.loadPreferences();
+    this.syncThemeWithApp();
 
     // Check premium status (non-blocking)
     this.authService.isPremiumUser().then(premium => {
@@ -276,6 +290,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
     this.saveReadingProgress();
     document.body.style.overflow = '';
+    document.body.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'theme-night');
   }
 
   /**
@@ -803,10 +818,30 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Apply theme
+   * Match the reader's default light/dark palettes to the app theme.
+   * Sepia and Night stay as explicit reader choices.
+   */
+  private syncThemeWithApp(): void {
+    const appDark = typeof document !== 'undefined'
+      && document.documentElement.classList.contains('dark');
+    const current = this.preferences.theme;
+    if (appDark && current === 'light') {
+      this.preferences.theme = 'dark';
+    } else if (!appDark && current === 'dark') {
+      this.preferences.theme = 'light';
+    }
+  }
+
+  /**
+   * Apply theme without wiping the app's `dark` class on body.
    */
   applyTheme(): void {
-    document.body.className = `theme-${this.preferences.theme}`;
+    if (typeof document === 'undefined') {
+      return;
+    }
+    const body = document.body;
+    body.classList.remove('theme-light', 'theme-dark', 'theme-sepia', 'theme-night');
+    body.classList.add(`theme-${this.preferences.theme}`);
   }
 
   /**

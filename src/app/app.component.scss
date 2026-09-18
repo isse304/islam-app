@@ -27,14 +27,9 @@
   }
 }
 
-// Ensure loading overlay covers the potentially padded container
-.loading-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: #1A365D; // Match dark background
-  z-index: 1000; // Above everything else
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  flex-direction: column;
+// Tafsir reader is full-screen — never leave a header-colored gap above it
+#app-container:has(app-tafsir-reader) {
+  padding-top: 0 !important;
+  height: 100%;
+  overflow: hidden;
 } 

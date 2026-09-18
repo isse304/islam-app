@@ -9,7 +9,10 @@ export const environment: Environment = {
   adminUsers: [],
   firebase: {
     apiKey: "AIzaSyDhBAdoRQx-vc6lz_5lrZgXVPWXEtam-PQ",
-    authDomain: "nuraai.firebaseapp.com",
+    // Must match the origin serving the app so signInWithRedirect stays
+    // first-party. The /__/auth helpers are reverse-proxied to
+    // nuraai.firebaseapp.com by server/index.ts.
+    authDomain: "www.nura-ai.app",
     projectId: "nuraai",
     storageBucket: "nuraai.firebasestorage.app",
     messagingSenderId: "883232352111",

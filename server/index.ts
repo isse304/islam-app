@@ -27,6 +27,7 @@ import { getApps } from 'firebase-admin/app';
 import { auth } from './config/firebase';
 import { connectDatabase } from './config/database';
 import { errorHandler } from './middleware/errorHandler';
+import { createProxyMiddleware } from 'http-proxy-middleware';
 import fs from 'fs';
 
 // Load environment variables first
@@ -62,6 +63,34 @@ const app = express();
 // --- Trust Proxy --- 
 // Required for express-rate-limit behind reverse proxies (like Render)
 app.set('trust proxy', 1);
+
+// --- Firebase sign-in helper proxy ---
+// signInWithRedirect finishes by reading the credential back out of an iframe
+// hosted on the Firebase authDomain. When that domain differs from the one
+// serving the app, browsers treat it as third-party storage and partition it
+// away, so the redirect completes but the sign-in silently produces nothing.
+// Serving the helpers from this origin keeps the whole flow first-party.
+// This must stay above the body parsers and the SPA catch-all: Google returns
+// to /__/auth/handler with a form POST, and the proxy needs the request stream
+// untouched.
+const FIREBASE_AUTH_PROXY_TARGET =
+  process.env['FIREBASE_AUTH_PROXY_TARGET'] || 'https://nuraai.firebaseapp.com';
+
+app.use(
+  createProxyMiddleware({
+    pathFilter: '/__/auth',
+    target: FIREBASE_AUTH_PROXY_TARGET,
+    changeOrigin: true,
+    // Cookies come back scoped to firebaseapp.com, which this origin would
+    // otherwise be unable to store.
+    cookieDomainRewrite: '',
+    on: {
+      error: (err: Error) => {
+        logger.error('[Firebase Auth Proxy] Upstream request failed', { message: err.message });
+      },
+    },
+  })
+);
 
 // --- Instantiate Services ---
 const emailService = new EmailService();

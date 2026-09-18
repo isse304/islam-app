@@ -115,7 +115,10 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "options": {
             "proxyConfig": "src/proxy.conf.json",
-            "browserTarget": "IslamApp:build"
+            "browserTarget": "IslamApp:build",
+            "ssl": true,
+            "sslCert": ".certs/localhost.pem",
+            "sslKey": ".certs/localhost-key.pem"
           },
           "configurations": {
             "production": {

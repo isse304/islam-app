@@ -133,99 +133,161 @@
 
   <!-- ═══════════════ FEATURES ═══════════════ -->
   <section class="features">
+    <div class="features-bg" aria-hidden="true">
+      <div class="features-bg__glow features-bg__glow--1"></div>
+      <div class="features-bg__glow features-bg__glow--2"></div>
+      <div class="features-bg__pattern"></div>
+    </div>
+
     <div class="features-header">
+      <div class="section-ornament">
+        <span class="section-ornament__line"></span>
+        <span class="geom-star geom-star--sm"></span>
+        <span class="section-ornament__line"></span>
+      </div>
       <span class="section-tag">Core Features</span>
-      <h2>Everything you need for your journey</h2>
+      <h2>Everything you need for<br><em>your journey</em></h2>
       <p>Three powerful tools, one unified experience</p>
     </div>
 
     <div class="features-grid">
       <!-- Quran Reader -->
       <a routerLink="/quran" class="feat-card feat-card--quran">
+        <span class="feat-card__index">01</span>
+        <div class="feat-card__corners" aria-hidden="true">
+          <span class="c c--tl"></span>
+          <span class="c c--tr"></span>
+          <span class="c c--bl"></span>
+          <span class="c c--br"></span>
+        </div>
+        <div class="feat-card__watermark" aria-hidden="true">القرآن</div>
+        <div class="feat-card__shine" aria-hidden="true"></div>
         <div class="feat-card__icon">
           <mat-icon>auto_stories</mat-icon>
         </div>
         <h3>Quran Reader</h3>
         <p>Read the Holy Quran with beautiful Arabic typography, multiple translations, and audio recitations by renowned Qaris. Track your progress and bookmark your favorite verses.</p>
-        <span class="feat-card__link">
-          Start Reading
-          <mat-icon>arrow_forward</mat-icon>
-        </span>
+        <div class="feat-card__footer">
+          <span class="feat-card__stat">6,236 verses</span>
+          <span class="feat-card__link">
+            Start Reading
+            <mat-icon>arrow_forward</mat-icon>
+          </span>
+        </div>
       </a>
 
       <!-- Tafsir Explorer -->
       <a routerLink="/tafsir/browse" class="feat-card feat-card--tafsir">
+        <span class="feat-card__index">02</span>
         <div class="feat-card__badge">PREMIUM</div>
+        <div class="feat-card__corners" aria-hidden="true">
+          <span class="c c--tl"></span>
+          <span class="c c--tr"></span>
+          <span class="c c--bl"></span>
+          <span class="c c--br"></span>
+        </div>
+        <div class="feat-card__watermark" aria-hidden="true">التفسير</div>
+        <div class="feat-card__shine" aria-hidden="true"></div>
         <div class="feat-card__icon">
           <mat-icon>school</mat-icon>
         </div>
         <h3>Tafsir Explorer</h3>
         <p>Study classical tafsir from renowned scholars like Ibn Kathir. Ask questions to our AI assistant and receive explanations grounded in traditional scholarship.</p>
-        <span class="feat-card__link">
-          Explore Tafsir
-          <mat-icon>arrow_forward</mat-icon>
-        </span>
+        <div class="feat-card__footer">
+          <span class="feat-card__stat">Classical sources</span>
+          <span class="feat-card__link">
+            Explore Tafsir
+            <mat-icon>arrow_forward</mat-icon>
+          </span>
+        </div>
       </a>
 
       <!-- Duas -->
       <a routerLink="/dua" class="feat-card feat-card--dua">
+        <span class="feat-card__index">03</span>
+        <div class="feat-card__corners" aria-hidden="true">
+          <span class="c c--tl"></span>
+          <span class="c c--tr"></span>
+          <span class="c c--bl"></span>
+          <span class="c c--br"></span>
+        </div>
+        <div class="feat-card__watermark" aria-hidden="true">الأدعية</div>
+        <div class="feat-card__shine" aria-hidden="true"></div>
         <div class="feat-card__icon">
           <mat-icon>volunteer_activism</mat-icon>
         </div>
         <h3>Daily Duas</h3>
         <p>A curated collection of authentic duas for every occasion. Search by emotion, explore AI-powered insights, and build your personal dua routine.</p>
-        <span class="feat-card__link">
-          Browse Duas
-          <mat-icon>arrow_forward</mat-icon>
-        </span>
+        <div class="feat-card__footer">
+          <span class="feat-card__stat">100+ duas</span>
+          <span class="feat-card__link">
+            Browse Duas
+            <mat-icon>arrow_forward</mat-icon>
+          </span>
+        </div>
       </a>
     </div>
   </section>
 
   <!-- ═══════════════ AI CAPABILITIES ═══════════════ -->
   <section class="ai-section">
-    <div class="ai-header">
-      <div class="section-ornament">
-        <span class="section-ornament__line"></span>
-        <span class="section-ornament__diamond"></span>
-        <span class="section-ornament__line"></span>
-      </div>
-      <span class="section-tag">Powered by AI</span>
-      <h2>Intelligence meets tradition</h2>
-      <p>Modern AI technology grounded in classical Islamic scholarship</p>
+    <div class="ai-bg" aria-hidden="true">
+      <div class="ai-bg__glow ai-bg__glow--1"></div>
+      <div class="ai-bg__glow ai-bg__glow--2"></div>
+      <div class="ai-bg__glow ai-bg__glow--3"></div>
+      <div class="ai-bg__pattern"></div>
+      <div class="ai-bg__stars"></div>
     </div>
 
-    <div class="ai-grid">
-      <div class="ai-card">
-        <div class="ai-card__icon ai-card__icon--purple">
-          <mat-icon>psychology</mat-icon>
+    <div class="ai-layout">
+      <div class="ai-header">
+        <div class="ai-star" aria-hidden="true">
+          <span class="geom-star geom-star--lg"></span>
+          <span class="ai-star__ring"></span>
+          <span class="ai-star__ring ai-star__ring--2"></span>
         </div>
-        <h4>Smart Tafsir</h4>
-        <p>Ask any question about a verse and get AI-powered explanations based on classical tafsir sources</p>
+        <span class="section-tag">Powered by AI</span>
+        <h2>Intelligence meets<br><em>tradition</em></h2>
+        <p>Modern AI technology grounded in classical Islamic scholarship</p>
+        <span class="ai-header__arabic" aria-hidden="true">العلم نور</span>
       </div>
 
-      <div class="ai-card">
-        <div class="ai-card__icon ai-card__icon--blue">
-          <mat-icon>emoji_objects</mat-icon>
+      <div class="ai-grid">
+        <div class="ai-card">
+          <span class="ai-card__index">I</span>
+          <div class="ai-card__icon ai-card__icon--purple">
+            <mat-icon>psychology</mat-icon>
+          </div>
+          <h4>Smart Tafsir</h4>
+          <p>Ask any question about a verse and get AI-powered explanations based on classical tafsir sources</p>
         </div>
-        <h4>Dua Insights</h4>
-        <p>Receive context-aware explanations, virtues, and occasions for every dua in our collection</p>
-      </div>
 
-      <div class="ai-card">
-        <div class="ai-card__icon ai-card__icon--green">
-          <mat-icon>self_improvement</mat-icon>
+        <div class="ai-card">
+          <span class="ai-card__index">II</span>
+          <div class="ai-card__icon ai-card__icon--blue">
+            <mat-icon>emoji_objects</mat-icon>
+          </div>
+          <h4>Dua Insights</h4>
+          <p>Receive context-aware explanations, virtues, and occasions for every dua in our collection</p>
         </div>
-        <h4>Emotional Search</h4>
-        <p>Describe how you feel and let AI recommend the most relevant duas and Quranic verses</p>
-      </div>
 
-      <div class="ai-card">
-        <div class="ai-card__icon ai-card__icon--amber">
-          <mat-icon>auto_fix_high</mat-icon>
+        <div class="ai-card">
+          <span class="ai-card__index">III</span>
+          <div class="ai-card__icon ai-card__icon--green">
+            <mat-icon>self_improvement</mat-icon>
+          </div>
+          <h4>Emotional Search</h4>
+          <p>Describe how you feel and let AI recommend the most relevant duas and Quranic verses</p>
         </div>
-        <h4>Study Notes</h4>
-        <p>Highlight text, take notes, and bookmark verses across all tafsir editions in one place</p>
+
+        <div class="ai-card">
+          <span class="ai-card__index">IV</span>
+          <div class="ai-card__icon ai-card__icon--amber">
+            <mat-icon>auto_fix_high</mat-icon>
+          </div>
+          <h4>Study Notes</h4>
+          <p>Highlight text, take notes, and bookmark verses across all tafsir editions in one place</p>
+        </div>
       </div>
     </div>
   </section>

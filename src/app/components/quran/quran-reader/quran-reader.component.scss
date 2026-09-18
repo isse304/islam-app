@@ -794,7 +794,7 @@ select option {
 }
 
 .highlighted-verse {
-  background-color: rgba(255, 255, 0, 0.2);
+  background-color: #F8E9C8;
   transition: background-color 0.5s ease-in-out;
   border-radius: 8px;
 }
@@ -972,8 +972,8 @@ select option {
 
 /* Style for highlighted verse */
 .highlighted-verse {
-  background-color: #fffbeb; /* Light yellow background */
-  border-left: 4px solid #facc15; /* Yellow border */
+  background-color: #F8E9C8;
+  border-left: 4px solid $primary-color;
   transition: background-color 0.5s ease, border-color 0.5s ease;
 }
 
@@ -1388,64 +1388,47 @@ select option {
     color: #B7A57A !important;
   }
   
-  // Simplified dark mode Arabic text styling - darker gold
-  ::ng-deep .verse-text,
-  ::ng-deep .quran-text-uthmanic,
-  ::ng-deep .word-tooltip-trigger {
+  // Default Arabic in dark mode when tajweed is off
+  ::ng-deep .tajweed-disabled.verse-text,
+  ::ng-deep .tajweed-disabled.quran-text-uthmanic,
+  ::ng-deep .tajweed-disabled .word-tooltip-trigger,
+  ::ng-deep .tajweed-disabled .quran-word,
+  ::ng-deep .tajweed-disabled .verse-text span {
     color: #B7A57A !important;
     -webkit-text-fill-color: #B7A57A !important;
     text-shadow: none !important;
   }
-  
-  // Target individual words and spans within verse text
-  ::ng-deep .verse-text *,
-  ::ng-deep .quran-text-uthmanic *,
-  ::ng-deep .verse-text .quran-word,
-  ::ng-deep .verse-text span {
-    color: #B7A57A !important;
-    -webkit-text-fill-color: #B7A57A !important;
-    text-shadow: none !important;
+
+  ::ng-deep .tajweed-disabled .quran-word {
+    filter: none;
+    font-palette: --qcf-mono;
   }
-  
-  // Hover effect for words with tooltips
+
+  ::ng-deep .tajweed-enabled.verse-text,
+  ::ng-deep .tajweed-enabled.quran-text-uthmanic {
+    color: #F4EDE0;
+    -webkit-text-fill-color: unset;
+  }
+
+  ::ng-deep .tajweed-enabled .quran-word {
+    filter: none !important;
+    -webkit-filter: none !important;
+    -webkit-text-fill-color: unset !important;
+    color: unset;
+    font-palette: --qcf-dark;
+  }
+
+  ::ng-deep .tajweed-enabled rule,
+  ::ng-deep .tajweed-enabled rule[class] {
+    filter: none !important;
+    -webkit-filter: none !important;
+    -webkit-text-fill-color: unset !important;
+  }
+
+  // Keep full opacity on hover so tajweed colors don't wash out
   ::ng-deep .verse-text .quran-word:hover,
   ::ng-deep .quran-text-uthmanic .quran-word:hover {
-    opacity: 0.8;
-    transition: opacity 0.2s ease;
-  }
-  
-  // Override ALL rule elements (tajweed markers) in dark mode with MAXIMUM specificity
-  ::ng-deep .verse-text rule,
-  ::ng-deep .verse-text rule[class],
-  ::ng-deep .verse-text rule[class*="ghunnah"],
-  ::ng-deep .verse-text rule[class*="madd"],
-  ::ng-deep .verse-text rule[class*="qalaqah"],
-  ::ng-deep .verse-text rule[class*="idgham"],
-  ::ng-deep .verse-text rule[class*="ikhfa"],
-  ::ng-deep .verse-text rule[class*="iqlab"],
-  ::ng-deep .quran-text-uthmanic rule,
-  ::ng-deep .quran-text-uthmanic rule[class] {
-    color: #B7A57A !important;
-    -webkit-text-fill-color: #B7A57A !important;
-    text-shadow: none !important;
-  }
-  
-  // Remove any QCF font built-in colors in dark mode - convert to grayscale then apply gold
-  ::ng-deep .verse-text .quran-word,
-  ::ng-deep .quran-text-uthmanic .quran-word,
-  ::ng-deep .tajweed-enabled .quran-word,
-  ::ng-deep .verse-text span {
-    filter: grayscale(100%) brightness(1.1) !important;
-    cursor: pointer !important;
-    pointer-events: auto !important;
-  }
-  
-  // Force all tajweed-related elements to be gold
-  ::ng-deep .verse-text rule *,
-  ::ng-deep .quran-word * {
-    color: #B7A57A !important;
-    -webkit-text-fill-color: #B7A57A !important;
-    pointer-events: none !important;
+    opacity: 1;
   }
 
   // --- Tafsir section dark mode ---
@@ -1794,14 +1777,19 @@ select option {
 
   // === Verse Card Dark Mode ===
   .verse-card {
-    background-color: #2D3748 !important;
-    border-color: rgba(183, 165, 122, 0.12) !important;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
-    color: #FAF3E0 !important; 
+    background-color: #1A2638 !important;
+    border-color: rgba(183, 165, 122, 0.18) !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4) !important;
+    color: #FAF3E0 !important;
+
+    &:hover {
+      background-color: #222F44 !important;
+      border-color: rgba(183, 165, 122, 0.3) !important;
+    }
 
     &__header {
-      background: rgba(183, 165, 122, 0.06) !important;
-      border-bottom-color: rgba(183, 165, 122, 0.1) !important;
+      background: rgba(183, 165, 122, 0.1) !important;
+      border-bottom-color: rgba(183, 165, 122, 0.16) !important;
     }
 
     .verse-badge {
@@ -1821,7 +1809,7 @@ select option {
     }
     
     .verse-meaning {
-        background: rgba(183, 165, 122, 0.06) !important;
+        background: rgba(183, 165, 122, 0.12) !important;
         border-left-color: #B7A57A !important;
         background-image: none !important;
         .translation-text,
@@ -1961,17 +1949,18 @@ select option {
 
 // --- Verse Cards ---
 .verse-card {
-  background: #fff;
+  background: #FFF8EC;
   border-radius: 16px;
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba($primary-color, 0.22);
   padding: 0;
   overflow: hidden;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   position: relative;
 
   &:hover {
-    border-color: rgba($primary-color, 0.15);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+    border-color: rgba($primary-color, 0.4);
+    box-shadow: 0 6px 22px rgba(183, 165, 122, 0.14);
+    background: #FFF4E3;
   }
 
   &__header {
@@ -1979,8 +1968,8 @@ select option {
     align-items: center;
     justify-content: space-between;
     padding: 12px 20px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
-    background: rgba($primary-color, 0.02);
+    border-bottom: 1px solid rgba($primary-color, 0.14);
+    background: rgba($primary-color, 0.08);
   }
 
   .verse-container {
@@ -1990,7 +1979,7 @@ select option {
   .verse-meaning {
     margin: 0 20px 0;
     padding: 14px 16px;
-    background: linear-gradient(135deg, rgba($primary-color, 0.04), rgba($primary-color, 0.01));
+    background: #F4EBDA;
     border-radius: 12px;
     border-left: 3px solid $primary-color;
     margin-bottom: 16px;

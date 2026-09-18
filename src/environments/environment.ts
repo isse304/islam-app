@@ -10,7 +10,11 @@ export const environment: Environment = {
   quranFoundationApiKey: '0GU4xDZeCiMYMrd_6uh_1jy9Rm', // Production secret
   firebase: {
     apiKey: "AIzaSyDhBAdoRQx-vc6lz_5lrZgXVPWXEtam-PQ",
-    authDomain: "nuraai.firebaseapp.com",
+    // Must match the origin serving the app so signInWithRedirect stays
+    // first-party. The dev server runs over HTTPS and proxies /__/auth to
+    // nuraai.firebaseapp.com (see angular.json "ssl" and proxy.conf.json);
+    // the Firebase SDK always builds the handler URL as https://<authDomain>.
+    authDomain: "localhost:4200",
     projectId: "nuraai",
     storageBucket: "nuraai.firebasestorage.app",
     messagingSenderId: "883232352111",
