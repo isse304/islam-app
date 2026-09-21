@@ -14,6 +14,7 @@ import { ApiService } from '../../services/api.service';
 import { Subscription } from 'rxjs';
 import { AppUser } from '../../services/firebase-auth.service';
 import { ThemeService } from '../../services/theme.service';
+import { AnalyticsService } from '../../services/analytics.service';
 
 interface SubscriptionStatus {
   status: 'active' | 'canceled' | 'inactive';
@@ -80,7 +81,8 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
     private apiService: ApiService,
     public themeService: ThemeService,
     private ngZone: NgZone,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private analytics: AnalyticsService
   ) {}
 
   ngOnInit() {
@@ -296,6 +298,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
             if (response?.url) {
                 // console.log('[SubComp startSub] Checkout session created, redirecting to Stripe:', response.url);
+                this.analytics.trackBeginCheckout();
                 this.ngZone.run(() => { 
                   this.isLoading = false; 
                   this.cdr.detectChanges();
@@ -326,6 +329,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
                     if (refreshedResponse?.url) {
                         // console.log('[SubComp startSub] Checkout session created after refresh, redirecting to Stripe:', refreshedResponse.url);
+                        this.analytics.trackBeginCheckout();
                         this.ngZone.run(() => { 
                           this.isLoading = false; 
                           this.cdr.detectChanges();
@@ -395,6 +399,7 @@ export class SubscriptionComponent implements OnInit, OnDestroy {
 
         if (response.status === 'active' || response.plan === 'premium') {
           // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Subscription confirmed active/premium. Forcing token refresh...`);
+          this.analytics.trackPurchase();
           await this.firebaseAuthService.refreshAuth();
           // console.log(`[SubComp handleSuccess] Attempt ${attempt}: Token refresh completed.`);
           await new Promise(resolve => setTimeout(resolve, 300));

@@ -4,6 +4,7 @@ import { RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { HeaderComponent } from './components/header/header.component';
 import { ThemeService } from './services/theme.service';
 import { CallInvitationListenerService } from './services/call-invitation-listener.service';
+import { AnalyticsService } from './services/analytics.service';
 import { Observable, Subject } from 'rxjs';
 import { filter, map, startWith, distinctUntilChanged, takeUntil } from 'rxjs/operators';
 import { ToastComponent } from './components/shared/toast/toast.component';
@@ -31,7 +32,9 @@ export class AppComponent implements OnInit, OnDestroy {
     private themeService: ThemeService,
     private router: Router,
     private cdr: ChangeDetectorRef,
-    private callInvitationListener: CallInvitationListenerService
+    private callInvitationListener: CallInvitationListenerService,
+    // Constructed at bootstrap so page views are tracked on every route.
+    private analytics: AnalyticsService
   ) {
     // Define routes where the header AND toggle should be hidden
     const authPath = '/auth';

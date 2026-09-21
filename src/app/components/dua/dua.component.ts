@@ -24,6 +24,7 @@ import { EmotionalDuaResponse } from '../../types/dua.types';
 import { Title, Meta } from '@angular/platform-browser';
 import { PremiumFeaturePreviewComponent, PremiumFeaturePreviewData } from '../premium-feature-preview/premium-feature-preview.component';
 import { PremiumHoverPreviewDirective, HoverPreviewConfig } from '../../directives/premium-hover-preview.directive';
+import { AnalyticsService } from '../../services/analytics.service';
 
 interface Verse {
   reference: string;
@@ -152,7 +153,8 @@ export class DuaComponent implements OnInit, OnDestroy {
     private cd: ChangeDetectorRef,
     private titleService: Title,
     private metaService: Meta,
-    private dialog: MatDialog
+    private dialog: MatDialog,
+    private analytics: AnalyticsService
   ) {
     this.subscriptions.add(
       this.firebaseAuthService.user$.subscribe(
@@ -173,6 +175,7 @@ export class DuaComponent implements OnInit, OnDestroy {
     ]);
 
     this.loadDuas();
+    this.analytics.trackDuaCategory('morning');
     this.spiritualAdvice = this.getSpiritualAdvice();
   }
 
@@ -220,6 +223,7 @@ export class DuaComponent implements OnInit, OnDestroy {
 
   onCategoryChange(category: DuaCategory) {
     this.selectedCategory = category;
+    this.analytics.trackDuaCategory(category);
     this.loadDuasByCategory(category);
   }
 
@@ -493,6 +497,7 @@ export class DuaComponent implements OnInit, OnDestroy {
       }
 
       this.selectedDua = dua;
+      this.analytics.trackDuaView(dua.id, dua.title, this.selectedCategory || undefined);
       this.cd.markForCheck();
     } catch (error: any) {
       console.error('Error checking premium status:', error);

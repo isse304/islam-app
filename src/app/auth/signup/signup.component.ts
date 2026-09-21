@@ -5,6 +5,7 @@ import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDialog } from '@angular/material/dialog';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -66,7 +67,8 @@ export class SignupComponent implements OnInit {
     private router: Router,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private analytics: AnalyticsService
   ) {
     this.signupForm = this.fb.group({
       firstName: ['', [Validators.required]],
@@ -135,6 +137,7 @@ export class SignupComponent implements OnInit {
       })
       .then(() => {
         this.isLoading = false;
+        this.analytics.trackSignUp('email');
         this.snackBar.open(
           'Account created! Please check your email to verify your account.',
           'Close',
@@ -182,6 +185,7 @@ export class SignupComponent implements OnInit {
           return;
         }
         this.isLoading = false;
+        this.analytics.trackSignUp('google');
         this.snackBar.open('Account created/linked successfully!', 'Close', {
           duration: 5000,
           panelClass: ['success-snackbar']

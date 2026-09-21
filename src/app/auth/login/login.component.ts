@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { FirebaseAuthService } from '../../services/firebase-auth.service';
+import { AnalyticsService } from '../../services/analytics.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -56,7 +57,8 @@ export class LoginComponent implements OnInit, OnDestroy {
     private snackBar: MatSnackBar,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private zone: NgZone
+    private zone: NgZone,
+    private analytics: AnalyticsService
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -193,6 +195,7 @@ export class LoginComponent implements OnInit, OnDestroy {
 
       this.authService.signInWithEmailAndPassword(email, password)
         .then(async () => { // Make the success handler async
+          this.analytics.trackLogin('email');
           this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
           await this.navigateOnLoginSuccess(); // Wait for navigation logic
         })
@@ -248,6 +251,7 @@ export class LoginComponent implements OnInit, OnDestroy {
             }
             const credential = outcome.credential;
             if (credential && credential.user) {
+              this.analytics.trackLogin('google');
               this.snackBar.open('Login successful!', 'Close', { duration: 3000 });
               await this.navigateOnLoginSuccess(); // Wait for navigation logic
             } else {

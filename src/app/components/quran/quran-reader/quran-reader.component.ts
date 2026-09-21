@@ -42,6 +42,7 @@ import { ReadingHistory } from '../../../interfaces/reading-history.interface'; 
 import { PremiumPromptDialogComponent } from '../../dialogs/premium-prompt-dialog/premium-prompt-dialog.component';
 import { PreferencesService } from '../../../services/preferences.service';
 import { ThemeService } from '../../../services/theme.service';
+import { AnalyticsService } from '../../../services/analytics.service';
 // +++ ADD Import for the new dialog +++
 import { PremiumFeaturesDialogComponent } from '../../dialogs/premium-features-dialog/premium-features-dialog.component';
 // Correct import for SafeHtmlPipe
@@ -430,7 +431,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     private submissionService: SubmissionService,
     private audioRecordingService: AudioRecordingService,
     private audioUploadService: AudioUploadService,
-    private themeService: ThemeService
+    private themeService: ThemeService,
+    private analytics: AnalyticsService
   ) {
     // Initialize the debounced scroll handler here
     this.debouncedScrollHandler = this.debounce(() => {
@@ -710,6 +712,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
        // Set Surah immediately, but NOT verse yet
        this.currentSurah = surah;
        this.selectedSurah = surah; // Sync dropdown
+
+       this.analytics.trackQuranRead(surah, verse, 'translation');
 
        this.loadSurahSubscription?.unsubscribe();
        this.loadSurahSubscription = this.loadSurah(surah).pipe(
@@ -1187,6 +1191,9 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     }
 
     const isNewAudio = this.currentAudioUrl !== url; // Check if it's a new track
+    if (isNewAudio) {
+      this.analytics.trackRecitationPlay(this.currentSurah, verseNumber);
+    }
 
     // *** Set minimized state based on VIEW MODE ***
     if (isNewAudio) {
@@ -1915,6 +1922,8 @@ export class QuranReaderComponent implements OnInit, OnDestroy {
     // ++ LOG ++ Check if this is being called unexpectedly
     // ////////console.log.log(`[selectSurah ENTRY] Called with surahNumber: ${surahNumber}. Current state: this.currentSurah=${this.currentSurah}, this.selectedSurah=${this.selectedSurah}`);
     if (!surahNumber || surahNumber === this.currentSurah) return; // Don't reload if same surah
+
+    this.analytics.trackQuranRead(surahNumber, 1, this.isMushafView ? 'mushaf' : 'translation');
 
     // ////////console.log.log(`[selectSurah] Changing to Surah ${surahNumber}`);
 

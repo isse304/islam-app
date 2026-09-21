@@ -26,6 +26,7 @@ import { BookmarkService } from '../../../services/bookmark.service';
 import { NoteService } from '../../../services/note.service';
 import { HighlightService } from '../../../services/highlight.service';
 import { FirebaseAuthService } from '../../../services/firebase-auth.service';
+import { AnalyticsService } from '../../../services/analytics.service';
 
 // Models
 import { TafsirEdition, TafsirContent, UserPreferences, VerseGroupInfo } from '../../../models/tafsir.model';
@@ -219,7 +220,8 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
     public noteService: NoteService, // Public for template access
     public highlightService: HighlightService, // Public for template access
     private dialog: MatDialog,
-    private authService: FirebaseAuthService
+    private authService: FirebaseAuthService,
+    private analytics: AnalyticsService
   ) {
     // Initialize surahs observable
     this.surahs$ = this.quranService.surahs$;
@@ -403,6 +405,7 @@ export class TafsirReaderComponent implements OnInit, OnDestroy {
       next: (content) => {
         this.tafsirContent = content;
         tafsirLoaded = true;
+        this.analytics.trackTafsirRead(this.editionId, this.currentSurah, this.currentVerse);
         this.cdr.detectChanges(); // Force update immediately
 
         // Detect verse group for this tafsir passage
